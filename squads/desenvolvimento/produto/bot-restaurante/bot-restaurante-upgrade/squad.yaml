@@ -1,0 +1,77 @@
+squad:
+  code: bot-restaurante-upgrade
+  setor: desenvolvimento
+  grupo: produto
+  sessao: bot-restaurante
+  name: Bot Restaurante Upgrade
+  description: Analisa o projeto completo, redesenha o painel com visual dark & moderno e melhora as mensagens do bot para uma experiência de atendimento mais fluida.
+  icon: sparkles
+  version: "1.0.0"
+
+  company: "_expxagents/_memory/company.md"
+  preferences: "_expxagents/_memory/preferences.md"
+  memory: "_memory/memories.md"
+
+  target_audience: Operadores de restaurante (painel) e clientes finais (WhatsApp)
+  platform: Web (painel admin) + WhatsApp
+  format: full-stack-improvement
+
+  schedule:
+    enabled: false
+
+  skills:
+    - web_search
+    - web_fetch
+
+  data: []
+
+  agents:
+    - id: analista
+      name: "Giovana Ramos"
+      icon: magnifying-glass
+      avatar: "https://api.dicebear.com/9.x/adventurer/svg?seed=Giovana"
+      prompt: agents/analista.md
+
+    - id: designer
+      name: "Thiago Novaes"
+      icon: palette
+      avatar: "https://api.dicebear.com/9.x/adventurer/svg?seed=Thiago"
+      prompt: agents/designer.md
+
+    - id: frontend
+      name: "Isabela Costa"
+      icon: code
+      avatar: "https://api.dicebear.com/9.x/adventurer/svg?seed=Isabela"
+      prompt: agents/frontend.md
+
+    - id: conversacional
+      name: "Marcos Viana"
+      icon: speech-balloon
+      avatar: "https://api.dicebear.com/9.x/adventurer/svg?seed=Marcos"
+      prompt: agents/conversacional.md
+
+  pipeline:
+    steps:
+      - id: step-01
+        agent: analista
+        label: "Diagnóstico completo do projeto (painel + bot)"
+        execution: inline
+
+      - id: step-02
+        agent: designer
+        label: "Design system dark & especificações de UI"
+        deliverFrom: analista
+        execution: inline
+
+      - id: step-03
+        agent: frontend
+        label: "Implementação do novo painel (HTML/CSS/JS vanilla)"
+        deliverFrom: designer
+        execution: inline
+        produces_format: true
+
+      - id: step-04
+        agent: conversacional
+        label: "Refinamento das mensagens do bot no WhatsApp"
+        deliverFrom: analista
+        execution: inline

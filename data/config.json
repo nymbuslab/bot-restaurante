@@ -1,0 +1,27 @@
+{
+  "restaurante": {
+    "nome": "Sabor D'Casa - Restaurante e Pastelaria",
+    "horario": "Seg a Sáb, das 07h às 18h",
+    "endereco": "***REDACTED***",
+    "telefone": "***REDACTED***"
+  },
+  "atendimento": {
+    "aberto": true,
+    "tempoEstimado": "30 a 45 min",
+    "taxaEntrega": 5
+  },
+  "mensagens": {
+    "boasVindas": "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.\n\nComo posso ajudar? Digite o número da opção:",
+    "fechado": "No momento estamos *fechados* 😴. Nosso horário é: {horario}.\n\nVolte mais tarde para fazer seu pedido!",
+    "atendente": "Tudo bem! Um de nossos atendentes vai continuar por aqui em instantes. 🧑‍🍳\n\n(Digite *menu* para voltar ao atendimento automático.)",
+    "pedidoConfirmado": "🎉 *Pedido confirmado!* Número *#{numero}*.\n\nJá estamos preparando. Tempo estimado: *{tempo}*.\nObrigado pela preferência! 🍴"
+  },
+  "pagamentos": [
+    "Pix",
+    "Cartão (na entrega)",
+    "Dinheiro"
+  ],
+  "admin": {
+    "senha": "admin123"
+  }
+}

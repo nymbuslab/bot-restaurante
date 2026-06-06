@@ -1,0 +1,13 @@
+node_modules/
+.wwebjs_auth/
+.wwebjs_cache/
+pedidos.json
+*.log
+
+# ExpxAgents
+.env
+.mcp.json
+*.tmp
+squads/*/state.json
+squads/*/state.json.tmp
+squads/*/output/
