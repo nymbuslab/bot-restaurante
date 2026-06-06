@@ -1,51 +1,69 @@
 # 🍴 Bot de Pedidos para Restaurante (WhatsApp) + Painel
 
-Recebe pedidos pelo WhatsApp de forma automatizada e tem um **painel web** onde o
-dono do restaurante edita tudo sozinho — sem mexer em código. O bot é a **porta de
-entrada do pedido**; o andamento (preparo/entrega) é feito pelo sistema da empresa.
+Plataforma **SaaS multi-tenant**: qualquer restaurante se cadastra, configura o cardápio
+e começa a receber pedidos pelo WhatsApp de forma automatizada. Cada empresa tem seu
+próprio ambiente isolado — cardápio, configurações, pedidos e conexão WhatsApp separados.
 
-> Documentos do projeto: **PRD.md** (requisitos do produto) e **CLAUDE.md**
-> (guia técnico para devs/IA). Para colocar em produção, veja **DEPLOY.md**.
+> Documentos do projeto: **PRD.md** (requisitos), **CLAUDE.md** (guia técnico),
+> **DEPLOY.md** (como colocar em produção).
 
 ## ✨ O que ele faz
 
 **Atendimento (bot):**
-- Mostra o cardápio e monta o pedido pelo WhatsApp.
-- Por item: composição (o que vem), **opcionais** com preço, **observação** e quantidade.
-- No fim, pergunta **"deseja adicionar bebida?"** e mostra a lista de bebidas.
+
+- Mostra categorias e itens do cardápio; monta o pedido pelo WhatsApp.
+- Por item: composição, **opcionais** com preço, **observação** e quantidade.
+- Pergunta **"deseja adicionar bebida?"** automaticamente (se houver categoria de bebidas).
 - Coleta nome, entrega/retirada, endereço e forma de pagamento; confirma e registra.
-- **Só responde a mensagens recebidas depois de conectado** (não dispara em massa).
+- Respeita **horário de funcionamento** configurável por dia da semana — responde
+  automaticamente "fechado" fora do horário.
+- **Só responde a mensagens recebidas após a conexão** (não dispara em massa).
 
 **Painel:**
-- **Conexão**: conectar/desconectar do WhatsApp; gerar novo QR se travar.
+
+- **Conexão**: conectar/desconectar o WhatsApp; gerar novo QR se travar.
 - **Cardápio**: itens, preços, ativar/desativar, composição e opcionais — valem na hora.
-- **Configurações**: dados do restaurante, mensagens, abrir/fechar, pagamentos.
+- **Configurações**: dados do restaurante, mensagens, horário por dia, taxa de entrega,
+  formas de pagamento, abrir/fechar manualmente.
 - **Pedidos**: lista com itens, opcionais, observação, total, entrega e telefone.
+- **Simulador**: testa o fluxo completo do bot direto no navegador, sem WhatsApp.
 
 ## 📦 Como rodar
 
 Pré-requisito: **Node.js 18+**.
+
 ```bash
 npm install
 npm start
 ```
-Abra **http://localhost:3000** e faça login.
-- Senha inicial do painel: **admin123** (troque em `data/config.json` → `admin.senha`).
 
-### Conectar ao WhatsApp (quando você quiser)
-O bot **não conecta sozinho**. Configure tudo primeiro; depois, na aba **Conexão**,
-clique em **"Conectar ao WhatsApp"** e escaneie o QR
-(WhatsApp → Aparelhos conectados → Conectar um aparelho). Use um **número
-dedicado** do restaurante, não o seu pessoal.
+Abra `http://localhost:3000` no navegador.
 
-> Se o QR ficar travado em "iniciando", clique em **"Gerar novo QR (limpar sessão)"**
-> — isso apaga uma sessão antiga inválida e força um QR novo.
+**Primeira execução:** se existir configuração anterior (`data/config.json`), o sistema
+migra automaticamente e exibe no console:
+
+```text
+E-mail: admin@local  |  Senha: admin123
+```
+
+Use essas credenciais para o primeiro login e altere a senha no painel.
+
+**Novo restaurante:** acesse `/cadastro.html` no painel e preencha o formulário de
+cadastro. Após criar a conta, o login é feito automaticamente.
+
+### Conectar ao WhatsApp
+
+O bot **não conecta sozinho**. Após o login, vá na aba **Conexão** e clique em
+**"Conectar ao WhatsApp"** para escanear o QR (WhatsApp → Aparelhos conectados →
+Conectar um aparelho). Use um **número dedicado** do restaurante.
+
+> Se o QR ficar travado, clique em **"Gerar novo QR (limpar sessão)"**.
 
 ## 🚀 Deploy no Fly.io (produção)
 
 ### Pré-requisitos (uma vez só)
 
-1. Conta criada em [fly.io](https://fly.io)
+1. Conta em [fly.io](https://fly.io)
 2. `flyctl` instalado:
 
 ```powershell
@@ -53,11 +71,11 @@ dedicado** do restaurante, não o seu pessoal.
 powershell -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://fly.io/install.ps1'))"
 ```
 
-3. Adicionar ao PATH (se `fly` não for reconhecido):
+1. Adicionar ao PATH (se `fly` não for reconhecido):
 
 ```powershell
 $env:PATH += ";$env:USERPROFILE\.fly\bin"
-# Para fixar permanentemente:
+# Permanente:
 [Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:USERPROFILE\.fly\bin", "User")
 ```
 
@@ -71,15 +89,14 @@ fly auth login
 
 # 2. Criar o app (na pasta do projeto)
 fly launch --no-deploy
-# Escolha um nome (ex: sabordacasa-bot), região: gru (São Paulo)
-# Quando perguntar "Overwrite fly.toml?" → N
+# Nome do app, região: gru (São Paulo). Quando perguntar "Overwrite fly.toml?" → N
 
 # 3. Editar fly.toml: troque app = "bot-restaurante" pelo nome escolhido
 
-# 4. Criar o volume de dados (cardápio + config + sessão do WhatsApp)
+# 4. Criar o volume de dados (configs + pedidos + sessões WhatsApp de todos os tenants)
 fly volumes create bot_dados --region gru --size 1
 
-# 5. Fazer o deploy
+# 5. Deploy
 fly deploy
 # O build leva 3–5 min na primeira vez (instala o Chromium)
 
@@ -87,12 +104,15 @@ fly deploy
 fly open
 ```
 
-No painel, faça login → aba **Conexão** → **Conectar ao WhatsApp** → escaneie o QR.
-A sessão fica salva no volume — próximos deploys reconectam sozinhos.
+Na primeira execução na nuvem, o painel exibirá as credenciais no log:
+
+```bash
+fly logs
+```
 
 ---
 
-### Atualizar o projeto (deploy de novas versões)
+### Atualizar o projeto
 
 Sempre que fizer mudanças no código:
 
@@ -100,17 +120,17 @@ Sempre que fizer mudanças no código:
 fly deploy
 ```
 
-Só isso. Os dados e a sessão do WhatsApp são preservados no volume — não precisa re-escanear o QR.
+Os dados e as sessões do WhatsApp são preservados no volume — não precisa re-escanear o QR.
 
 ---
 
-### Comandos úteis do dia a dia
+### Comandos úteis
 
 ```bash
-fly logs              # ver logs em tempo real
-fly status            # checar se a máquina está rodando
+fly logs              # logs em tempo real
+fly status            # status da máquina
 fly open              # abrir o painel no navegador
-fly ssh console       # terminal dentro do container (para debug)
+fly ssh console       # terminal dentro do container
 fly deploy            # publicar nova versão
 ```
 
@@ -123,7 +143,7 @@ Ou pelo terminal:
 
 ```bash
 fly ssh console
-rm -rf /app/data/session-bot-restaurante
+rm -rf /app/data/tenants/{slug}/session-{slug}
 exit
 # Depois reconecte pelo painel
 ```
@@ -131,8 +151,6 @@ exit
 ---
 
 ## 🧪 Testando o bot sem WhatsApp
-
-Use o simulador de conversa para testar o fluxo completo no terminal — sem celular, sem QR, sem conectar nada:
 
 ```bash
 node testar-bot.js
@@ -147,7 +165,8 @@ node testar-bot.js
 | `/quit`   | Encerra o simulador                        |
 
 **Fluxo completo de teste:**
-```
+
+```text
 oi              → exibe o menu
 1               → categorias do cardápio
 1               → itens da 1ª categoria
@@ -164,58 +183,74 @@ Rua X, 10       → endereço
 1               → confirmar pedido
 ```
 
-O pedido confirmado é gravado em `data/pedidos.json` e aparece no painel na aba **Pedidos**.
+O pedido é gravado em `data/tenants/{slug}/pedidos.db` e aparece no painel na aba **Pedidos**.
 
 ## 🗂️ Estrutura
 
-```
+```text
 bot-restaurante/
-├── index.js              → sobe o painel (NÃO conecta o bot sozinho)
+├── index.js                  → sobe o painel (não conecta o bot sozinho)
 ├── package.json
-├── ecosystem.config.js   → config do PM2 (rodar 24h)
+├── testar-bot.js             → simulador de conversa no terminal
+├── Dockerfile, fly.toml      → configuração para deploy no Fly.io
+├── docker-entrypoint.sh      → inicializa dados padrão no volume na 1ª execução
 ├── README.md / DEPLOY.md / PRD.md / CLAUDE.md
-├── data/                 → DADOS editáveis pelo painel
-│   ├── config.json       → nome, mensagens, senha, pagamentos...
-│   ├── cardapio.json     → categorias e itens (composição e opcionais)
-│   └── pedidos.json      → criado quando chega o 1º pedido
-├── public/               → o PAINEL (front-end)
-│   ├── login.html, admin.html, app.js, style.css
+├── data/
+│   ├── config.json           → template de config para novos tenants
+│   ├── cardapio.json         → template de cardápio para novos tenants
+│   ├── empresas.db           → banco mestre de tenants (SQLite, criado automaticamente)
+│   └── tenants/
+│       └── {slug}/           → dados isolados por restaurante
+│           ├── config.json
+│           ├── cardapio.json
+│           ├── pedidos.db    → pedidos em SQLite (criado automaticamente)
+│           └── session-{slug}/ → sessão WhatsApp (não versionar)
+├── public/                   → painel web
+│   ├── login.html            → login por e-mail + senha
+│   ├── cadastro.html         → onboarding de novos restaurantes
+│   ├── admin.html, app.js, style.css
 └── src/
-    ├── bot.js            → conexão com o WhatsApp (conectar/desconectar/resetar)
-    ├── servidor.js       → API do painel (Express)
-    ├── fluxo.js          → lógica do atendimento (lê do store)
-    ├── store.js          → lê/grava os dados (recarrega ao vivo)
-    ├── sessoes.js        → estado da conversa de cada cliente
-    ├── pedidos.js        → salva/lê pedidos
-    └── estado.js         → status do bot compartilhado
+    ├── servidor.js           → API REST multi-tenant (Express)
+    ├── empresas.js           → CRUD de tenants (banco mestre SQLite)
+    ├── multi-bot.js          → gerencia um Client WhatsApp por tenant
+    ├── fluxo.js              → máquina de estados do atendimento
+    ├── store.js              → lê/grava config e cardápio por tenant (cache mtime)
+    ├── pedidos.js            → SQLite de pedidos por tenant
+    ├── sessoes.js            → estado de conversa por cliente (memória, 30min)
+    └── estado.js             → (legado)
 ```
 
 ## ✏️ Como configurar o cardápio
 
 Na aba **Cardápio**, cada item tem:
-- **Composição** (o que vem): subcategoria terminando com `:` e itens em lista.
-  Use **Alt+Enter** para adicionar um item da lista rapidamente.
-  ```
+
+- **Composição**: subcategoria com `:` no final e itens em lista.
+  Use **Alt+Enter** para nova linha.
+
+  ```text
   Principal:
   * Arroz
   * Feijão
   ```
-- **Opcionais**: um por linha, no formato `Nome | preço`. **Alt+Enter** = nova linha.
-  ```
+
+- **Opcionais**: um por linha, formato `Nome | preço`. **Alt+Enter** = nova linha.
+
+  ```text
   Ovo frito | 2.00
   Bacon | 3.50
   ```
+
 - Botão **on/off** por item: desative quando algo acaba no dia.
 
 > A pergunta "deseja bebida?" aparece automaticamente quando existe uma categoria
-> com **"Bebida"** no nome. Mantenha esse nome para a função operar.
+> com **"Bebida"** no nome.
 
 ## ⚠️ Avisos
 
 - Biblioteca **não-oficial** (whatsapp-web.js): ótima para começar; para alto
   volume comercial, considere a API Oficial (Cloud API) no futuro.
-- Dados em arquivos JSON. Para volume maior, dá para migrar `store.js`/`pedidos.js`
-  para **MySQL** sem mudar o resto.
-- **Segurança**: painel em HTTP com senha simples. Em VPS pública, use HTTPS
+- Cada tenant conectado ao WhatsApp usa ~200 MB de RAM (Chromium). A máquina de
+  1 GB no Fly.io suporta ~3–4 restaurantes simultâneos. Escale para 2 GB se precisar.
+- **Segurança**: painel em HTTP com senha. Em produção pública, use HTTPS
   (Nginx + Let's Encrypt) e troque a senha padrão.
-- Não compartilhe a pasta `.wwebjs_auth` (é a sessão do WhatsApp).
+- Não versionar `data/tenants/` (sessões WhatsApp e dados de clientes).

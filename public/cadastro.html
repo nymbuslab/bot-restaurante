@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cadastro — Bot do Restaurante</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="tela-login">
+  <div class="login-card" style="max-width:420px">
+    <span class="icone">🍴</span>
+    <h1>Criar sua conta</h1>
+    <p class="sub">Configure seu restaurante e comece a receber pedidos</p>
+
+    <div id="etapa1">
+      <label for="nome">Nome do restaurante</label>
+      <input type="text" id="nome" placeholder="Ex: Sabor D'Casa" autocomplete="organization" />
+
+      <label for="email" style="margin-top:14px">E-mail de acesso</label>
+      <input type="email" id="email" placeholder="seu@email.com" autocomplete="email" />
+
+      <label for="senha" style="margin-top:14px">Senha</label>
+      <input type="password" id="senha" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+
+      <label for="senha2" style="margin-top:14px">Confirmar senha</label>
+      <input type="password" id="senha2" placeholder="Repita a senha" autocomplete="new-password" />
+
+      <button id="btnCadastrar" style="margin-top:20px">Criar conta</button>
+      <p id="erro" class="erro"></p>
+    </div>
+
+    <div id="etapa2" style="display:none">
+      <div style="text-align:center;margin:16px 0">
+        <span style="font-size:2.5rem">🎉</span>
+        <h2 id="msgBemVindo" style="margin-top:8px;font-size:16px"></h2>
+        <p class="sub">Sua conta foi criada. Agora é só acessar o painel e configurar seu cardápio.</p>
+      </div>
+      <button id="btnIrPainel">Acessar o painel</button>
+    </div>
+
+    <p style="margin-top:20px;text-align:center;font-size:13px;color:var(--text-secondary)">
+      Já tem conta? <a href="login.html" style="color:var(--accent)">Entrar</a>
+    </p>
+  </div>
+
+  <script>
+    const btn = document.getElementById("btnCadastrar");
+    const erro = document.getElementById("erro");
+
+    async function cadastrar() {
+      erro.textContent = "";
+      const nome  = document.getElementById("nome").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+      const senha2 = document.getElementById("senha2").value;
+
+      if (!nome || !email || !senha) { erro.textContent = "Preencha todos os campos."; return; }
+      if (senha !== senha2) { erro.textContent = "As senhas não coincidem."; return; }
+      if (senha.length < 6) { erro.textContent = "A senha deve ter pelo menos 6 caracteres."; return; }
+
+      btn.disabled = true;
+      btn.textContent = "Criando conta...";
+
+      try {
+        const r = await fetch("/api/cadastro", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, email, senha }),
+        });
+        const data = await r.json();
+        if (!r.ok) { erro.textContent = data.erro || "Erro ao criar conta."; btn.disabled = false; btn.textContent = "Criar conta"; return; }
+
+        // Login automático
+        const lr = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, senha }),
+        });
+        const ld = await lr.json();
+        if (lr.ok) {
+          sessionStorage.setItem("token", ld.token);
+          sessionStorage.setItem("slug", ld.slug);
+          sessionStorage.setItem("empresaNome", ld.nome);
+        }
+
+        document.getElementById("etapa1").style.display = "none";
+        document.getElementById("msgBemVindo").textContent = `Bem-vindo(a), ${data.nome}!`;
+        document.getElementById("etapa2").style.display = "";
+
+      } catch (e) {
+        erro.textContent = "Erro ao conectar ao servidor.";
+        btn.disabled = false;
+        btn.textContent = "Criar conta";
+      }
+    }
+
+    btn.addEventListener("click", cadastrar);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && document.getElementById("etapa1").style.display !== "none") cadastrar();
+    });
+
+    document.getElementById("btnIrPainel").addEventListener("click", () => {
+      location.href = "admin.html";
+    });
+  </script>
+</body>
+</html>

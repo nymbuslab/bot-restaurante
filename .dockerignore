@@ -1,6 +1,8 @@
 node_modules
 .wwebjs_auth
 data/pedidos.json
+data/pedidos.json.migrado
+data/pedidos.db
 *.log
 .env
 .git

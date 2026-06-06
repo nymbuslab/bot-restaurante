@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Painel — Bot do Restaurante</title>
+  <title>Entrar — Bot do Restaurante</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,36 +14,61 @@
     <span class="icone">🍴</span>
     <h1>Painel do Restaurante</h1>
     <p class="sub">Entre para gerenciar o cardápio e o atendimento</p>
-    <label for="senha">Senha</label>
-    <input type="password" id="senha" placeholder="Digite a senha" autofocus />
-    <button id="btnEntrar">Entrar</button>
+
+    <label for="email">E-mail</label>
+    <input type="email" id="email" placeholder="seu@email.com" autocomplete="email" autofocus />
+
+    <label for="senha" style="margin-top:14px">Senha</label>
+    <input type="password" id="senha" placeholder="Sua senha" autocomplete="current-password" />
+
+    <button id="btnEntrar" style="margin-top:20px">Entrar</button>
     <p id="erro" class="erro"></p>
+
+    <p style="margin-top:20px;text-align:center;font-size:13px;color:var(--text-secondary)">
+      Ainda não tem conta? <a href="cadastro.html" style="color:var(--accent)">Criar agora</a>
+    </p>
   </div>
+
   <script>
-    const btn = document.getElementById("btnEntrar");
-    const inp = document.getElementById("senha");
+    const btn  = document.getElementById("btnEntrar");
     const erro = document.getElementById("erro");
 
     async function entrar() {
       erro.textContent = "";
-      const senha = inp.value.trim();
-      if (!senha) { erro.textContent = "Digite a senha."; return; }
+      const email = document.getElementById("email").value.trim();
+      const senha = document.getElementById("senha").value;
+      if (!email || !senha) { erro.textContent = "Preencha e-mail e senha."; return; }
+
+      btn.disabled = true;
+      btn.textContent = "Entrando...";
+
       try {
         const r = await fetch("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ senha }),
+          body: JSON.stringify({ email, senha }),
         });
-        if (!r.ok) { erro.textContent = "Senha incorreta."; return; }
-        const { token } = await r.json();
+        if (!r.ok) {
+          const d = await r.json();
+          erro.textContent = d.erro || "E-mail ou senha incorretos.";
+          btn.disabled = false;
+          btn.textContent = "Entrar";
+          return;
+        }
+        const { token, slug, nome } = await r.json();
         sessionStorage.setItem("token", token);
+        sessionStorage.setItem("slug", slug);
+        sessionStorage.setItem("empresaNome", nome);
         location.href = "admin.html";
       } catch (e) {
         erro.textContent = "Erro ao conectar ao servidor.";
+        btn.disabled = false;
+        btn.textContent = "Entrar";
       }
     }
+
     btn.addEventListener("click", entrar);
-    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
+    document.getElementById("senha").addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
   </script>
 </body>
 </html>

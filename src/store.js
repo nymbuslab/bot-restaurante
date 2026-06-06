@@ -1,57 +1,38 @@
 // ============================================================
-// STORE — camada de dados (lê/grava os JSON em /data).
-// Usa cache com verificação de data de modificação (mtime):
-// quando o painel salva um arquivo, o bot detecta e recarrega
-// automaticamente, SEM precisar reiniciar. É isso que faz o
-// cardápio mudar "na hora" para o cliente final.
+// STORE — lê/grava config.json e cardapio.json de um tenant.
+// Usa cache com verificação de mtime: o bot detecta mudanças
+// feitas pelo painel sem precisar reiniciar.
+//
+// Todas as funções recebem `dir` (diretório do tenant).
 // ============================================================
 
 const fs = require("fs");
 const path = require("path");
 
-const DIR = path.join(__dirname, "..", "data");
-const CAMINHOS = {
-  config: path.join(DIR, "config.json"),
-  cardapio: path.join(DIR, "cardapio.json"),
-};
+const cache = {}; // { caminhoAbsoluto: { dados, mtime } }
 
-const cache = {}; // { chave: { dados, mtime } }
-
-function ler(chave) {
-  const caminho = CAMINHOS[chave];
-  const stat = fs.statSync(caminho);
-  const mtime = stat.mtimeMs;
-
-  // Reaproveita o cache se o arquivo não mudou
-  if (cache[chave] && cache[chave].mtime === mtime) {
-    return cache[chave].dados;
-  }
-
+function ler(caminho) {
+  const mtime = fs.statSync(caminho).mtimeMs;
+  if (cache[caminho] && cache[caminho].mtime === mtime) return cache[caminho].dados;
   const dados = JSON.parse(fs.readFileSync(caminho, "utf8"));
-  cache[chave] = { dados, mtime };
+  cache[caminho] = { dados, mtime };
   return dados;
 }
 
-function gravar(chave, dados) {
-  const caminho = CAMINHOS[chave];
+function gravar(caminho, dados) {
   fs.writeFileSync(caminho, JSON.stringify(dados, null, 2), "utf8");
-  // Atualiza o cache imediatamente
-  const stat = fs.statSync(caminho);
-  cache[chave] = { dados, mtime: stat.mtimeMs };
+  cache[caminho] = { dados, mtime: fs.statSync(caminho).mtimeMs };
   return dados;
 }
 
-// ---- Atalhos ----
-const getConfig = () => ler("config");
-const setConfig = (d) => gravar("config", d);
-const getCardapio = () => ler("cardapio");
-const setCardapio = (d) => gravar("cardapio", d);
+const getConfig   = (dir) => ler(path.join(dir, "config.json"));
+const setConfig   = (dir, d) => gravar(path.join(dir, "config.json"), d);
+const getCardapio = (dir) => ler(path.join(dir, "cardapio.json"));
+const setCardapio = (dir, d) => gravar(path.join(dir, "cardapio.json"), d);
 
-// Mapa id -> item (apenas itens DISPONÍVEIS), montado on-the-fly
-function itensDisponiveis() {
-  const cardapio = getCardapio();
+function itensDisponiveis(dir) {
   const mapa = {};
-  for (const cat of cardapio.categorias) {
+  for (const cat of getCardapio(dir).categorias) {
     for (const item of cat.itens) {
       if (item.disponivel) mapa[item.id] = { ...item, categoria: cat.nome };
     }
@@ -59,10 +40,4 @@ function itensDisponiveis() {
   return mapa;
 }
 
-module.exports = {
-  getConfig,
-  setConfig,
-  getCardapio,
-  setCardapio,
-  itensDisponiveis,
-};
+module.exports = { getConfig, setConfig, getCardapio, setCardapio, itensDisponiveis };
