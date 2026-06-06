@@ -5,11 +5,12 @@ trabalhar neste projeto. Leia antes de fazer alterações.
 
 ## Visão geral
 
-Bot de atendimento de **restaurante** no WhatsApp, com **painel web administrativo**.
-O bot funciona como **porta de entrada de pedidos**: recebe o pedido do cliente pelo
-WhatsApp, monta tudo (itens, opcionais, observação, entrega, pagamento) e registra.
-O andamento do pedido é feito por um sistema externo da empresa — este projeto
-**não** gerencia o ciclo do pedido (preparo/entrega).
+Plataforma **SaaS multi-tenant** de atendimento de restaurantes no WhatsApp, com
+**painel web administrativo** por empresa. Cada empresa cadastrada recebe seu próprio
+ambiente isolado (cardápio, config, pedidos, sessão WhatsApp). O bot é a **porta de
+entrada de pedidos**: recebe o pedido pelo WhatsApp, monta tudo (itens, opcionais,
+observação, entrega, pagamento) e registra. O andamento do pedido é feito por um
+sistema externo — este projeto **não** gerencia o ciclo do pedido (preparo/entrega).
 
 Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-BR.
 
@@ -18,8 +19,9 @@ Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-B
 - Node.js (CommonJS, `require`)
 - `whatsapp-web.js` (biblioteca **não-oficial**, usa Puppeteer/Chromium)
 - `express` (API do painel + arquivos estáticos)
+- `better-sqlite3` (pedidos por tenant + banco mestre de empresas)
 - `qrcode` / `qrcode-terminal` (QR de conexão)
-- Dados em **arquivos JSON** (sem banco). Front-end em HTML/CSS/JS puro (sem framework).
+- Front-end em HTML/CSS/JS puro (sem framework)
 
 ## Como rodar
 
@@ -28,9 +30,14 @@ npm install
 npm start            # inicia o painel em http://localhost:3000
 ```
 
-O bot do WhatsApp **não conecta sozinho**. Abra o painel, faça login
-(senha em `data/config.json` → `admin.senha`, padrão `admin123`), e na aba
-**Conexão** clique em "Conectar ao WhatsApp" para escanear o QR.
+Na **primeira execução**, se existir `data/config.json` legado, o sistema cria
+automaticamente um tenant a partir dele e imprime as credenciais no console:
+
+```
+E-mail: admin@local  |  Senha: admin123
+```
+
+Abra o painel, faça login e, na aba **Conexão**, clique em "Conectar ao WhatsApp".
 
 Não há suíte de testes automatizada. Use o simulador de conversa para testar
 o fluxo do bot sem WhatsApp (ver seção **Testando o bot** abaixo).
@@ -38,7 +45,7 @@ o fluxo do bot sem WhatsApp (ver seção **Testando o bot** abaixo).
 ## Testando o bot
 
 O arquivo `testar-bot.js` na raiz simula uma conversa completa no terminal,
-sem precisar de WhatsApp, QR ou celular. Lê os dados reais de `data/`.
+sem precisar de WhatsApp, QR ou celular. Usa os dados do primeiro tenant.
 
 ```bash
 node testar-bot.js
@@ -71,43 +78,97 @@ Rua X, 10  → endereço
 1           → confirmar
 ```
 
-O pedido confirmado é gravado em `data/pedidos.json` e aparece no painel
-na aba **Pedidos** — útil para validar o fluxo de ponta a ponta sem WhatsApp.
+O pedido confirmado é gravado em `data/tenants/{slug}/pedidos.db` e aparece
+no painel na aba **Pedidos**.
 
 ## Arquitetura
 
 ```
-index.js            -> sobe o servidor (NÃO inicia o bot)
+index.js              -> sobe o servidor (NÃO inicia o bot)
 src/
-  servidor.js       -> Express: API REST + serve /public + endpoints do bot
-  bot.js            -> whatsapp-web.js; conectar/desconectar/resetar; filtro de msgs
-  fluxo.js          -> máquina de estados do atendimento (núcleo do bot)
-  store.js          -> lê/grava data/*.json com cache por mtime (recarrega ao vivo)
-  sessoes.js        -> estado da conversa por cliente (em memória, expira em 30min)
-  pedidos.js        -> salva/lê data/pedidos.json
-  estado.js         -> estado compartilhado do bot (status, qrDataUrl, prontoEm)
+  servidor.js         -> Express: API REST multi-tenant + serve /public
+  empresas.js         -> banco mestre SQLite (data/empresas.db): CRUD de tenants
+  multi-bot.js        -> gerencia um WhatsApp Client por tenant (Map slug→Client)
+  fluxo.js            -> máquina de estados; todas as funções recebem tenantDir
+  store.js            -> lê/grava config.json e cardapio.json por tenant (cache mtime)
+  sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
+  pedidos.js          -> SQLite por tenant; pool de conexões keyed por dbPath
 public/
-  login.html, admin.html, app.js, style.css   -> painel
+  login.html          -> tela de login (e-mail + senha)
+  cadastro.html       -> onboarding: cria nova empresa
+  admin.html          -> painel administrativo
+  app.js, style.css   -> lógica e estilos do painel
 data/
-  config.json       -> nome, mensagens, pagamentos, senha admin, atendimento aberto/fechado
-  cardapio.json     -> categorias e itens
-  pedidos.json      -> criado no 1º pedido (ignorado no git)
+  config.json         -> template/fallback para novos tenants (legado compatível)
+  cardapio.json       -> template/fallback para novos tenants
+  empresas.db         -> banco mestre de tenants (criado automaticamente)
+  tenants/
+    {slug}/
+      config.json     -> configurações do restaurante
+      cardapio.json   -> categorias e itens
+      pedidos.db      -> SQLite de pedidos (criado automaticamente)
+      session-{slug}/ -> sessão WhatsApp (LocalAuth, não versionar)
 ```
 
-Fluxo de dados: o painel edita `data/*.json` via API → `store.js` detecta a mudança
-(mtime) e o `fluxo.js` lê os dados novos no próximo atendimento, **sem reiniciar**.
+**Fluxo de dados:** painel edita `data/tenants/{slug}/*.json` via API →
+`store.js` detecta a mudança (mtime) e `fluxo.js` lê os dados novos no
+próximo atendimento, **sem reiniciar**.
+
+## Multi-tenant
+
+Cada empresa tem:
+
+- **Slug** gerado do nome (ex: `sabor-d-casa`), único, usado como chave em tudo.
+- **Diretório isolado** `data/tenants/{slug}/` com config, cardápio e pedidos.
+- **Sessão WhatsApp** em `data/tenants/{slug}/session-{slug}/` (via `LocalAuth`).
+- **Token de sessão** do painel em memória, mapeado para `{ slug, tenantDir }`.
+
+Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`.
+O token viaja em `Authorization: Bearer ...` em todas as chamadas protegidas.
+O middleware `exigeAuth` resolve `req.slug` e `req.tenantDir` automaticamente.
+
+## Horário de funcionamento
+
+Estrutura em `config.json` (por tenant):
+```json
+"horarios": {
+  "seg": { "abre": "11:00", "fecha": "22:00", "fechado": false },
+  "dom": { "abre": "08:00", "fecha": "14:00", "fechado": true }
+}
+```
+
+A função `estaAberto(tenantDir)` em `fluxo.js` verifica:
+
+1. Se `config.atendimento.aberto` é `false` → sempre fechado (override manual).
+2. Se `horarios` existe → compara dia/hora atual com o range do dia.
+3. Se não existe → considera aberto.
+
+Fora do horário, saudações recebem a mensagem `config.mensagens.fechado`.
+O painel mostra a tabela de horários na aba **Configurações**.
 
 ## Modelo de dados
 
-**Item do cardápio** (`data/cardapio.json`):
+**Item do cardápio** (`cardapio.json` por tenant):
 ```json
 { "id": 10, "nome": "Marmitex P", "preco": 18.0, "desc": "...",
   "disponivel": true,
-  "composicao": "Principal:\n* Arroz\n* Feijão",      // texto; ":" = subcategoria
-  "opcionais": "Ovo frito | 2.00\nBacon | 3.50" }      // texto; "Nome | preço" por linha
+  "composicao": "Principal:\n* Arroz\n* Feijão",
+  "opcionais": "Ovo frito | 2.00\nBacon | 3.50" }
 ```
-`composicao` e `opcionais` são guardados como **texto** e parseados em runtime
-(`formatarComposicao` e `parseOpcionais` em `fluxo.js`).
+`composicao` e `opcionais` são texto parseado em runtime.
+
+**Tabela `pedidos`** (SQLite por tenant, `data/tenants/{slug}/pedidos.db`):
+
+```text
+id, numero, status, cliente, telefone, tipoEntrega, endereco,
+pagamento, taxaEntrega, itens (JSON serializado), total, criadoEm
+```
+
+**Tabela `empresas`** (SQLite mestre, `data/empresas.db`):
+
+```text
+id, slug, nome, email, senha (sha256+salt), ativo, criadoEm
+```
 
 **Linha do carrinho / pedido**:
 ```js
@@ -118,33 +179,42 @@ Preço da linha = `(preco + soma dos opcionais) * qtd`.
 ## Máquina de estados (fluxo.js)
 
 Item: `PEDINDO → (OPCIONAIS se houver) → OBSERVACAO → QUANTIDADE → REVISAO`
+
 Finalização: `REVISAO(finalizar) → PERGUNTA_BEBIDA → (BEBIDAS/BEBIDA_QTD) →
 FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
 
-- A pergunta "deseja bebida?" aparece automaticamente se existir uma categoria
-  cujo nome contém "bebida". Não é configurável pelo painel (está no código).
-- A pergunta de observação é sempre feita por item (pulável com `0`). Não é
-  configurável pelo painel.
+- Antes de listar itens, o cliente escolhe a **categoria** (estado `CATEGORIA`).
+- A pergunta "deseja bebida?" aparece automaticamente se existir categoria com
+  "bebida" no nome E o cliente ainda não adicionou bebidas.
 - Saudações ("oi", "menu", etc.) sempre voltam ao menu. "cancelar"/"sair" zera a sessão.
+- Chave de sessão: `{slug}:{chatId}` — isola clientes entre tenants.
+- Todas as funções de `fluxo.js` recebem `tenantDir` como parâmetro explícito.
 
 ## Pontos de atenção (gotchas)
 
 - **Disparo em massa**: ao conectar, o whatsapp-web.js reenvia mensagens não lidas.
-  O bot SÓ responde a mensagens com `timestamp >= estado.prontoEm` (definido no
-  evento `ready`). NÃO remover esse filtro em `bot.js` — evita responder a vários
-  contatos sem motivo.
-- **Conexão manual**: `index.js` não chama `bot.iniciar()`. A conexão é disparada
-  pelo painel (`POST /api/bot/conectar`). Há watchdog de 90s e endpoint
-  `POST /api/bot/resetar` que limpa `.wwebjs_auth` quando a sessão antiga trava.
-- **Sessão do WhatsApp**: pasta `.wwebjs_auth` (não versionar). Apagar = novo QR.
-- **Segurança**: login por senha simples + token em memória (some ao reiniciar).
-  Sem HTTPS por padrão. Em produção pública, colocar atrás de Nginx + TLS.
-- **Escala/banco**: para volume maior, migrar `store.js` e `pedidos.js` para MySQL
-  mantendo as mesmas funções (`getCardapio`, `getConfig`, `salvarPedido`, `lerTodos`).
+  O bot SÓ responde a mensagens com `timestamp >= prontoEm` (por tenant, definido
+  no evento `ready`). NÃO remover esse filtro em `multi-bot.js`.
+- **Conexão manual**: `index.js` não chama `multiBot.iniciar()`. A conexão é disparada
+  pelo painel (`POST /api/bot/conectar`). Watchdog de 90s por tenant em `multi-bot.js`.
+- **Memória por tenant WhatsApp**: cada Client roda um Chromium (~200 MB). Máquina de
+  1 GB suporta ~3–4 tenants simultâneos. Para mais, escalar a RAM no Fly.io (2 GB).
+- **Sessão WhatsApp**: salva em `data/tenants/{slug}/session-{slug}/`. Apagar = novo QR.
+- **Segurança**: login por e-mail + senha com hash SHA-256+salt. Tokens em memória
+  (somem ao reiniciar). Sem HTTPS por padrão — em produção pública, usar Nginx + TLS.
+- **Primeiro acesso (instalação legada)**: se não há tenants e existe `data/config.json`,
+  a migração automática cria um tenant com `admin@local` / `admin123`. Alterar a
+  senha no painel após o primeiro login.
+- **Pool SQLite**: `pedidos.js` mantém conexões abertas (Map keyed por dbPath). É o
+  comportamento esperado — `better-sqlite3` é síncrono e thread-safe para leitura.
+- **Volume único no Fly.io**: toda a pasta `data/` (incluindo `tenants/`, `empresas.db`
+  e sessões WhatsApp) está no único volume montado em `/app/data`.
 
 ## Convenções
 
 - Comentários e textos ao usuário em português.
 - Formatação WhatsApp: `*negrito*`, `_itálico_`.
 - Evitar dependências novas sem necessidade; manter o front-end sem framework.
-- Não expor a senha do admin em respostas da API (ver `/api/config`).
+- Não expor senhas em respostas da API.
+- Todo código novo passa `tenantDir` explicitamente — sem estado global de tenant.
+- Ao adicionar nova rota à API, usar `exigeAuth` e referenciar `req.tenantDir`.

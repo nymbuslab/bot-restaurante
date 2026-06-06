@@ -3,8 +3,8 @@
 O terminal do VS Code serve só para teste. Para uso real, use uma das opções abaixo.
 
 **Conexão do WhatsApp:** o bot não conecta sozinho. Depois de subir, abra o painel,
-vá na aba **Conexão** e clique em **"Conectar ao WhatsApp"**. O QR só é lido uma vez;
-depois a sessão fica salva em `.wwebjs_auth` e reconecta sozinho.
+faça login, vá na aba **Conexão** e clique em **"Conectar ao WhatsApp"**. O QR só
+é lido uma vez; depois a sessão fica salva e reconecta sozinho.
 
 ---
 
@@ -14,18 +14,22 @@ O PM2 mantém o processo rodando o tempo todo, mesmo se você fechar o VS Code, 
 reinicia sozinho se cair ou o computador reiniciar.
 
 ### Instalar o PM2 (uma vez só)
+
 ```bash
 npm install -g pm2
 ```
 
 ### Iniciar
+
 ```bash
 npm install
 pm2 start ecosystem.config.js
 ```
-Abra **http://localhost:3000**, faça login e conecte o WhatsApp pela aba Conexão.
+
+Abra `http://localhost:3000`, faça login e conecte o WhatsApp pela aba Conexão.
 
 ### Comandos úteis
+
 ```bash
 pm2 logs bot-restaurante     # ver logs em tempo real
 pm2 status                   # ver se está rodando
@@ -34,22 +38,24 @@ pm2 stop bot-restaurante     # parar
 ```
 
 ### Iniciar automaticamente quando o PC ligar
+
 ```bash
 pm2 save
 pm2 startup   # siga a instrução que ele imprimir na tela
 ```
 
 > ⚠️ O computador/servidor precisa ficar **ligado e com internet**.
-> Para um restaurante, o ideal é não usar o PC pessoal — veja a Opção 2.
+> Para um restaurante, o ideal é não usar o PC pessoal — veja a Opção 2 ou 3.
 
 ---
 
-## ✅ Opção 2 — VPS / servidor na nuvem (uso comercial)
+## ✅ Opção 2 — VPS / servidor na nuvem
 
 Uma VPS fica ligada 24h. Provedores: Hostinger VPS, Contabo, Hetzner, DigitalOcean.
-Use Linux (Ubuntu) com pelo menos **2 GB de RAM** (o Chromium pesa).
+Use Linux (Ubuntu) com pelo menos **2 GB de RAM** por tenant WhatsApp conectado.
 
 ### Passo a passo (Ubuntu)
+
 ```bash
 # 1) Node.js
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -70,57 +76,37 @@ pm2 start ecosystem.config.js
 pm2 save && pm2 startup
 ```
 
-### Acessar o painel/QR na VPS
-O painel roda na porta 3000. Acesse pelo navegador com o IP do servidor:
-**http://SEU_IP_DA_VPS:3000** (libere a porta 3000 no firewall do provedor).
-Conecte o WhatsApp pela aba Conexão. O QR também aparece em `pm2 logs bot-restaurante`.
+### Acessar o painel na VPS
+
+O painel roda na porta 3000. Acesse com o IP do servidor: `http://SEU_IP:3000`
+(libere a porta 3000 no firewall do provedor).
 
 ### Segurança em produção pública
+
 - Coloque atrás de **HTTPS** (ex.: Nginx como proxy reverso + Let's Encrypt).
-- Troque a senha padrão do painel (`data/config.json` → `admin.senha`).
+- Altere a senha padrão pelo painel → Configurações.
 - Considere restringir o acesso ao painel por IP/VPN.
-
----
-
-## 🆘 Problemas comuns
-
-- **QR travado em "iniciando" / não gera o QR**: geralmente é uma sessão antiga
-  inválida em `.wwebjs_auth`. No painel, clique em **"Gerar novo QR (limpar sessão)"**.
-  Se não resolver, pare o bot e apague a pasta `.wwebjs_auth` manualmente, depois
-  conecte de novo. A 1ª conexão pode levar até ~30s (o Chromium precisa subir).
-- **`Cannot GET /`**: acesse `http://localhost:3000/` (a raiz já redireciona para o
-  login). Se persistir, confirme que está rodando a versão atual do `src/servidor.js`.
-- **`Cannot find module './src/...'`**: os arquivos precisam estar nas pastas certas
-  (`src/`, `public/`, `data/`). Veja a estrutura no README.
-- **Bot respondeu a vários contatos**: não deve mais acontecer — ele só responde a
-  mensagens recebidas **após** a conexão. Para testar, peça uma mensagem nova depois
-  do status ficar "Bot conectado".
-
----
-
-## 💡 Resumo
-- **Testar / restaurante pequeno com PC sempre ligado:** Opção 1 (PM2 local).
-- **Uso comercial sério, sempre online:** Opção 2 (VPS) ou Opção 3 (Fly.io).
 
 ---
 
 ## ✅ Opção 3 — Fly.io (recomendado para produção na nuvem)
 
-O Fly.io roda o bot em um container Docker na região de São Paulo, com **volumes
-persistentes** para os dados e a sessão do WhatsApp. Plano gratuito cobre o uso
-básico; para garantir uptime 24h use o plano **Pay As You Go** (~$5–10/mês).
+O Fly.io roda o bot em um container Docker na região de São Paulo, com **volume
+persistente** para todos os dados (config, cardápio, pedidos e sessões WhatsApp
+de todos os tenants). Plano gratuito cobre o uso básico; para garantir uptime
+24h use o plano **Pay As You Go** (~$5–10/mês).
 
 ### Pré-requisitos
 
-- Conta em **fly.io** (gratuita)
-- [flyctl](https://fly.io/docs/hands-on/install-flyctl/) instalado na máquina
+- Conta em [fly.io](https://fly.io) (gratuita)
+- `flyctl` instalado:
 
 ```bash
-# Instalar o flyctl (macOS/Linux)
+# macOS/Linux
 curl -L https://fly.io/install.sh | sh
 
 # Windows (PowerShell)
-pwsh -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://fly.io/install.ps1'))"
+powershell -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://fly.io/install.ps1'))"
 ```
 
 ### 1. Login
@@ -138,21 +124,21 @@ fly launch --no-deploy
 ```
 
 Quando perguntar:
+
 - **App name:** escolha um nome (ex: `sabordacasa-bot`)
 - **Region:** selecione `gru` (São Paulo)
 - **Overwrite fly.toml?** → `N` (já existe o arquivo configurado)
 
-Depois edite o `fly.toml` e troque `app = "bot-restaurante"` pelo nome que você escolheu.
+Depois edite o `fly.toml` e troque `app = "bot-restaurante"` pelo nome escolhido.
 
-### 3. Criar os volumes persistentes
+### 3. Criar o volume persistente
 
 ```bash
-fly volumes create bot_dados  --region gru --size 1
-fly volumes create bot_sessao --region gru --size 1
+fly volumes create bot_dados --region gru --size 1
 ```
 
-> Os volumes guardam `data/` (cardápio, config, pedidos) e `.wwebjs_auth/`
-> (sessão do WhatsApp). Sem eles, tudo se perde a cada deploy.
+> Um único volume guarda tudo: `data/` com `empresas.db`, `config.json`,
+> `cardapio.json` e `tenants/` (pedidos + sessões WhatsApp de cada restaurante).
 
 ### 4. Primeiro deploy
 
@@ -160,26 +146,39 @@ fly volumes create bot_sessao --region gru --size 1
 fly deploy
 ```
 
-O build pode levar 3–5 minutos na primeira vez (instalando o Chromium).
+O build leva 3–5 minutos na primeira vez (instala o Chromium e compila `better-sqlite3`).
 
-### 5. Conectar o WhatsApp
-
-Após o deploy, abra o painel:
-
-```bash
-fly open
-```
-
-Faça login, vá na aba **Conexão** e clique em **Conectar ao WhatsApp**.
-O QR também aparece nos logs:
+### 5. Verificar credenciais iniciais
 
 ```bash
 fly logs
 ```
 
-A sessão fica salva no volume `bot_sessao`. Próximos deploys reconectam automaticamente.
+Na primeira execução, o sistema cria um tenant a partir de `data/config.json` e
+imprime as credenciais:
 
-### Comandos úteis
+```text
+E-mail: admin@local  |  Senha: admin123
+```
+
+### 6. Conectar o WhatsApp
+
+```bash
+fly open
+```
+
+Faça login → aba **Conexão** → **Conectar ao WhatsApp**. A sessão fica salva no
+volume — próximos deploys reconectam automaticamente.
+
+### Atualizar depois de mudanças no código
+
+```bash
+fly deploy
+```
+
+Os dados e sessões são preservados no volume — não precisa re-escanear o QR.
+
+### Comandos úteis do dia a dia
 
 ```bash
 fly logs                   # logs em tempo real
@@ -189,19 +188,48 @@ fly deploy                 # novo deploy após alterações
 fly volumes list           # listar volumes
 ```
 
-### Atualizar depois de mudanças no código
+### Limpar sessão WhatsApp de um tenant (se travar)
+
+No painel → aba **Conexão** → **Gerar novo QR (limpar sessão)**.
+
+Ou via terminal:
 
 ```bash
-fly deploy
+fly ssh console
+rm -rf /app/data/tenants/{slug}/session-{slug}
+exit
 ```
 
-A sessão do WhatsApp e os dados são preservados nos volumes — não precisa re-escanear o QR.
+Depois reconecte pelo painel.
 
 ### ⚠️ Importante
 
-- `auto_stop_machines = false` no `fly.toml` mantém a máquina **sempre ligada**.
-  Não altere isso — se a máquina parar, o bot desconecta do WhatsApp e precisará
-  de um novo QR scan.
-- O plano gratuito do Fly.io tem limite de horas de máquina. Para uso 24/7, ative
-  o faturamento (Pay As You Go) — custa ~$5–7/mês para 1GB RAM em São Paulo.
-- Troque a senha padrão do painel em **Configurações** antes de deixar no ar.
+- `auto_stop_machines = 'off'` no `fly.toml` mantém a máquina **sempre ligada**.
+  Não altere — se a máquina parar, o bot desconecta e precisará de novo QR scan.
+- O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento
+  (Pay As You Go) — custa ~$5–7/mês para 1 GB RAM em São Paulo.
+- Cada tenant WhatsApp conectado usa ~200 MB de RAM (Chromium). Para mais de 3–4
+  restaurantes simultâneos, atualize para 2 GB em `fly.toml` (`memory = '2gb'`).
+- Altere a senha padrão do painel em **Configurações** antes de deixar público.
+
+---
+
+## 🆘 Problemas comuns
+
+- **QR travado em "iniciando"**: sessão antiga inválida. No painel, clique em
+  **"Gerar novo QR (limpar sessão)"**. A 1ª conexão pode levar até ~30s (Chromium subindo).
+- **`Cannot GET /`**: acesse a raiz — ela já redireciona para o login.
+- **`Cannot find module`**: confirme que está na pasta correta e que rodou `npm install`.
+- **Bot respondeu a vários contatos ao conectar**: não deve acontecer — o filtro de
+  timestamp descarta mensagens anteriores à conexão. Verifique se `multi-bot.js` está
+  inalterado.
+
+---
+
+## 💡 Resumo rápido
+
+| Situação | Opção recomendada |
+| --- | --- |
+| Testar / restaurante pequeno com PC sempre ligado | PM2 local (Opção 1) |
+| Uso comercial, sempre online, equipe técnica | VPS Ubuntu + PM2 (Opção 2) |
+| Múltiplos restaurantes, sem servidor próprio | Fly.io (Opção 3) |

@@ -10,6 +10,13 @@ const cabecalhos = {
   Authorization: "Bearer " + token,
 };
 
+// Exibe o nome da empresa no header assim que a página carrega
+const _nomeEmpresa = sessionStorage.getItem("empresaNome");
+document.addEventListener("DOMContentLoaded", () => {
+  const h = document.getElementById("headerNome");
+  if (h && _nomeEmpresa) h.textContent = "🍴 " + _nomeEmpresa;
+});
+
 async function api(metodo, url, corpo) {
   const opc = { method: metodo, headers: cabecalhos };
   if (corpo) opc.body = JSON.stringify(corpo);
@@ -107,8 +114,9 @@ document.querySelectorAll("nav button").forEach((btn) => {
   });
 });
 
-$("btnSair").addEventListener("click", () => {
-  sessionStorage.removeItem("token");
+$("btnSair").addEventListener("click", async () => {
+  try { await api("POST", "/api/logout"); } catch (e) { /* ignora */ }
+  sessionStorage.clear();
   location.href = "login.html";
 });
 
@@ -317,6 +325,57 @@ $("btnSalvarCardapio").addEventListener("click", async (e) => {
 // ============================================================
 // CONFIGURAÇÕES
 // ============================================================
+const DIAS_SEMANA = [
+  { key: "seg", label: "Segunda" },
+  { key: "ter", label: "Terça" },
+  { key: "qua", label: "Quarta" },
+  { key: "qui", label: "Quinta" },
+  { key: "sex", label: "Sexta" },
+  { key: "sab", label: "Sábado" },
+  { key: "dom", label: "Domingo" },
+];
+
+function renderHorarios() {
+  const tbody = $("horariosBody");
+  if (!tbody) return;
+  const horarios = configAtual.horarios || {};
+  tbody.innerHTML = "";
+  for (const { key, label } of DIAS_SEMANA) {
+    const h = horarios[key] || { abre: "11:00", fecha: "22:00", fechado: false };
+    const fechado = !!h.fechado;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="padding:6px 8px;font-size:14px">${label}</td>
+      <td style="padding:4px 8px">
+        <input type="time" id="h_abre_${key}" value="${h.abre || "11:00"}" ${fechado ? "disabled" : ""} style="width:110px" />
+      </td>
+      <td style="padding:4px 8px">
+        <input type="time" id="h_fecha_${key}" value="${h.fecha || "22:00"}" ${fechado ? "disabled" : ""} style="width:110px" />
+      </td>
+      <td style="padding:4px 8px">
+        <input type="checkbox" id="h_fechado_${key}" ${fechado ? "checked" : ""} style="width:auto" />
+      </td>`;
+    tbody.appendChild(tr);
+    tr.querySelector(`#h_fechado_${key}`).addEventListener("change", (e) => {
+      const isFechado = e.target.checked;
+      tr.querySelector(`#h_abre_${key}`).disabled = isFechado;
+      tr.querySelector(`#h_fecha_${key}`).disabled = isFechado;
+    });
+  }
+}
+
+function lerHorariosDoDOM() {
+  const horarios = {};
+  for (const { key } of DIAS_SEMANA) {
+    horarios[key] = {
+      abre:    ($(`h_abre_${key}`)  || {}).value || "11:00",
+      fecha:   ($(`h_fecha_${key}`) || {}).value || "22:00",
+      fechado: !!($(`h_fechado_${key}`) || {}).checked,
+    };
+  }
+  return horarios;
+}
+
 function preencherConfig() {
   const c = configAtual;
   $("cfgNome").value = c.restaurante.nome || "";
@@ -331,6 +390,7 @@ function preencherConfig() {
   $("cfgAtendente").value = c.mensagens.atendente || "";
   $("cfgConfirmado").value = c.mensagens.pedidoConfirmado || "";
   atualizarBadgeAtendimento(!!c.atendimento.aberto);
+  renderHorarios();
   renderPagamentos();
 }
 
@@ -370,6 +430,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.atendimento.aberto = $("cfgAberto").checked;
   configAtual.atendimento.tempoEstimado = $("cfgTempo").value;
   configAtual.atendimento.taxaEntrega = parseFloat($("cfgTaxaEntrega").value) || 0;
+  configAtual.horarios = lerHorariosDoDOM();
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
   configAtual.mensagens.fechado = $("cfgFechado").value;
   configAtual.mensagens.atendente = $("cfgAtendente").value;

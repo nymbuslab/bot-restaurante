@@ -12,7 +12,7 @@
 <body>
   <header>
     <div class="header-esquerda">
-      <h1>🍴 Bot Restaurante</h1>
+      <h1 id="headerNome">🍴 Bot Restaurante</h1>
       <span id="badgeAtendimento" class="badge-atendimento" style="display:none">
         <span class="dot"></span>
         <span id="badgeAtendimentoTexto">—</span>
@@ -85,6 +85,22 @@
         </div>
         <div class="campo"><label>Tempo estimado de entrega</label><input id="cfgTempo" /></div>
         <div class="campo"><label>Taxa de entrega (R$)</label><input type="number" step="0.01" min="0" id="cfgTaxaEntrega" placeholder="0,00 para grátis" /></div>
+      </div>
+
+      <div class="card">
+        <h3>Horário de funcionamento</h3>
+        <p class="sub" style="margin-top:8px">O bot responde automaticamente "fechado" fora desses horários. O toggle <strong>Aberto</strong> acima substitui tudo quando desligado.</p>
+        <table class="tabela-horarios" style="margin-top:14px;width:100%;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:4px 8px;font-weight:600;font-size:13px">Dia</th>
+              <th style="text-align:left;padding:4px 8px;font-weight:600;font-size:13px">Abre</th>
+              <th style="text-align:left;padding:4px 8px;font-weight:600;font-size:13px">Fecha</th>
+              <th style="text-align:left;padding:4px 8px;font-weight:600;font-size:13px">Fechado</th>
+            </tr>
+          </thead>
+          <tbody id="horariosBody"></tbody>
+        </table>
       </div>
 
       <div class="card">

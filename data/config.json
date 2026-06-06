@@ -10,6 +10,15 @@
     "tempoEstimado": "30 a 45 min",
     "taxaEntrega": 5
   },
+  "horarios": {
+    "seg": { "abre": "07:00", "fecha": "18:00", "fechado": false },
+    "ter": { "abre": "07:00", "fecha": "18:00", "fechado": false },
+    "qua": { "abre": "07:00", "fecha": "18:00", "fechado": false },
+    "qui": { "abre": "07:00", "fecha": "18:00", "fechado": false },
+    "sex": { "abre": "07:00", "fecha": "18:00", "fechado": false },
+    "sab": { "abre": "07:00", "fecha": "18:00", "fechado": false },
+    "dom": { "abre": "08:00", "fecha": "14:00", "fechado": true }
+  },
   "mensagens": {
     "boasVindas": "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.\n\nComo posso ajudar? Digite o número da opção:",
     "fechado": "No momento estamos *fechados* 😴. Nosso horário é: {horario}.\n\nVolte mais tarde para fazer seu pedido!",

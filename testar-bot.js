@@ -7,11 +7,19 @@
 //   /quit    — encerra o simulador
 // ============================================================
 
+const path = require("path");
 const readline = require("readline");
 const { getSessao, resetSessao } = require("./src/sessoes");
 const { processarMensagem } = require("./src/fluxo");
+const empresas = require("./src/empresas");
 
 const CHAT_ID = "simulador@c.us";
+
+// Usa o primeiro tenant disponível (ou o diretório padrão como fallback)
+const lista = empresas.listar();
+const TENANT_DIR = lista.length > 0
+  ? empresas.tenantDir(lista[0].slug)
+  : path.join(__dirname, "data");
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -67,7 +75,7 @@ function prompt() {
     }
 
     const sessao = getSessao(CHAT_ID);
-    const { respostas } = processarMensagem(CHAT_ID, msg, sessao);
+    const { respostas } = processarMensagem(CHAT_ID, msg, sessao, TENANT_DIR);
     mostrarRespostas(respostas);
     prompt();
   });
