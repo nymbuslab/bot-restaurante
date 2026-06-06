@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Painel — Bot do Restaurante</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="tela-login">
+  <div class="login-card">
+    <span class="icone">🍴</span>
+    <h1>Painel do Restaurante</h1>
+    <p class="sub">Entre para gerenciar o cardápio e o atendimento</p>
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" placeholder="Digite a senha" autofocus />
+    <button id="btnEntrar">Entrar</button>
+    <p id="erro" class="erro"></p>
+  </div>
+  <script>
+    const btn = document.getElementById("btnEntrar");
+    const inp = document.getElementById("senha");
+    const erro = document.getElementById("erro");
+
+    async function entrar() {
+      erro.textContent = "";
+      const senha = inp.value.trim();
+      if (!senha) { erro.textContent = "Digite a senha."; return; }
+      try {
+        const r = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senha }),
+        });
+        if (!r.ok) { erro.textContent = "Senha incorreta."; return; }
+        const { token } = await r.json();
+        sessionStorage.setItem("token", token);
+        location.href = "admin.html";
+      } catch (e) {
+        erro.textContent = "Erro ao conectar ao servidor.";
+      }
+    }
+    btn.addEventListener("click", entrar);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
+  </script>
+</body>
+</html>
