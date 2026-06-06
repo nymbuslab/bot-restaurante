@@ -19,7 +19,9 @@ const estado = require("./estado");
 const { getSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
-const PASTA_SESSAO = path.join(__dirname, "..", ".wwebjs_auth");
+// Sessão dentro de data/ para caber no único volume do Fly.io
+const DATA_DIR = path.join(__dirname, "..", "data");
+const PASTA_SESSAO = path.join(DATA_DIR, "session-bot-restaurante");
 
 let client = null;
 let watchdog = null;
@@ -30,9 +32,11 @@ function limparWatchdog() {
 
 function criarClient() {
   const c = new Client({
-    authStrategy: new LocalAuth({ clientId: "bot-restaurante" }),
+    authStrategy: new LocalAuth({ clientId: "bot-restaurante", dataPath: DATA_DIR }),
     puppeteer: {
       headless: true,
+      // Em produção (Fly.io/Docker) usa o Chromium do sistema via env var
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
     },
   });

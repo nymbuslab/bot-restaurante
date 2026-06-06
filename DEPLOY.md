@@ -100,4 +100,108 @@ Conecte o WhatsApp pela aba Conexão. O QR também aparece em `pm2 logs bot-rest
 
 ## 💡 Resumo
 - **Testar / restaurante pequeno com PC sempre ligado:** Opção 1 (PM2 local).
-- **Uso comercial sério, sempre online:** Opção 2 (VPS).
+- **Uso comercial sério, sempre online:** Opção 2 (VPS) ou Opção 3 (Fly.io).
+
+---
+
+## ✅ Opção 3 — Fly.io (recomendado para produção na nuvem)
+
+O Fly.io roda o bot em um container Docker na região de São Paulo, com **volumes
+persistentes** para os dados e a sessão do WhatsApp. Plano gratuito cobre o uso
+básico; para garantir uptime 24h use o plano **Pay As You Go** (~$5–10/mês).
+
+### Pré-requisitos
+
+- Conta em **fly.io** (gratuita)
+- [flyctl](https://fly.io/docs/hands-on/install-flyctl/) instalado na máquina
+
+```bash
+# Instalar o flyctl (macOS/Linux)
+curl -L https://fly.io/install.sh | sh
+
+# Windows (PowerShell)
+pwsh -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://fly.io/install.ps1'))"
+```
+
+### 1. Login
+
+```bash
+fly auth login
+```
+
+### 2. Criar o app (primeira vez)
+
+Na raiz do projeto:
+
+```bash
+fly launch --no-deploy
+```
+
+Quando perguntar:
+- **App name:** escolha um nome (ex: `sabordacasa-bot`)
+- **Region:** selecione `gru` (São Paulo)
+- **Overwrite fly.toml?** → `N` (já existe o arquivo configurado)
+
+Depois edite o `fly.toml` e troque `app = "bot-restaurante"` pelo nome que você escolheu.
+
+### 3. Criar os volumes persistentes
+
+```bash
+fly volumes create bot_dados  --region gru --size 1
+fly volumes create bot_sessao --region gru --size 1
+```
+
+> Os volumes guardam `data/` (cardápio, config, pedidos) e `.wwebjs_auth/`
+> (sessão do WhatsApp). Sem eles, tudo se perde a cada deploy.
+
+### 4. Primeiro deploy
+
+```bash
+fly deploy
+```
+
+O build pode levar 3–5 minutos na primeira vez (instalando o Chromium).
+
+### 5. Conectar o WhatsApp
+
+Após o deploy, abra o painel:
+
+```bash
+fly open
+```
+
+Faça login, vá na aba **Conexão** e clique em **Conectar ao WhatsApp**.
+O QR também aparece nos logs:
+
+```bash
+fly logs
+```
+
+A sessão fica salva no volume `bot_sessao`. Próximos deploys reconectam automaticamente.
+
+### Comandos úteis
+
+```bash
+fly logs                   # logs em tempo real
+fly status                 # status da máquina
+fly ssh console            # terminal dentro do container
+fly deploy                 # novo deploy após alterações
+fly volumes list           # listar volumes
+```
+
+### Atualizar depois de mudanças no código
+
+```bash
+fly deploy
+```
+
+A sessão do WhatsApp e os dados são preservados nos volumes — não precisa re-escanear o QR.
+
+### ⚠️ Importante
+
+- `auto_stop_machines = false` no `fly.toml` mantém a máquina **sempre ligada**.
+  Não altere isso — se a máquina parar, o bot desconecta do WhatsApp e precisará
+  de um novo QR scan.
+- O plano gratuito do Fly.io tem limite de horas de máquina. Para uso 24/7, ative
+  o faturamento (Pay As You Go) — custa ~$5–7/mês para 1GB RAM em São Paulo.
+- Troque a senha padrão do painel em **Configurações** antes de deixar no ar.

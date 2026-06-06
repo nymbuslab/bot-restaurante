@@ -41,6 +41,95 @@ dedicado** do restaurante, não o seu pessoal.
 > Se o QR ficar travado em "iniciando", clique em **"Gerar novo QR (limpar sessão)"**
 > — isso apaga uma sessão antiga inválida e força um QR novo.
 
+## 🚀 Deploy no Fly.io (produção)
+
+### Pré-requisitos (uma vez só)
+
+1. Conta criada em [fly.io](https://fly.io)
+2. `flyctl` instalado:
+
+```powershell
+# Windows
+powershell -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://fly.io/install.ps1'))"
+```
+
+3. Adicionar ao PATH (se `fly` não for reconhecido):
+
+```powershell
+$env:PATH += ";$env:USERPROFILE\.fly\bin"
+# Para fixar permanentemente:
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:USERPROFILE\.fly\bin", "User")
+```
+
+---
+
+### Primeiro deploy
+
+```bash
+# 1. Login
+fly auth login
+
+# 2. Criar o app (na pasta do projeto)
+fly launch --no-deploy
+# Escolha um nome (ex: sabordacasa-bot), região: gru (São Paulo)
+# Quando perguntar "Overwrite fly.toml?" → N
+
+# 3. Editar fly.toml: troque app = "bot-restaurante" pelo nome escolhido
+
+# 4. Criar o volume de dados (cardápio + config + sessão do WhatsApp)
+fly volumes create bot_dados --region gru --size 1
+
+# 5. Fazer o deploy
+fly deploy
+# O build leva 3–5 min na primeira vez (instala o Chromium)
+
+# 6. Abrir o painel
+fly open
+```
+
+No painel, faça login → aba **Conexão** → **Conectar ao WhatsApp** → escaneie o QR.
+A sessão fica salva no volume — próximos deploys reconectam sozinhos.
+
+---
+
+### Atualizar o projeto (deploy de novas versões)
+
+Sempre que fizer mudanças no código:
+
+```bash
+fly deploy
+```
+
+Só isso. Os dados e a sessão do WhatsApp são preservados no volume — não precisa re-escanear o QR.
+
+---
+
+### Comandos úteis do dia a dia
+
+```bash
+fly logs              # ver logs em tempo real
+fly status            # checar se a máquina está rodando
+fly open              # abrir o painel no navegador
+fly ssh console       # terminal dentro do container (para debug)
+fly deploy            # publicar nova versão
+```
+
+---
+
+### Se o QR travar ou a sessão invalidar
+
+No painel → aba **Conexão** → **Gerar novo QR (limpar sessão)**.
+Ou pelo terminal:
+
+```bash
+fly ssh console
+rm -rf /app/data/session-bot-restaurante
+exit
+# Depois reconecte pelo painel
+```
+
+---
+
 ## 🧪 Testando o bot sem WhatsApp
 
 Use o simulador de conversa para testar o fluxo completo no terminal — sem celular, sem QR, sem conectar nada:
@@ -125,7 +214,7 @@ Na aba **Cardápio**, cada item tem:
 
 - Biblioteca **não-oficial** (whatsapp-web.js): ótima para começar; para alto
   volume comercial, considere a API Oficial (Cloud API) no futuro.
-- Dados em arquivos JSON. Para a escala da GR7, dá para migrar `store.js`/`pedidos.js`
+- Dados em arquivos JSON. Para volume maior, dá para migrar `store.js`/`pedidos.js`
   para **MySQL** sem mudar o resto.
 - **Segurança**: painel em HTTP com senha simples. Em VPS pública, use HTTPS
   (Nginx + Let's Encrypt) e troque a senha padrão.
