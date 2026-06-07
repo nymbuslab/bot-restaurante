@@ -218,3 +218,98 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
 - Não expor senhas em respostas da API.
 - Todo código novo passa `tenantDir` explicitamente — sem estado global de tenant.
 - Ao adicionar nova rota à API, usar `exigeAuth` e referenciar `req.tenantDir`.
+
+## Design System (`public/style.css`)
+
+Marca: **Nymbus Lab**. Tema escuro fixo. Fonte: **Plus Jakarta Sans** (Google Fonts), fallback `-apple-system`.
+Base: 14px / line-height 1.5.
+
+### Tokens de cor (variáveis CSS)
+
+| Token | Valor | Uso |
+| --- | --- | --- |
+| `--bg-primary` | `#0F1117` | fundo da página |
+| `--bg-surface` | `#1A1D27` | cards, header, nav |
+| `--bg-elevated` | `#222533` | inputs, cabeçalho de categoria, hover de linha |
+| `--bg-overlay` | `#2A2E3F` | modal, input do simulador |
+| `--border` | `#2E3247` | bordas padrão |
+| `--border-subtle` | `#242738` | divisórias internas |
+| `--text-primary` | `#F0F2FA` | texto principal |
+| `--text-secondary` | `#8B92B3` | labels, subtítulos |
+| `--text-disabled` | `#4A5068` | placeholders, desabilitado |
+| `--accent` | `#6344BC` | roxo — PREENCHIMENTO: botão primário, aba ativa, foco (texto branco em cima) |
+| `--accent-hover` | `#7150D0` | hover do botão primário |
+| `--accent-fg` | `#A589EA` | roxo CLARO — TEXTO/ÍCONE roxo sobre fundo escuro (preserva contraste) |
+| `--accent-subtle` | `rgba(99,68,188,0.16)` | fundo de destaque suave |
+| `--secondary` | `#73D2E6` | ciano — acento secundário, links, gradiente de marca |
+| `--secondary-hover` | `#5BC2D8` | hover do ciano (texto escuro em cima) |
+| `--secondary-subtle` | `rgba(115,210,230,0.14)` | fundo ciano suave |
+| `--success` | `#22C55E` | verde — status aberto, tag retirada |
+| `--error` | `#EF4444` | vermelho — status fechado, erros |
+| `--warning` | `#EAB308` | amarelo — observação no pedido |
+| `--info` | `#3B82F6` | azul — tag entrega |
+
+Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
+
+> **Contraste:** `--accent` (#6344BC) só como **preenchimento** (texto branco). Como
+> **texto/ícone sobre fundo escuro**, usar sempre `--accent-fg` (#A589EA) — o roxo cheio
+> perde contraste no escuro. No `style.css`, os 3 pontos que usam `--accent` como cor de
+> texto passam a `--accent-fg`: `nav button.ativo`, `.btn-ver-pedido` e a pill do simulador.
+>
+> **Tags de status são semânticas, nunca de marca:** Entrega = `--info` (azul),
+> Retirada = `--success` (verde). Sem laranja em lugar nenhum.
+>
+> Referência completa de UI por tela (o que manter e o que NÃO construir): **`design/UI.md`**.
+
+### Tokens de forma e sombra
+
+| Token | Valor |
+| --- | --- |
+| `--radius-sm` | `6px` |
+| `--radius` | `10px` |
+| `--radius-lg` | `14px` |
+| `--radius-xl` | `18px` |
+| `--shadow-sm` | sombra discreta (cards) |
+| `--shadow-md` | sombra média (login card, toast) |
+| `--shadow-lg` | sombra forte (modal) |
+
+### Componentes
+
+| Classe | Descrição |
+| --- | --- |
+| `button` | botão primário roxo (padrão) |
+| `button.secundario` | botão outline neutro |
+| `button.perigo` | botão destructivo (vermelho, sem fundo) |
+| `button.mini` | botão menor (padding reduzido) |
+| `card` | container surface com borda e sombra |
+| `campo` | wrapper de campo de formulário com label uppercase |
+| `linha` | flex row para campos lado a lado |
+| `barra-salvar` | barra sticky inferior para ações de salvar |
+| `tag` | pill de status inline (`tag-entrega` = azul/info · `tag-retirada` = verde/success) |
+| `badge-atendimento` | pill do header (`.aberto` verde / `.fechado` vermelho) |
+| `nav-badge` | contador roxo na aba do nav |
+| `bolinha` | dot de status (`.on` verde / `.off` vermelho / `.wait` amarelo) |
+| `estado-vazio` | bloco centralizado para listas sem itens |
+| `toast` | notificação flutuante (`.sucesso` / `.erro`) |
+| `.aviso` / `.erro` | texto de feedback inline (verde / vermelho) |
+| `modal-overlay` + `modal-caixa` | modal de confirmação com animação |
+| `sim-wrapper` | container do simulador de chat |
+| `sim-bubble-bot` / `sim-bubble-user` | balões do chat (bot esquerda / usuário direita roxo) |
+
+### Tipografia
+
+- `h1` — 15 px, 700, tracking -0.3px (header do painel)
+- `h2` — 15 px, 700 (títulos de seção)
+- `h3` — 11 px, 700, uppercase, tracking 0.5px, cor secondary (rótulos de seção)
+- `.sub` — 13 px, cor secondary (subtítulos)
+- Labels de campo — 11 px, 700, uppercase, tracking 0.5px
+
+### Regras ao criar nova UI
+
+- Sempre usar as variáveis CSS — nunca valores hexadecimais fixos no HTML/JS inline.
+- Inputs sempre com classe implícita (seletor `input, textarea, select` já estilizado).
+- Novos modais seguem o padrão `modal-overlay > modal-caixa` com animação já definida.
+- Placeholders usam texto genérico descritivo — sem nomes reais de restaurantes ou pessoas.
+- Roxo cheio (`--accent`) só em preenchimento; texto/ícone roxo sobre escuro usa `--accent-fg`.
+- Sem laranja: a marca é roxo (`--accent`) + ciano (`--secondary`); status em cores semânticas.
+- Antes de redesenhar uma tela, consultar `design/UI.md` (referência visual + o que NÃO construir).

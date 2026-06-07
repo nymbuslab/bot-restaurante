@@ -216,8 +216,7 @@ bot-restaurante/
     ├── fluxo.js              → máquina de estados do atendimento
     ├── store.js              → lê/grava config e cardápio por tenant (cache mtime)
     ├── pedidos.js            → SQLite de pedidos por tenant
-    ├── sessoes.js            → estado de conversa por cliente (memória, 30min)
-    └── estado.js             → (legado)
+    └── sessoes.js            → estado de conversa por cliente (memória, 30min)
 ```
 
 ## ✏️ Como configurar o cardápio
