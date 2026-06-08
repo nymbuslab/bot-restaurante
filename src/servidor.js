@@ -3,7 +3,10 @@
 // ============================================================
 
 const express = require("express");
-const path = require("path");
+const path    = require("path");
+const fs      = require("fs");
+const crypto  = require("crypto");
+const multer  = require("multer");
 
 const empresas = require("./empresas");
 const store = require("./store");
@@ -119,6 +122,67 @@ app.put("/api/cardapio", exigeAuth, (req, res) => {
   } catch (e) {
     res.status(400).json({ erro: e.message });
   }
+});
+
+// ---- Imagens de item ----
+
+const DATA_DIR    = path.join(__dirname, "..", "data");
+const MIME_TO_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+const EXT_TO_MIME = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
+const SLUG_RE     = /^[a-z0-9-]+$/;
+const FILE_RE     = /^[a-z0-9-]+\.(jpg|png|webp)$/;
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+});
+
+// Upload autenticado de imagem de item (multipart, campo "imagem")
+app.post("/api/imagem", exigeAuth, (req, res) => {
+  upload.single("imagem")(req, res, (err) => {
+    if (err && err.code === "LIMIT_FILE_SIZE")
+      return res.status(400).json({ erro: "Arquivo muito grande. Máximo: 2 MB." });
+    if (err) return res.status(400).json({ erro: "Erro no envio do arquivo." });
+    if (!req.file) return res.status(400).json({ erro: "Nenhum arquivo enviado." });
+
+    // Extensão derivada do mimetype validado — nunca do nome do arquivo enviado
+    const ext = MIME_TO_EXT[req.file.mimetype];
+    if (!ext) return res.status(400).json({ erro: "Tipo inválido. Use JPEG, PNG ou WebP." });
+
+    const filename   = `${crypto.randomBytes(16).toString("hex")}-${Date.now()}.${ext}`;
+    const uploadsDir = path.join(req.tenantDir, "uploads");
+    fs.mkdirSync(uploadsDir, { recursive: true });
+
+    // TODO: ao trocar a foto de um item ou excluir o item, apagar o arquivo anterior
+    //       para evitar acúmulo de arquivos órfãos no volume (data/tenants/{slug}/uploads/).
+    const filePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    res.json({ url: `/imagens/${req.slug}/${filename}` });
+  });
+});
+
+// Servir imagem de item — isolamento por tenant (slug + filename validados e confinados)
+app.get("/imagens/:slug/:filename", (req, res) => {
+  const slug     = path.basename(req.params.slug);
+  const filename = path.basename(req.params.filename);
+
+  // Regex estrita: slug ^[a-z0-9-]+$, filename ^[a-z0-9-]+\.(jpg|png|webp)$
+  if (!SLUG_RE.test(slug) || !FILE_RE.test(filename)) return res.status(400).end();
+
+  // Slug deve corresponder a um tenant cadastrado
+  if (!empresas.buscarPorSlug(slug)) return res.status(404).end();
+
+  const uploadsDir = path.resolve(DATA_DIR, "tenants", slug, "uploads");
+  const filePath   = path.resolve(uploadsDir, filename);
+
+  // Confinamento: path resolvido deve começar dentro de uploadsDir
+  if (!filePath.startsWith(uploadsDir + path.sep)) return res.status(403).end();
+  if (!fs.existsSync(filePath)) return res.status(404).end();
+
+  const ext = filename.split(".").pop();
+  res.set("Content-Type", EXT_TO_MIME[ext]);
+  res.sendFile(filePath);
 });
 
 app.get("/api/pedidos", exigeAuth, (req, res) => {

@@ -33,6 +33,13 @@ const $ = (id) => document.getElementById(id);
 let cardapioAtual = { categorias: [] };
 let configAtual = {};
 
+// Estado do editor de item
+let editorCi = -1;
+let editorIi = -1;
+let editorFotoUrl = "";
+let editorComposicao = [];
+let editorOpcionais = [];
+
 // ============================================================
 // TOAST (substitui flash)
 // ============================================================
@@ -222,23 +229,11 @@ function renderCardapio() {
       const linha = document.createElement("div");
       linha.className = "item-linha" + (item.disponivel ? "" : " item-indisp");
       linha.innerHTML = `
-        <input value="${escapar(item.nome)}" class="itNome" data-c="${ci}" data-i="${ii}" placeholder="Nome do item" />
-        <input type="number" step="0.01" value="${moeda(item.preco)}" class="itPreco" data-c="${ci}" data-i="${ii}" />
-        <label class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" />on</label>
+        <span class="item-leitura-nome">${escapar(item.nome) || "(sem nome)"}</span>
+        <span class="item-leitura-preco">R$ ${moeda(item.preco)}</span>
+        <label class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></label>
+        <button class="secundario mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">Editar</button>
         <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">×</button>
-        <input value="${escapar(item.desc || "")}" class="itDesc desc" data-c="${ci}" data-i="${ii}" placeholder="Descrição curta (opcional)" />
-        <div class="item-extras">
-          <div class="extra-col">
-            <label>Composição</label>
-            <textarea class="itComp" data-c="${ci}" data-i="${ii}" placeholder="Ex:&#10;Principal:&#10;* Arroz&#10;* Feijão&#10;Guarnição:&#10;* Batata frita">${escapar(item.composicao || "")}</textarea>
-            <span class="comp-dica">Subcategoria com ":" no fim. <b>Alt+Enter</b> para nova linha.</span>
-          </div>
-          <div class="extra-col">
-            <label>Opcionais</label>
-            <textarea class="itOpc" data-c="${ci}" data-i="${ii}" placeholder="Ex:&#10;Ovo frito | 2.00&#10;Bacon | 3.50">${escapar(item.opcionais || "")}</textarea>
-            <span class="comp-dica">Formato <b>Nome | preço</b> por linha. <b>Alt+Enter</b> para nova linha.</span>
-          </div>
-        </div>
       `;
       itensDiv.appendChild(linha);
     });
@@ -250,23 +245,6 @@ function ligarEventosCardapio() {
   document.querySelectorAll(".catNome").forEach((el) =>
     el.addEventListener("input", (e) => { cardapioAtual.categorias[e.target.dataset.cat].nome = e.target.value; })
   );
-  document.querySelectorAll(".itNome").forEach((el) =>
-    el.addEventListener("input", (e) => { item(e).nome = e.target.value; })
-  );
-  document.querySelectorAll(".itPreco").forEach((el) =>
-    el.addEventListener("input", (e) => { item(e).preco = parseFloat(e.target.value) || 0; })
-  );
-  document.querySelectorAll(".itDesc").forEach((el) =>
-    el.addEventListener("input", (e) => { item(e).desc = e.target.value; })
-  );
-  document.querySelectorAll(".itComp").forEach((el) => {
-    el.addEventListener("input", (e) => { item(e).composicao = e.target.value; });
-    el.addEventListener("keydown", (e) => altEnterInsere(e, "\n* "));
-  });
-  document.querySelectorAll(".itOpc").forEach((el) => {
-    el.addEventListener("input", (e) => { item(e).opcionais = e.target.value; });
-    el.addEventListener("keydown", (e) => altEnterInsere(e, "\n"));
-  });
   document.querySelectorAll(".itDisp").forEach((el) =>
     el.addEventListener("change", (e) => { item(e).disponivel = e.target.checked; renderCardapio(); })
   );
@@ -286,13 +264,15 @@ function ligarEventosCardapio() {
       renderCardapio();
     })
   );
+  document.querySelectorAll("[data-edit-item]").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      const [ci, ii] = e.target.dataset.editItem.split("-").map(Number);
+      abrirEditorItem(ci, ii);
+    })
+  );
   document.querySelectorAll("[data-add-item]").forEach((el) =>
     el.addEventListener("click", (e) => {
-      const ci = +e.target.dataset.addItem;
-      cardapioAtual.categorias[ci].itens.push({
-        id: novoId(), nome: "", preco: 0, desc: "", composicao: "", opcionais: "", disponivel: true,
-      });
-      renderCardapio();
+      abrirEditorItem(+e.target.dataset.addItem, -1);
     })
   );
 }
@@ -306,6 +286,370 @@ function novoId() {
   cardapioAtual.categorias.forEach((c) => c.itens.forEach((i) => { if (i.id > max) max = i.id; }));
   return max + 1;
 }
+
+// ============================================================
+// EDITOR DE ITEM (modal)
+// ============================================================
+function abrirEditorItem(ci, ii) {
+  editorCi = ci;
+  editorIi = ii;
+
+  // Popula select de categorias, pré-selecionando a categoria de origem
+  const sel = $("editor-categoria");
+  sel.innerHTML = "";
+  cardapioAtual.categorias.forEach((cat, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx;
+    opt.textContent = cat.nome || "(sem nome)";
+    if (idx === ci) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  $("editor-titulo").textContent = ii === -1 ? "Novo item" : "Editar item";
+  $("editor-erro").textContent = "";
+
+  if (ii === -1) {
+    $("editor-nome").value = "";
+    $("editor-preco").value = "";
+    $("editor-desc").value = "";
+    $("editor-disponivel").checked = true;
+    editorFotoUrl = "";
+    editorComposicao = [];
+    editorOpcionais = [];
+  } else {
+    const it = cardapioAtual.categorias[ci].itens[ii];
+    $("editor-nome").value = it.nome || "";
+    $("editor-preco").value = moeda(it.preco);
+    $("editor-desc").value = it.desc || "";
+    $("editor-disponivel").checked = it.disponivel !== false;
+    editorFotoUrl = it.imagem || "";
+    editorComposicao = parsearComposicao(it.composicao || "");
+    editorOpcionais = parsearOpcionais(it.opcionais || "");
+  }
+  renderEditorComposicao();
+  renderEditorOpcionais();
+
+  atualizarPreviewFoto();
+
+  const overlay = $("editor-overlay");
+  overlay.style.display = "flex";
+  overlay.classList.remove("saindo");
+  setTimeout(() => $("editor-nome").focus(), 80);
+}
+
+function fecharEditorItem() {
+  const overlay = $("editor-overlay");
+  overlay.classList.add("saindo");
+  overlay.addEventListener("animationend", () => {
+    overlay.style.display = "none";
+    overlay.classList.remove("saindo");
+  }, { once: true });
+  $("editor-foto-input").value = "";
+}
+
+function atualizarPreviewFoto() {
+  const preview     = $("editor-foto-preview");
+  const placeholder = $("editor-foto-placeholder");
+  const remover     = $("editor-foto-remover");
+  const btn         = $("editor-foto-btn");
+  if (editorFotoUrl) {
+    preview.src           = editorFotoUrl;
+    preview.style.display = "block";
+    placeholder.style.display = "none";
+    remover.style.display = "";
+    btn.textContent = "Trocar foto";
+  } else {
+    preview.src           = "";
+    preview.style.display = "none";
+    placeholder.style.display = "flex";
+    remover.style.display = "none";
+    btn.textContent = "Enviar foto";
+  }
+}
+
+async function salvarEditorItem() {
+  const nome  = $("editor-nome").value.trim();
+  const preco = parseFloat($("editor-preco").value);
+
+  if (!nome) {
+    $("editor-erro").textContent = "Informe o nome do item.";
+    $("editor-nome").focus();
+    return;
+  }
+  if (!preco || preco <= 0) {
+    $("editor-erro").textContent = "Informe um preço válido maior que zero.";
+    $("editor-preco").focus();
+    return;
+  }
+
+  $("editor-erro").textContent = "";
+  const novoCi = +$("editor-categoria").value;
+
+  const novoItem = {
+    id:          editorIi === -1 ? novoId() : cardapioAtual.categorias[editorCi].itens[editorIi].id,
+    nome,
+    preco,
+    desc:        $("editor-desc").value,
+    disponivel:  $("editor-disponivel").checked,
+    composicao:  serializarComposicao(editorComposicao),
+    opcionais:   serializarOpcionais(editorOpcionais),
+    imagem:      editorFotoUrl,
+  };
+
+  if (editorIi === -1) {
+    cardapioAtual.categorias[novoCi].itens.push(novoItem);
+  } else if (novoCi !== editorCi) {
+    cardapioAtual.categorias[editorCi].itens.splice(editorIi, 1);
+    cardapioAtual.categorias[novoCi].itens.push(novoItem);
+  } else {
+    cardapioAtual.categorias[editorCi].itens[editorIi] = novoItem;
+  }
+
+  const btn = $("editor-salvar");
+  btn.disabled = true;
+  btn.textContent = "Salvando...";
+
+  const r = await api("PUT", "/api/cardapio", cardapioAtual);
+
+  btn.disabled = false;
+  btn.textContent = "Salvar alterações";
+
+  if (r && r.ok) {
+    toast("✓ Item salvo com sucesso!");
+    fecharEditorItem();
+    renderCardapio();
+  } else {
+    $("editor-erro").textContent = "Erro ao salvar. Tente novamente.";
+  }
+}
+
+// Listeners do editor (fixos — não precisam ser re-ligados a cada render)
+$("editor-fechar").addEventListener("click", fecharEditorItem);
+$("editor-cancelar").addEventListener("click", fecharEditorItem);
+$("editor-salvar").addEventListener("click", salvarEditorItem);
+$("editor-overlay").addEventListener("click", (e) => {
+  if (e.target === $("editor-overlay")) fecharEditorItem();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("editor-overlay").style.display !== "none") fecharEditorItem();
+});
+
+$("editor-foto-btn").addEventListener("click", () => $("editor-foto-input").click());
+
+$("editor-foto-remover").addEventListener("click", () => {
+  editorFotoUrl = "";
+  $("editor-foto-input").value = "";
+  atualizarPreviewFoto();
+});
+
+$("editor-foto-input").addEventListener("change", async () => {
+  const file = $("editor-foto-input").files[0];
+  if (!file) return;
+
+  const btn = $("editor-foto-btn");
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+
+  try {
+    const form = new FormData();
+    form.append("imagem", file);
+    const r = await fetch("/api/imagem", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      body: form,
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Erro ao enviar a imagem.", "erro");
+      return;
+    }
+    const { url } = await r.json();
+    editorFotoUrl = url;
+    atualizarPreviewFoto();
+  } catch {
+    toast("Erro de rede ao enviar a imagem.", "erro");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editorFotoUrl ? "Trocar foto" : "Enviar foto";
+    $("editor-foto-input").value = "";
+  }
+});
+
+$("editor-comp-add-subgrupo").addEventListener("click", () => {
+  editorComposicao.push({ nome: "", itens: [] });
+  renderEditorComposicao();
+});
+
+// ============================================================
+// CONSTRUTOR DE COMPOSIÇÃO
+// ============================================================
+function parsearComposicao(texto) {
+  if (!texto || !texto.trim()) return [];
+  const grupos = [];
+  let grupoAtual = null;
+  for (const linha of texto.split("\n")) {
+    const l = linha.trim();
+    if (!l) continue;
+    if (l.endsWith(":")) {
+      grupoAtual = { nome: l.slice(0, -1).trim(), itens: [] };
+      grupos.push(grupoAtual);
+    } else if (l.startsWith("*")) {
+      if (!grupoAtual) { grupoAtual = { nome: "", itens: [] }; grupos.push(grupoAtual); }
+      grupoAtual.itens.push(l.slice(1).trim());
+    }
+  }
+  return grupos;
+}
+
+function serializarComposicao(grupos) {
+  const linhas = [];
+  for (const g of grupos) {
+    if (g.nome.trim()) linhas.push(g.nome.trim() + ":");
+    for (const it of g.itens) {
+      if (it.trim()) linhas.push("* " + it.trim());
+    }
+  }
+  return linhas.join("\n");
+}
+
+function renderEditorComposicao() {
+  const container = $("editor-composicao-builder");
+  container.innerHTML = "";
+
+  editorComposicao.forEach((sg, si) => {
+    const div = document.createElement("div");
+    div.className = "comp-subgrupo";
+
+    const chipsHtml = sg.itens.map((it, ii) =>
+      `<span class="comp-chip">${escapar(it)}<button type="button" class="comp-chip-del" data-sg="${si}" data-ii="${ii}" aria-label="Remover">×</button></span>`
+    ).join("");
+
+    div.innerHTML = `
+      <div class="comp-subgrupo-cabeca">
+        <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" data-sg="${si}" />
+        <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">×</button>
+      </div>
+      <div class="comp-chips">${chipsHtml}</div>
+      <div class="comp-add-ing">
+        <input class="comp-ing-input" placeholder="Adicionar ingrediente..." data-sg="${si}" />
+        <button type="button" class="secundario mini comp-ing-btn" data-sg="${si}">Adicionar</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  // Listeners — re-ligados a cada render; sem vazamento pois o innerHTML é substituído
+  container.querySelectorAll(".comp-sg-nome").forEach((el) =>
+    el.addEventListener("input", (e) => {
+      editorComposicao[+e.target.dataset.sg].nome = e.target.value;
+    })
+  );
+
+  container.querySelectorAll(".comp-sg-del").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      editorComposicao.splice(+e.target.dataset.sg, 1);
+      renderEditorComposicao();
+    })
+  );
+
+  container.querySelectorAll(".comp-chip-del").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      const si = +e.target.dataset.sg, ii = +e.target.dataset.ii;
+      editorComposicao[si].itens.splice(ii, 1);
+      renderEditorComposicao();
+    })
+  );
+
+  container.querySelectorAll(".comp-ing-btn").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      const si = +e.target.dataset.sg;
+      const input = container.querySelector(`.comp-ing-input[data-sg="${si}"]`);
+      const val = input.value.trim();
+      if (!val) return;
+      editorComposicao[si].itens.push(val);
+      input.value = "";
+      renderEditorComposicao();
+      // Re-foca o input do mesmo subgrupo após re-render
+      const novo = $("editor-composicao-builder").querySelector(`.comp-ing-input[data-sg="${si}"]`);
+      if (novo) novo.focus();
+    })
+  );
+
+  container.querySelectorAll(".comp-ing-input").forEach((el) =>
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(`.comp-ing-btn[data-sg="${e.target.dataset.sg}"]`).click();
+      }
+    })
+  );
+}
+
+// ============================================================
+// CONSTRUTOR DE OPCIONAIS
+// ============================================================
+function parsearOpcionais(texto) {
+  if (!texto || !texto.trim()) return [];
+  const lista = [];
+  for (let linha of texto.split("\n")) {
+    linha = linha.trim().replace(/^[*\-•]\s*/, "");
+    if (!linha) continue;
+    const partes = linha.split("|");
+    const nome = partes[0].trim();
+    let preco = 0;
+    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+    if (nome) lista.push({ nome, preco });
+  }
+  return lista;
+}
+
+function serializarOpcionais(lista) {
+  return lista
+    .filter((o) => o.nome.trim())
+    .map((o) => o.nome.trim() + " | " + Number(o.preco || 0).toFixed(2))
+    .join("\n");
+}
+
+function renderEditorOpcionais() {
+  const container = $("editor-opcionais-builder");
+  container.innerHTML = "";
+
+  editorOpcionais.forEach((op, oi) => {
+    const div = document.createElement("div");
+    div.className = "opc-linha";
+    div.innerHTML = `
+      <input class="opc-nome" placeholder="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
+      <div class="opc-preco-wrap">
+        <span class="opc-rs">R$</span>
+        <input type="number" class="opc-preco" step="0.01" min="0" placeholder="0,00" value="${Number(op.preco || 0).toFixed(2)}" data-oi="${oi}" />
+      </div>
+      <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">×</button>
+    `;
+    container.appendChild(div);
+  });
+
+  container.querySelectorAll(".opc-nome").forEach((el) =>
+    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; })
+  );
+
+  container.querySelectorAll(".opc-preco").forEach((el) =>
+    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].preco = parseFloat(e.target.value) || 0; })
+  );
+
+  container.querySelectorAll(".opc-del").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      editorOpcionais.splice(+e.target.dataset.oi, 1);
+      renderEditorOpcionais();
+    })
+  );
+}
+
+$("editor-opc-add").addEventListener("click", () => {
+  editorOpcionais.push({ nome: "", preco: 0 });
+  renderEditorOpcionais();
+  const inputs = $("editor-opcionais-builder").querySelectorAll(".opc-nome");
+  if (inputs.length) inputs[inputs.length - 1].focus();
+});
 
 $("btnAddCategoria").addEventListener("click", () => {
   cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
@@ -686,7 +1030,7 @@ $("simForm").addEventListener("submit", async (e) => {
   try {
     const r = await fetch("/api/simulador/mensagem", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: cabecalhos,
       body: JSON.stringify({ mensagem: msg }),
     });
     const data = await r.json();
@@ -703,7 +1047,7 @@ $("simForm").addEventListener("submit", async (e) => {
 });
 
 $("btnSimReset").addEventListener("click", async () => {
-  await fetch("/api/simulador/reset", { method: "POST" });
+  await fetch("/api/simulador/reset", { method: "POST", headers: cabecalhos });
   simChat.innerHTML = `<div class="sim-hint">Digite <strong>oi</strong> para começar o atendimento.</div>`;
   simAdicionarSeparador("Sessão reiniciada");
   simAtualizarEstado("INICIO", []);

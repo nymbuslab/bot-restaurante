@@ -4,26 +4,24 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-06 19:00**
+**Checkpoint salvo em 2026-06-06 17:30**
 
 ### Feito nesta sessão
 
-- Backlog ajustado: P0 (notificação cozinha) removido; P2 atualizado com nota sobre features já existentes
-- `CHANGELOG.md` e `ROADMAP.md` criados com histórico e direção do produto
-- Commit `3958821` — arquitetura multi-tenant completa, `.gitignore` atualizado para dados de runtime
-- Design System documentado no `CLAUDE.md` (tokens de cor, forma, sombra, componentes, tipografia)
-- Placeholder do `cadastro.html` corrigido para texto genérico
-- Limpeza do repositório: ~100 arquivos removidos (ExpxAgents, `src/bot.js`, `src/estado.js`, cache, artefato de migração)
-- `README.md` atualizado (removida referência ao `estado.js` legado)
+- Migração de pedidos de JSON para SQLite (`better-sqlite3`) com migração automática do legado
+- Horário de funcionamento por dia da semana: `estaAberto(tenantDir)` em `fluxo.js`, tabela no painel (Configurações), campo `horarios` em `config.json`
+- Arquitetura multi-tenant SaaS completa: `src/empresas.js` (banco mestre), `src/multi-bot.js` (um Client por tenant), `src/store.js` e `src/pedidos.js` parametrizados por `tenantDir`, `src/fluxo.js` com `tenantDir` em todas as funções, `src/servidor.js` reescrito com auth por e-mail+senha
+- Onboarding: `public/cadastro.html` (novo), `public/login.html` atualizado para e-mail+senha
+- Migração automática de instalação legada (cria tenant a partir de `data/config.json`)
+- Documentação completa atualizada: CLAUDE.md, README.md, DEPLOY.md, PRD.md, PROGRESSO.md
 
 ### Em meio de edição
 
-- Alterações desta sessão (`CLAUDE.md`, `PROGRESSO.md`, `README.md`, `public/cadastro.html`, deleções) ainda não commitadas
-- Pasta `design/` não rastreada (protótipos Stitch do redesign Nymbus Lab)
+- Nenhum arquivo em edição incompleta. Todas as mudanças estão consistentes, mas nada foi comitado ainda.
 
 ### Próximo passo
 
-- Commitar as alterações da sessão e então iniciar o redesign de UI — começar pelo editor de item conforme ordem definida neste arquivo.
+- Testar o fluxo completo multi-tenant: cadastrar um segundo tenant, conectar WhatsApp em ambos e verificar isolamento de pedidos e sessões.
 
 ### Decisões pendentes
 
@@ -39,8 +37,12 @@
   no `public/style.css` (incluindo os 3 pontos que passam para `--accent-fg`).
 - **Protótipos (Stitch):** em `design/prototipos/` (desktop + mobile por tela); referência
   por tela em `design/UI.md`.
-- **Decisões de escopo fechadas:** opcionais seguem simples (`Nome | preço`); aba Pedidos é
-  histórico de consulta (sem dashboard de analytics); imagens de item ficam para depois (P3).
+- **Decisões de escopo:** aba Pedidos é histórico de consulta (sem dashboard de analytics).
+  **Cardápio/Editor vão para Opção B (feature):** foto do prato com upload no painel;
+  edição em **modal** (substitui inline) com card de leitura na lista; construtor visual de
+  composição/opcionais que **serializa para o formato de texto atual** (`Nome | preço`,
+  `Sub:\n* item`) — sem regras de obrigatório/escolha, então o `fluxo.js`/bot não mudam.
+  Enviar foto pelo WhatsApp = decisão futura à parte.
 - **Ordem de execução:** editor de item → cardápio → pedidos + detalhe → configurações →
   conexão → simulador → login + cadastro.
 - **Próximo passo do redesign:** implementar o editor de item (maior valor) seguindo `design/UI.md`.
