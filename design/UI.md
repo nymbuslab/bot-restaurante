@@ -91,24 +91,27 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
   (o produto só informa a forma; não processa). Sem status operacional ("Ativo",
   "Pedido Finalizado"), sem "Imprimir comprovante" por enquanto.
 
-### 5. Cardápio
+### 5. Cardápio — **modo FEATURE (Opção B)**
 - **Ref:** `cardapio-desktop.png`, `cardapio-mobile.png`
-- **Manter:** `cardapio.json` (itens: id, nome, preco, desc, disponivel, composicao,
-  opcionais). Agrupar por categoria; toggle `disponivel` (roxo); editar/excluir;
-  "Adicionar item" e "Nova categoria". Recarga ao vivo (já existe).
-- **NÃO construir:** **foto do prato** (roadmap P3 — desenhar card com espaço previsto,
-  mas sem upload agora), tempo de preparo, kcal, contadores de analytics.
+- **Construir:** lista em **cards de leitura** por item (foto, nome, preço em destaque,
+  toggle `disponivel` roxo, ações editar/excluir). "Editar" abre o **modal de edição**
+  (tela 6), não mais edição inline. Agrupar por categoria com cabeçalho. Estado vazio.
+- **Manter:** fonte de dados `cardapio.json` (itens: id, nome, preco, desc, disponivel,
+  composicao, opcionais, **imagem** novo); CRUD e recarga ao vivo existentes.
+- **NÃO construir:** tempo de preparo, kcal, cartões de métrica/analytics, busca/filtro.
 
-### 6. Editor de item
-- **Ref:** `item-editor-desktop.png`, `item-editor-mobile.png` — **maior ganho do reskin**
-- **Manter:** editar nome, preco, desc, categoria, toggle disponivel.
-  - **Composição** = construtor visual (subgrupo nomeado + ingredientes), mas que **serializa
-    para o formato de texto atual** que o `fluxo.js` parseia (`Sub:\n* item`).
-  - **Opcionais** = linhas estruturadas Nome + Preço, que serializam para o formato atual
-    (`Nome | preco`).
-  - A UI é estruturada; o que vai pro JSON é o **mesmo texto de hoje**.
-- **NÃO construir:** opcionais com grupos/regras (obrigatório/opcional, "escolha 1 de 3").
-  Isso é feature de roadmap (muda banco e fluxo do bot). Ignorar o que o mobile mostrou nesse ponto.
+### 6. Editor de item — **modo FEATURE (Opção B): modal**
+- **Ref:** `item-editor-desktop.png`, `item-editor-mobile.png`
+- **Construir:** **modal** de criar/editar (substitui a edição inline). Campos: nome,
+  preço, categoria, descrição, toggle disponível, **upload de foto** (novo).
+  - **Composição** = construtor visual (subgrupo nomeado + ingredientes) que **serializa
+    para o formato de texto atual** (`Sub:\n* item`).
+  - **Opcionais** = construtor visual de linhas Nome + Preço que **serializa** para o
+    formato atual (`Nome | preco`).
+  - A UI é estruturada; o que vai pro JSON é o **mesmo texto de hoje** — o `fluxo.js` e o
+    bot **não mudam**.
+- **NÃO construir:** opcionais com **grupos/regras** (obrigatório/opcional, "escolha 1") —
+  isso mudaria o bot e fica para depois. Ignorar essa parte do protótipo.
 
 ### 7. Configurações
 - **Ref:** `config-desktop.png`, `config-mobile.png`
