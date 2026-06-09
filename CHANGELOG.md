@@ -38,3 +38,18 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - Login atualizado para e-mail + senha; cabeçalho do painel exibe nome do restaurante
 - Migração automática de instalação legada (cria tenant a partir de `data/config.json`)
 - Documentação completa atualizada (CLAUDE.md, README.md, DEPLOY.md, PRD.md)
+
+## [0.3.1] — Design system e protótipos de UI
+
+- Tokens de cor Nymbus Lab aplicados em `public/style.css`: `--accent` (#6344BC roxo), `--secondary` (#73D2E6 ciano), `--accent-fg` (#A589EA para texto/ícone roxo sobre fundo escuro), tema escuro fixo
+- Protótipos de telas (desktop + mobile) em `design/prototipos/`
+- Referência visual por tela em `design/UI.md` com o que manter e o que não construir
+
+## [0.4.0] — Redesign UI — Cardápio, Login e Cadastro
+
+- **Editor de item em modal**: substitui edição inline; campos nome, preço, descrição, disponibilidade, foto
+- **Upload de foto por item**: `POST /api/imagem` com `multer` (memoryStorage), extensão derivada do MIME-type, path confinado a `data/tenants/{slug}/uploads/`; rota `GET /imagens/:slug/:filename` com validação de slug contra banco e confinamento de path
+- **Builders visuais**: composição (`• item`) e opcionais (`Nome | preço`) — interface visual que serializa para o formato de texto que o bot já lê; bot e `fluxo.js` não precisaram de alteração
+- **Lista do cardápio em cards**: grid 2 colunas desktop / 1 coluna mobile, foto do prato (104px), toggle de disponibilidade, botões editar/excluir com ícones SVG; CSS `.cards-grid` / `.item-card`
+- **Login redesenhado**: layout split — painel de marca com gradiente roxo→ciano (com ponto intermediário e noise para evitar banding), logo SVG garfo-e-faca, eye toggle para senha
+- **Cadastro redesenhado**: mesmo layout do login; campo "confirmar senha" mantido; eye toggle em senha e confirmação; etapa de sucesso com ícone SVG
