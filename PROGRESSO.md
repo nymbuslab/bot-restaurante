@@ -4,48 +4,16 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-06 17:30**
+Redesign UI — cardápio (Passo 5) + Login/Cadastro implementados nesta sessão (2026-06-09), aguardando commit e validação visual.
 
-### Feito nesta sessão
+Arquivos modificados sem commit:
 
-- Migração de pedidos de JSON para SQLite (`better-sqlite3`) com migração automática do legado
-- Horário de funcionamento por dia da semana: `estaAberto(tenantDir)` em `fluxo.js`, tabela no painel (Configurações), campo `horarios` em `config.json`
-- Arquitetura multi-tenant SaaS completa: `src/empresas.js` (banco mestre), `src/multi-bot.js` (um Client por tenant), `src/store.js` e `src/pedidos.js` parametrizados por `tenantDir`, `src/fluxo.js` com `tenantDir` em todas as funções, `src/servidor.js` reescrito com auth por e-mail+senha
-- Onboarding: `public/cadastro.html` (novo), `public/login.html` atualizado para e-mail+senha
-- Migração automática de instalação legada (cria tenant a partir de `data/config.json`)
-- Documentação completa atualizada: CLAUDE.md, README.md, DEPLOY.md, PRD.md, PROGRESSO.md
+- `public/app.js` — `renderCardapio()` reescrito para cards
+- `public/style.css` — CSS de cards + auth block (novo layout split login/cadastro)
+- `public/login.html` — redesign completo
+- `public/cadastro.html` — redesign completo
 
-### Em meio de edição
-
-- Nenhum arquivo em edição incompleta. Todas as mudanças estão consistentes, mas nada foi comitado ainda.
-
-### Próximo passo
-
-- Testar o fluxo completo multi-tenant: cadastrar um segundo tenant, conectar WhatsApp em ambos e verificar isolamento de pedidos e sessões.
-
-### Decisões pendentes
-
-- Memória por tenant: máquina atual é 1 GB (suporta ~3–4 tenants). Definir quando escalar para 2 GB no Fly.io.
-- Painel de super-admin (listar todos os tenants, suspender, ver métricas) está no roadmap P1 — decidir quando implementar.
-
-### Redesign de UI — reskin Nymbus Lab
-
-- **Princípio:** reskin visual, não novas features. A UI segue o que o sistema já faz;
-  não inventar endpoint nem feature.
-- **Identidade:** cores Nymbus Lab (roxo `#6344BC` primária, ciano `#73D2E6` secundária)
-  sobre o tema escuro. Tokens já atualizados no `CLAUDE.md` (Design System); falta aplicar
-  no `public/style.css` (incluindo os 3 pontos que passam para `--accent-fg`).
-- **Protótipos (Stitch):** em `design/prototipos/` (desktop + mobile por tela); referência
-  por tela em `design/UI.md`.
-- **Decisões de escopo:** aba Pedidos é histórico de consulta (sem dashboard de analytics).
-  **Cardápio/Editor vão para Opção B (feature):** foto do prato com upload no painel;
-  edição em **modal** (substitui inline) com card de leitura na lista; construtor visual de
-  composição/opcionais que **serializa para o formato de texto atual** (`Nome | preço`,
-  `Sub:\n* item`) — sem regras de obrigatório/escolha, então o `fluxo.js`/bot não mudam.
-  Enviar foto pelo WhatsApp = decisão futura à parte.
-- **Ordem de execução:** editor de item → cardápio → pedidos + detalhe → configurações →
-  conexão → simulador → login + cadastro.
-- **Próximo passo do redesign:** implementar o editor de item (maior valor) seguindo `design/UI.md`.
+Próxima tela do redesign (ainda não iniciada): Pedidos + detalhe → Configurações → Conexão → Simulador.
 
 ## 📋 Próximos Passos
 
@@ -78,3 +46,7 @@
 - [x] Login atualizado para e-mail + senha; cabeçalho do painel exibe nome do restaurante
 - [x] Migração automática de instalação legada (cria tenant a partir de `data/config.json`)
 - [x] Documentação completa atualizada (CLAUDE.md, README.md, DEPLOY.md, PRD.md)
+- [x] **Design system Nymbus Lab** — tokens de cor (`--accent`, `--secondary`, `--accent-fg`...), tipografia, componentes; protótipos em `design/prototipos/`; referência visual em `design/UI.md`
+- [x] **Redesign Cardápio — editor modal** (Passos 1–4) — modal de edição de item com upload de foto (MIME-validado, path confinado por tenant), builders visuais de composição e opcionais serializando para o formato de texto atual; rota `POST /api/imagem` e `GET /imagens/:slug/:filename` em `src/servidor.js`
+- [x] **Redesign Cardápio — lista em cards** (Passo 5) — `renderCardapio()` reescrito: grid 2 colunas desktop / 1 coluna mobile, foto do item, toggle de disponibilidade, botões editar/excluir com ícones SVG; CSS `.cards-grid`/`.item-card` em `style.css`
+- [x] **Redesign Login/Cadastro** — layout split (painel de marca gradiente roxo→ciano + área de formulário); logo garfo-e-faca SVG; eye toggle para senha (e confirmação no cadastro); campo `#senha2` e validação de senhas mantidos; `#senha2` omitido do redesign foi corrigido antes da implementação

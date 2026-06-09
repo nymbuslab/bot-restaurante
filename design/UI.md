@@ -1,17 +1,25 @@
-# UI.md — Referência de UI (Reskin Nymbus Lab)
+# UI.md — Referência de UI (Redesign Nymbus Lab)
 
 Documento que o Claude Code consulta **antes de redesenhar qualquer tela**.
 
-## Princípio inegociável
+## Princípio
 
-Isto é um **reskin visual**, não uma fase de features. A UI segue o que o sistema
-**já faz** — banco, `config.json`, `cardapio.json`, `pedidos.db` e as rotas em
-`src/servidor.js`. **Não inventar feature nem endpoint.** Antes de ligar qualquer
-tela, confirmar os nomes reais de rota em `src/servidor.js`; se algo da tela não
-tem rota/dado por trás, **não construir** — perguntar.
+Redesign **fiel aos protótipos** (`design/prototipos/`), em **modo feature** — pode construir
+HTML, CSS, JS e rotas novas quando fizer sentido pro produto. A régua:
 
-Os protótipos em `design/prototipos/` são **referência visual**, não código. O export
-do Stitch não entra no projeto (stack é HTML/CSS/JS puro, sem framework).
+- **Visual e layout:** igual ao protótipo — cards, modais, hierarquia, capricho. É um produto
+  para vender; a aparência importa.
+- **Comportamento:** construir função nova quando agrega valor (ex.: foto do cardápio, feita
+  na fase do cardápio). **Mas o que o protótipo inventou e o sistema não faz** é decidido caso
+  a caso — implementar de verdade, adaptar, ou cortar. **Nunca copiar cego uma promessa que o
+  produto não cumpre** (pagamento online, mapa, console de dev, mesa). Cada tela abaixo lista
+  esses limites.
+- Antes de ligar uma tela, confirmar rotas/dados reais em `src/servidor.js`. Se não houver
+  dado/rota por trás: implementar a rota (modo feature) ou adaptar a tela — **nunca exibir
+  dado falso/inventado**.
+
+Os protótipos são referência **visual**, não código (o export do Stitch não entra; o stack é
+HTML/CSS/JS puro, sem framework).
 
 ---
 
@@ -20,15 +28,12 @@ do Stitch não entra no projeto (stack é HTML/CSS/JS puro, sem framework).
 Fonte única dos tokens: seção **Design System** do `CLAUDE.md` / `public/style.css`.
 Regras que valem em TODAS as telas:
 
-- **Sem laranja.** A marca não usa mais `#F97316`. Onde sobrou laranja nos protótipos
-  (tag Retirada, tag "Opcional", ícone de velocidade), trocar.
-- **Roxo de preenchimento** `--accent #6344BC` (botão, estado ativo, foco) com texto branco.
-- **Roxo claro** `--accent-fg #A589EA` para **texto/ícone roxo sobre fundo escuro**
-  (aba ativa, links roxos) — nunca usar `#6344BC` como texto no escuro (perde contraste).
-- **Ciano** `--secondary #73D2E6` como acento secundário, links e gradiente de marca.
-  Como preenchimento, exige texto escuro `#0F1117`.
-- **Tags de status são semânticas, não de marca:** Entrega = azul `--info`,
-  Retirada = verde `--success`. Não usar roxo/ciano em status.
+- **Sem laranja.** Marca = roxo `--accent #6344BC` (preenchimento, texto branco em cima) +
+  ciano `--secondary #73D2E6` (acento, links, gradiente).
+- **Roxo claro** `--accent-fg #A589EA` para texto/ícone roxo sobre fundo escuro — nunca usar
+  `#6344BC` como texto no escuro (perde contraste).
+- **Tags de status são semânticas:** Entrega = azul `--info`, Retirada = verde `--success`.
+  Não usar roxo/ciano em status.
 
 ---
 
@@ -36,118 +41,111 @@ Regras que valem em TODAS as telas:
 
 Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Configurações · Simulador**.
 
-- Desktop: sidebar fixa à esquerda; item ativo em roxo (`--accent-fg` no rótulo + indicador).
+- Desktop: sidebar fixa à esquerda; item ativo em roxo (`--accent-fg` + indicador).
 - Mobile: bottom-nav com os mesmos 5 itens (rótulos com espaçamento — não colar).
-- **Ignorar** os menus que o protótipo inventou: "Dashboard/Inventory/Analytics/Staff",
-  "Geral/Vendas/Equipe/Ajustes", e a duplicação "Pedidos/Histórico".
+- **Ignorar** os menus inventados nos protótipos ("Dashboard/Inventory/Analytics/Staff",
+  "Geral/Vendas/Equipe/Ajustes", "Pedidos/Histórico" duplicado).
 
 ---
 
 ## Regras globais de cópia e marca
 
-- Idioma **pt-BR** em tudo. Eliminar inglês solto ("DELIVERY" → "Entrega",
-  "All rights reserved", etc.).
+- **pt-BR** em tudo (sem "DELIVERY", "All rights reserved", etc.).
 - **Horário em 24h** (`18:00`, `23:30`) — não AM/PM.
-- **Um único logo/marca** em todas as telas (decidir: hexágono OU garfo-e-faca) e um
-  único tratamento de avatar.
-- Ano correto no rodapé; **sem** "versão" inventada (ex.: remover "VER 2.4.0").
-- Avatar de cliente = **ícone neutro**, nunca foto realista de rosto.
-- Conteúdo de exemplo representativo do público (restaurante popular/marmita), não alta
-  gastronomia.
+- **Um único logo/marca** em todas as telas e um único avatar. **Decisão aberta:** hexágono
+  OU garfo-e-faca (trava Login/Cadastro — ver "Decisões abertas").
+- Ano correto no rodapé; sem "versão" inventada.
+- Avatar de cliente = ícone neutro, nunca foto realista de rosto.
+- Conteúdo de exemplo do público real (restaurante popular/marmita), não alta gastronomia.
 
 ---
 
 ## Telas
 
+> Formato: **Construir** (visual fiel ao protótipo) · **Dados/rotas** (a que se liga) ·
+> **Limites de escopo** (o que o protótipo inventou e NÃO entra, ou vira decisão).
+
 ### 1. Login
-- **Ref:** `login-desktop.png`, `login-mobile.png`
-- **Manter:** `POST /api/login { email, senha }` → `{ token, slug, nome }`; token em
-  `Authorization: Bearer`. Painel de marca com gradiente roxo→ciano.
-- **NÃO construir:** promessa de "analytics/performance" no texto — o produto recebe
-  pedidos pelo WhatsApp. Manter título único ("Entrar"/"Boas-vindas") consistente com o mobile.
+- **Construir:** painel de marca com gradiente roxo->ciano + logo; formulário e-mail/senha,
+  "Entrar", links. Responsivo (painel ao lado no desktop, topo no mobile).
+- **Dados/rotas:** `POST /api/login { email, senha }` -> `{ token, slug, nome }`; Bearer.
+- **Limites:** texto honesto — sem "analytics/performance/IA". Titulo consistente entre
+  desktop e mobile. Usar o logo definido.
 
 ### 2. Cadastro
-- **Ref:** `cadastro-desktop.png`, `cadastro-mobile.png`
-- **Manter:** onboarding existente (cria empresa via `public/cadastro.html` + rota atual);
-  login automático após criar. Campos: nome do restaurante, e-mail, senha.
-- **NÃO construir:** "IA Especializada", "inteligência artificial de ponta" — não há IA
-  (é máquina de estados). Proposta de valor honesta: receber pedidos pelo WhatsApp,
-  editar cardápio sozinho, sem programador.
+- **Construir:** mesmo painel de marca; campos nome do restaurante, e-mail, senha; "Criar conta".
+- **Dados/rotas:** onboarding atual (cria empresa + login automatico).
+- **Limites:** sem "IA especializada/inteligencia artificial" — nao ha IA. Valor honesto:
+  receber pedidos pelo WhatsApp, editar cardapio sozinho, sem programador.
 
-### 3. Pedidos (histórico de consulta)
-- **Ref:** `pedidos-desktop.png`, `pedidos-mobile.png`
-- **Manter:** leitura de `pedidos.db` (colunas: numero, cliente, telefone, tipoEntrega,
-  total, criadoEm, ...). Lista cronológica, busca (nome/telefone), filtros período + tipo.
-  Topo no máximo com **"X pedidos no período"**. Tag tipo: Entrega azul / Retirada verde.
-- **NÃO construir:** dashboard de analytics (média diária, ticket médio, "+12%",
-  "mais pedido"). É **histórico**, não painel operacional. Sem botões de mudar status.
+### 3. Pedidos (historico + metricas leves)
+- **Construir:** lista cronologica — tabela no desktop, cards no mobile; tag de tipo
+  (Entrega azul / Retirada verde); abrir detalhe. Topo com **metricas leves** do periodo:
+  total de pedidos, media diaria, ticket medio (**calculo real** a partir de `pedidos.db`,
+  nunca numero decorativo). Busca (nome/telefone) e filtro (periodo/tipo).
+- **Dados/rotas:** `pedidos.db`. Metricas calculadas sobre o periodo selecionado.
+- **Limites:** sem botoes de "status" interno (preparando/entregue) — ciclo do pedido e
+  roadmap. A unica acao sobre o pedido e **"Avisar cliente"** (ver tela 4).
 
-### 4. Detalhe do pedido
-- **Ref:** `pedido-detalhe-desktop.png`, `pedido-detalhe-mobile.png`
-- **Manter:** somente leitura. Itens com opcionais e observação (destaque amarelo),
-  endereço em **texto**, forma de pagamento em **texto**, subtotal + taxa + total.
-  Atalho "WhatsApp" via `wa.me/<telefone>`.
-- **NÃO construir:** **mapa/geolocalização** (não existe), **pagamento online / gateway**
-  (o produto só informa a forma; não processa). Sem status operacional ("Ativo",
-  "Pedido Finalizado"), sem "Imprimir comprovante" por enquanto.
+### 4. Detalhe do pedido + Avisar cliente
+- **Construir:** visao de leitura — itens com opcionais, observacao (amarelo), endereco,
+  pagamento, subtotal+taxa+total. Botao **"Avisar cliente"** que ENVIA pelo bot uma mensagem
+  de "pedido pronto": entrega -> "saiu para entrega"; retirada -> "pronto para retirar".
+  Mensagens **editaveis** pelo dono em Configuracoes. Botao exige WhatsApp **conectado**.
+- **Dados/rotas:** pedido salvo; **rota nova** que usa o Client do tenant (`multi-bot.js`)
+  para enviar ao telefone do cliente; templates em `config.json`
+  (`mensagens.pedidoPronto.entrega` / `.retirada`), com variaveis `{cliente}` e `{numero}`.
+- **Limites (sistema NAO faz):** mapa/geolocalizacao e pagamento online -> endereco e
+  pagamento em **texto**. Sem acompanhamento de status interno. Envio **MANUAL** (1 clique,
+  1 cliente por vez) — nunca automatico nem em massa (risco de bloqueio do numero).
 
-### 5. Cardápio — **modo FEATURE (Opção B)**
-- **Ref:** `cardapio-desktop.png`, `cardapio-mobile.png`
-- **Construir:** lista em **cards de leitura** por item (foto, nome, preço em destaque,
-  toggle `disponivel` roxo, ações editar/excluir). "Editar" abre o **modal de edição**
-  (tela 6), não mais edição inline. Agrupar por categoria com cabeçalho. Estado vazio.
-- **Manter:** fonte de dados `cardapio.json` (itens: id, nome, preco, desc, disponivel,
-  composicao, opcionais, **imagem** novo); CRUD e recarga ao vivo existentes.
-- **NÃO construir:** tempo de preparo, kcal, cartões de métrica/analytics, busca/filtro.
+### 5. Cardapio — CONCLUIDO (fase cardapio)
+- **Feito:** lista em cards de leitura (foto, nome, preco, toggle, editar/excluir), agrupada
+  por categoria com contagem; "editar" abre o modal; estado vazio.
+- **Dados:** `cardapio.json` (+ campo `imagem`). Recarga ao vivo mantida.
 
-### 6. Editor de item — **modo FEATURE (Opção B): modal**
-- **Ref:** `item-editor-desktop.png`, `item-editor-mobile.png`
-- **Construir:** **modal** de criar/editar (substitui a edição inline). Campos: nome,
-  preço, categoria, descrição, toggle disponível, **upload de foto** (novo).
-  - **Composição** = construtor visual (subgrupo nomeado + ingredientes) que **serializa
-    para o formato de texto atual** (`Sub:\n* item`).
-  - **Opcionais** = construtor visual de linhas Nome + Preço que **serializa** para o
-    formato atual (`Nome | preco`).
-  - A UI é estruturada; o que vai pro JSON é o **mesmo texto de hoje** — o `fluxo.js` e o
-    bot **não mudam**.
-- **NÃO construir:** opcionais com **grupos/regras** (obrigatório/opcional, "escolha 1") —
-  isso mudaria o bot e fica para depois. Ignorar essa parte do protótipo.
+### 6. Editor de item — CONCLUIDO (fase cardapio)
+- **Feito:** modal de criar/editar com upload de foto; construtor visual de **Composicao**
+  (subgrupos + chips) e de **Opcionais** (linhas Nome+Preco) que **serializam para o formato
+  de texto atual** (`Sub:\n* item`, `Nome | preco`) — `fluxo.js`/bot intactos.
+- **Limite mantido:** opcionais com **regras** (obrigatorio/escolha 1) = roadmap, fora daqui.
 
-### 7. Configurações
-- **Ref:** `config-desktop.png`, `config-mobile.png`
-- **Manter:** `config.json` — dados do restaurante; mensagens (`boas-vindas`, `fechado`);
-  `horarios` por dia `{ abre, fecha, fechado }` em **24h**; taxa de entrega fixa;
-  formas de pagamento (tags); toggle `atendimento.aberto`. Barra fixa de "alterações não
-  salvas" (manter — ficou boa). Mobile: horários viram cards por dia.
-- **NÃO construir:** taxa por bairro/CEP (roadmap), nada além dos campos do `config.json`.
+### 7. Configuracoes
+- **Construir:** secoes em cards — status do atendimento (toggle), dados do restaurante,
+  mensagens, horarios (7 dias, **24h**; cards por dia no mobile), taxa fixa, formas de
+  pagamento (tags). Barra fixa de "alteracoes nao salvas" = feature ok.
+- **Dados/rotas:** `config.json` (dados, mensagens, `horarios`, taxa, pagamento,
+  `atendimento.aberto`).
+- **Limites:** taxa por bairro/CEP = roadmap. Nada alem dos campos do `config.json`.
 
-### 8. Conexão WhatsApp
-- **Ref:** `conexao-desktop.png`, `conexao-mobile.png`
-- **Manter:** fluxo guiado por estados — desconectado (botão "Conectar ao WhatsApp" →
-  `POST /api/bot/conectar`), gerando QR (spinner), QR exibido, conectado (número +
-  "Desconectar" + "Gerar novo QR / limpar sessão"). Passo a passo + dica de número dedicado.
-- **NÃO construir:** **QR decorativo** — o QR precisa ser **preto/branco real e escaneável**
-  (padrão do mobile). Sem promessas de "envio instantâneo/alta velocidade".
+### 8. Conexao WhatsApp
+- **Construir:** fluxo guiado por estados — desconectado ("Conectar ao WhatsApp"), gerando QR,
+  QR exibido, conectado (numero + "Desconectar" + "Gerar novo QR/limpar sessao"); passo a
+  passo + dica de numero dedicado.
+- **Dados/rotas:** `POST /api/bot/conectar` e os estados ja emitidos pela logica atual.
+- **Limites:** QR **real preto/branco escaneavel** (nunca decorativo). Sem promessas de
+  "alta velocidade/envio instantaneo".
 
 ### 9. Simulador
-- **Ref:** `simulador-desktop.png`, `simulador-mobile.png`
-- **Manter:** **chat simples** de teste do fluxo (equivalente ao `testar-bot.js` no painel):
-  balões do bot à esquerda (superfície neutra), do usuário à direita em roxo, campo de
-  digitação. Desktop = mesmo chat, só mais largo.
-- **NÃO construir:** console de dev (variáveis de contexto, JSON de resposta, latência,
-  "Conectar API", "Status da Entrega"). O usuário é dono de restaurante, não programador.
+- **Construir:** chat de teste do fluxo — balao do bot a esquerda (neutro), do usuario a
+  direita em roxo, campo de digitacao. Desktop = mesmo chat, mais largo.
+- **Dados:** usa o fluxo atual (equivalente ao `testar-bot.js` no painel).
+- **Limites:** sem console de dev (variaveis de contexto, JSON, latencia, "Conectar API",
+  "Status da Entrega") — o usuario e dono de restaurante.
 
 ---
 
-## Ordem de execução sugerida
+## Status e ordem
 
-1. Editor de item (maior valor, protótipo mais fiel)
-2. Cardápio
-3. Pedidos + detalhe
-4. Configurações
-5. Conexão
-6. Simulador
-7. Login + Cadastro
+- **Fase cardapio (telas 5 e 6):** tokens da marca + nav + foto + modal + construtores +
+  cards. (Em finalizacao: ver `PROGRESSO.md`.)
+- **Proximo:** Pedidos + detalhe -> Configuracoes -> Conexao -> Simulador -> Login + Cadastro.
 
-Cada tela segue o workflow do projeto: investigar → plano → aprovação → implementar →
-validação visual → commit.
+Cada tela segue o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
+visual -> commit (Conventional Commits pt-BR, sem acento no titulo).
+
+## Decisoes abertas
+
+- **Logo:** hexagono OU garfo-e-faca (trava Login/Cadastro).
+- **Pedidos:** historico puro (so "X no periodo") OU com metricas leves (media diaria, ticket
+  medio). Atual: historico puro.
