@@ -29,9 +29,12 @@ function getDb(tenantDir) {
       taxaEntrega REAL    DEFAULT 0,
       itens       TEXT    NOT NULL DEFAULT '[]',
       total       REAL    DEFAULT 0,
-      criadoEm    TEXT    NOT NULL
+      criadoEm    TEXT    NOT NULL,
+      avisadoEm   TEXT
     )
   `);
+  // Migração: adiciona avisadoEm em bancos criados antes desta versão
+  try { db.exec("ALTER TABLE pedidos ADD COLUMN avisadoEm TEXT"); } catch (_) { /* já existe */ }
   conexoes.set(dbPath, db);
   return db;
 }
@@ -69,4 +72,16 @@ function lerTodos(tenantDir) {
     .map((r) => ({ ...r, itens: JSON.parse(r.itens) }));
 }
 
-module.exports = { salvarPedido, lerTodos };
+function lerPorId(tenantDir, id) {
+  const r = getDb(tenantDir).prepare("SELECT * FROM pedidos WHERE id = ?").get(id);
+  if (!r) return null;
+  return { ...r, itens: JSON.parse(r.itens) };
+}
+
+function avisarPedido(tenantDir, id) {
+  const agora = new Date().toISOString();
+  getDb(tenantDir).prepare("UPDATE pedidos SET avisadoEm = ? WHERE id = ?").run(agora, id);
+  return agora;
+}
+
+module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido };

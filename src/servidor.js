@@ -189,6 +189,42 @@ app.get("/api/pedidos", exigeAuth, (req, res) => {
   res.json(pedidos.lerTodos(req.tenantDir).reverse());
 });
 
+const MSG_PRONTO_PADRAO = {
+  entrega:  "Olá, {cliente}! Seu pedido #{numero} está pronto e já saiu para entrega. Logo chega aí!",
+  retirada: "Olá, {cliente}! Seu pedido #{numero} está pronto para retirada. Pode vir buscar quando quiser!",
+};
+
+app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
+  try {
+    const { pedidoId } = req.body || {};
+    if (!pedidoId) return res.status(400).json({ erro: "pedidoId obrigatório." });
+
+    const pedido = pedidos.lerPorId(req.tenantDir, pedidoId);
+    if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+
+    const config = store.getConfig(req.tenantDir);
+    const templates = config.mensagens?.pedidoPronto || MSG_PRONTO_PADRAO;
+    const tipoChave = (pedido.tipoEntrega || "").toLowerCase() === "entrega" ? "entrega" : "retirada";
+    const template  = templates[tipoChave] || MSG_PRONTO_PADRAO[tipoChave];
+
+    const texto = template
+      .replace(/\{cliente\}/g, pedido.cliente || "")
+      .replace(/\{numero\}/g,  String(pedido.numero));
+
+    const digits  = (pedido.telefone || "").replace(/\D/g, "");
+    const comPais = digits.length <= 11 ? "55" + digits : digits;
+    const chatId  = comPais + "@c.us";
+
+    await multiBot.enviarMensagem(req.slug, chatId, texto);
+    const avisadoEm = pedidos.avisarPedido(req.tenantDir, pedidoId);
+
+    res.json({ ok: true, avisadoEm });
+  } catch (e) {
+    const status = e.message === "WhatsApp não conectado" ? 400 : 500;
+    res.status(status).json({ erro: e.message });
+  }
+});
+
 // ---- Simulador ----
 
 app.get("/api/simulador/status", exigeAuth, (req, res) => {
