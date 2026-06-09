@@ -31,6 +31,10 @@ function limparWatchdog(slug) {
 function criarClient(slug, tenantDir) {
   const c = new Client({
     authStrategy: new LocalAuth({ clientId: slug, dataPath: tenantDir }),
+    webVersionCache: {
+      type: "remote",
+      remotePath: "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1015901727-alpha.html",
+    },
     puppeteer: {
       headless: true,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
@@ -129,9 +133,10 @@ function iniciar(slug, tenantDir) {
     }
   }, 90000);
 
-  client.initialize().catch((err) => {
+  client.initialize().catch(async (err) => {
     limparWatchdog(slug);
     console.error(`[${slug}] ❌ Erro ao iniciar:`, err.message);
+    try { await client.destroy(); } catch (_) { /* ignora */ }
     const t = tenants.get(slug);
     if (t) { t.status = "desligado"; t.client = null; }
   });
@@ -161,4 +166,12 @@ async function resetarSessao(slug, tenantDir) {
   }
 }
 
-module.exports = { iniciar, desconectar, resetarSessao, getEstado };
+async function enviarMensagem(slug, para, texto) {
+  const t = tenants.get(slug);
+  if (!t || t.status !== "conectado" || !t.client) {
+    throw new Error("WhatsApp não conectado");
+  }
+  await t.client.sendMessage(para, texto);
+}
+
+module.exports = { iniciar, desconectar, resetarSessao, getEstado, enviarMensagem };

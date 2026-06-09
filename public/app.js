@@ -213,30 +213,62 @@ function renderCardapio() {
   const c = $("cardapioContainer");
   c.innerHTML = "";
   cardapioAtual.categorias.forEach((cat, ci) => {
+    const n = cat.itens.length;
+    const badge = n === 1 ? "1 item" : `${n} itens`;
     const div = document.createElement("div");
     div.className = "categoria";
     div.innerHTML = `
       <div class="categoria-cabeca">
-        <input value="${escapar(cat.nome)}" data-cat="${ci}" class="catNome" />
+        <div class="cat-cabeca-esq">
+          <input value="${escapar(cat.nome)}" data-cat="${ci}" class="catNome" />
+          <span class="cat-badge">${badge}</span>
+        </div>
         <button class="perigo mini" data-del-cat="${ci}">Excluir</button>
       </div>
-      <div class="itens" data-itens="${ci}"></div>
-      <button class="secundario mini add-item" data-add-item="${ci}">+ Adicionar item</button>
+      ${n === 0
+        ? `<div class="estado-vazio"><p>Nenhum item nesta categoria.</p><span class="sub">Use "+ Adicionar item" para começar.</span></div>`
+        : `<div class="cards-grid" data-itens="${ci}"></div>`
+      }
+      <button class="mini add-item" data-add-item="${ci}">+ Adicionar item</button>
     `;
     c.appendChild(div);
-    const itensDiv = div.querySelector(`[data-itens="${ci}"]`);
-    cat.itens.forEach((item, ii) => {
-      const linha = document.createElement("div");
-      linha.className = "item-linha" + (item.disponivel ? "" : " item-indisp");
-      linha.innerHTML = `
-        <span class="item-leitura-nome">${escapar(item.nome) || "(sem nome)"}</span>
-        <span class="item-leitura-preco">R$ ${moeda(item.preco)}</span>
-        <label class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></label>
-        <button class="secundario mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">Editar</button>
-        <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">×</button>
-      `;
-      itensDiv.appendChild(linha);
-    });
+    if (n > 0) {
+      const grid = div.querySelector(`[data-itens="${ci}"]`);
+      cat.itens.forEach((item, ii) => {
+        const card = document.createElement("div");
+        card.className = "item-card" + (item.disponivel ? "" : " item-indisp");
+        const temFoto = item.imagem && item.imagem !== "";
+        card.innerHTML = `
+          <div class="item-card-foto">
+            ${temFoto
+              ? `<img src="${escapar(item.imagem)}" alt="${escapar(item.nome)}" loading="lazy" />`
+              : `<div class="item-card-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>`
+            }
+          </div>
+          <div class="item-card-info">
+            <div class="item-card-meta">
+              <span class="item-card-nome">${escapar(item.nome) || "(sem nome)"}</span>
+              <span class="item-card-preco">R$ ${moeda(item.preco)}</span>
+              ${!item.disponivel ? `<span class="item-card-rotulo">Indisponível</span>` : ""}
+            </div>
+            <div class="item-card-bottom">
+              <label class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></label>
+              <div class="item-card-acoes">
+                <button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
   });
   ligarEventosCardapio();
 }
@@ -733,6 +765,8 @@ function preencherConfig() {
   $("cfgFechado").value = c.mensagens.fechado || "";
   $("cfgAtendente").value = c.mensagens.atendente || "";
   $("cfgConfirmado").value = c.mensagens.pedidoConfirmado || "";
+  $("cfgMsgProntoEntrega").value  = c.mensagens?.pedidoPronto?.entrega  || "";
+  $("cfgMsgProntoRetirada").value = c.mensagens?.pedidoPronto?.retirada || "";
   atualizarBadgeAtendimento(!!c.atendimento.aberto);
   renderHorarios();
   renderPagamentos();
@@ -779,6 +813,9 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.mensagens.fechado = $("cfgFechado").value;
   configAtual.mensagens.atendente = $("cfgAtendente").value;
   configAtual.mensagens.pedidoConfirmado = $("cfgConfirmado").value;
+  if (!configAtual.mensagens.pedidoPronto) configAtual.mensagens.pedidoPronto = {};
+  configAtual.mensagens.pedidoPronto.entrega  = $("cfgMsgProntoEntrega").value;
+  configAtual.mensagens.pedidoPronto.retirada = $("cfgMsgProntoRetirada").value;
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
