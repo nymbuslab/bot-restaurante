@@ -30,11 +30,13 @@ function getDb(tenantDir) {
       itens       TEXT    NOT NULL DEFAULT '[]',
       total       REAL    DEFAULT 0,
       criadoEm    TEXT    NOT NULL,
-      avisadoEm   TEXT
+      avisadoEm   TEXT,
+      chatId      TEXT
     )
   `);
-  // Migração: adiciona avisadoEm em bancos criados antes desta versão
+  // Migração: adiciona colunas em bancos criados antes desta versão
   try { db.exec("ALTER TABLE pedidos ADD COLUMN avisadoEm TEXT"); } catch (_) { /* já existe */ }
+  try { db.exec("ALTER TABLE pedidos ADD COLUMN chatId TEXT"); } catch (_) { /* já existe */ }
   conexoes.set(dbPath, db);
   return db;
 }
@@ -46,13 +48,14 @@ function salvarPedido(tenantDir, pedido) {
 
   db.prepare(`
     INSERT INTO pedidos
-      (numero, status, cliente, telefone, tipoEntrega, endereco, pagamento, taxaEntrega, itens, total, criadoEm)
+      (numero, status, cliente, telefone, chatId, tipoEntrega, endereco, pagamento, taxaEntrega, itens, total, criadoEm)
     VALUES
-      (@numero, 'novo', @cliente, @telefone, @tipoEntrega, @endereco, @pagamento, @taxaEntrega, @itens, @total, @criadoEm)
+      (@numero, 'novo', @cliente, @telefone, @chatId, @tipoEntrega, @endereco, @pagamento, @taxaEntrega, @itens, @total, @criadoEm)
   `).run({
     numero,
     cliente:     pedido.cliente     || "",
     telefone:    pedido.telefone    || "",
+    chatId:      pedido.chatId      || "",
     tipoEntrega: pedido.tipoEntrega || "",
     endereco:    pedido.endereco    || "",
     pagamento:   pedido.pagamento   || "",

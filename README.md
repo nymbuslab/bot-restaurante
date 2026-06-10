@@ -98,7 +98,7 @@ fly volumes create bot_dados --region gru --size 1
 
 # 5. Deploy
 fly deploy
-# O build leva 3–5 min na primeira vez (instala o Chromium)
+# Build rápido (sem Chromium — Baileys não usa browser)
 
 # 6. Abrir o painel
 fly open
@@ -143,7 +143,7 @@ Ou pelo terminal:
 
 ```bash
 fly ssh console
-rm -rf /app/data/tenants/{slug}/session-{slug}
+rm -rf /app/data/tenants/{slug}/baileys-{slug}
 exit
 # Depois reconecte pelo painel
 ```
@@ -204,7 +204,7 @@ bot-restaurante/
 │           ├── config.json
 │           ├── cardapio.json
 │           ├── pedidos.db    → pedidos em SQLite (criado automaticamente)
-│           └── session-{slug}/ → sessão WhatsApp (não versionar)
+│           └── baileys-{slug}/ → sessão WhatsApp Baileys (não versionar)
 ├── public/                   → painel web
 │   ├── login.html            → login por e-mail + senha
 │   ├── cadastro.html         → onboarding de novos restaurantes
@@ -212,7 +212,7 @@ bot-restaurante/
 └── src/
     ├── servidor.js           → API REST multi-tenant (Express)
     ├── empresas.js           → CRUD de tenants (banco mestre SQLite)
-    ├── multi-bot.js          → gerencia um Client WhatsApp por tenant
+    ├── multi-bot.js          → gerencia um socket WhatsApp (Baileys) por tenant
     ├── fluxo.js              → máquina de estados do atendimento
     ├── store.js              → lê/grava config e cardápio por tenant (cache mtime)
     ├── pedidos.js            → SQLite de pedidos por tenant
@@ -221,35 +221,26 @@ bot-restaurante/
 
 ## ✏️ Como configurar o cardápio
 
-Na aba **Cardápio**, cada item tem:
+Na aba **Cardápio**, os itens aparecem em **cards** (com foto, preço e disponibilidade).
+Clique em **Editar** (ou **+ Adicionar item**) para abrir o **editor**, onde você define:
 
-- **Composição**: subcategoria com `:` no final e itens em lista.
-  Use **Alt+Enter** para nova linha.
+- **Nome, preço, categoria, descrição** e uma **foto** (upload no painel).
+- **Composição** — construtor visual: subgrupos (ex.: "Principal") com ingredientes em
+  forma de chips (adicionar/remover sem digitar formato).
+- **Opcionais** — linhas com Nome + Preço (ex.: Bacon + R$ 3,50), adicionar/remover.
+- Botão **on/off** de disponibilidade por item: desative quando algo acaba no dia.
 
-  ```text
-  Principal:
-  * Arroz
-  * Feijão
-  ```
-
-- **Opcionais**: um por linha, formato `Nome | preço`. **Alt+Enter** = nova linha.
-
-  ```text
-  Ovo frito | 2.00
-  Bacon | 3.50
-  ```
-
-- Botão **on/off** por item: desative quando algo acaba no dia.
-
-> A pergunta "deseja bebida?" aparece automaticamente quando existe uma categoria
-> com **"Bebida"** no nome.
+> Internamente, composição e opcionais são salvos em texto (`Sub:\n* item` e `Nome | preço`)
+> — o construtor visual só facilita a edição. A pergunta "deseja bebida?" aparece
+> automaticamente quando existe uma categoria com **"Bebida"** no nome.
 
 ## ⚠️ Avisos
 
-- Biblioteca **não-oficial** (whatsapp-web.js): ótima para começar; para alto
-  volume comercial, considere a API Oficial (Cloud API) no futuro.
-- Cada tenant conectado ao WhatsApp usa ~200 MB de RAM (Chromium). A máquina de
-  1 GB no Fly.io suporta ~3–4 restaurantes simultâneos. Escale para 2 GB se precisar.
+- Biblioteca **não-oficial** (Baileys, conexão via WebSocket): leve e estável para começar.
+  Para produção séria / alto volume, considere a **API Oficial (WhatsApp Cloud API)** —
+  ver `ROADMAP.md`.
+- Sem Chromium: cada tenant é só uma conexão WebSocket, consumo de RAM baixo (a máquina de
+  1 GB no Fly.io suporta bem mais que os ~3–4 tenants da versão antiga com Chromium).
 - **Segurança**: painel em HTTP com senha. Em produção pública, use HTTPS
   (Nginx + Let's Encrypt) e troque a senha padrão.
 - Não versionar `data/tenants/` (sessões WhatsApp e dados de clientes).

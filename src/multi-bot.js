@@ -1,20 +1,43 @@
 // ============================================================
-// MULTI-BOT — gerencia um WhatsApp Client por tenant
+// MULTI-BOT — gerencia um socket WhatsApp (Baileys) por tenant
 //
 // Cada empresa conecta o próprio número. O estado (status, qr,
 // prontoEm) fica em um Map keyed por slug.
+//
+// Baileys é WebSocket puro (sem Puppeteer/Chromium). A biblioteca
+// é ESM-only, então é carregada via import() dinâmico e cacheada.
+//
+// GOTCHA (disparo em massa): ao reconectar, o WhatsApp reenvia o
+// histórico. O handler SÓ processa messages.upsert com type === "notify"
+// (mensagens em tempo real), ignorando "append" (histórico/sync). Esse
+// é o substituto do antigo filtro de timestamp do whatsapp-web.js —
+// NÃO remover essa checagem.
 // ============================================================
 
 const fs = require("fs");
 const path = require("path");
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const pino = require("pino");
 const qrcodeTerminal = require("qrcode-terminal");
 const QRCode = require("qrcode");
 
 const { getSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
-// { slug → { client, status, qrDataUrl, prontoEm, watchdog } }
+// Logger silencioso para o Baileys (não polui o console com debug interno).
+const logger = pino({ level: "silent" });
+
+// Baileys é ESM-only → import() dinâmico, carregado uma vez.
+let _baileys = null;
+async function getBaileys() {
+  if (!_baileys) _baileys = await import("@whiskeysockets/baileys");
+  return _baileys;
+}
+
+// Teto de reconexões automáticas para quedas transitórias (não martela o
+// WhatsApp nem a CPU). Zerado a cada conexão bem-sucedida.
+const MAX_RECONEXOES = 5;
+
+// { slug → { sock, status, qrDataUrl, prontoEm, fechandoManual, tentativas } }
 const tenants = new Map();
 
 function getEstado(slug) {
@@ -23,131 +46,173 @@ function getEstado(slug) {
   return { status: t.status, qr: t.qrDataUrl };
 }
 
-function limparWatchdog(slug) {
-  const t = tenants.get(slug);
-  if (t && t.watchdog) { clearTimeout(t.watchdog); t.watchdog = null; }
+function iniciar(slug, tenantDir) {
+  if (tenants.has(slug) && tenants.get(slug).sock) return;
+
+  const t = { sock: null, status: "iniciando", qrDataUrl: null, prontoEm: null, fechandoManual: false, tentativas: 0 };
+  tenants.set(slug, t);
+
+  conectar(slug, tenantDir).catch((err) => {
+    console.error(`[${slug}] ❌ Erro ao iniciar:`, err.message);
+    const tt = tenants.get(slug);
+    if (tt) { tt.status = "desligado"; tt.sock = null; }
+  });
 }
 
-function criarClient(slug, tenantDir) {
-  const c = new Client({
-    authStrategy: new LocalAuth({ clientId: slug, dataPath: tenantDir }),
-    webVersionCache: {
-      type: "remote",
-      remotePath: "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1015901727-alpha.html",
-    },
-    puppeteer: {
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    },
-  });
+async function conectar(slug, tenantDir) {
+  const t = tenants.get(slug);
+  if (!t) return;
 
-  c.on("loading_screen", (pct, msg) => {
-    console.log(`[${slug}] ⏳ Carregando WhatsApp: ${pct}% ${msg || ""}`);
-  });
+  const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason, isJidUser, jidDecode } = await getBaileys();
 
-  c.on("qr", async (qr) => {
-    limparWatchdog(slug);
-    const t = tenants.get(slug);
-    if (t) t.status = "aguardando_qr";
-    console.log(`\n[${slug}] 📲 QR disponível no painel.`);
-    qrcodeTerminal.generate(qr, { small: true });
-    try {
-      const url = await QRCode.toDataURL(qr, { width: 320, margin: 2 });
-      if (tenants.get(slug)) tenants.get(slug).qrDataUrl = url;
-    } catch (e) {
-      console.error(`[${slug}] Erro ao gerar QR:`, e.message);
+  // Sessão isolada por tenant (substitui session-{slug}/ do whatsapp-web.js).
+  const pastaSessao = path.join(tenantDir, `baileys-${slug}`);
+  const { state, saveCreds } = await useMultiFileAuthState(pastaSessao);
+
+  // Versão do WhatsApp Web mais recente suportada pelo Baileys (com fallback
+  // para a embutida se a busca remota falhar).
+  let version;
+  try { ({ version } = await fetchLatestBaileysVersion()); }
+  catch (_) { version = undefined; }
+
+  console.log(`[${slug}] 🔗 Iniciando conexão (Baileys${version ? ` WA v${version.join(".")}` : ""}).`);
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    logger,
+    browser: Browsers.appropriate("Chrome"),
+    syncFullHistory: false,
+    markOnlineOnConnect: false,
+  });
+  t.sock = sock;
+
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", async (update) => {
+    const { connection, qr, lastDisconnect } = update;
+    const tt = tenants.get(slug);
+    if (!tt) return;
+
+    if (qr) {
+      tt.status = "aguardando_qr";
+      console.log(`\n[${slug}] 📲 QR disponível no painel.`);
+      qrcodeTerminal.generate(qr, { small: true });
+      try {
+        tt.qrDataUrl = await QRCode.toDataURL(qr, { width: 320, margin: 2 });
+      } catch (e) {
+        console.error(`[${slug}] Erro ao gerar QR:`, e.message);
+      }
     }
-  });
 
-  c.on("authenticated", () => console.log(`[${slug}] ✅ Autenticado.`));
+    if (connection === "open") {
+      tt.status = "conectado";
+      tt.qrDataUrl = null;
+      tt.prontoEm = Date.now();
+      tt.tentativas = 0;
+      console.log(`[${slug}] 🤖 Bot ONLINE.`);
+    }
 
-  c.on("ready", () => {
-    limparWatchdog(slug);
-    const t = tenants.get(slug);
-    if (t) { t.status = "conectado"; t.qrDataUrl = null; t.prontoEm = Date.now(); }
-    console.log(`[${slug}] 🤖 Bot ONLINE.`);
-  });
+    if (connection === "close") {
+      const code = lastDisconnect?.error?.output?.statusCode;
+      tt.prontoEm = null;
 
-  c.on("auth_failure", (m) => {
-    limparWatchdog(slug);
-    const t = tenants.get(slug);
-    if (t) { t.status = "desligado"; t.client = null; }
-    console.error(`[${slug}] ❌ Falha na autenticação:`, m);
-  });
-
-  c.on("disconnected", (r) => {
-    limparWatchdog(slug);
-    const t = tenants.get(slug);
-    if (t) { t.status = "desligado"; t.qrDataUrl = null; t.prontoEm = null; t.client = null; }
-    console.warn(`[${slug}] ⚠️ Desconectado:`, r);
-  });
-
-  c.on("message", async (message) => {
-    try {
-      const t = tenants.get(slug);
-      if (!t || t.status !== "conectado" || !t.prontoEm) return;
-
-      const tsMsg = (message.timestamp || 0) * 1000;
-      if (!tsMsg || tsMsg < t.prontoEm - 1000) return;
-      if (message.fromMe) return;
-      if (message.from.endsWith("@g.us")) return;
-      if (message.isStatus) return;
-
-      if (message.type !== "chat") {
-        await message.reply("Por enquanto eu entendo apenas *mensagens de texto* 🙂. Digite *menu* para começar.");
+      // Encerramento manual (desconectar/resetarSessao) — não reconecta.
+      if (tt.fechandoManual) {
+        tt.status = "desligado";
+        tt.sock = null;
+        console.log(`[${slug}] ⏹️ Bot pausado.`);
         return;
       }
 
-      // Chave de sessão inclui o slug para isolar clientes entre tenants
-      const sessaoKey = `${slug}:${message.from}`;
-      const sessao = getSessao(sessaoKey);
-      const { respostas } = processarMensagem(message.from, message.body, sessao, tenantDir);
-      for (const r of respostas) {
-        if (r && r.trim()) {
-          await c.sendMessage(message.from, r);
-          await new Promise((res) => setTimeout(res, 400));
-        }
+      // Sessão inválida/substituída/banida — não adianta reconectar sozinho.
+      const semReconexao = [
+        DisconnectReason.loggedOut,
+        DisconnectReason.connectionReplaced,
+        DisconnectReason.forbidden,
+        DisconnectReason.badSession,
+        DisconnectReason.multideviceMismatch,
+      ];
+      if (semReconexao.includes(code)) {
+        tt.status = "desligado";
+        tt.sock = null;
+        tt.qrDataUrl = null;
+        console.warn(`[${slug}] ⚠️ Conexão encerrada (code ${code}) — sem reconexão automática.`);
+        return;
       }
-    } catch (err) {
-      console.error(`[${slug}] Erro ao processar mensagem:`, err);
+
+      // Quedas transitórias / restartRequired (515, normal após o QR) →
+      // reconecta com teto.
+      if (tt.tentativas >= MAX_RECONEXOES) {
+        tt.status = "desligado";
+        tt.sock = null;
+        console.error(`[${slug}] 🛑 Reconexão esgotada após ${MAX_RECONEXOES} tentativas (code ${code}).`);
+        return;
+      }
+      tt.tentativas++;
+      const espera = code === DisconnectReason.restartRequired ? 0 : 2000;
+      console.log(`[${slug}] 🔄 Reconectando (${tt.tentativas}/${MAX_RECONEXOES}, code ${code})...`);
+      setTimeout(() => {
+        conectar(slug, tenantDir).catch((e) => console.error(`[${slug}] reconexão falhou:`, e.message));
+      }, espera);
     }
   });
 
-  return c;
-}
+  sock.ev.on("messages.upsert", async ({ messages, type }) => {
+    // GOTCHA disparo em massa: só "notify" (tempo real). "append" = histórico.
+    if (type !== "notify") return;
 
-function iniciar(slug, tenantDir) {
-  if (tenants.has(slug) && tenants.get(slug).client) return;
+    for (const msg of messages) {
+      try {
+        if (!msg.message) continue;
+        if (msg.key.fromMe) continue;
 
-  const t = { client: null, status: "iniciando", qrDataUrl: null, prontoEm: null, watchdog: null };
-  tenants.set(slug, t);
+        const jid = msg.key.remoteJid || "";
+        if (jid.endsWith("@g.us")) continue;        // grupos
+        if (jid.endsWith("@broadcast")) continue;   // status / broadcast
 
-  const client = criarClient(slug, tenantDir);
-  t.client = client;
+        const tt = tenants.get(slug);
+        if (!tt || tt.status !== "conectado") continue;
 
-  t.watchdog = setTimeout(() => {
-    if (tenants.get(slug)?.status === "iniciando") {
-      console.error(`[${slug}] ⏱️ Tempo esgotado ao iniciar.`);
-      desconectar(slug);
+        const texto = msg.message.conversation
+          || msg.message.extendedTextMessage?.text
+          || "";
+
+        if (!texto.trim()) {
+          await sock.sendMessage(jid, { text: "Por enquanto eu entendo apenas *mensagens de texto* 🙂. Digite *menu* para começar." });
+          continue;
+        }
+
+        // Telefone real do cliente: o WhatsApp pode entregar o remoteJid como LID
+        // (`<id>@lid`, identificador opaco ≠ telefone). O número fica em `senderPn`.
+        // Preferir senderPn; senão remoteJid se já for phone JID; senão vazio.
+        const phoneJid = msg.key.senderPn || (isJidUser(jid) ? jid : "");
+        const telefone = phoneJid ? (jidDecode(phoneJid)?.user || "") : "";
+
+        // Chave de sessão inclui o slug para isolar clientes entre tenants.
+        // Mantém remoteJid (identidade estável, mesmo quando é LID).
+        const sessaoKey = `${slug}:${jid}`;
+        const sessao = getSessao(sessaoKey);
+        const { respostas } = processarMensagem(jid, texto, sessao, tenantDir, telefone);
+        for (const r of respostas) {
+          if (r && r.trim()) {
+            await sock.sendMessage(jid, { text: r });
+            await new Promise((res) => setTimeout(res, 400));
+          }
+        }
+      } catch (err) {
+        console.error(`[${slug}] Erro ao processar mensagem:`, err.message);
+      }
     }
-  }, 90000);
-
-  client.initialize().catch(async (err) => {
-    limparWatchdog(slug);
-    console.error(`[${slug}] ❌ Erro ao iniciar:`, err.message);
-    try { await client.destroy(); } catch (_) { /* ignora */ }
-    const t = tenants.get(slug);
-    if (t) { t.status = "desligado"; t.client = null; }
   });
 }
 
 async function desconectar(slug) {
-  limparWatchdog(slug);
   const t = tenants.get(slug);
-  if (t && t.client) {
-    try { await t.client.destroy(); } catch (e) { /* ignora */ }
-    t.client = null;
+  if (t && t.sock) {
+    t.fechandoManual = true;
+    try { t.sock.end(undefined); } catch (e) { /* ignora */ }
+    t.sock = null;
   }
   if (t) { t.status = "desligado"; t.qrDataUrl = null; t.prontoEm = null; }
   console.log(`[${slug}] ⏹️ Bot pausado.`);
@@ -155,9 +220,9 @@ async function desconectar(slug) {
 
 async function resetarSessao(slug, tenantDir) {
   await desconectar(slug);
-  await new Promise((r) => setTimeout(r, 1500));
-  // LocalAuth com dataPath=tenantDir guarda sessão em tenantDir/session-{slug}/
-  const pasta = path.join(tenantDir, `session-${slug}`);
+  await new Promise((r) => setTimeout(r, 1000));
+  // Baileys guarda a sessão em tenantDir/baileys-{slug}/ (useMultiFileAuthState).
+  const pasta = path.join(tenantDir, `baileys-${slug}`);
   try {
     fs.rmSync(pasta, { recursive: true, force: true });
     console.log(`[${slug}] 🧹 Sessão limpa.`);
@@ -168,10 +233,10 @@ async function resetarSessao(slug, tenantDir) {
 
 async function enviarMensagem(slug, para, texto) {
   const t = tenants.get(slug);
-  if (!t || t.status !== "conectado" || !t.client) {
+  if (!t || t.status !== "conectado" || !t.sock) {
     throw new Error("WhatsApp não conectado");
   }
-  await t.client.sendMessage(para, texto);
+  await t.sock.sendMessage(para, { text: texto });
 }
 
 module.exports = { iniciar, desconectar, resetarSessao, getEstado, enviarMensagem };

@@ -132,7 +132,8 @@ $("btnSair").addEventListener("click", async () => {
 // ============================================================
 async function atualizarStatus() {
   try {
-    const r = await fetch("/api/status");
+    const r = await api("GET", "/api/status");
+    if (!r) return; // 401 → api() já redirecionou para o login
     const s = await r.json();
     const box = $("statusBox");
     if (s.status === "conectado") {
@@ -944,11 +945,81 @@ function abrirModalPedido(p) {
         </div>
         ${enderecoHtml}
       </div>
-    </div>`;
+    </div>
+    <div class="pedido-acoes" id="pedido-acoes"></div>`;
+
+  montarAcoes(p);
 
   const overlay = $("pedido-overlay");
   overlay.style.display = "flex";
   overlay.classList.remove("saindo");
+}
+
+// ---- Avisar cliente ----
+function podeAvisar(p) {
+  const jid = p.chatId || "";
+  const jidReal = jid.endsWith("@s.whatsapp.net") || jid.endsWith("@lid");
+  const telOk = (p.telefone || "").replace(/\D/g, "").length >= 10;
+  return jidReal || telOk; // mesma regra do backend; simulador (sem canal) → false
+}
+
+function textoAvisar(p) {
+  return p.tipoEntrega === "Entrega"
+    ? "Avisar que saiu para entrega"
+    : "Avisar que está pronto para retirada";
+}
+
+function montarAcoes(p) {
+  const cont = $("pedido-acoes");
+  if (!cont) return;
+  if (!podeAvisar(p)) { cont.innerHTML = ""; return; } // sem canal: não oferece
+  if (p.avisadoEm) {
+    const quando = new Date(p.avisadoEm).toLocaleString("pt-BR");
+    cont.innerHTML = `
+      <span class="pedido-avisado">✓ Cliente avisado em ${quando}</span>
+      <button class="secundario mini" id="btn-avisar">Avisar novamente</button>`;
+  } else {
+    cont.innerHTML = `<button id="btn-avisar">${escapar(textoAvisar(p))}</button>`;
+  }
+  const btn = $("btn-avisar");
+  if (btn) btn.addEventListener("click", () => avisarCliente(p));
+}
+
+async function avisarCliente(p) {
+  const btn = $("btn-avisar");
+  if (!btn) return;
+
+  if (p.avisadoEm) {
+    const ok = await confirmar(
+      "Avisar novamente?",
+      "Isso vai enviar OUTRA mensagem de aviso para o cliente no WhatsApp. Deseja continuar?",
+      "Enviar novamente"
+    );
+    if (!ok) return;
+  }
+
+  const textoOrig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+
+  const r = await api("POST", "/api/pedido/avisar", { pedidoId: p.id });
+  if (!r) return; // 401 já tratado pelo api()
+  const data = await r.json().catch(() => ({}));
+
+  if (r.ok) {
+    p.avisadoEm = data.avisadoEm || new Date().toISOString(); // atualiza o cache (referência)
+    toast("✓ Cliente avisado!");
+    montarAcoes(p); // re-renderiza no estado "avisado"
+  } else {
+    const erro = data.erro || "Erro ao avisar o cliente.";
+    if (/não conectado|nao conectado/i.test(erro)) {
+      toast("WhatsApp não conectado — conecte na aba Conexão para avisar.", "erro");
+    } else {
+      toast(erro, "erro");
+    }
+    btn.disabled = false;
+    btn.textContent = textoOrig;
+  }
 }
 
 function fecharModalPedido() {

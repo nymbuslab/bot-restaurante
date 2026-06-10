@@ -4,14 +4,20 @@
 
 ## 🔄 Em Andamento
 
-Redesign UI — cardápio (Passo 5) + Login/Cadastro implementados nesta sessão (2026-06-09), aguardando commit e validação visual.
+**Migração para Baileys** (branch `feat/migracao-baileys`, ainda não merjado na main).
 
-Arquivos modificados sem commit:
+O `whatsapp-web.js` (Puppeteer/Chromium) parou de gerar QR — erro determinístico
+`Execution context was destroyed` no init, em local e Fly. Trocado por `@whiskeysockets/baileys`
+(WebSocket, sem browser), via `import()` dinâmico (ESM-only).
 
-- `public/app.js` — `renderCardapio()` reescrito para cards
-- `public/style.css` — CSS de cards + auth block (novo layout split login/cadastro)
-- `public/login.html` — redesign completo
-- `public/cadastro.html` — redesign completo
+Testes no branch:
+
+- ✅ Teste 1 — QR gera (provado: Baileys conecta ao WA, gera QR no terminal + data URL no painel)
+- ⏳ Teste 2 — conectar escaneando o QR (precisa do celular do usuário)
+- ✅ Teste 3 — simulador faz pedido completo → grava no `pedidos.db` (provado)
+- ⏳ Teste 4 — `/api/pedido/avisar` envia no WhatsApp real (precisa do teste 2 antes)
+
+Pendente: validação dos testes 2 e 4 pelo usuário → merge na main.
 
 Próxima tela do redesign (ainda não iniciada): Pedidos + detalhe → Configurações → Conexão → Simulador.
 
@@ -50,3 +56,5 @@ Próxima tela do redesign (ainda não iniciada): Pedidos + detalhe → Configura
 - [x] **Redesign Cardápio — editor modal** (Passos 1–4) — modal de edição de item com upload de foto (MIME-validado, path confinado por tenant), builders visuais de composição e opcionais serializando para o formato de texto atual; rota `POST /api/imagem` e `GET /imagens/:slug/:filename` em `src/servidor.js`
 - [x] **Redesign Cardápio — lista em cards** (Passo 5) — `renderCardapio()` reescrito: grid 2 colunas desktop / 1 coluna mobile, foto do item, toggle de disponibilidade, botões editar/excluir com ícones SVG; CSS `.cards-grid`/`.item-card` em `style.css`
 - [x] **Redesign Login/Cadastro** — layout split (painel de marca gradiente roxo→ciano + área de formulário); logo garfo-e-faca SVG; eye toggle para senha (e confirmação no cadastro); campo `#senha2` e validação de senhas mantidos; `#senha2` omitido do redesign foi corrigido antes da implementação
+- [x] **Avisar cliente "pedido pronto"** — `POST /api/pedido/avisar`: envio manual (1 por clique, nunca em massa) de mensagem ao cliente pelo WhatsApp do tenant; templates editáveis em `config.json` (`mensagens.pedidoPronto.entrega`/`.retirada`, variáveis `{cliente}`/`{numero}`); coluna `avisadoEm` no pedido; campos editáveis na aba Configurações
+- [x] **Fix `/api/status` sem token** — `atualizarStatus()` no painel chamava `fetch` cru (401) → QR nunca aparecia no front; passou a usar o helper `api()` com `Authorization`. Bug pré-existente que só aflorou quando o QR voltou a gerar (Baileys)
