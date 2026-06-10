@@ -162,6 +162,14 @@ apenas** (a tela vem em passo posterior).
   Windows) → invalida tokens → `empresas.excluir(slug)` (apaga linha em `empresas.db` +
   `data/tenants/{slug}/`). **Trava de segurança:** o corpo deve trazer
   `{ confirmacao: "<slug>" }` igual ao slug da URL, senão responde 400 sem apagar nada.
+- **Tela (`public/admin-master.html` + `public/app-admin.js`):** página **separada** do
+  painel de restaurante (não usar `admin.html`/`app.js`). Login master + dashboard de tenants
+  na mesma página (gate por token). Token guardado em `sessionStorage["tokenAdmin"]` — chave
+  **própria** (≠ `"token"` do restaurante) e **`sessionStorage` por escolha de segurança**: a
+  sessão master expira ao fechar a aba, exigindo novo login a cada sessão do navegador. Acesso
+  só por URL direta (`/admin-master.html`), não linkado do login do restaurante. CSS reusa a
+  identidade Nymbus (classes `.am-*` em `style.css`); exclusão usa confirmação forte (digitar
+  o slug habilita o botão).
 
 ## Horário de funcionamento
 
