@@ -835,6 +835,11 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
 let pedidosCache = [];
 const filtros = { periodo: "hoje", tipo: "todos", busca: "", dataIni: "", dataFim: "" };
 
+// Paginação da lista
+const PEDIDOS_POR_PAGINA = 10;
+let paginaPedidos = 1;
+let listaPedidosAtual = []; // lista filtrada atual (para paginar sem refazer o cálculo)
+
 // Só busca os pedidos do tenant; o recorte (período/tipo/busca) e as métricas
 // são calculados no front em renderPedidos() a partir deste conjunto.
 async function carregarPedidos() {
@@ -888,6 +893,51 @@ function tagTipo(p) {
   return p.tipoEntrega === "Entrega"
     ? `<span class="tag tag-entrega">🛵 Entrega</span>`
     : `<span class="tag tag-retirada">🏃 Retirada</span>`;
+}
+
+// Data/hora relativa: "Hoje, HH:MM" / "Ontem, HH:MM" / "DD/MM/AAAA, HH:MM" (sem segundos)
+function dataHoraFmt(criadoEm) {
+  const d = new Date(criadoEm);
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const soDia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diff = Math.round((soDia(new Date()) - soDia(d)) / 86400000);
+  if (diff === 0) return `Hoje, ${hora}`;
+  if (diff === 1) return `Ontem, ${hora}`;
+  return `${d.toLocaleDateString("pt-BR")}, ${hora}`;
+}
+
+// Páginas visíveis com janela em torno da atual (… quando há muitas)
+function paginasVisiveis(atual, total) {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+  const set = new Set([1, total, atual, atual - 1, atual + 1]);
+  const arr = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const out = [];
+  arr.forEach((n, i) => {
+    out.push(n);
+    if (i < arr.length - 1 && arr[i + 1] - n > 1) out.push("…");
+  });
+  return out;
+}
+
+function paginacaoHtml(total, totalPaginas, ini, qtdNaPagina) {
+  if (totalPaginas <= 1) return ""; // cabe tudo numa página → sem paginação
+  const de = ini + 1, ate = ini + qtdNaPagina;
+  let botoes = `<button class="pag-btn pag-seta" data-pag="${paginaPedidos - 1}" ${paginaPedidos === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`;
+  for (const n of paginasVisiveis(paginaPedidos, totalPaginas)) {
+    botoes += n === "…"
+      ? `<span class="pag-reticencias">…</span>`
+      : `<button class="pag-btn ${n === paginaPedidos ? "ativo" : ""}" data-pag="${n}">${n}</button>`;
+  }
+  botoes += `<button class="pag-btn pag-seta" data-pag="${paginaPedidos + 1}" ${paginaPedidos === totalPaginas ? "disabled" : ""} aria-label="Próxima página">›</button>`;
+  return `<div class="pedidos-paginacao">
+    <span class="pag-info">Mostrando ${de}–${ate} de ${total} pedidos</span>
+    <div class="pag-controles">${botoes}</div>
+  </div>`;
+}
+
+function irParaPagina(n) {
+  paginaPedidos = n;
+  renderListaPedidos(listaPedidosAtual);
 }
 
 // Reaplica a animação de entrada (remove a classe, força reflow, readiciona).
@@ -960,6 +1010,7 @@ function renderPedidos(animar = false) {
     return false;
   });
 
+  listaPedidosAtual = lista;
   renderListaPedidos(lista);
 
   // Fade sutil ao trocar de filtro (período/tipo) — busca e auto-refresh não animam.
@@ -985,14 +1036,21 @@ function renderListaPedidos(lista) {
     return;
   }
 
+  // Paginação: fatia a lista filtrada na página atual
+  const totalPaginas = Math.ceil(lista.length / PEDIDOS_POR_PAGINA);
+  if (paginaPedidos > totalPaginas) paginaPedidos = totalPaginas;
+  if (paginaPedidos < 1) paginaPedidos = 1;
+  const ini = (paginaPedidos - 1) * PEDIDOS_POR_PAGINA;
+  const pagina = lista.slice(ini, ini + PEDIDOS_POR_PAGINA);
+
   // Desktop: tabela escaneável
   let tabela = `<table class="pedidos-tabela"><thead><tr>
     <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Tipo</th><th class="col-total">Total</th>
     </tr></thead><tbody>`;
-  lista.forEach((p) => {
+  pagina.forEach((p) => {
     tabela += `<tr class="pedido-linha" data-id="${p.id}">
       <td class="ped-num">#${p.numero}</td>
-      <td>${new Date(p.criadoEm).toLocaleString("pt-BR")}</td>
+      <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
       <td>${escapar(p.cliente)}</td>
       <td>${escapar(telefoneFmt(p))}</td>
       <td>${tagTipo(p)}</td>
@@ -1003,7 +1061,7 @@ function renderListaPedidos(lista) {
 
   // Mobile: cards condensados
   let cards = `<div class="pedidos-cards">`;
-  lista.forEach((p) => {
+  pagina.forEach((p) => {
     const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     cards += `<div class="pedido-card" data-id="${p.id}">
       <div class="pedido-card-topo">
@@ -1019,7 +1077,7 @@ function renderListaPedidos(lista) {
   });
   cards += "</div>";
 
-  cont.innerHTML = tabela + cards;
+  cont.innerHTML = tabela + cards + paginacaoHtml(lista.length, totalPaginas, ini, pagina.length);
 
   // Linha (desktop) ou card (mobile) → abre o detalhe existente.
   cont.querySelectorAll("[data-id]").forEach((el) =>
@@ -1028,21 +1086,30 @@ function renderListaPedidos(lista) {
       if (p) abrirModalPedido(p);
     })
   );
+
+  // Controles de paginação
+  cont.querySelectorAll("[data-pag]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const n = +b.dataset.pag;
+      if (n >= 1 && n <= totalPaginas && n !== paginaPedidos) irParaPagina(n);
+    })
+  );
 }
 
-// Handlers dos filtros (recalculam sem refazer fetch).
+// Handlers dos filtros (recalculam sem refazer fetch; voltam para a página 1).
 $("filtroPeriodo").addEventListener("click", (e) => {
   const btn = e.target.closest(".filtro-chip");
   if (!btn) return;
   filtros.periodo = btn.dataset.periodo;
   $("filtroPeriodo").querySelectorAll(".filtro-chip").forEach((b) => b.classList.toggle("ativo", b === btn));
   $("filtroDatas").style.display = filtros.periodo === "custom" ? "" : "none";
+  paginaPedidos = 1;
   renderPedidos(true);
 });
-$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; renderPedidos(true); });
-$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; renderPedidos(true); });
-$("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; renderPedidos(true); });
-$("buscaPedido").addEventListener("input", (e) => { filtros.busca = e.target.value; renderPedidos(); });
+$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; paginaPedidos = 1; renderPedidos(true); });
+$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; paginaPedidos = 1; renderPedidos(true); });
+$("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; paginaPedidos = 1; renderPedidos(true); });
+$("buscaPedido").addEventListener("input", (e) => { filtros.busca = e.target.value; paginaPedidos = 1; renderPedidos(); });
 
 // Ícones neutros (Lucide) para o detalhe
 const ICO_USER = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
