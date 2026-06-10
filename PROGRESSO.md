@@ -4,26 +4,7 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-10 01:07**
-
-### Feito nesta sessão
-
-- Migração para Baileys + "avisar cliente" mergeados na main (commit `1210acc`); fix telefone via LID (`senderPn`/`jidDecode`) + coluna `chatId` no pedido.
-- Redesign do painel comitado (commit `421687d`): shell com sidebar (desktop) + bottom-nav (mobile), tela de Pedidos (métricas com comparativo real vs período anterior em azul + filtros), detalhe do pedido em 2 colunas, home passou de Conexão → Pedidos.
-- Implementada paginação + data relativa na lista de Pedidos (`public/app.js`/`style.css`): 10/página, "Mostrando X–Y de N", controles `‹ 1 2 … ›`, datas "Hoje/Ontem, HH:MM", paginação adaptada ao mobile.
-
-### Em meio de edição
-
-- Paginação + data relativa: implementada e validada internamente (JS OK; 15→2 págs, 124→13 com "…"), aguardando validação visual do usuário antes do commit. Arquivos: `public/app.js`, `public/style.css`.
-
-### Próximo passo
-
-- Usuário valida visualmente a paginação/datas na aba Pedidos; aprovado → commit da Fase 17.
-
-### Decisões pendentes
-
-- Atualizar seção Concluído do `PROGRESSO.md` e `CHANGELOG.md` com o marco do redesign do painel.
-- Pills de tipo mantidas semânticas (Entrega azul / Retirada verde) em vez do laranja do protótipo — confirmado pelo usuário, diverge do protótipo de propósito.
+_(nada no momento)_
 
 ## 📋 Próximos Passos
 
@@ -62,3 +43,10 @@
 - [x] **Redesign Login/Cadastro** — layout split (painel de marca gradiente roxo→ciano + área de formulário); logo garfo-e-faca SVG; eye toggle para senha (e confirmação no cadastro); campo `#senha2` e validação de senhas mantidos; `#senha2` omitido do redesign foi corrigido antes da implementação
 - [x] **Avisar cliente "pedido pronto"** — `POST /api/pedido/avisar`: envio manual (1 por clique, nunca em massa) de mensagem ao cliente pelo WhatsApp do tenant; templates editáveis em `config.json` (`mensagens.pedidoPronto.entrega`/`.retirada`, variáveis `{cliente}`/`{numero}`); coluna `avisadoEm` no pedido; campos editáveis na aba Configurações
 - [x] **Fix `/api/status` sem token** — `atualizarStatus()` no painel chamava `fetch` cru (401) → QR nunca aparecia no front; passou a usar o helper `api()` com `Authorization`. Bug pré-existente que só aflorou quando o QR voltou a gerar (Baileys)
+- [x] **Redesign do shell do painel** — sidebar (desktop) + bottom-nav (mobile); home passou de Conexão → Pedidos; um único handler de logout reaproveitado
+- [x] **Redesign Pedidos** — métricas com comparativo real vs período anterior (em azul/`--secondary`), filtros com busca, detalhe do pedido em 2 colunas, paginação 10/página ("Mostrando X–Y de N" + `‹ 1 2 … ›`) e datas relativas ("Hoje/Ontem, HH:MM"); pills de tipo mantidas semânticas (Entrega azul / Retirada verde) por decisão de design
+- [x] **Redesign Cardápio** — cabeçalho "Gestão de Itens" + botões Nova categoria/Adicionar item, faixa de 3 métricas (total/categorias/indisponíveis), cabeçalho de categoria com ícone + divisória, cards com descrição truncada e rótulo Disponível/Indisponível, card "+" tracejado por categoria
+- [x] **Redesign Conexão** — layout 2 colunas (passos "Como conectar" + Dica e painel de QR com moldura gradiente roxo→ciano); 4 estados (desligado/iniciando/aguardando QR/conectado); estado conectado mostra o número do WhatsApp (`getEstado` passou a expor `numero`, capturado de `sock.user.id` no `connection:open`)
+- [x] **Redesign Configurações** — card de status do atendimento em destaque, seções com ícone, mensagens em grid (todas preservadas), horários em tabela (desktop) / cards por dia (mobile), formas de pagamento como pills com "+ Adicionar Método", barra inferior com Descartar (recarrega do servidor) + Salvar
+- [x] **Redesign Simulador** — "Console de Testes" com chat fiel (avatar + "Nymbus Bot" + horário), painel "Variáveis de Contexto" real (etapa, itens, total do carrinho); mocks sem backend (delay/logs/status da resposta) deliberadamente não construídos
+- [x] **Fix bottom-nav mobile** — `.sidebar` no mobile tinha `top:0` herdado + `bottom:0` → barra esticava pra tela toda e cobria o conteúdo; corrigido com `top:auto`

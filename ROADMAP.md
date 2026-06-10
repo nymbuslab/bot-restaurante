@@ -47,7 +47,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   burocracia, prematuro antes disso.
 - Relatórios de pedidos por período no painel
 - Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
-- Redesign visual completo (Nymbus Lab) — ✅ **em andamento**: Cardápio + Login/Cadastro concluídos; faltam Pedidos, Configurações, Conexão, Simulador
+- Redesign visual completo (Nymbus Lab) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
 - Integração com sistemas de PDV / impressora de cupom
 - App mobile para o atendente receber pedidos
 - **Limpeza ativa de sessões abandonadas (bot)** — varredura periódica (`setInterval`) removendo sessões expiradas, no lugar da expiração lazy atual (que só limpa quando chega nova mensagem). Relevante só quando o volume de clientes simultâneos justificar — cruza com a nota de RAM por tenant no `PROGRESSO.md`.
