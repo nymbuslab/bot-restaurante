@@ -854,30 +854,161 @@ button:disabled {
 }
 
 /* ---------- Conexão ---------- */
-.status-box {
-  text-align: center;
-  padding: 48px 24px;
+.conexao-topo { margin-bottom: 22px; }
+.conexao-titulo {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+.conexao-topo .sub { margin: 4px 0 0; }
+
+.conexao-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
 }
 
-.status-box h2 {
+/* Card "Como conectar" */
+.conexao-passos { padding: 24px; }
+.conexao-passos-titulo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  margin-bottom: 18px;
+}
+.passos-lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+}
+.passos-lista li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+.passos-lista strong { font-weight: 700; }
+.passo-num {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-subtle);
+  color: var(--accent-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.conexao-dica {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--secondary-subtle);
+  border: 1px solid rgba(115, 210, 230, 0.2);
+  border-radius: var(--radius);
+}
+.conexao-dica svg { color: var(--secondary); flex-shrink: 0; margin-top: 1px; }
+.conexao-dica p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.conexao-dica strong { color: var(--secondary); font-weight: 700; }
+
+/* Painel de QR / estado dinâmico */
+.conexao-painel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  min-height: 340px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 28px 24px;
+}
+.conexao-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  width: 100%;
+}
+.conexao-estado-txt { margin: 0; font-size: 14px; color: var(--text-secondary); }
+.conexao-estado-txt.aguardando { color: var(--secondary); font-weight: 600; }
+.conexao-estado button {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  font-size: 16px;
-  margin-bottom: 8px;
 }
 
-.status-box img {
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin: 16px auto;
+/* Moldura gradiente roxo→ciano do QR */
+.qr-frame {
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+}
+.qr-img {
   display: block;
+  width: 240px;
+  height: 240px;
+  border-radius: var(--radius);
   background: #fff;
-  padding: 8px;
+  padding: 10px;
 }
 
-.status-box .sub { margin-bottom: 20px; }
+/* Spinner de carregamento */
+.qr-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-fg);
+  animation: spin 0.8s linear infinite;
+}
+
+/* Ícone grande do estado desligado */
+.conexao-icone-grande {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Estado conectado */
+.conexao-conectado-cabeca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--success);
+}
+.conexao-conectado-titulo { font-size: 20px; font-weight: 700; }
+.conexao-numero { margin: 0; font-size: 14px; color: var(--text-secondary); }
+.conexao-numero strong { color: var(--text-primary); }
+.conexao-acoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* Link discreto (escape hatch "limpar sessão" no estado desligado) */
+.link-discreto {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px;
+  text-decoration: underline;
+}
+.link-discreto:hover { color: var(--text-primary); background: none; transform: none; }
 
 .bolinha {
   display: inline-block;
@@ -890,6 +1021,212 @@ button:disabled {
 .on  { background: var(--success); box-shadow: 0 0 0 3px var(--success-subtle); }
 .off { background: var(--error);   box-shadow: 0 0 0 3px var(--error-subtle); }
 .wait{ background: var(--warning); box-shadow: 0 0 0 3px var(--warning-subtle); }
+
+/* ---------- Configurações ---------- */
+.cfg-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.cfg-titulo {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+.cfg-status-label { font-size: 13px; color: var(--text-secondary); }
+.cfg-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.cfg-status-chip.aberto  { background: var(--success-subtle); color: var(--success); border-color: rgba(34, 197, 94, 0.3); }
+.cfg-status-chip.fechado { background: var(--error-subtle);   color: var(--error);   border-color: rgba(239, 68, 68, 0.3); }
+
+/* Switch reutilizável (status do atendimento + fechado por dia) */
+.switch { display: inline-flex; align-items: center; }
+.switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 40px;
+  height: 22px;
+  min-width: 40px;
+  background: var(--bg-overlay);
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s, border-color 0.2s;
+  margin: 0;
+}
+.switch input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--text-disabled);
+  border-radius: 50%;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  transition: transform 0.2s, background 0.2s;
+}
+.switch input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.switch input[type="checkbox"]:checked::before {
+  background: #fff;
+  transform: translateX(18px) translateY(-50%);
+}
+
+/* Card de destaque — Status do Atendimento */
+.cfg-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.cfg-status-texto h3 { font-size: 16px; font-weight: 700; }
+.cfg-status-texto .sub { margin: 4px 0 0; }
+.cfg-status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cfg-status-toggle-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+/* Seções com cabeçalho + ícone */
+.cfg-secao { margin-bottom: 26px; }
+.cfg-secao-cabeca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cfg-secao-cabeca svg { color: var(--accent-fg); flex-shrink: 0; }
+.cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.cfg-secao-sub { margin: -6px 0 14px; }
+
+/* Labels da config em caixa-baixa (fiel ao protótipo) */
+.cfg-secao .campo > label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Mensagens automáticas — grid */
+.cfg-msgs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.cfg-msg label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.cfg-msg-hint { font-weight: 400; font-size: 11px; color: var(--text-disabled); }
+.cfg-msg textarea { min-height: 92px; }
+
+/* Horário de funcionamento — tabela (desktop) */
+.cfg-horarios-card { padding: 8px 6px; }
+.tabela-horarios { width: 100%; border-collapse: collapse; }
+.tabela-horarios th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.tabela-horarios th:last-child { text-align: right; }
+.hor-linha td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+.hor-linha:last-child td { border-bottom: none; }
+.hor-dia { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.hor-time { width: 130px; }
+.hor-fechado-cel { text-align: right; }
+.hor-fechado .hor-dia { color: var(--text-disabled); }
+
+/* Entrega e pagamento — pills */
+.cfg-pagamentos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.pag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-subtle);
+  color: var(--text-primary);
+  border: 1px solid rgba(99, 68, 188, 0.3);
+  border-radius: 20px;
+  padding: 6px 8px 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pag-pill-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+.pag-pill-del:hover { background: var(--error-subtle); color: var(--error); }
+.pag-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pag-add:hover { border-color: var(--accent-fg); color: var(--accent-fg); background: none; transform: none; }
+.pag-input { width: 170px; border-radius: 20px; padding: 6px 14px; }
+
+/* Barra inferior com Descartar + Salvar */
+.cfg-barra { justify-content: space-between; }
+.cfg-barra-aviso { font-size: 13px; color: var(--text-secondary); }
+.cfg-barra-acoes { display: flex; align-items: center; gap: 12px; }
 
 /* ---------- Pedidos ---------- */
 .pedidos-topo {
@@ -1321,51 +1658,82 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .modal-confirmar:hover { background: #DC2626 !important; }
 
 /* ---------- Simulador de chat ---------- */
+/* Cabeçalho de ação */
+.sim-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.sim-titulo {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+.sim-topo-texto .sub { margin: 4px 0 0; }
+#btnSimReset { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.sim-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+
 .sim-wrapper {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 56px - 48px - 56px);
-  min-height: 480px;
-  max-width: 540px;
-  margin: 0 auto;
+  height: calc(100vh - 240px);
+  min-height: 460px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
-.sim-topbar {
+/* Painel "Variáveis de Contexto" (direita) */
+.sim-contexto { display: flex; flex-direction: column; gap: 16px; }
+.sim-ctx-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.sim-ctx-titulo {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  background: var(--bg-elevated);
-}
-
-.sim-topbar-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sim-topbar-titulo {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.sim-estado-pill {
-  font-size: 10px;
+  gap: 8px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 3px 8px;
-  border-radius: 20px;
-  background: var(--accent-subtle);
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+.sim-ctx-titulo svg { color: var(--accent-fg); flex-shrink: 0; }
+.sim-ctx-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.sim-ctx-linha:last-child { margin-bottom: 0; }
+.sim-ctx-val {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700;
   color: var(--accent-fg);
-  border: 1px solid rgba(99,68,188,0.25);
+  word-break: break-word;
+  text-align: right;
 }
 
 .sim-chat {
@@ -1389,10 +1757,28 @@ tbody tr:hover td { background: var(--bg-elevated); }
 /* Balão do bot (esquerda) */
 .sim-balao-bot {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8px;
   align-self: flex-start;
   max-width: 85%;
+}
+
+.sim-msg-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sim-msg-nome {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding-left: 2px;
+}
+.sim-hora {
+  font-size: 10px;
+  color: var(--text-disabled);
+  padding: 0 2px;
 }
 
 .sim-avatar {
@@ -1407,6 +1793,7 @@ tbody tr:hover td { background: var(--bg-elevated); }
   font-size: 14px;
   flex-shrink: 0;
 }
+.sim-avatar svg { color: var(--accent-fg); }
 
 .sim-bubble-bot {
   background: var(--bg-elevated);
@@ -1424,6 +1811,10 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .sim-balao-user {
   align-self: flex-end;
   max-width: 75%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 
 .sim-bubble-user {
@@ -1492,8 +1883,9 @@ tbody tr:hover td { background: var(--bg-elevated); }
 /* Input row */
 .sim-input-row {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 12px 14px 8px;
   border-top: 1px solid var(--border);
   background: var(--bg-elevated);
   flex-shrink: 0;
@@ -1503,8 +1895,8 @@ tbody tr:hover td { background: var(--bg-elevated); }
   flex: 1;
   background: var(--bg-overlay);
   border-color: var(--border);
-  border-radius: 20px;
-  padding: 9px 14px;
+  border-radius: 22px;
+  padding: 11px 16px;
   font-size: 13px;
 }
 
@@ -1513,11 +1905,27 @@ tbody tr:hover td { background: var(--bg-elevated); }
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-.sim-input-row button {
-  border-radius: 20px;
-  padding: 9px 18px;
-  font-size: 13px;
+.sim-enviar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
+
+.sim-input-dica {
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-disabled);
+  padding: 0 16px 10px;
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+.sim-input-dica strong { color: var(--text-secondary); }
 
 /* ---------- Modal de detalhes do pedido ---------- */
 .pedido-detalhe {
@@ -1979,6 +2387,7 @@ tbody tr:hover td { background: var(--bg-elevated); }
   .app-layout { flex-direction: column; }
   .sidebar {
     position: fixed;
+    top: auto;             /* anula o top:0 do desktop — senão top+bottom esticam a barra pra tela toda */
     bottom: 0; left: 0; right: 0;
     width: 100%;
     height: auto;
@@ -2068,6 +2477,72 @@ tbody tr:hover td { background: var(--bg-elevated); }
   .item-card-foto { display: none; }
   .item-card-desc { display: none; }
   .item-card-add { min-height: 56px; flex-direction: row; }
+
+  /* Conexão: 1 coluna, QR primeiro (como no protótipo mobile) */
+  .conexao-grid { grid-template-columns: 1fr; gap: 16px; }
+  .conexao-painel { order: -1; min-height: 300px; }
+  .qr-img { width: 200px; height: 200px; }
+
+  /* Configurações: empilha tudo */
+  .cfg-msgs-grid { grid-template-columns: 1fr; }
+  .cfg-status-card { flex-direction: column; align-items: stretch; gap: 14px; }
+  .cfg-status-toggle { width: 100%; justify-content: space-between; }
+  .cfg-barra { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cfg-barra-acoes { justify-content: flex-end; }
+
+  /* Horário: tabela vira cards por dia (dia+fechado no topo, abre/fecha lado a lado) */
+  .cfg-horarios-card { padding: 0; background: none; border: none; box-shadow: none; }
+  .tabela-horarios thead { display: none; }
+  .tabela-horarios, .tabela-horarios tbody, .hor-linha { display: block; width: 100%; }
+  .hor-linha {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    background: var(--bg-surface);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    align-items: center;
+  }
+  .hor-linha td { display: block; border: none !important; padding: 0; }
+  .hor-linha .hor-dia { flex: 1; font-size: 15px; order: 1; }
+  .hor-linha .hor-fechado-cel {
+    order: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+  }
+  .hor-linha .hor-fechado-cel::before {
+    content: "Fechado";
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .hor-linha td[data-label="Abre"],
+  .hor-linha td[data-label="Fecha"] {
+    order: 3;
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+  }
+  .hor-linha td[data-label="Abre"]::before,
+  .hor-linha td[data-label="Fecha"]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+  .hor-linha .hor-time { width: 100%; }
+
+  /* Simulador: 1 coluna, painel de contexto oculto, chat ocupa a tela */
+  .sim-grid { grid-template-columns: 1fr; gap: 14px; }
+  .sim-contexto { display: none; }
+  .sim-wrapper { height: calc(100vh - 210px); min-height: 380px; }
 
   .auth-layout { flex-direction: column; min-height: unset; border-radius: var(--radius-lg); }
   .auth-marca { padding: 28px 24px; flex-direction: row; gap: 16px; text-align: left; justify-content: flex-start; }

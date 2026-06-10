@@ -42,14 +42,14 @@ const tenants = new Map();
 
 function getEstado(slug) {
   const t = tenants.get(slug);
-  if (!t) return { status: "desligado", qr: null };
-  return { status: t.status, qr: t.qrDataUrl };
+  if (!t) return { status: "desligado", qr: null, numero: null };
+  return { status: t.status, qr: t.qrDataUrl, numero: t.numero || null };
 }
 
 function iniciar(slug, tenantDir) {
   if (tenants.has(slug) && tenants.get(slug).sock) return;
 
-  const t = { sock: null, status: "iniciando", qrDataUrl: null, prontoEm: null, fechandoManual: false, tentativas: 0 };
+  const t = { sock: null, status: "iniciando", qrDataUrl: null, numero: null, prontoEm: null, fechandoManual: false, tentativas: 0 };
   tenants.set(slug, t);
 
   conectar(slug, tenantDir).catch((err) => {
@@ -110,6 +110,8 @@ async function conectar(slug, tenantDir) {
       tt.qrDataUrl = null;
       tt.prontoEm = Date.now();
       tt.tentativas = 0;
+      // Número do WhatsApp conectado (ex: "5511987654321:12@s.whatsapp.net" → "5511987654321")
+      tt.numero = sock.user?.id ? (jidDecode(sock.user.id)?.user || null) : null;
       console.log(`[${slug}] 🤖 Bot ONLINE.`);
     }
 
