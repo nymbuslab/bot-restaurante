@@ -10,7 +10,7 @@ const cabecalhos = {
   Authorization: "Bearer " + token,
 };
 
-// Exibe o nome da empresa no header assim que a página carrega
+// Exibe o nome da empresa no header ao carregar a página
 const _nomeEmpresa = sessionStorage.getItem("empresaNome");
 document.addEventListener("DOMContentLoaded", () => {
   const h = document.getElementById("headerNome");
@@ -121,11 +121,13 @@ document.querySelectorAll("nav button").forEach((btn) => {
   });
 });
 
-$("btnSair").addEventListener("click", async () => {
+// Um único handler de logout, reaproveitado pelos botões Sair (sidebar + header mobile).
+async function sair() {
   try { await api("POST", "/api/logout"); } catch (e) { /* ignora */ }
   sessionStorage.clear();
   location.href = "login.html";
-});
+}
+document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click", sair));
 
 // ============================================================
 // CONEXÃO (status do bot + QR)
@@ -208,7 +210,8 @@ setInterval(() => {
 // ============================================================
 // CARDÁPIO
 // ============================================================
-function moeda(v) { return Number(v || 0).toFixed(2); }
+function moeda(v) { return Number(v || 0).toFixed(2); } // ponto — para value de inputs (parseFloat)
+function moedaBR(v) { return Number(v || 0).toFixed(2).replace(".", ","); } // vírgula — para exibição pt-BR
 
 function renderCardapio() {
   const c = $("cardapioContainer");
@@ -251,7 +254,7 @@ function renderCardapio() {
           <div class="item-card-info">
             <div class="item-card-meta">
               <span class="item-card-nome">${escapar(item.nome) || "(sem nome)"}</span>
-              <span class="item-card-preco">R$ ${moeda(item.preco)}</span>
+              <span class="item-card-preco">R$ ${moedaBR(item.preco)}</span>
               ${!item.disponivel ? `<span class="item-card-rotulo">Indisponível</span>` : ""}
             </div>
             <div class="item-card-bottom">
@@ -830,123 +833,320 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
 // PEDIDOS
 // ============================================================
 let pedidosCache = [];
+const filtros = { periodo: "hoje", tipo: "todos", busca: "", dataIni: "", dataFim: "" };
 
+// Só busca os pedidos do tenant; o recorte (período/tipo/busca) e as métricas
+// são calculados no front em renderPedidos() a partir deste conjunto.
 async function carregarPedidos() {
   const r = await api("GET", "/api/pedidos");
   if (!r) return;
   pedidosCache = await r.json();
+  renderPedidos();
+}
+
+// Intervalo do período selecionado + nº de dias (para a média diária).
+function periodoRange() {
+  const agora = new Date();
+  const inicioDoDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  if (filtros.periodo === "hoje") {
+    return { ini: inicioDoDia(agora), fim: agora, dias: 1 };
+  }
+  if (filtros.periodo === "7dias") {
+    const ini = inicioDoDia(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 6));
+    return { ini, fim: agora, dias: 7 };
+  }
+  // Personalizado
+  const di = filtros.dataIni ? new Date(filtros.dataIni + "T00:00:00") : null;
+  const df = filtros.dataFim ? new Date(filtros.dataFim + "T23:59:59") : null;
+  if (di && df) {
+    const dias = Math.max(1, Math.round((inicioDoDia(df) - inicioDoDia(di)) / 86400000) + 1);
+    return { ini: di, fim: df, dias };
+  }
+  return { ini: null, fim: null, dias: 1 }; // custom incompleto: sem limite até escolher datas
+}
+
+function noPeriodo(p, range) {
+  const t = new Date(p.criadoEm).getTime();
+  if (range.ini && t < range.ini.getTime()) return false;
+  if (range.fim && t > range.fim.getTime()) return false;
+  return true;
+}
+
+// Telefone limpo para exibição (nunca o id cru). Formata 55+DDD+número.
+function telefoneFmt(p) {
+  const d = (p.telefone || "").replace(/\D/g, "");
+  if (!d) return "—";
+  if (d.length >= 12 && d.startsWith("55")) {
+    const ddd = d.slice(2, 4), resto = d.slice(4);
+    if (resto.length === 9) return `(${ddd}) ${resto.slice(0, 5)}-${resto.slice(5)}`;
+    if (resto.length === 8) return `(${ddd}) ${resto.slice(0, 4)}-${resto.slice(4)}`;
+  }
+  return d;
+}
+
+function tagTipo(p) {
+  return p.tipoEntrega === "Entrega"
+    ? `<span class="tag tag-entrega">🛵 Entrega</span>`
+    : `<span class="tag tag-retirada">🏃 Retirada</span>`;
+}
+
+// Reaplica a animação de entrada (remove a classe, força reflow, readiciona).
+function animarTroca(el) {
+  if (!el) return;
+  el.classList.remove("fade-troca");
+  void el.offsetWidth;
+  el.classList.add("fade-troca");
+}
+
+// Ícones de tendência (Lucide) para o comparativo do card destaque
+const ICO_TREND_UP = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+const ICO_TREND_DOWN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`;
+
+// Período imediatamente anterior, de mesma duração (para o comparativo real).
+function periodoAnteriorRange(range) {
+  if (!range.ini) return { ini: null, fim: null, dias: range.dias };
+  const fim = new Date(range.ini.getTime() - 1);
+  const ini = new Date(range.ini.getTime() - range.dias * 86400000);
+  return { ini, fim, dias: range.dias };
+}
+function labelComparativo() {
+  if (filtros.periodo === "hoje") return "vs ontem";
+  if (filtros.periodo === "7dias") return "vs 7 dias anteriores";
+  return "vs período anterior";
+}
+
+function renderPedidos(animar = false) {
+  const range = periodoRange();
+
+  // Conjunto base = período + tipo → define as MÉTRICAS (a busca não entra aqui).
+  const base = pedidosCache.filter(
+    (p) => noPeriodo(p, range) && (filtros.tipo === "todos" || p.tipoEntrega === filtros.tipo)
+  );
+
+  const total = base.length;
+  const media = total / range.dias;
+  const somaTotais = base.reduce((s, p) => s + (p.total || 0), 0);
+  const ticket = total ? somaTotais / total : 0;
+  $("metTotal").textContent = total;
+  $("metMedia").textContent = media.toFixed(1).replace(".", ",");
+  $("metTicket").textContent = "R$ " + moedaBR(ticket);
+
+  // Comparativo REAL vs período anterior equivalente (contagem de pedidos).
+  const rangeAnt = periodoAnteriorRange(range);
+  const totalAnt = pedidosCache.filter(
+    (p) => noPeriodo(p, rangeAnt) && (filtros.tipo === "todos" || p.tipoEntrega === filtros.tipo)
+  ).length;
+  const compEl = $("metComparativo");
+  const trendEl = $("metTrendIcon");
+  if (totalAnt > 0) {
+    const pct = Math.round(((total - totalAnt) / totalAnt) * 100);
+    const sobe = pct >= 0;
+    if (compEl) { compEl.textContent = `${sobe ? "↑" : "↓"} ${Math.abs(pct)}% ${labelComparativo()}`; compEl.style.display = ""; }
+    if (trendEl) trendEl.innerHTML = sobe ? ICO_TREND_UP : ICO_TREND_DOWN;
+  } else {
+    if (compEl) compEl.style.display = "none"; // sem base anterior → não mostra %
+    if (trendEl) trendEl.innerHTML = ICO_TREND_UP;
+  }
+
+  // Lista exibida = base + busca (nome / telefone / nº do pedido).
+  const termo = filtros.busca.trim().toLowerCase();
+  const digitos = termo.replace(/\D/g, "");
+  const lista = !termo ? base : base.filter((p) => {
+    if ((p.cliente || "").toLowerCase().includes(termo)) return true;
+    if (digitos) {
+      if ((p.telefone || "").replace(/\D/g, "").includes(digitos)) return true;
+      if (String(p.numero).includes(digitos)) return true;
+    }
+    return false;
+  });
+
+  renderListaPedidos(lista);
+
+  // Fade sutil ao trocar de filtro (período/tipo) — busca e auto-refresh não animam.
+  if (animar) {
+    animarTroca(document.querySelector(".metricas-cards"));
+    animarTroca($("pedidosContainer"));
+  }
+}
+
+function renderListaPedidos(lista) {
   const cont = $("pedidosContainer");
-  if (pedidosCache.length === 0) {
+
+  if (lista.length === 0) {
+    const semNenhum = pedidosCache.length === 0;
     cont.innerHTML = `
       <div class="estado-vazio">
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <p>Nenhum pedido recebido ainda</p>
-        <span class="sub">Os pedidos aparecem aqui assim que o bot receber o primeiro pedido pelo WhatsApp.</span>
+        <p>${semNenhum ? "Nenhum pedido recebido ainda" : "Nenhum pedido neste período"}</p>
+        <span class="sub">${semNenhum
+          ? "Os pedidos aparecem aqui assim que o bot receber o primeiro pelo WhatsApp."
+          : "Experimente ampliar o período (7 dias) ou limpar a busca."}</span>
       </div>`;
     return;
   }
-  let html = `<table><thead><tr>
-    <th>#</th><th>Cliente</th><th>Total</th><th>Tipo</th><th>Pagamento</th><th>Quando</th><th></th>
+
+  // Desktop: tabela escaneável
+  let tabela = `<table class="pedidos-tabela"><thead><tr>
+    <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Tipo</th><th class="col-total">Total</th>
     </tr></thead><tbody>`;
-  pedidosCache.forEach((p, idx) => {
-    const data = new Date(p.criadoEm).toLocaleString("pt-BR");
-    const tipoTag = p.tipoEntrega === "Entrega"
-      ? `<span class="tag tag-entrega">🛵 Entrega</span>`
-      : `<span class="tag tag-retirada">🏃 Retirada</span>`;
-    html += `<tr>
-      <td>${p.numero}</td>
-      <td>${escapar(p.cliente)}<br><span class="sub">${escapar(p.telefone || "")}</span></td>
-      <td>R$ ${moeda(p.total)}</td>
-      <td>${tipoTag}</td>
-      <td>${escapar(p.pagamento)}</td>
-      <td>${data}</td>
-      <td><button class="btn-ver-pedido" data-idx="${idx}">Ver pedido</button></td>
+  lista.forEach((p) => {
+    tabela += `<tr class="pedido-linha" data-id="${p.id}">
+      <td class="ped-num">#${p.numero}</td>
+      <td>${new Date(p.criadoEm).toLocaleString("pt-BR")}</td>
+      <td>${escapar(p.cliente)}</td>
+      <td>${escapar(telefoneFmt(p))}</td>
+      <td>${tagTipo(p)}</td>
+      <td class="ped-total">R$ ${moedaBR(p.total)}</td>
     </tr>`;
   });
-  html += "</tbody></table>";
-  cont.innerHTML = html;
+  tabela += "</tbody></table>";
 
-  cont.querySelectorAll(".btn-ver-pedido").forEach((btn) =>
-    btn.addEventListener("click", (e) => abrirModalPedido(pedidosCache[+e.target.dataset.idx]))
+  // Mobile: cards condensados
+  let cards = `<div class="pedidos-cards">`;
+  lista.forEach((p) => {
+    const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    cards += `<div class="pedido-card" data-id="${p.id}">
+      <div class="pedido-card-topo">
+        <span class="pedido-card-num">#${p.numero} • ${hora}</span>
+        ${tagTipo(p)}
+      </div>
+      <div class="pedido-card-cliente">${escapar(p.cliente)}</div>
+      <div class="pedido-card-rodape">
+        <span class="sub">${escapar(telefoneFmt(p))}</span>
+        <span class="pedido-card-total">R$ ${moedaBR(p.total)}</span>
+      </div>
+    </div>`;
+  });
+  cards += "</div>";
+
+  cont.innerHTML = tabela + cards;
+
+  // Linha (desktop) ou card (mobile) → abre o detalhe existente.
+  cont.querySelectorAll("[data-id]").forEach((el) =>
+    el.addEventListener("click", () => {
+      const p = pedidosCache.find((x) => String(x.id) === el.dataset.id);
+      if (p) abrirModalPedido(p);
+    })
   );
 }
+
+// Handlers dos filtros (recalculam sem refazer fetch).
+$("filtroPeriodo").addEventListener("click", (e) => {
+  const btn = e.target.closest(".filtro-chip");
+  if (!btn) return;
+  filtros.periodo = btn.dataset.periodo;
+  $("filtroPeriodo").querySelectorAll(".filtro-chip").forEach((b) => b.classList.toggle("ativo", b === btn));
+  $("filtroDatas").style.display = filtros.periodo === "custom" ? "" : "none";
+  renderPedidos(true);
+});
+$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; renderPedidos(true); });
+$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; renderPedidos(true); });
+$("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; renderPedidos(true); });
+$("buscaPedido").addEventListener("input", (e) => { filtros.busca = e.target.value; renderPedidos(); });
+
+// Ícones neutros (Lucide) para o detalhe
+const ICO_USER = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+const ICO_LOCAL = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+const ICO_PAG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
 
 function abrirModalPedido(p) {
   $("pedido-numero").textContent = `Pedido #${p.numero}`;
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 
   const taxa = p.taxaEntrega || 0;
-  const totalItens = p.itens.reduce((acc, i) => {
+  const subtotal = p.itens.reduce((acc, i) => {
     const extras = (i.opcionais || []).reduce((s, o) => s + (o.preco || 0), 0);
     return acc + (i.preco + extras) * i.qtd;
   }, 0);
 
-  let itensHtml = p.itens.map((i) => {
+  // Itens como cards de leitura (qtd Nx, nome, opcionais como subitens, preço à direita)
+  const itensHtml = p.itens.map((i) => {
     const extras = (i.opcionais || []).reduce((s, o) => s + (o.preco || 0), 0);
-    const subtotal = (i.preco + extras) * i.qtd;
-    const opcionaisHtml = i.opcionais && i.opcionais.length
-      ? `<div class="pedido-item-opc">+ ${i.opcionais.map((o) => escapar(o.nome)).join(", ")}</div>`
+    const sub = (i.preco + extras) * i.qtd;
+    const opcHtml = (i.opcionais && i.opcionais.length)
+      ? `<div class="ped-item-opc">${i.opcionais.map((o) => "+ " + escapar(o.nome)).join("<br>")}</div>`
       : "";
-    const obsHtml = i.observacao
-      ? `<div class="pedido-item-obs">📝 ${escapar(i.observacao)}</div>`
-      : "";
-    return `<div class="pedido-item">
-      <div>
-        <div class="pedido-item-nome">${i.qtd}× ${escapar(i.nome)}</div>
-        ${opcionaisHtml}${obsHtml}
+    return `<div class="ped-item">
+      <span class="ped-item-qtd">${i.qtd}x</span>
+      <div class="ped-item-info">
+        <div class="ped-item-nome">${escapar(i.nome)}</div>
+        ${opcHtml}
       </div>
-      <div class="pedido-item-preco">R$ ${moeda(subtotal)}</div>
+      <span class="ped-item-preco">R$ ${moedaBR(sub)}</span>
     </div>`;
   }).join("");
 
-  const taxaHtml = taxa > 0
-    ? `<div class="pedido-total-linha taxa"><span>Taxa de entrega</span><span>R$ ${moeda(taxa)}</span></div>`
-    : "";
+  // Observação agregada dos itens (só aparece se houver alguma; prefixo só com >1 item)
+  const comObs = p.itens.filter((i) => i.observacao && i.observacao.trim());
+  let obsHtml = "";
+  if (comObs.length) {
+    const linhas = comObs.map((i) =>
+      comObs.length > 1
+        ? `<p><strong>${escapar(i.nome)}:</strong> ${escapar(i.observacao)}</p>`
+        : `<p>${escapar(i.observacao)}</p>`
+    ).join("");
+    obsHtml = `<div class="ped-obs"><span class="ped-obs-titulo">Observação</span>${linhas}</div>`;
+  }
 
   const tipoTag = p.tipoEntrega === "Entrega"
     ? `<span class="tag tag-entrega">🛵 Entrega</span>`
     : `<span class="tag tag-retirada">🏃 Retirada</span>`;
 
-  const enderecoHtml = p.endereco && p.endereco !== "—"
-    ? `<div class="pedido-info-item pedido-endereco">
-        <span class="pedido-info-label">Endereço</span>
-        <span class="pedido-info-valor">${escapar(p.endereco)}</span>
-       </div>`
-    : "";
+  // Entrega: endereço em texto (sem mapa). Retirada: local do restaurante (config) ou balcão.
+  let entregaTexto;
+  if (p.tipoEntrega === "Entrega") {
+    entregaTexto = (p.endereco && p.endereco !== "—")
+      ? escapar(p.endereco)
+      : `<span class="ped-info-vazio">Endereço não informado</span>`;
+  } else {
+    const endRest = (configAtual && configAtual.restaurante && configAtual.restaurante.endereco) || "";
+    entregaTexto = endRest
+      ? `Retirada no local<br><span class="sub">${escapar(endRest)}</span>`
+      : "Retirada no balcão";
+  }
 
   $("pedido-detalhe-corpo").innerHTML = `
-    <div class="pedido-secao">
-      <div class="pedido-secao-titulo">Itens</div>
-      ${itensHtml}
-      ${taxaHtml}
-      <div class="pedido-total-linha final">
-        <span>Total</span>
-        <span>R$ ${moeda(p.total)}</span>
+    <div class="ped-det-grid">
+      <div class="ped-det-col">
+        <div class="ped-bloco">
+          <div class="ped-bloco-titulo">Cliente</div>
+          <div class="ped-cliente">
+            <div class="ped-cliente-avatar">${ICO_USER}</div>
+            <div class="ped-cliente-dados">
+              <div class="ped-cliente-nome">${escapar(p.cliente) || "—"}</div>
+              <div class="ped-cliente-tel">${escapar(telefoneFmt(p))}</div>
+            </div>
+          </div>
+        </div>
+        ${obsHtml}
+        <div class="ped-bloco">
+          <div class="ped-bloco-titulo">Itens do pedido</div>
+          ${itensHtml}
+        </div>
       </div>
-    </div>
-    <div class="pedido-secao">
-      <div class="pedido-secao-titulo">Informações</div>
-      <div class="pedido-info-grid">
-        <div class="pedido-info-item">
-          <span class="pedido-info-label">Cliente</span>
-          <span class="pedido-info-valor">${escapar(p.cliente)}</span>
+      <div class="ped-det-col">
+        <div class="ped-bloco">
+          <div class="ped-bloco-titulo">Entrega</div>
+          <div class="ped-linha-info">
+            <span class="ped-info-icone">${ICO_LOCAL}</span>
+            <div class="ped-info-texto">${entregaTexto}<div class="ped-info-tag">${tipoTag}</div></div>
+          </div>
         </div>
-        <div class="pedido-info-item">
-          <span class="pedido-info-label">Telefone</span>
-          <span class="pedido-info-valor">${escapar(p.telefone || "—")}</span>
+        <div class="ped-bloco">
+          <div class="ped-bloco-titulo">Pagamento</div>
+          <div class="ped-linha-info">
+            <span class="ped-info-icone">${ICO_PAG}</span>
+            <div class="ped-info-texto">${escapar(p.pagamento) || "—"}</div>
+          </div>
         </div>
-        <div class="pedido-info-item">
-          <span class="pedido-info-label">Tipo</span>
-          <span class="pedido-info-valor">${tipoTag}</span>
+        <div class="ped-bloco ped-resumo">
+          <div class="ped-bloco-titulo">Resumo de valores</div>
+          <div class="ped-resumo-linha"><span>Subtotal</span><span>R$ ${moedaBR(subtotal)}</span></div>
+          ${taxa > 0 ? `<div class="ped-resumo-linha"><span>Taxa de entrega</span><span>R$ ${moedaBR(taxa)}</span></div>` : ""}
+          <div class="ped-resumo-total"><span>Total</span><span>R$ ${moedaBR(p.total)}</span></div>
         </div>
-        <div class="pedido-info-item">
-          <span class="pedido-info-label">Pagamento</span>
-          <span class="pedido-info-valor">${escapar(p.pagamento)}</span>
-        </div>
-        ${enderecoHtml}
       </div>
-    </div>
-    <div class="pedido-acoes" id="pedido-acoes"></div>`;
+    </div>`;
 
   montarAcoes(p);
 
@@ -1032,6 +1232,7 @@ function fecharModalPedido() {
 }
 
 $("pedido-fechar").addEventListener("click", fecharModalPedido);
+$("pedido-fechar-rodape").addEventListener("click", fecharModalPedido);
 $("pedido-overlay").addEventListener("click", (e) => {
   if (e.target === $("pedido-overlay")) fecharModalPedido();
 });
@@ -1176,7 +1377,8 @@ simInput.addEventListener("keydown", (e) => {
 });
 
 async function inicial() {
-  atualizarStatus();
+  carregarPedidos();   // Pedidos é a aba inicial (home)
+  atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
   if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }
   const rcfg = await api("GET", "/api/config");
