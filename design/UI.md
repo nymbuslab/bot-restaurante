@@ -78,7 +78,7 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 - **Limites:** sem "IA especializada/inteligencia artificial" — nao ha IA. Valor honesto:
   receber pedidos pelo WhatsApp, editar cardapio sozinho, sem programador.
 
-### 3. Pedidos (historico + metricas leves)
+### 3. Pedidos (historico + metricas leves) — CONCLUIDO
 - **Construir:** lista cronologica — tabela no desktop, cards no mobile; tag de tipo
   (Entrega azul / Retirada verde); abrir detalhe. Topo com **metricas leves** do periodo:
   total de pedidos, media diaria, ticket medio (**calculo real** a partir de `pedidos.db`,
@@ -87,7 +87,7 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 - **Limites:** sem botoes de "status" interno (preparando/entregue) — ciclo do pedido e
   roadmap. A unica acao sobre o pedido e **"Avisar cliente"** (ver tela 4).
 
-### 4. Detalhe do pedido + Avisar cliente
+### 4. Detalhe do pedido + Avisar cliente — CONCLUIDO
 - **Construir:** visao de leitura — itens com opcionais, observacao (amarelo), endereco,
   pagamento, subtotal+taxa+total. Botao **"Avisar cliente"** que ENVIA pelo bot uma mensagem
   de "pedido pronto": entrega -> "saiu para entrega"; retirada -> "pronto para retirar".
@@ -110,7 +110,7 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
   de texto atual** (`Sub:\n* item`, `Nome | preco`) — `fluxo.js`/bot intactos.
 - **Limite mantido:** opcionais com **regras** (obrigatorio/escolha 1) = roadmap, fora daqui.
 
-### 7. Configuracoes
+### 7. Configuracoes — CONCLUIDO
 - **Construir:** secoes em cards — status do atendimento (toggle), dados do restaurante,
   mensagens, horarios (7 dias, **24h**; cards por dia no mobile), taxa fixa, formas de
   pagamento (tags). Barra fixa de "alteracoes nao salvas" = feature ok.
@@ -118,7 +118,7 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
   `atendimento.aberto`).
 - **Limites:** taxa por bairro/CEP = roadmap. Nada alem dos campos do `config.json`.
 
-### 8. Conexao WhatsApp
+### 8. Conexao WhatsApp — CONCLUIDO
 - **Construir:** fluxo guiado por estados — desconectado ("Conectar ao WhatsApp"), gerando QR,
   QR exibido, conectado (numero + "Desconectar" + "Gerar novo QR/limpar sessao"); passo a
   passo + dica de numero dedicado.
@@ -126,7 +126,7 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 - **Limites:** QR **real preto/branco escaneavel** (nunca decorativo). Sem promessas de
   "alta velocidade/envio instantaneo".
 
-### 9. Simulador
+### 9. Simulador — CONCLUIDO
 - **Construir:** chat de teste do fluxo — balao do bot a esquerda (neutro), do usuario a
   direita em roxo, campo de digitacao. Desktop = mesmo chat, mais largo.
 - **Dados:** usa o fluxo atual (equivalente ao `testar-bot.js` no painel).
@@ -137,15 +137,17 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 
 ## Status e ordem
 
-- **Fase cardapio (telas 5 e 6):** tokens da marca + nav + foto + modal + construtores +
-  cards. (Em finalizacao: ver `PROGRESSO.md`.)
-- **Proximo:** Pedidos + detalhe -> Configuracoes -> Conexao -> Simulador -> Login + Cadastro.
+**Redesign completo — todas as telas CONCLUIDAS:** shell (sidebar desktop / bottom-nav mobile),
+Login, Cadastro, Pedidos, Detalhe do pedido, Cardapio, Editor de item, Configuracoes, Conexao
+e Simulador, todos fieis aos prototipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0; os padroes
+de espacamento/componente para proximas telas estao em **"Padroes de layout reutilizaveis"** no
+`CLAUDE.md`.
 
-Cada tela segue o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
+Cada tela seguiu o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
 visual -> commit (Conventional Commits pt-BR, sem acento no titulo).
 
-## Decisoes abertas
+## Decisoes (resolvidas)
 
-- **Logo:** hexagono OU garfo-e-faca (trava Login/Cadastro).
-- **Pedidos:** historico puro (so "X no periodo") OU com metricas leves (media diaria, ticket
-  medio). Atual: historico puro.
+- **Logo:** garfo-e-faca SVG — aplicado no Login/Cadastro e na marca do painel.
+- **Pedidos:** com **metricas leves reais** (total de pedidos, media diaria, ticket medio +
+  comparativo vs periodo anterior) calculadas sobre `pedidos.db` — nao e historico puro.
