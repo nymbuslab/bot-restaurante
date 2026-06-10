@@ -1011,6 +1011,40 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .pedidos-tabela .ped-total { text-align: right; }
 .pedidos-tabela .ped-total { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
 
+/* Paginação da lista */
+.pedidos-paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--bg-surface);
+  margin-top: -1px;
+}
+.pag-info { font-size: 13px; color: var(--text-secondary); }
+.pag-controles { display: flex; align-items: center; gap: 4px; }
+.pag-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pag-btn:hover:not(:disabled):not(.ativo) { background: var(--bg-elevated); color: var(--text-primary); }
+.pag-btn.ativo { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pag-btn:disabled { opacity: 0.4; cursor: default; }
+.pag-reticencias { color: var(--text-disabled); padding: 0 2px; }
+
 /* ---------- Loading spinner ---------- */
 .load {
   display: inline-block;
@@ -1896,6 +1930,17 @@ tbody tr:hover td { background: var(--bg-elevated); }
 
   /* Detalhe do pedido: 2 colunas → 1 coluna empilhada */
   .ped-det-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  /* Paginação: empilha info + controles, centralizado (desencaixa da tabela) */
+  .pedidos-paginacao {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .pag-controles { flex-wrap: wrap; justify-content: center; }
 
   table { font-size: 12px; }
   th, td { padding: 8px 10px; }
