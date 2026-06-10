@@ -653,9 +653,14 @@ button:disabled {
 /* ---------- Cardápio — grid de cards ---------- */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 12px;
+}
+
+/* Telas médias: cai para 2 colunas antes do mobile (1 coluna em <=640px) */
+@media (max-width: 1024px) {
+  .cards-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .item-card {
