@@ -207,7 +207,9 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
 - **Conexão manual**: `index.js` não chama `multiBot.iniciar()`. A conexão é disparada
   pelo painel (`POST /api/bot/conectar`). Reconexão controlada via `connection.update`:
   `restartRequired` (normal pós-QR) reconecta; `loggedOut` (401) para e marca desligado;
-  teto de tentativas para não martelar o WhatsApp.
+  teto de tentativas para não martelar o WhatsApp. No `connection: open`, o número conectado
+  (`sock.user.id` → `jidDecode`) é guardado e exposto por `getEstado` como `numero`; o painel
+  o exibe no estado "conectado" da aba Conexão.
 - **Memória por tenant**: sem Chromium — cada tenant é só uma conexão WebSocket (Baileys),
   consumo de RAM baixíssimo. A máquina de 1 GB no Fly.io suporta muito mais tenants do que
   os ~3–4 da era Chromium/Puppeteer.
