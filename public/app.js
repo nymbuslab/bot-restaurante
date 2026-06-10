@@ -213,7 +213,35 @@ setInterval(() => {
 function moeda(v) { return Number(v || 0).toFixed(2); } // ponto — para value de inputs (parseFloat)
 function moedaBR(v) { return Number(v || 0).toFixed(2).replace(".", ","); } // vírgula — para exibição pt-BR
 
+function renderCardapioMetricas() {
+  const el = $("cardapioMetricas");
+  if (!el) return;
+  let totalItens = 0, indisp = 0;
+  cardapioAtual.categorias.forEach((cat) => {
+    totalItens += cat.itens.length;
+    cat.itens.forEach((it) => { if (it.disponivel === false) indisp++; });
+  });
+  const cards = [
+    { label: "Total de itens",  valor: totalItens,
+      icone: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>` },
+    { label: "Categorias",      valor: cardapioAtual.categorias.length,
+      icone: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 19 8.5 16 17 8 17 5 8.5"/></svg>` },
+    { label: "Indisponíveis",   valor: indisp,
+      icone: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>` },
+  ];
+  el.innerHTML = cards.map((c) => `
+    <div class="metrica-card">
+      <div class="metrica-topo">
+        <span class="metrica-label">${c.label}</span>
+        <span class="metrica-ico">${c.icone}</span>
+      </div>
+      <div class="metrica-valor">${c.valor}</div>
+    </div>
+  `).join("");
+}
+
 function renderCardapio() {
+  renderCardapioMetricas();
   const c = $("cardapioContainer");
   c.innerHTML = "";
   cardapioAtual.categorias.forEach((cat, ci) => {
@@ -224,55 +252,64 @@ function renderCardapio() {
     div.innerHTML = `
       <div class="categoria-cabeca">
         <div class="cat-cabeca-esq">
+          <svg class="cat-icone" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
           <input value="${escapar(cat.nome)}" data-cat="${ci}" class="catNome" />
           <span class="cat-badge">${badge}</span>
         </div>
         <button class="perigo mini" data-del-cat="${ci}">Excluir</button>
       </div>
-      ${n === 0
-        ? `<div class="estado-vazio"><p>Nenhum item nesta categoria.</p><span class="sub">Use "+ Adicionar item" para começar.</span></div>`
-        : `<div class="cards-grid" data-itens="${ci}"></div>`
-      }
-      <button class="mini add-item" data-add-item="${ci}">+ Adicionar item</button>
+      <div class="cards-grid" data-itens="${ci}"></div>
     `;
     c.appendChild(div);
-    if (n > 0) {
-      const grid = div.querySelector(`[data-itens="${ci}"]`);
-      cat.itens.forEach((item, ii) => {
-        const card = document.createElement("div");
-        card.className = "item-card" + (item.disponivel ? "" : " item-indisp");
-        const temFoto = item.imagem && item.imagem !== "";
-        card.innerHTML = `
-          <div class="item-card-foto">
-            ${temFoto
-              ? `<img src="${escapar(item.imagem)}" alt="${escapar(item.nome)}" loading="lazy" />`
-              : `<div class="item-card-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </div>`
-            }
-          </div>
-          <div class="item-card-info">
-            <div class="item-card-meta">
+    const grid = div.querySelector(`[data-itens="${ci}"]`);
+    cat.itens.forEach((item, ii) => {
+      const card = document.createElement("div");
+      card.className = "item-card" + (item.disponivel ? "" : " item-indisp");
+      const temFoto = item.imagem && item.imagem !== "";
+      const dispTxt = item.disponivel ? "Disponível" : "Indisponível";
+      card.innerHTML = `
+        <div class="item-card-foto">
+          ${temFoto
+            ? `<img src="${escapar(item.imagem)}" alt="${escapar(item.nome)}" loading="lazy" />`
+            : `<div class="item-card-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>`
+          }
+        </div>
+        <div class="item-card-info">
+          <div class="item-card-meta">
+            <div class="item-card-linha1">
               <span class="item-card-nome">${escapar(item.nome) || "(sem nome)"}</span>
               <span class="item-card-preco">R$ ${moedaBR(item.preco)}</span>
-              ${!item.disponivel ? `<span class="item-card-rotulo">Indisponível</span>` : ""}
             </div>
-            <div class="item-card-bottom">
-              <label class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></label>
-              <div class="item-card-acoes">
-                <button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                </button>
-                <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-              </div>
+            ${item.desc ? `<p class="item-card-desc">${escapar(item.desc)}</p>` : ""}
+          </div>
+          <div class="item-card-bottom">
+            <label class="item-card-disp">
+              <span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span>
+              <span class="item-card-disp-txt">${dispTxt}</span>
+            </label>
+            <div class="item-card-acoes">
+              <button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
             </div>
           </div>
-        `;
-        grid.appendChild(card);
-      });
-    }
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+    const addCard = document.createElement("button");
+    addCard.className = "item-card-add";
+    addCard.setAttribute("data-add-item", ci);
+    addCard.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Adicionar item</span>
+    `;
+    grid.appendChild(addCard);
   });
   ligarEventosCardapio();
 }
@@ -690,6 +727,14 @@ $("editor-opc-add").addEventListener("click", () => {
 $("btnAddCategoria").addEventListener("click", () => {
   cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
   renderCardapio();
+});
+
+$("btnNovoItem").addEventListener("click", () => {
+  if (cardapioAtual.categorias.length === 0) {
+    toast("Crie uma categoria antes de adicionar itens.", "erro");
+    return;
+  }
+  abrirEditorItem(0, -1);
 });
 
 $("btnSalvarCardapio").addEventListener("click", async (e) => {
