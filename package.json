@@ -5,11 +5,13 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "gerar-hash-admin": "node scripts/gerar-hash.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.23",
     "better-sqlite3": "^12.10.0",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "multer": "^2.1.1",
     "pino": "^10.3.1",

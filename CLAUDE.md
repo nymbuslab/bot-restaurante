@@ -134,6 +134,35 @@ Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`.
 O token viaja em `Authorization: Bearer ...` em todas as chamadas protegidas.
 O middleware `exigeAuth` resolve `req.slug` e `req.tenantDir` automaticamente.
 
+## Super-admin (conta master)
+
+Área de gestão de **todos** os tenants, separada do painel de restaurante. **Backend
+apenas** (a tela vem em passo posterior).
+
+- **Conta master fixa**, via variáveis de ambiente (nunca hardcoded/commitada):
+  `SUPERADMIN_EMAIL` e `SUPERADMIN_SENHA_HASH`. O hash usa a **mesma** `hashSenha`
+  (`sha256(senha + SALT)`) do `empresas.js` — gere com `npm run gerar-hash-admin -- "senha"`
+  (script `scripts/gerar-hash.js` importa a função real, então o salt nunca diverge).
+  Sem as duas envs, as rotas `/api/admin/*` ficam desativadas (login responde **503**;
+  nunca há credencial default). Carregamento de `.env` via `dotenv` (ver `.env.example`).
+  Em produção (Fly.io): `fly secrets set SUPERADMIN_EMAIL=... SUPERADMIN_SENHA_HASH=...`.
+- **Isolamento total de auth:** Map `tokensAdmin` separado do `tokens` de restaurante.
+  `exigeSuperAdmin` valida só o token master; `exigeAuth` (inalterado) só o de restaurante.
+  Um token nunca cruza para o outro lado. Login master: `POST /api/admin/login { email, senha }`
+  → `{ token }`. Comparação de hash com `crypto.timingSafeEqual`.
+- **Rotas** (todas sob `exigeSuperAdmin`):
+  `GET /api/admin/tenants` (lista) · `POST /api/admin/tenants` (cria, reusa `empresas.cadastrar`) ·
+  `PATCH /api/admin/tenants/:slug/suspender` · `PATCH .../reativar` ·
+  `DELETE /api/admin/tenants/:slug` (destrutivo).
+- **Suspensão (efeito real):** `setAtivo(slug,0)` → login do restaurante já é recusado
+  (`autenticar` filtra `ativo=1`) + `multiBot.desconectar(slug)` (bot para) +
+  invalidação dos tokens de painel ativos do tenant (sessão aberta cai).
+- **Exclusão (destrutiva, ordem importa):** `multiBot.desconectar` (libera sessão Baileys)
+  → `pedidos.fecharConexao(tenantDir)` (fecha o handle SQLite — senão o `rmSync` falha no
+  Windows) → invalida tokens → `empresas.excluir(slug)` (apaga linha em `empresas.db` +
+  `data/tenants/{slug}/`). **Trava de segurança:** o corpo deve trazer
+  `{ confirmacao: "<slug>" }` igual ao slug da URL, senão responde 400 sem apagar nada.
+
 ## Horário de funcionamento
 
 Estrutura em `config.json` (por tenant):

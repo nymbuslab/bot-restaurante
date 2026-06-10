@@ -38,6 +38,42 @@ function exigeAuth(req, res, next) {
   next();
 }
 
+// Invalida (faz logout forçado de) todos os tokens de restaurante de um slug.
+// Usado ao suspender/excluir: a sessão aberta do tenant cai imediatamente.
+function invalidarTokensDoSlug(slug) {
+  for (const [tk, info] of tokens) {
+    if (info.slug === slug) tokens.delete(tk);
+  }
+}
+
+// ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
+// Map próprio, separado de `tokens`: um token de restaurante nunca acessa
+// /api/admin/*, e o token master nunca acessa rotas de restaurante.
+const tokensAdmin = new Map(); // token → true
+
+const SUPERADMIN_EMAIL      = process.env.SUPERADMIN_EMAIL || "";
+const SUPERADMIN_SENHA_HASH = process.env.SUPERADMIN_SENHA_HASH || "";
+const SUPERADMIN_CONFIGURADO = Boolean(SUPERADMIN_EMAIL && SUPERADMIN_SENHA_HASH);
+
+if (!SUPERADMIN_CONFIGURADO) {
+  console.warn("⚠️  Super-admin não configurado (defina SUPERADMIN_EMAIL e SUPERADMIN_SENHA_HASH). Rotas /api/admin/* desativadas até configurar.");
+}
+
+// Comparação de hash resistente a timing attack. Strings de tamanhos diferentes
+// retornam false sem vazar tempo.
+function hashConfere(hashInformado, hashEsperado) {
+  const a = Buffer.from(hashInformado);
+  const b = Buffer.from(hashEsperado);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+function exigeSuperAdmin(req, res, next) {
+  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+  if (!tokensAdmin.has(token)) return res.status(401).json({ erro: "Não autorizado" });
+  next();
+}
+
 // ---- Rotas públicas ----
 
 app.post("/api/cadastro", (req, res) => {
@@ -64,6 +100,86 @@ app.post("/api/login", (req, res) => {
 app.post("/api/logout", (req, res) => {
   const token = (req.headers["authorization"] || "").replace("Bearer ", "");
   tokens.delete(token);
+  res.json({ ok: true });
+});
+
+// ---- Super-admin: autenticação master ----
+
+app.post("/api/admin/login", (req, res) => {
+  if (!SUPERADMIN_CONFIGURADO) return res.status(503).json({ erro: "Super-admin não configurado no servidor." });
+  const { email, senha } = req.body || {};
+  if (!email || !senha) return res.status(400).json({ erro: "Preencha e-mail e senha." });
+
+  const emailOk = email === SUPERADMIN_EMAIL;
+  const senhaOk = hashConfere(empresas.hashSenha(senha), SUPERADMIN_SENHA_HASH);
+  if (!emailOk || !senhaOk) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+
+  const token = gerarToken();
+  tokensAdmin.set(token, true);
+  res.json({ token });
+});
+
+app.post("/api/admin/logout", (req, res) => {
+  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+  tokensAdmin.delete(token);
+  res.json({ ok: true });
+});
+
+// ---- Super-admin: gestão de tenants ----
+
+app.get("/api/admin/tenants", exigeSuperAdmin, (_req, res) => {
+  res.json(empresas.listar());
+});
+
+app.post("/api/admin/tenants", exigeSuperAdmin, (req, res) => {
+  try {
+    const { nome, email, senha } = req.body || {};
+    if (!nome || !email || !senha) return res.status(400).json({ erro: "Preencha todos os campos." });
+    if (senha.length < 6) return res.status(400).json({ erro: "Senha deve ter pelo menos 6 caracteres." });
+    const empresa = empresas.cadastrar({ nome, email, senha });
+    res.json({ ok: true, slug: empresa.slug, nome: empresa.nome });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
+  }
+});
+
+app.patch("/api/admin/tenants/:slug/suspender", exigeSuperAdmin, async (req, res) => {
+  const slug = req.params.slug;
+  if (!empresas.setAtivo(slug, 0)) return res.status(404).json({ erro: "Tenant não encontrado." });
+  // Efeito real: login já é recusado (autenticar filtra ativo=1); aqui derrubamos
+  // o bot e a sessão de painel ativa do tenant.
+  await multiBot.desconectar(slug);
+  invalidarTokensDoSlug(slug);
+  res.json({ ok: true, ativo: false });
+});
+
+app.patch("/api/admin/tenants/:slug/reativar", exigeSuperAdmin, (req, res) => {
+  const slug = req.params.slug;
+  if (!empresas.setAtivo(slug, 1)) return res.status(404).json({ erro: "Tenant não encontrado." });
+  res.json({ ok: true, ativo: true });
+});
+
+app.delete("/api/admin/tenants/:slug", exigeSuperAdmin, async (req, res) => {
+  const slug = req.params.slug;
+  const { confirmacao } = req.body || {};
+
+  // Defesa em profundidade: exige o slug exato no corpo. Um DELETE acidental
+  // sem confirmação não apaga um restaurante inteiro.
+  if (confirmacao !== slug) {
+    return res.status(400).json({ erro: "Confirmação não confere. Envie { confirmacao: \"<slug>\" } igual ao slug." });
+  }
+
+  const empresa = empresas.buscarPorSlug(slug);
+  if (!empresa) return res.status(404).json({ erro: "Tenant não encontrado." });
+
+  const tenantDir = empresas.tenantDir(slug);
+  // Ordem importa: parar o bot (libera arquivos da sessão) → fechar o handle
+  // SQLite de pedidos → excluir o registro e apagar a pasta.
+  await multiBot.desconectar(slug);
+  pedidos.fecharConexao(tenantDir);
+  invalidarTokensDoSlug(slug);
+  empresas.excluir(slug);
+
   res.json({ ok: true });
 });
 

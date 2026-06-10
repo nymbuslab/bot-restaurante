@@ -149,4 +149,21 @@ function listar() {
   return db.prepare("SELECT id, slug, nome, email, ativo, criadoEm FROM empresas ORDER BY id").all();
 }
 
-module.exports = { cadastrar, autenticar, buscarPorSlug, listar, tenantDir };
+// Suspende (ativo=0) ou reativa (ativo=1) um tenant. Retorna true se a linha existia.
+function setAtivo(slug, ativo) {
+  const r = db.prepare("UPDATE empresas SET ativo = ? WHERE slug = ?").run(ativo ? 1 : 0, slug);
+  return r.changes > 0;
+}
+
+// Exclusão DESTRUTIVA: apaga o registro em empresas.db e a pasta data/tenants/{slug}/.
+// IMPORTANTE: o chamador deve antes desconectar o bot e fechar a conexão SQLite de
+// pedidos (better-sqlite3 mantém o arquivo aberto — no Windows o rmSync falha senão).
+function excluir(slug) {
+  const r = db.prepare("DELETE FROM empresas WHERE slug = ?").run(slug);
+  if (r.changes === 0) return false;
+  const dir = tenantDir(slug);
+  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  return true;
+}
+
+module.exports = { cadastrar, autenticar, buscarPorSlug, listar, tenantDir, setAtivo, excluir, hashSenha };

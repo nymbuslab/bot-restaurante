@@ -10,6 +10,8 @@
 //   4) Na aba "Conexão", clique em "Conectar ao WhatsApp" e escaneie o QR
 // ============================================================
 
+require("dotenv").config();
+
 const servidor = require("./src/servidor");
 const PORTA = process.env.PORT || 3000;
 
