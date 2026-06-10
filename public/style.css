@@ -2557,3 +2557,119 @@ tbody tr:hover td { background: var(--bg-elevated); }
   .auth-form-area { width: 100%; padding: 32px 24px 28px; }
   .auth-copy { padding-top: 20px; }
 }
+
+/* ============================================================ */
+/* PAINEL MASTER (super-admin) — /admin-master.html            */
+/* ============================================================ */
+
+.am-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 56px;
+  padding: 0 24px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+.am-topbar-marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.am-topbar-marca svg { color: var(--accent-fg); flex-shrink: 0; }
+.am-topbar-txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.am-topbar-nome { font-size: 15px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; }
+.am-topbar-sub {
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.am-topbar-acoes { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.am-topbar-acoes button.mini { width: auto; }
+
+.am-page { max-width: 1100px; margin: 0 auto; padding: 28px 24px 48px; }
+.am-cabeca { margin-bottom: 22px; }
+.am-titulo { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--text-primary); }
+.am-cabeca .sub { margin-top: 2px; }
+
+/* Slug em código */
+.am-slug, .am-slug-alvo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  background: var(--bg-elevated);
+  color: var(--accent-fg);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Pills de status (semânticas: ativo verde / suspenso vermelho) */
+.am-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.am-status.ativo    { background: var(--success-subtle); color: var(--success); border-color: rgba(34,197,94,0.4); }
+.am-status.suspenso { background: var(--error-subtle);   color: var(--error);   border-color: rgba(239,68,68,0.4); }
+
+/* Ações da linha */
+.am-acoes { white-space: nowrap; }
+.am-acoes button.mini { width: auto; }
+.am-tabela td.am-acoes { display: flex; gap: 8px; }
+
+/* Modais maiores que o de confirmação padrão */
+.am-del-caixa, .am-criar-caixa { max-width: 440px; }
+.am-del-aviso {
+  background: var(--error-subtle);
+  border: 1px solid rgba(239,68,68,0.4);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  color: var(--text-secondary) !important;
+  font-size: 13px;
+  line-height: 1.55;
+  margin-bottom: 18px !important;
+}
+.am-del-aviso strong { color: var(--error); }
+.am-del-caixa .auth-campo, .am-criar-caixa .auth-campo { margin-bottom: 18px; }
+.am-criar-caixa .auth-card-form { gap: 0; }
+.am-criar-caixa .erro { margin: 0 0 8px; }
+
+/* Tabela → cards no mobile */
+@media (max-width: 640px) {
+  .am-page { padding: 20px 16px 40px; }
+  .am-topbar { padding: 0 16px; }
+  .am-topbar-acoes button.mini { padding: 6px 10px; }
+
+  .am-tabela thead { display: none; }
+  .am-tabela, .am-tabela tbody, .am-tabela tr, .am-tabela td { display: block; width: 100%; }
+  .am-tabela tr {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    padding: 6px 4px;
+  }
+  .am-tabela td {
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    text-align: right;
+  }
+  .am-tabela td:last-child { border-bottom: none; }
+  .am-tabela td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    text-align: left;
+  }
+  .am-tabela td.am-acoes { justify-content: flex-end; }
+}
