@@ -4,22 +4,26 @@
 
 ## 🔄 Em Andamento
 
-**Migração para Baileys** (branch `feat/migracao-baileys`, ainda não merjado na main).
+**Checkpoint salvo em 2026-06-10 01:07**
 
-O `whatsapp-web.js` (Puppeteer/Chromium) parou de gerar QR — erro determinístico
-`Execution context was destroyed` no init, em local e Fly. Trocado por `@whiskeysockets/baileys`
-(WebSocket, sem browser), via `import()` dinâmico (ESM-only).
+### Feito nesta sessão
 
-Testes no branch:
+- Migração para Baileys + "avisar cliente" mergeados na main (commit `1210acc`); fix telefone via LID (`senderPn`/`jidDecode`) + coluna `chatId` no pedido.
+- Redesign do painel comitado (commit `421687d`): shell com sidebar (desktop) + bottom-nav (mobile), tela de Pedidos (métricas com comparativo real vs período anterior em azul + filtros), detalhe do pedido em 2 colunas, home passou de Conexão → Pedidos.
+- Implementada paginação + data relativa na lista de Pedidos (`public/app.js`/`style.css`): 10/página, "Mostrando X–Y de N", controles `‹ 1 2 … ›`, datas "Hoje/Ontem, HH:MM", paginação adaptada ao mobile.
 
-- ✅ Teste 1 — QR gera (provado: Baileys conecta ao WA, gera QR no terminal + data URL no painel)
-- ⏳ Teste 2 — conectar escaneando o QR (precisa do celular do usuário)
-- ✅ Teste 3 — simulador faz pedido completo → grava no `pedidos.db` (provado)
-- ⏳ Teste 4 — `/api/pedido/avisar` envia no WhatsApp real (precisa do teste 2 antes)
+### Em meio de edição
 
-Pendente: validação dos testes 2 e 4 pelo usuário → merge na main.
+- Paginação + data relativa: implementada e validada internamente (JS OK; 15→2 págs, 124→13 com "…"), aguardando validação visual do usuário antes do commit. Arquivos: `public/app.js`, `public/style.css`.
 
-Próxima tela do redesign (ainda não iniciada): Pedidos + detalhe → Configurações → Conexão → Simulador.
+### Próximo passo
+
+- Usuário valida visualmente a paginação/datas na aba Pedidos; aprovado → commit da Fase 17.
+
+### Decisões pendentes
+
+- Atualizar seção Concluído do `PROGRESSO.md` e `CHANGELOG.md` com o marco do redesign do painel.
+- Pills de tipo mantidas semânticas (Entrega azul / Retirada verde) em vez do laranja do protótipo — confirmado pelo usuário, diverge do protótipo de propósito.
 
 ## 📋 Próximos Passos
 
