@@ -132,46 +132,86 @@ document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click"
 // ============================================================
 // CONEXÃO (status do bot + QR)
 // ============================================================
+// Formata um número do WhatsApp ("5511987654321") como "(11) 98765-4321".
+function formatarNumeroWa(num) {
+  let d = String(num || "").replace(/\D/g, "");
+  if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+  if (d.length < 10) return num; // formato inesperado — mostra como veio
+  const ddd  = d.slice(0, 2);
+  const resto = d.slice(2);
+  const meio = resto.length > 8 ? resto.slice(0, 5) : resto.slice(0, 4);
+  const fim  = resto.length > 8 ? resto.slice(5)    : resto.slice(4);
+  return `(${ddd}) ${meio}-${fim}`;
+}
+
+// Estado de carregamento (spinner + texto) dentro do painel de conexão.
+function painelCarregando(txt) {
+  return `<div class="conexao-estado"><div class="qr-spinner"></div><p class="conexao-estado-txt">${txt}</p></div>`;
+}
+
+const SVG_CONECTAR = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+const SVG_RESET = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+
 async function atualizarStatus() {
   try {
     const r = await api("GET", "/api/status");
     if (!r) return; // 401 → api() já redirecionou para o login
     const s = await r.json();
     const box = $("statusBox");
+
     if (s.status === "conectado") {
-      box.innerHTML = `<h2><span class="bolinha on"></span>Bot conectado</h2>
-        <p class="sub">O atendimento automático está funcionando. Respondendo apenas a mensagens novas.</p>
-        <button class="secundario" id="btnDesconectar">Desconectar</button>`;
+      box.innerHTML = `
+        <div class="conexao-estado conectado">
+          <div class="conexao-conectado-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span class="conexao-conectado-titulo">Conectado</span>
+          </div>
+          ${s.numero ? `<p class="conexao-numero">Número: <strong>${formatarNumeroWa(s.numero)}</strong></p>` : ""}
+          <div class="conexao-acoes">
+            <button class="perigo" id="btnDesconectar">Desconectar</button>
+            <button class="secundario" id="btnResetarQR">Gerar novo QR</button>
+          </div>
+        </div>`;
       $("btnDesconectar").addEventListener("click", desconectarBot);
-    } else if (s.status === "aguardando_qr" && s.qr) {
-      box.innerHTML = `<h2><span class="bolinha wait"></span>Aguardando leitura do QR</h2>
-        <img src="${s.qr}" alt="QR Code" width="280" />
-        <p class="sub">No WhatsApp: <b>Aparelhos conectados → Conectar um aparelho</b></p>
-        <button class="secundario" id="btnCancelarQR">Cancelar</button>`;
-      $("btnCancelarQR").addEventListener("click", desconectarBot);
-    } else if (s.status === "iniciando") {
-      box.innerHTML = `<h2><span class="bolinha wait"></span>Iniciando conexão...</h2>
-        <div class="load"></div>
-        <p class="sub">Aguarde o QR Code aparecer (pode levar até ~30s na 1ª vez).</p>
-        <p class="sub">Travou aqui? A sessão antiga pode estar inválida.</p>
-        <button class="secundario mini" id="btnResetarQR">🧹 Gerar novo QR (limpar sessão)</button>`;
       $("btnResetarQR").addEventListener("click", resetarBot);
+
+    } else if (s.status === "aguardando_qr" && s.qr) {
+      box.innerHTML = `
+        <div class="conexao-estado">
+          <div class="qr-frame"><img src="${s.qr}" alt="QR Code" class="qr-img" /></div>
+          <p class="conexao-estado-txt aguardando">Aguardando leitura do QR Code...</p>
+          <button class="secundario mini" id="btnResetarQR">${SVG_RESET} Gerar nova sessão</button>
+        </div>`;
+      $("btnResetarQR").addEventListener("click", resetarBot);
+
+    } else if (s.status === "iniciando") {
+      box.innerHTML = `
+        <div class="conexao-estado">
+          <div class="qr-spinner"></div>
+          <p class="conexao-estado-txt">Gerando QR Code...</p>
+          <button class="secundario mini" id="btnResetarQR">${SVG_RESET} Gerar nova sessão</button>
+        </div>`;
+      $("btnResetarQR").addEventListener("click", resetarBot);
+
     } else {
-      box.innerHTML = `<h2><span class="bolinha off"></span>Bot desligado</h2>
-        <p class="sub">Configure tudo nas outras abas. Quando estiver pronto, conecte ao WhatsApp.</p>
-        <button id="btnConectar">📱 Conectar ao WhatsApp</button>
-        <p class="sub" style="margin-top:14px">Problemas para conectar?</p>
-        <button class="secundario mini" id="btnResetarDesligado">🧹 Gerar novo QR (limpar sessão)</button>`;
+      box.innerHTML = `
+        <div class="conexao-estado">
+          <div class="conexao-icone-grande">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.84 12.25l1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="M5.17 11.75l-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" y1="2" x2="8" y2="5"/><line x1="2" y1="8" x2="5" y2="8"/><line x1="16" y1="19" x2="16" y2="22"/><line x1="19" y1="16" x2="22" y2="16"/></svg>
+          </div>
+          <button id="btnConectar">${SVG_CONECTAR} Conectar ao WhatsApp</button>
+          <button class="link-discreto" id="btnResetarDesligado">Problemas? Limpar sessão e gerar novo QR</button>
+        </div>`;
       $("btnConectar").addEventListener("click", conectarBot);
       $("btnResetarDesligado").addEventListener("click", resetarBot);
     }
   } catch (e) {
-    $("statusBox").textContent = "Erro ao obter status.";
+    $("statusBox").innerHTML = `<div class="conexao-estado"><p class="conexao-estado-txt">Erro ao obter status.</p></div>`;
   }
 }
 
 async function conectarBot() {
-  $("statusBox").innerHTML = `<div class="load"></div><p class="sub">Iniciando...</p>`;
+  $("statusBox").innerHTML = painelCarregando("Iniciando...");
   await api("POST", "/api/bot/conectar");
   setTimeout(atualizarStatus, 1500);
 }
@@ -194,7 +234,7 @@ async function resetarBot() {
     "Limpar sessão"
   );
   if (!ok) return;
-  $("statusBox").innerHTML = `<div class="load"></div><p class="sub">Limpando sessão...</p>`;
+  $("statusBox").innerHTML = painelCarregando("Limpando sessão...");
   const r = await api("POST", "/api/bot/resetar");
   if (r && !r.ok) {
     const d = await r.json().catch(() => ({}));
@@ -769,22 +809,18 @@ function renderHorarios() {
     const h = horarios[key] || { abre: "11:00", fecha: "22:00", fechado: false };
     const fechado = !!h.fechado;
     const tr = document.createElement("tr");
+    tr.className = "hor-linha" + (fechado ? " hor-fechado" : "");
     tr.innerHTML = `
-      <td style="padding:6px 8px;font-size:14px">${label}</td>
-      <td style="padding:4px 8px">
-        <input type="time" id="h_abre_${key}" value="${h.abre || "11:00"}" ${fechado ? "disabled" : ""} style="width:110px" />
-      </td>
-      <td style="padding:4px 8px">
-        <input type="time" id="h_fecha_${key}" value="${h.fecha || "22:00"}" ${fechado ? "disabled" : ""} style="width:110px" />
-      </td>
-      <td style="padding:4px 8px">
-        <input type="checkbox" id="h_fechado_${key}" ${fechado ? "checked" : ""} style="width:auto" />
-      </td>`;
+      <td class="hor-dia" data-label="Dia">${label}</td>
+      <td data-label="Abre"><input type="time" id="h_abre_${key}" class="hor-time" value="${h.abre || "11:00"}" ${fechado ? "disabled" : ""} /></td>
+      <td data-label="Fecha"><input type="time" id="h_fecha_${key}" class="hor-time" value="${h.fecha || "22:00"}" ${fechado ? "disabled" : ""} /></td>
+      <td data-label="Fechado" class="hor-fechado-cel"><label class="switch"><input type="checkbox" id="h_fechado_${key}" ${fechado ? "checked" : ""} /></label></td>`;
     tbody.appendChild(tr);
     tr.querySelector(`#h_fechado_${key}`).addEventListener("change", (e) => {
       const isFechado = e.target.checked;
       tr.querySelector(`#h_abre_${key}`).disabled = isFechado;
       tr.querySelector(`#h_fecha_${key}`).disabled = isFechado;
+      tr.classList.toggle("hor-fechado", isFechado);
     });
   }
 }
@@ -817,36 +853,86 @@ function preencherConfig() {
   $("cfgMsgProntoEntrega").value  = c.mensagens?.pedidoPronto?.entrega  || "";
   $("cfgMsgProntoRetirada").value = c.mensagens?.pedidoPronto?.retirada || "";
   atualizarBadgeAtendimento(!!c.atendimento.aberto);
+  atualizarStatusConfig(!!c.atendimento.aberto);
   renderHorarios();
   renderPagamentos();
+}
+
+// Sincroniza o chip "Status:" do cabeçalho e o rótulo do toggle com o estado aberto/fechado.
+function atualizarStatusConfig(aberto) {
+  const chip = $("cfgStatusChip");
+  if (chip) {
+    chip.textContent = aberto ? "Aberto" : "Fechado";
+    chip.className = "cfg-status-chip " + (aberto ? "aberto" : "fechado");
+  }
+  const lbl = $("cfgAbertoLabel");
+  if (lbl) lbl.textContent = aberto ? "ABERTO PARA PEDIDOS" : "FECHADO PARA PEDIDOS";
 }
 
 function renderPagamentos() {
   const cont = $("pagamentosContainer");
   cont.innerHTML = "";
   configAtual.pagamentos.forEach((p, i) => {
-    const div = document.createElement("div");
-    div.className = "linha";
-    div.style.marginBottom = "8px";
-    div.innerHTML = `<input value="${escapar(p)}" data-pg="${i}" />
-      <button class="perigo mini" data-del-pg="${i}">×</button>`;
-    cont.appendChild(div);
+    const pill = document.createElement("span");
+    pill.className = "pag-pill";
+    pill.innerHTML = `<span class="pag-pill-txt">${escapar(p)}</span><button type="button" class="pag-pill-del" data-del-pg="${i}" aria-label="Remover">×</button>`;
+    cont.appendChild(pill);
   });
-  cont.querySelectorAll("[data-pg]").forEach((el) =>
-    el.addEventListener("input", (e) => { configAtual.pagamentos[+e.target.dataset.pg] = e.target.value; })
-  );
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "pag-add";
+  add.id = "btnAddPagamento";
+  add.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar Método`;
+  cont.appendChild(add);
+
   cont.querySelectorAll("[data-del-pg]").forEach((el) =>
-    el.addEventListener("click", (e) => { configAtual.pagamentos.splice(+e.target.dataset.delPg, 1); renderPagamentos(); })
+    el.addEventListener("click", (e) => {
+      configAtual.pagamentos.splice(+e.currentTarget.dataset.delPg, 1);
+      renderPagamentos();
+    })
   );
+  add.addEventListener("click", adicionarPagamentoInline);
+}
+
+// "+ Adicionar Método": insere um input inline que vira pill ao confirmar (Enter/blur).
+function adicionarPagamentoInline() {
+  const cont = $("pagamentosContainer");
+  const existente = cont.querySelector(".pag-input");
+  if (existente) { existente.focus(); return; }
+  const add = $("btnAddPagamento");
+  const input = document.createElement("input");
+  input.className = "pag-input";
+  input.placeholder = "Nome do método";
+  cont.insertBefore(input, add);
+  input.focus();
+  let confirmado = false;
+  const commit = () => {
+    if (confirmado) return;
+    confirmado = true;
+    const v = input.value.trim();
+    if (v) configAtual.pagamentos.push(v);
+    renderPagamentos();
+  };
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); commit(); }
+    else if (e.key === "Escape") { confirmado = true; renderPagamentos(); }
+  });
+  input.addEventListener("blur", commit);
 }
 
 $("cfgAberto").addEventListener("change", (e) => {
   atualizarBadgeAtendimento(e.target.checked);
+  atualizarStatusConfig(e.target.checked);
 });
 
-$("btnAddPagamento").addEventListener("click", () => {
-  configAtual.pagamentos.push("Nova forma");
-  renderPagamentos();
+async function carregarConfig() {
+  const r = await api("GET", "/api/config");
+  if (r) { configAtual = await r.json(); preencherConfig(); }
+}
+
+$("btnDescartarConfig").addEventListener("click", async () => {
+  await carregarConfig();
+  toast("Alterações descartadas.");
 });
 
 $("btnSalvarConfig").addEventListener("click", async (e) => {
@@ -1379,7 +1465,13 @@ function altEnterInsere(e, insercao) {
 // ============================================================
 const simChat  = $("simChat");
 const simInput = $("simInput");
-const simEstado = $("simEstado");
+
+const SIM_AVATAR = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5"/><circle cx="12" cy="4" r="1"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M9 17h6"/></svg>`;
+
+function simHora() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 function simFormatarTexto(txt) {
   return escapar(txt)
@@ -1390,7 +1482,9 @@ function simFormatarTexto(txt) {
 function simAdicionarMensagemUser(texto) {
   const div = document.createElement("div");
   div.className = "sim-balao-user";
-  div.innerHTML = `<div class="sim-bubble-user">${escapar(texto)}</div>`;
+  div.innerHTML = `
+    <div class="sim-bubble-user">${escapar(texto)}</div>
+    <span class="sim-hora">${simHora()}</span>`;
   simChat.appendChild(div);
   simRolarParaBaixo();
 }
@@ -1401,8 +1495,12 @@ function simAdicionarMensagensBot(respostas) {
     const div = document.createElement("div");
     div.className = "sim-balao-bot";
     div.innerHTML = `
-      <div class="sim-avatar">🤖</div>
-      <div class="sim-bubble-bot">${simFormatarTexto(r)}</div>`;
+      <div class="sim-avatar">${SIM_AVATAR}</div>
+      <div class="sim-msg-col">
+        <span class="sim-msg-nome">Nymbus Bot</span>
+        <div class="sim-bubble-bot">${simFormatarTexto(r)}</div>
+        <span class="sim-hora">${simHora()}</span>
+      </div>`;
     simChat.appendChild(div);
   }
   simRolarParaBaixo();
@@ -1413,17 +1511,29 @@ function simMostrarTyping() {
   div.className = "sim-typing";
   div.id = "simTyping";
   div.innerHTML = `
-    <div class="sim-avatar">🤖</div>
+    <div class="sim-avatar">${SIM_AVATAR}</div>
     <div class="sim-typing-dots"><span></span><span></span><span></span></div>`;
   simChat.appendChild(div);
   simRolarParaBaixo();
   return div;
 }
 
+// Total do carrinho: (preço do item + opcionais) × quantidade.
+function simTotalCarrinho(carrinho) {
+  if (!carrinho || !carrinho.length) return 0;
+  return carrinho.reduce((acc, l) => {
+    const opc = (l.opcionais || []).reduce((s, o) => s + (o.preco || 0), 0);
+    return acc + (((l.preco || 0) + opc) * (l.qtd || 1));
+  }, 0);
+}
+
 function simAtualizarEstado(estado, carrinho) {
-  simEstado.textContent = estado || "—";
-  const count = carrinho ? carrinho.length : 0;
-  simEstado.title = count > 0 ? `${count} item(s) no carrinho` : "";
+  const etapa = $("simCtxEtapa");
+  const itens = $("simCtxItens");
+  const total = $("simCtxTotal");
+  if (etapa) etapa.textContent = estado || "—";
+  if (itens) itens.textContent = carrinho ? carrinho.length : 0;
+  if (total) total.textContent = "R$ " + moedaBR(simTotalCarrinho(carrinho));
 }
 
 function simRolarParaBaixo() {
@@ -1493,7 +1603,6 @@ async function inicial() {
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
   if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }
-  const rcfg = await api("GET", "/api/config");
-  if (rcfg) { configAtual = await rcfg.json(); preencherConfig(); }
+  await carregarConfig();
 }
 inicial();
