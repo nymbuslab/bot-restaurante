@@ -16,12 +16,19 @@ Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-B
 
 ## Stack
 
-- Node.js (CommonJS, `require`)
-- `whatsapp-web.js` (biblioteca **não-oficial**, usa Puppeteer/Chromium)
+- Node.js (CommonJS, `require`). O **Baileys é ESM-only** → carregado via `import()`
+  dinâmico (cacheado após o 1º load); não dá pra `require()` direto.
+- `@whiskeysockets/baileys` (biblioteca **não-oficial** de WhatsApp via **WebSocket**,
+  **sem browser/Chromium**) + `pino` (logger)
 - `express` (API do painel + arquivos estáticos)
 - `better-sqlite3` (pedidos por tenant + banco mestre de empresas)
-- `qrcode` / `qrcode-terminal` (QR de conexão)
+- `qrcode` / `qrcode-terminal` (QR de conexão — data URL no painel + impressão no terminal)
 - Front-end em HTML/CSS/JS puro (sem framework)
+
+> **Histórico:** o projeto usava `whatsapp-web.js` (Puppeteer/Chromium), trocado por
+> Baileys por instabilidade (QR parava de gerar quando o WhatsApp Web mudava o HTML;
+> erros `detached Frame`). Baileys é WebSocket, mais leve e estável. **Ambos são
+> não-oficiais** — o caminho de produção séria é a WhatsApp Cloud API (ver `ROADMAP.md`).
 
 ## Como rodar
 
@@ -88,7 +95,7 @@ index.js              -> sobe o servidor (NÃO inicia o bot)
 src/
   servidor.js         -> Express: API REST multi-tenant + serve /public
   empresas.js         -> banco mestre SQLite (data/empresas.db): CRUD de tenants
-  multi-bot.js        -> gerencia um WhatsApp Client por tenant (Map slug→Client)
+  multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> máquina de estados; todas as funções recebem tenantDir
   store.js            -> lê/grava config.json e cardapio.json por tenant (cache mtime)
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
@@ -107,7 +114,7 @@ data/
       config.json     -> configurações do restaurante
       cardapio.json   -> categorias e itens
       pedidos.db      -> SQLite de pedidos (criado automaticamente)
-      session-{slug}/ -> sessão WhatsApp (LocalAuth, não versionar)
+      baileys-{slug}/ -> sessão WhatsApp (Baileys useMultiFileAuthState, não versionar)
 ```
 
 **Fluxo de dados:** painel edita `data/tenants/{slug}/*.json` via API →
@@ -120,7 +127,7 @@ Cada empresa tem:
 
 - **Slug** gerado do nome (ex: `sabor-d-casa`), único, usado como chave em tudo.
 - **Diretório isolado** `data/tenants/{slug}/` com config, cardápio e pedidos.
-- **Sessão WhatsApp** em `data/tenants/{slug}/session-{slug}/` (via `LocalAuth`).
+- **Sessão WhatsApp** em `data/tenants/{slug}/baileys-{slug}/` (via `useMultiFileAuthState` do Baileys).
 - **Token de sessão** do painel em memória, mapeado para `{ slug, tenantDir }`.
 
 Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`.
@@ -161,8 +168,9 @@ O painel mostra a tabela de horários na aba **Configurações**.
 
 ```text
 id, numero, status, cliente, telefone, tipoEntrega, endereco,
-pagamento, taxaEntrega, itens (JSON serializado), total, criadoEm
+pagamento, taxaEntrega, itens (JSON serializado), total, criadoEm, avisadoEm
 ```
+`avisadoEm` = timestamp do aviso "pedido pronto" enviado ao cliente (null se não avisado).
 
 **Tabela `empresas`** (SQLite mestre, `data/empresas.db`):
 
@@ -192,14 +200,24 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
 
 ## Pontos de atenção (gotchas)
 
-- **Disparo em massa**: ao conectar, o whatsapp-web.js reenvia mensagens não lidas.
-  O bot SÓ responde a mensagens com `timestamp >= prontoEm` (por tenant, definido
-  no evento `ready`). NÃO remover esse filtro em `multi-bot.js`.
+- **Mensagens em tempo real (anti-massa)**: ao conectar, o Baileys entrega o histórico/sync.
+  O bot SÓ processa mensagens com `type === 'notify'` (recebidas ao vivo), ignorando
+  `'append'` (histórico). NÃO remover esse filtro em `multi-bot.js` — é o que evita responder
+  a conversas antigas em massa (equivale ao antigo filtro de timestamp do whatsapp-web.js).
 - **Conexão manual**: `index.js` não chama `multiBot.iniciar()`. A conexão é disparada
-  pelo painel (`POST /api/bot/conectar`). Watchdog de 90s por tenant em `multi-bot.js`.
-- **Memória por tenant WhatsApp**: cada Client roda um Chromium (~200 MB). Máquina de
-  1 GB suporta ~3–4 tenants simultâneos. Para mais, escalar a RAM no Fly.io (2 GB).
-- **Sessão WhatsApp**: salva em `data/tenants/{slug}/session-{slug}/`. Apagar = novo QR.
+  pelo painel (`POST /api/bot/conectar`). Reconexão controlada via `connection.update`:
+  `restartRequired` (normal pós-QR) reconecta; `loggedOut` (401) para e marca desligado;
+  teto de tentativas para não martelar o WhatsApp.
+- **Memória por tenant**: sem Chromium — cada tenant é só uma conexão WebSocket (Baileys),
+  consumo de RAM baixíssimo. A máquina de 1 GB no Fly.io suporta muito mais tenants do que
+  os ~3–4 da era Chromium/Puppeteer.
+- **Sessão WhatsApp**: salva em `data/tenants/{slug}/baileys-{slug}/` (`useMultiFileAuthState`).
+  Apagar = novo QR. Sessões antigas `session-{slug}/` (era whatsapp-web.js) ficaram órfãs.
+- **Avisar cliente**: `POST /api/pedido/avisar` envia, pelo socket do tenant
+  (`enviarMensagem(slug, jid, texto)`), uma mensagem de "pedido pronto". Templates editáveis
+  em `config.json` → `mensagens.pedidoPronto.entrega`/`.retirada` (variáveis `{cliente}` e
+  `{numero}`). Envio **MANUAL**, 1 cliente por clique — nunca automático/massa. Exige WhatsApp
+  conectado; normaliza o telefone para `<digitos>@s.whatsapp.net`; grava `avisadoEm` no sucesso.
 - **Segurança**: login por e-mail + senha com hash SHA-256+salt. Tokens em memória
   (somem ao reiniciar). Sem HTTPS por padrão — em produção pública, usar Nginx + TLS.
 - **Primeiro acesso (instalação legada)**: se não há tenants e existe `data/config.json`,

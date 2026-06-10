@@ -211,11 +211,20 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
       .replace(/\{cliente\}/g, pedido.cliente || "")
       .replace(/\{numero\}/g,  String(pedido.numero));
 
-    const digits  = (pedido.telefone || "").replace(/\D/g, "");
-    const comPais = digits.length <= 11 ? "55" + digits : digits;
-    const chatId  = comPais + "@c.us";
+    // Destino do aviso: o JID da conversa (canal real por onde o cliente falou —
+    // pode ser @lid no modelo de privacidade novo). Para pedidos antigos sem chatId,
+    // fallback legado: reconstruir um phone JID a partir do telefone gravado.
+    let destino = pedido.chatId || "";
+    const ehJidReal = destino.endsWith("@s.whatsapp.net") || destino.endsWith("@lid");
+    if (!ehJidReal) {
+      const digits = (pedido.telefone || "").replace(/\D/g, "");
+      if (digits.length < 10) {
+        return res.status(400).json({ erro: "Pedido sem canal/telefone — não é possível avisar o cliente." });
+      }
+      destino = (digits.length <= 11 ? "55" + digits : digits) + "@s.whatsapp.net";
+    }
 
-    await multiBot.enviarMensagem(req.slug, chatId, texto);
+    await multiBot.enviarMensagem(req.slug, destino, texto);
     const avisadoEm = pedidos.avisarPedido(req.tenantDir, pedidoId);
 
     res.json({ ok: true, avisadoEm });

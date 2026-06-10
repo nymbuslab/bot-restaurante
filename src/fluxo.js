@@ -234,10 +234,16 @@ function textoConfirmacao(sessao, tenantDir) {
 
 // ---------- Máquina de estados ----------
 
-function processarMensagem(chatId, texto, sessao, tenantDir) {
+function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
   const config = store.getConfig(tenantDir);
   const msg = (texto || "").trim();
   const lower = msg.toLowerCase();
+
+  // Captura cedo na sessão (robusto): o chatId é o canal da conversa (LID ou phone
+  // JID) por onde o "avisar" vai enviar; o telefone real (de senderPn) pode não vir
+  // em TODA mensagem — guardamos o melhor valor conhecido para usar na gravação.
+  sessao.chatId = chatId;
+  if (telefone) sessao.telefone = telefone;
 
   // No estado ATENDENTE o bot fica quieto — o atendente humano conduz a conversa.
   if (sessao.estado === "ATENDENTE") {
@@ -468,7 +474,8 @@ function processarMensagem(chatId, texto, sessao, tenantDir) {
         const total = totalCarrinho(sessao.carrinho) + taxa;
         const registro = pedidos.salvarPedido(tenantDir, {
           cliente: sessao.pedido.nome,
-          telefone: chatId.replace("@c.us", ""),
+          telefone: sessao.telefone || "", // telefone real (senderPn) capturado na sessão; vazio no simulador
+          chatId: sessao.chatId || "",     // canal da conversa (LID/phone JID) para o "avisar"
           tipoEntrega: sessao.pedido.tipoEntrega,
           endereco: sessao.pedido.endereco,
           pagamento: sessao.pedido.pagamento,

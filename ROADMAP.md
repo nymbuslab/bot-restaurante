@@ -37,6 +37,14 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 
 ## P3 — Ideias futuras (sem compromisso)
 
+- **WhatsApp: biblioteca não-oficial → API Oficial (Cloud API)** — hoje roda via **Baileys**
+  (não-oficial, WebSocket; substituiu o `whatsapp-web.js`/Chromium por instabilidade — QR
+  parava de gerar quando o WhatsApp Web mudava). Baileys é mais leve e estável, **mas continua
+  não-oficial** (pode quebrar quando o WhatsApp muda; risco de bloqueio do número). A **Cloud
+  API** da Meta é o caminho de produção séria: estável e sem banimento, porém tem **custo por
+  conversa**, exige **Meta Business + templates aprovados** e muda o onboarding (cada número
+  habilitado na API). **Migrar quando houver tração** (clientes pagando) — é reescrita +
+  burocracia, prematuro antes disso.
 - Relatórios de pedidos por período no painel
 - Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
 - Redesign visual completo (Nymbus Lab) — ✅ **em andamento**: Cardápio + Login/Cadastro concluídos; faltam Pedidos, Configurações, Conexão, Simulador

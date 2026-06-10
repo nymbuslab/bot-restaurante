@@ -73,7 +73,7 @@ e soluções prontas costumam ser caras ou engessadas.
 - **Pedidos**: SQLite por tenant (`data/tenants/{slug}/pedidos.db`).
 - **Banco mestre de tenants**: SQLite em `data/empresas.db`.
 - **Config e cardápio**: JSON por tenant com recarga ao vivo (cache por mtime).
-- **Sessão WhatsApp**: `LocalAuth` dentro do diretório do tenant.
+- **Sessão WhatsApp**: `useMultiFileAuthState` (Baileys) em `baileys-{slug}/` dentro do diretório do tenant.
 
 ## 6. Fora de escopo (o que o produto NÃO faz)
 
@@ -89,7 +89,7 @@ e soluções prontas costumam ser caras ou engessadas.
 - **Usabilidade**: painel simples, em português, utilitário (uso diário, com pressa).
 - **Tempo real**: edições de cardápio e config refletem sem reiniciar o bot.
 - **Isolamento**: dados e sessão WhatsApp de cada tenant completamente separados.
-- **Robustez**: conexão manual com watchdog (90s) e opção de recuperar sessão travada.
+- **Robustez**: conexão manual com reconexão controlada (teto de tentativas) e opção de recuperar sessão travada.
 - **Portabilidade**: roda em Windows (teste) e Linux/Docker (produção).
 - **Segurança (mínima atual)**: senha com hash; recomendado HTTPS em produção.
 
@@ -99,8 +99,8 @@ e soluções prontas costumam ser caras ou engessadas.
 - SQLite para pedidos: sem servidor externo, ACID, suporta volume do segmento.
 - Bebida e observação são comportamentos automáticos do fluxo (não configuráveis hoje).
 - Bebidas identificadas pela categoria com "bebida" no nome.
-- Cada WhatsApp conectado usa ~200 MB RAM (Chromium). Infraestrutura deve escalar
-  conforme o número de tenants ativos.
+- Cada WhatsApp conectado é uma conexão WebSocket (Baileys, sem Chromium) — consumo de
+  RAM baixo; a infraestrutura escala bem mais por GB do que na versão antiga com Chromium.
 
 ## 9. Roadmap / próximos passos (priorizáveis)
 

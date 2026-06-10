@@ -1226,6 +1226,34 @@ tbody tr:hover td { background: var(--bg-elevated); }
   margin-bottom: 0;
 }
 
+/* Rodapé de ações do detalhe (Avisar cliente) */
+.pedido-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle);
+}
+.pedido-acoes:empty {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.pedido-acoes button { width: 100%; }
+.pedido-acoes button.mini { width: auto; }
+.pedido-avisado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success);
+}
+
 .pedido-secao-titulo {
   font-size: 11px;
   font-weight: 700;

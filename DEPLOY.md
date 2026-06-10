@@ -52,7 +52,8 @@ pm2 startup   # siga a instrução que ele imprimir na tela
 ## ✅ Opção 2 — VPS / servidor na nuvem
 
 Uma VPS fica ligada 24h. Provedores: Hostinger VPS, Contabo, Hetzner, DigitalOcean.
-Use Linux (Ubuntu) com pelo menos **2 GB de RAM** por tenant WhatsApp conectado.
+Use Linux (Ubuntu). Com Baileys (WebSocket, sem Chromium) o consumo de RAM por tenant
+é baixo — **1 GB** já atende vários restaurantes; escale conforme o volume.
 
 ### Passo a passo (Ubuntu)
 
@@ -61,10 +62,8 @@ Use Linux (Ubuntu) com pelo menos **2 GB de RAM** por tenant WhatsApp conectado.
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# 2) Dependências do Chromium
-sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-  libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
-  libpango-1.0-0 libcairo2 libasound2
+# 2) git + ferramentas de build (libsignal do Baileys vem do GitHub; better-sqlite3 compila)
+sudo apt-get install -y git python3 make g++
 
 # 3) Enviar os arquivos (git, scp ou FileZilla)
 
@@ -146,7 +145,7 @@ fly volumes create bot_dados --region gru --size 1
 fly deploy
 ```
 
-O build leva 3–5 minutos na primeira vez (instala o Chromium e compila `better-sqlite3`).
+O build é rápido (sem Chromium — Baileys não usa browser); compila apenas o `better-sqlite3`.
 
 ### 5. Verificar credenciais iniciais
 
@@ -196,7 +195,7 @@ Ou via terminal:
 
 ```bash
 fly ssh console
-rm -rf /app/data/tenants/{slug}/session-{slug}
+rm -rf /app/data/tenants/{slug}/baileys-{slug}
 exit
 ```
 
@@ -208,8 +207,9 @@ Depois reconecte pelo painel.
   Não altere — se a máquina parar, o bot desconecta e precisará de novo QR scan.
 - O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento
   (Pay As You Go) — custa ~$5–7/mês para 1 GB RAM em São Paulo.
-- Cada tenant WhatsApp conectado usa ~200 MB de RAM (Chromium). Para mais de 3–4
-  restaurantes simultâneos, atualize para 2 GB em `fly.toml` (`memory = '2gb'`).
+- Cada tenant WhatsApp conectado é só uma conexão WebSocket (Baileys, sem Chromium) —
+  consumo de RAM baixo. 1 GB atende vários restaurantes; aumente `memory` no `fly.toml`
+  só se o volume justificar.
 - Altere a senha padrão do painel em **Configurações** antes de deixar público.
 
 ---
@@ -217,12 +217,12 @@ Depois reconecte pelo painel.
 ## 🆘 Problemas comuns
 
 - **QR travado em "iniciando"**: sessão antiga inválida. No painel, clique em
-  **"Gerar novo QR (limpar sessão)"**. A 1ª conexão pode levar até ~30s (Chromium subindo).
+  **"Gerar novo QR (limpar sessão)"**. Com Baileys (WebSocket) a conexão é rápida.
 - **`Cannot GET /`**: acesse a raiz — ela já redireciona para o login.
 - **`Cannot find module`**: confirme que está na pasta correta e que rodou `npm install`.
-- **Bot respondeu a vários contatos ao conectar**: não deve acontecer — o filtro de
-  timestamp descarta mensagens anteriores à conexão. Verifique se `multi-bot.js` está
-  inalterado.
+- **Bot respondeu a vários contatos ao conectar**: não deve acontecer — o bot só
+  processa mensagens em tempo real (`messages.upsert type 'notify'`), ignorando o
+  histórico/sync (`'append'`). Verifique se `multi-bot.js` está inalterado.
 
 ---
 
