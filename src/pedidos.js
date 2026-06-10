@@ -87,4 +87,16 @@ function avisarPedido(tenantDir, id) {
   return agora;
 }
 
-module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido };
+// Fecha e remove do pool a conexão SQLite de um tenant. Necessário antes de
+// apagar a pasta do tenant (better-sqlite3 mantém o arquivo aberto — no Windows
+// o rmSync da pasta falha enquanto o handle estiver vivo).
+function fecharConexao(tenantDir) {
+  const dbPath = path.join(tenantDir, "pedidos.db");
+  const db = conexoes.get(dbPath);
+  if (db) {
+    try { db.close(); } catch (_) { /* já fechado */ }
+    conexoes.delete(dbPath);
+  }
+}
+
+module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, fecharConexao };

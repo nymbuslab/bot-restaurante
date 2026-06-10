@@ -10,7 +10,8 @@ _(nada no momento)_
 
 - [ ] (P1) Botões de status do pedido no painel (preparando / entregue / cancelado)
 - [ ] (P1) Taxa de entrega configurável por bairro/CEP
-- [ ] (P1) Painel de super-admin para gerenciar todos os tenants
+- [ ] (P1) Super-admin **Passo 2/3** — tela de login master + listagem/gestão de tenants
+- [ ] (P1) Super-admin **Passo 3/3** — métricas básicas por tenant no painel master
 - [ ] (P2) Tornar pergunta de bebida e observação configuráveis no painel (features existem, falta toggle)
 - [ ] (P2) HTTPS automático + guia de segurança para produção pública
 
@@ -51,3 +52,4 @@ _(nada no momento)_
 - [x] **Redesign Simulador** — "Console de Testes" com chat fiel (avatar + "Nymbus Bot" + horário), painel "Variáveis de Contexto" real (etapa, itens, total do carrinho); mocks sem backend (delay/logs/status da resposta) deliberadamente não construídos
 - [x] **Fix bottom-nav mobile** — `.sidebar` no mobile tinha `top:0` herdado + `bottom:0` → barra esticava pra tela toda e cobria o conteúdo; corrigido com `top:auto`
 - [x] **Relatórios de pedidos por período** (entregue no redesign de Pedidos) — seletor de período (Hoje / 7 dias / Personalizado) e métricas reais: total de pedidos, média diária, ticket médio e comparativo vs período anterior. Atende ao item de relatórios do ROADMAP (faltaria só export/CSV como item futuro menor)
+- [x] **Super-admin — Passo 1/3: backend + autenticação master** (sem tela) — conta master fixa via env (`SUPERADMIN_EMAIL`/`SUPERADMIN_SENHA_HASH`, hash com a mesma `hashSenha` do projeto via `npm run gerar-hash-admin`; sem env → rotas `/api/admin/*` desativadas com 503, sem fallback). Auth isolada (`tokensAdmin` ≠ `tokens`, `exigeSuperAdmin`, `timingSafeEqual`). Rotas: listar/criar tenant, suspender/reativar, excluir. Suspensão com efeito real (login recusado + bot desconectado + tokens do tenant invalidados). Exclusão destrutiva na ordem segura (desconectar → `pedidos.fecharConexao` → `empresas.excluir` apaga linha + pasta) com trava `{ confirmacao: "<slug>" }`. `dotenv` + `.env.example`. Validado por smoke test (15 cenários via curl)
