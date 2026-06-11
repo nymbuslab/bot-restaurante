@@ -1242,6 +1242,24 @@ button:disabled {
 .pag-add:hover { border-color: var(--accent-fg); color: var(--accent-fg); background: none; transform: none; }
 .pag-input { width: 170px; border-radius: 20px; padding: 6px 14px; }
 
+/* Botão "Gerar automaticamente" sob o campo de texto do horário */
+.cfg-gerar-horario {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  color: var(--accent-fg);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cfg-gerar-horario:hover { color: var(--secondary); background: none; transform: none; }
+.cfg-gerar-horario svg { flex-shrink: 0; }
+
 /* Barra inferior com Descartar + Salvar */
 .cfg-barra { justify-content: space-between; }
 .cfg-barra-aviso { font-size: 13px; color: var(--text-secondary); }

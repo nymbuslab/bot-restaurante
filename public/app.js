@@ -845,6 +845,32 @@ function lerHorariosDoDOM() {
   return horarios;
 }
 
+// Monta um texto pt-BR de horário a partir da tabela: agrupa dias seguidos com
+// o mesmo abre/fecha e pula os fechados. Ex.: "Nosso atendimento é de *Segunda*
+// a *Sexta* das *11:00* às *22:00*; *Sábado* das *11:00* às *23:00*".
+function resumirHorarios(horarios) {
+  const grupos = [];
+  let atual = null;
+  for (const { key, label } of DIAS_SEMANA) {
+    const h = horarios[key] || {};
+    if (h.fechado) { atual = null; continue; } // dia fechado quebra a sequência
+    const abre = h.abre || "11:00";
+    const fecha = h.fecha || "22:00";
+    if (atual && atual.abre === abre && atual.fecha === fecha) {
+      atual.fim = label; // estende o grupo
+    } else {
+      atual = { ini: label, fim: label, abre, fecha };
+      grupos.push(atual);
+    }
+  }
+  if (!grupos.length) return "";
+  const trechos = grupos.map((g) => {
+    const dias = g.ini === g.fim ? `*${g.ini}*` : `de *${g.ini}* a *${g.fim}*`;
+    return `${dias} das *${g.abre}* às *${g.fecha}*`;
+  });
+  return "Nosso atendimento é " + trechos.join("; ");
+}
+
 function preencherConfig() {
   const c = configAtual;
   $("cfgNome").value = c.restaurante.nome || "";
@@ -934,6 +960,14 @@ function adicionarPagamentoInline() {
 $("cfgAberto").addEventListener("change", (e) => {
   atualizarBadgeAtendimento(e.target.checked);
   atualizarStatusConfig(e.target.checked);
+});
+
+// Gera o texto de horário a partir da tabela ao vivo (não sobrescreve sozinho).
+$("btnGerarHorario").addEventListener("click", () => {
+  const texto = resumirHorarios(lerHorariosDoDOM());
+  if (!texto) { toast("Defina ao menos um dia aberto na tabela de horários.", "erro"); return; }
+  $("cfgHorario").value = texto;
+  toast("Texto de horário gerado. Revise e salve as configurações.");
 });
 
 async function carregarConfig() {
