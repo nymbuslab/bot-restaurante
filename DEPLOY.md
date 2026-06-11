@@ -243,6 +243,23 @@ Duas camadas complementares:
 > clientes que justifique — adiciona custo e credenciais a gerir. Quando migrar, o export já
 > gera o artefato pronto para subir a um bucket.
 
+### Antes de fazer backup: limpar pastas órfãs (reduz o tamanho)
+
+Instalações que já rodaram o antigo `whatsapp-web.js` deixaram pastas órfãs
+`data/tenants/{slug}/session-*/` (caches do Chromium) que **não são usadas pelo Baileys** e
+incham o volume e os backups (podem ser dezenas de MB). É seguro removê-las — **preserve as
+`baileys-*/`**, que são as sessões ativas:
+
+```bash
+# No Fly.io:
+fly ssh console
+rm -rf /app/data/tenants/*/session-*
+ls -d /app/data/tenants/*/baileys-*    # confirme que as sessões do Baileys continuam
+exit
+```
+
+(Localmente é o mesmo comando sem o `/app`: `rm -rf data/tenants/*/session-*`.)
+
 ### Gerar um backup (`npm run backup`)
 
 Gera `backups/backup-AAAA-MM-DD-HHmm.tar.gz` com **toda** a `data/`. Os bancos SQLite
