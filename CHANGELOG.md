@@ -119,3 +119,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Só exibição (cálculo inalterado).** Na revisão e na confirmação, itens **com opcionais** passam a mostrar o **preço base** do item, os opcionais e o **subtotal** (em itálico) — em vez de só o valor já somado, que parecia o preço do item. Ex.: `2x Pastel — R$ 15,00` + `Queijo (R$ 2,50)` + `subtotal: R$ 35,00`. Itens **sem opcional** continuam numa linha só
 - Helper único `linhasItemPedido()` usado pela revisão e pela confirmação (mesmo formato nos dois). `precoLinha`/`totalCarrinho` **não mudaram** — total final idêntico (validado: pedido misto com qtd>1 e opcionais soma exatamente o mesmo, centavo a centavo)
+
+## [0.12.0] — Pergunta de bebida e observação configuráveis no painel
+
+- **Dois toggles** na aba Configurações → "Comportamento do bot": *"Perguntar se deseja bebida ao finalizar"* e *"Perguntar observação em cada item"*. Salvam em `config.atendimento.perguntarBebida` / `perguntarObservacao` pela rota existente (`PUT /api/config`)
+- **Default LIGADO** (retrocompatível): tenant sem o campo se comporta como antes — só desliga quem desligar explicitamente (lido como `!== false`)
+- **Bot respeita os flags** (`fluxo.js`): bebida OFF pula `PERGUNTA_BEBIDA` (vai direto ao nome) — o flag é condição **a mais** sobre a regra atual (só perguntaria se houvesse categoria de bebida e o cliente não tivesse adicionado uma); observação OFF pula a etapa por item (vai direto à quantidade, observação vazia). Estados intactos — apenas deixam de ser alcançados
+- Validado: teste nos 5 casos (ON/ON, **bebida OFF com categoria de bebida presente**, obs OFF, ambos OFF, legado sem campos) + painel real (liga/desliga → salvar → reload persiste → `config.json` em disco) + simulador ao vivo (OFF pula as duas; ON volta a perguntar)

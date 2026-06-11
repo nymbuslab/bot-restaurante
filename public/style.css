@@ -1127,6 +1127,20 @@ button:disabled {
 .cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); }
 .cfg-secao-sub { margin: -6px 0 14px; }
 
+/* Linha de switch (label + toggle) — comportamento do bot */
+.cfg-switch-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+.cfg-switch-linha + .cfg-switch-linha { border-top: 1px solid var(--border-subtle); }
+.cfg-switch-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cfg-switch-texto strong { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cfg-switch-texto .sub { font-size: 12px; }
+.cfg-switch-linha .switch { flex-shrink: 0; }
+
 /* Labels da config em caixa-baixa (fiel ao protótipo) */
 .cfg-secao .campo > label {
   text-transform: none;

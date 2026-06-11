@@ -846,6 +846,9 @@ function preencherConfig() {
   $("cfgAberto").checked = !!c.atendimento.aberto;
   $("cfgTempo").value = c.atendimento.tempoEstimado || "";
   $("cfgTaxaEntrega").value = moeda(c.atendimento.taxaEntrega || 0);
+  // Flags de comportamento do bot — default LIGADO quando ausente (retrocompatível)
+  $("cfgPerguntarBebida").checked = c.atendimento.perguntarBebida !== false;
+  $("cfgPerguntarObservacao").checked = c.atendimento.perguntarObservacao !== false;
   $("cfgBoasVindas").value = c.mensagens.boasVindas || "";
   $("cfgFechado").value = c.mensagens.fechado || "";
   $("cfgAtendente").value = c.mensagens.atendente || "";
@@ -943,6 +946,8 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.atendimento.aberto = $("cfgAberto").checked;
   configAtual.atendimento.tempoEstimado = $("cfgTempo").value;
   configAtual.atendimento.taxaEntrega = parseFloat($("cfgTaxaEntrega").value) || 0;
+  configAtual.atendimento.perguntarBebida = $("cfgPerguntarBebida").checked;
+  configAtual.atendimento.perguntarObservacao = $("cfgPerguntarObservacao").checked;
   configAtual.horarios = lerHorariosDoDOM();
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
   configAtual.mensagens.fechado = $("cfgFechado").value;

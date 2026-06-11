@@ -202,11 +202,33 @@ function perguntaQuantidade(ip) {
 
 const MSG_PEDIR_NOME = "Quase lá! 🎉 Para finalizar, qual é o seu *nome*?";
 
-function irParaBebidaOuNome(sessao, tenantDir) {
+// Lê os flags de comportamento do bot (config por tenant). Default LIGADO
+// quando o campo está ausente (retrocompatível: tenant legado pergunta como hoje).
+function perguntarBebidaAtiva(config) {
+  return config.atendimento?.perguntarBebida !== false;
+}
+function perguntarObservacaoAtiva(config) {
+  return config.atendimento?.perguntarObservacao !== false;
+}
+
+// Define o próximo estado após escolher item/opcionais: pede observação (se o
+// flag estiver ligado) ou pula direto para a quantidade. itemPendente.observacao
+// já nasce "" — pular mantém o comportamento correto.
+function pedirObservacaoOuQuantidade(sessao, perguntarObs) {
+  if (perguntarObs) {
+    sessao.estado = "OBSERVACAO";
+    return perguntaObservacao(sessao.itemPendente.nome);
+  }
+  sessao.estado = "QUANTIDADE";
+  return perguntaQuantidade(sessao.itemPendente);
+}
+
+function irParaBebidaOuNome(sessao, tenantDir, perguntarBebida) {
   const disponiveis = bebidasDisponiveis(tenantDir);
   const idsBebs = new Set(disponiveis.map((b) => b.id));
   const jaTemBebida = sessao.carrinho.some((item) => idsBebs.has(item.id));
-  if (disponiveis.length > 0 && !sessao.bebidaPerguntada && !jaTemBebida) {
+  // O flag perguntarBebida é uma condição A MAIS (E lógico) sobre a regra atual.
+  if (perguntarBebida && disponiveis.length > 0 && !sessao.bebidaPerguntada && !jaTemBebida) {
     sessao.bebidaPerguntada = true;
     sessao.estado = "PERGUNTA_BEBIDA";
     return resumoCarrinho(sessao.carrinho) + "\n\nGostaria de adicionar uma *bebida* ao pedido? 🥤\n\n*1* — Sim, quero!\n*2* — Não, pode seguir";
@@ -330,16 +352,14 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
         sessao.estado = "OPCIONAIS";
         resp += `\n\n${textoOpcionais(sessao.itemPendente)}`;
       } else {
-        sessao.estado = "OBSERVACAO";
-        resp += `\n\n${perguntaObservacao(item.nome)}`;
+        resp += `\n\n${pedirObservacaoOuQuantidade(sessao, perguntarObservacaoAtiva(config))}`;
       }
       return { respostas: [resp] };
     }
 
     case "OPCIONAIS": {
       if (msg === "0") {
-        sessao.estado = "OBSERVACAO";
-        return { respostas: [perguntaObservacao(sessao.itemPendente.nome)] };
+        return { respostas: [pedirObservacaoOuQuantidade(sessao, perguntarObservacaoAtiva(config))] };
       }
       const i = parseInt(msg, 10) - 1;
       const disp = sessao.itemPendente.opcionaisDisp;
@@ -382,7 +402,7 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
           sessao.estado = "PEDINDO";
           return { respostas: ["Seu carrinho está vazio. " + listaItensParaPedido(tenantDir)] };
         }
-        return { respostas: [irParaBebidaOuNome(sessao, tenantDir)] };
+        return { respostas: [irParaBebidaOuNome(sessao, tenantDir, perguntarBebidaAtiva(config))] };
       }
       if (msg === "3") {
         sessao.carrinho = [];
