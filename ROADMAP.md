@@ -33,8 +33,8 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
 
 ## P2 — Melhorias de produto
 
-- [ ] **Pergunta de bebida configurável** — toggle no painel para ativar/desativar (feature já existe no bot)
-- [ ] **Observação configurável** — toggle para ativar/desativar pergunta de observação por item (feature já existe)
+- [x] **Pergunta de bebida configurável** — ✅ **concluído**: toggle no painel (Configurações → Comportamento do bot); `config.atendimento.perguntarBebida`, default ligado. Ver `CHANGELOG.md` v0.12.0.
+- [x] **Observação configurável** — ✅ **concluído**: toggle no painel; `config.atendimento.perguntarObservacao`, default ligado. Ver `CHANGELOG.md` v0.12.0.
 - [x] **HTTPS em produção** — ✅ **resolvido no Fly.io**: certificado TLS gerenciado pela
   plataforma no domínio `.fly.dev` + `force_https = true` no `fly.toml` (redirect http→https).
   Sem config manual. Ressalva: em **VPS/local** o HTTPS depende do operador (Nginx + TLS).
