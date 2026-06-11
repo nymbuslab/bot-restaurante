@@ -11,6 +11,17 @@ const TEMPO_EXPIRA_MS = 30 * 60 * 1000; // 30 minutos de inatividade
 
 const sessoes = new Map();
 
+// Estado inicial canônico de uma sessão (fonte única — usado ao criar e ao limpar).
+function estadoInicial(agora) {
+  return {
+    estado: "INICIO",
+    carrinho: [], // [{ id, nome, preco, qtd }]
+    itemPendente: null, // item aguardando quantidade
+    pedido: {}, // { nome, tipoEntrega, endereco, pagamento }
+    atualizadoEm: agora,
+  };
+}
+
 function getSessao(chatId) {
   let s = sessoes.get(chatId);
   const agora = Date.now();
@@ -22,21 +33,29 @@ function getSessao(chatId) {
   }
 
   if (!s) {
-    s = {
-      estado: "INICIO",
-      carrinho: [], // [{ id, nome, preco, qtd }]
-      itemPendente: null, // item aguardando quantidade
-      pedido: {}, // { nome, tipoEntrega, endereco, pagamento }
-      atualizadoEm: agora,
-    };
+    s = estadoInicial(agora);
     sessoes.set(chatId, s);
   }
   s.atualizadoEm = agora;
   return s;
 }
 
+// Limpa uma sessão APAGANDO por chave. Mantido para quem conhece a chave exata
+// (ex.: endpoint /api/simulador/reset). NÃO usar dentro do fluxo: lá a chave de
+// armazenamento (slug:jid) difere do chatId do canal — use limparSessao(sessao).
 function resetSessao(chatId) {
   sessoes.delete(chatId);
 }
 
-module.exports = { getSessao, resetSessao };
+// Limpa a sessão pelo PRÓPRIO objeto (in-place). Robusto contra divergência de
+// chave: zera o mesmo objeto que está no Map, então a próxima getSessao retorna
+// a sessão já no estado inicial. chatId/telefone são recapturados na próxima
+// mensagem, então também são limpos aqui (reset "novo cliente").
+function limparSessao(sessao) {
+  if (!sessao) return;
+  Object.assign(sessao, estadoInicial(Date.now()));
+  delete sessao.chatId;
+  delete sessao.telefone;
+}
+
+module.exports = { getSessao, resetSessao, limparSessao };

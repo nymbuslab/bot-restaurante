@@ -10,7 +10,7 @@
 // ============================================================
 
 const store = require("./store");
-const { resetSessao } = require("./sessoes");
+const { limparSessao } = require("./sessoes");
 const pedidos = require("./pedidos");
 
 function formatarMoeda(valor) {
@@ -264,7 +264,7 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
     return { respostas: [menuPrincipal(tenantDir)] };
   }
   if (["cancelar", "sair"].includes(lower)) {
-    resetSessao(chatId);
+    limparSessao(sessao);
     return { respostas: ["Tudo bem! Seu pedido foi cancelado. 😊\n\nQuando quiser recomeçar, é só mandar *oi*."] };
   }
 
@@ -483,7 +483,7 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
           itens: sessao.carrinho,
           total,
         });
-        resetSessao(chatId);
+        limparSessao(sessao);
         const txt = aplicar(config.mensagens.pedidoConfirmado, {
           numero: registro.numero,
           tempo: config.atendimento.tempoEstimado,
