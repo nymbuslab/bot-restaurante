@@ -13,14 +13,23 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - Notificação de pedidos para cozinha via bot — o restaurante usa seu próprio sistema
 - Gestão de ciclo do pedido (preparando, saiu para entrega, entregue) pelo bot
 - Integração com sistemas de pagamento online (por ora, apenas informa forma de pagamento)
+- **Botões de status do pedido no painel** (preparando / entregue / cancelado) — **decidido fora de
+  escopo**. O valor real (comunicar o cliente) já é entregue pelo botão **"Avisar cliente"**
+  (pedido pronto — entrega/retirada). Gerenciar o ciclo do pedido contradiz a premissa do
+  produto: o bot é **porta de entrada**, o andamento fica no sistema próprio do restaurante.
+- **Taxa de entrega por bairro/CEP** — **fora de escopo (por ora)**. Opções avaliadas e
+  descartadas: (a) **por bairro cadastrado** — manutenção infinita por tenant; (b) **por
+  raio/km via geocoding** — API paga e lida mal com endereço solto digitado no WhatsApp; (c)
+  **geolocalização por IP** — inviável, não há IP do cliente numa conversa de WhatsApp.
+  Conclusão: a **taxa única por tenant** atende; reavaliar só se um cliente pagante pedir.
 
 ---
 
 ## P1 — Próximas funcionalidades prioritárias
 
-- [ ] **Botões de status no painel** — marcar pedido como preparando / entregue / cancelado
-- [ ] **Taxa de entrega por bairro/CEP** — tabela de bairros com taxa específica por área
 - [x] **Painel de super-admin** — ✅ **concluído** (3 passos): backend + auth master isolada por env; tela `/admin-master` (listar/criar/suspender/reativar/excluir tenants com confirmação forte); métricas reais (total, ativos/suspensos, pedidos do mês, conectados). Ver `CHANGELOG.md` e `PROGRESSO.md`
+
+Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status do pedido e taxa por bairro/CEP) foram decididos como **fora de escopo**; ver a seção acima.
 
 ## P2 — Melhorias de produto
 

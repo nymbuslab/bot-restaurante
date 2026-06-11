@@ -8,8 +8,6 @@ _(nada no momento)_
 
 ## 📋 Próximos Passos
 
-- [ ] (P1) Botões de status do pedido no painel (preparando / entregue / cancelado)
-- [ ] (P1) Taxa de entrega configurável por bairro/CEP
 - [ ] (P2) Tornar pergunta de bebida e observação configuráveis no painel (features existem, falta toggle)
 - [ ] (P2) HTTPS automático + guia de segurança para produção pública
 - [ ] (P2) **[operacional]** Limpar pastas órfãs `session-*/` no volume de produção (Fly) — lixo do whatsapp-web.js que incha o volume e os backups. Local já limpo; falta rodar no Fly: `fly ssh console` → `rm -rf /app/data/tenants/*/session-*` (preservar `baileys-*/`). Ver `DEPLOY.md`
