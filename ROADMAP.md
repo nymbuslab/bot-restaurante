@@ -45,6 +45,7 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
   `CHANGELOG.md` v0.10.0
 - [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
 - [x] **Saudação com carrinho aberto (bot)** — ✅ **concluído**: saudação com carrinho não-vazio pergunta *continuar* (mantém) ou *recomeçar* (zera), em vez de retomar o carrinho silenciosamente. Estado `CONFIRMA_REINICIO` em `fluxo.js`. Ver `CHANGELOG.md` v0.12.1.
+- [x] **Assistente de onboarding (1º acesso)** — ✅ **concluído**: barra-guia no topo do painel só no primeiro acesso, conduzindo Dados → Horário → Entrega até as seções já existentes em Configurações. Flag `config.onboardingConcluido` (tenant novo = `false`, antigo = `undefined` não mostra); pular/dispensar/concluir marca `true` e a barra some pra sempre. Ver `CHANGELOG.md` v0.14.0.
 
 ## P3 — Ideias futuras (sem compromisso)
 

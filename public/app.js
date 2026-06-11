@@ -930,7 +930,7 @@ $("cfgAberto").addEventListener("change", (e) => {
 
 async function carregarConfig() {
   const r = await api("GET", "/api/config");
-  if (r) { configAtual = await r.json(); preencherConfig(); }
+  if (r) { configAtual = await r.json(); preencherConfig(); renderOnboarding(); }
 }
 
 $("btnDescartarConfig").addEventListener("click", async () => {
@@ -962,8 +962,88 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   const r = await api("PUT", "/api/config", configAtual);
   btn.disabled = false;
   btn.textContent = "Salvar configurações";
-  if (r && r.ok) toast("✓ Configurações salvas!");
+  if (r && r.ok) {
+    toast("✓ Configurações salvas!");
+    if (onbAtivo()) onbAvancar(); // salvar a config avança o passo atual do assistente
+  }
 });
+
+// ============================================================
+// ASSISTENTE DE ONBOARDING (barra-guia do 1º acesso)
+// Só aparece quando o servidor diz onboardingConcluido === false.
+// O passo atual é só conveniência de UX (localStorage por tenant); o
+// servidor manda — se onboardingConcluido === true, a barra nunca aparece.
+// ============================================================
+const ONB_PASSOS = [
+  { titulo: "Dados",   secao: "cfg-sec-dados",   desc: "Informe o telefone e o endereço do seu restaurante." },
+  { titulo: "Horário", secao: "cfg-sec-horario", desc: "Defina os horários de funcionamento de cada dia." },
+  { titulo: "Entrega", secao: "cfg-sec-entrega", desc: "Configure a taxa de entrega e as formas de pagamento." },
+];
+const onbChave = () => "onbPasso:" + (sessionStorage.getItem("slug") || "");
+
+// Servidor manda: barra ativa apenas se o flag vier explicitamente false.
+function onbAtivo() { return configAtual.onboardingConcluido === false; }
+
+function onbGetPasso() {
+  const n = parseInt(localStorage.getItem(onbChave()), 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+function onbSetPasso(n) {
+  if (n >= ONB_PASSOS.length) { onbFinalizar(); return; }
+  localStorage.setItem(onbChave(), String(n));
+  renderOnboarding();
+}
+function onbAvancar() { onbSetPasso(onbGetPasso() + 1); }
+
+function renderOnboarding() {
+  const barra = $("onbBarra");
+  if (!barra) return;
+  if (!onbAtivo()) { barra.style.display = "none"; return; }
+
+  let passo = onbGetPasso();
+  if (passo >= ONB_PASSOS.length) { onbFinalizar(); return; }
+  barra.style.display = "";
+
+  $("onbPassoDe").textContent = `Passo ${passo + 1} de ${ONB_PASSOS.length}`;
+  $("onbDesc").textContent = ONB_PASSOS[passo].desc;
+  $("onbIr").textContent = "Ir para " + ONB_PASSOS[passo].titulo;
+
+  const cont = $("onbPassos");
+  cont.innerHTML = "";
+  ONB_PASSOS.forEach((p, i) => {
+    const el = document.createElement("button");
+    el.className = "onb-passo" + (i < passo ? " feito" : i === passo ? " atual" : "");
+    el.innerHTML = `<span class="onb-num">${i < passo ? "✓" : i + 1}</span><span>${p.titulo}</span>`;
+    el.addEventListener("click", () => onbIrParaSecao(i));
+    cont.appendChild(el);
+  });
+}
+
+// Leva o dono até a aba Configurações e rola/destaca a seção do passo.
+function onbIrParaSecao(i) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("ativo", b.dataset.aba === "config"));
+  document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
+  $("aba-config").classList.add("ativa");
+  const sec = $(ONB_PASSOS[i].secao);
+  if (sec) {
+    sec.scrollIntoView({ behavior: "smooth", block: "center" });
+    sec.classList.remove("onb-flash");
+    void sec.offsetWidth; // reinicia a animação
+    sec.classList.add("onb-flash");
+    setTimeout(() => sec.classList.remove("onb-flash"), 1700);
+  }
+}
+
+async function onbFinalizar() {
+  $("onbBarra").style.display = "none";
+  localStorage.removeItem(onbChave());
+  configAtual.onboardingConcluido = true;
+  await api("POST", "/api/onboarding/concluir");
+}
+
+$("onbPular").addEventListener("click", onbAvancar);
+$("onbDispensar").addEventListener("click", onbFinalizar);
+$("onbIr").addEventListener("click", () => onbIrParaSecao(onbGetPasso()));
 
 // ============================================================
 // PEDIDOS
