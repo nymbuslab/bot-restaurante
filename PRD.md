@@ -102,8 +102,15 @@ master não acessa o painel de restaurante.
 ## 6. Fora de escopo (o que o produto NÃO faz)
 
 - Não gerencia o ciclo do pedido (preparo, despacho, entrega).
+- **Não tem botões de status do pedido** (preparando / entregue / cancelado) no painel —
+  decidido fora de escopo. O valor real (comunicar o cliente) é entregue pelo botão
+  **"Avisar cliente"** (pedido pronto, entrega/retirada); gerenciar o ciclo contradiz a
+  premissa de que o bot é porta de entrada e o andamento fica no sistema do restaurante.
 - Não processa pagamento online.
-- Não calcula taxa de entrega por região/CEP (taxa única por tenant).
+- **Não calcula taxa de entrega por região/CEP** (taxa única por tenant) — fora de escopo por
+  ora. Opções avaliadas e descartadas: por bairro cadastrado (manutenção infinita); por
+  raio/km via geocoding (API paga, lida mal com endereço solto do WhatsApp); geolocalização
+  por IP (inviável, não há IP do cliente). Reavaliar só se um cliente pagante pedir.
 - Não tem app próprio para o cliente; tudo acontece no WhatsApp.
 - Não usa a API Oficial do WhatsApp (usa biblioteca não-oficial).
 
@@ -131,8 +138,6 @@ master não acessa o painel de restaurante.
   excluir) + métricas de uso + backup pelo painel — **concluído** (ver seção 5.5).
 - [x] **Backup manual dos dados** (`npm run backup` + pelo painel) — **concluído** (ver 5.4).
 - [ ] Notificação para cozinha/atendente quando chega pedido novo (webhook ou push).
-- [ ] Botões de status do pedido no painel (preparando / entregue / cancelado).
-- [ ] Taxa de entrega por bairro/CEP.
 - [ ] Tornar pergunta de bebida e observação configuráveis (liga/desliga) no painel.
 - [ ] Opcionais com regras (ex.: "escolha 1 de 3", "máx. 2").
 - [ ] HTTPS + senha forte para deploy público seguro.
