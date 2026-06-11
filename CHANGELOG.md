@@ -155,3 +155,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Avançar passo:** salvar a config avança o passo atual (+1), e **"Pular este passo"** também avança (sem exigir preenchimento — o campo segue editável nas Configurações normais). Ao concluir os 3 ou clicar **"Dispensar assistente"** → `POST /api/onboarding/concluir` grava `onboardingConcluido=true` e a barra **nunca mais aparece** (nem após relogar)
 - Nova rota mínima `POST /api/onboarding/concluir` (sob `exigeAuth`): lê o config, seta o flag e salva — evita reenviar a config inteira e o race com edições não salvas do formulário
 - Validado: 12 checks no painel real (Playwright) — tenant novo vê a barra (Passo 1/3, chip atual), "Ir para Dados" ativa a aba e rola à seção, salvar avança a Passo 2, pular avança a 3, concluir esconde a barra e **persiste após reload**; tenant antigo (sem flag) **não** vê a barra; `localStorage` do passo limpo ao finalizar
+
+## [0.14.1] — Reversão: barra de onboarding no painel → wizard no cadastro
+
+- **Decisão de produto:** o onboarding deixa de ser uma **barra-guia no topo do painel** (v0.14.0) e passará a ser um **wizard no fluxo de cadastro**. A barra no painel foi revertida
+- **Removido:** a barra `#onbBarra` (`admin.html`), o módulo de onboarding no `app.js` (render, navegação até a seção, "Pular"/"Dispensar" e a chamada a `POST /api/onboarding/concluir`), os estilos `.onb-*` (`style.css`) e os `id` `cfg-sec-*` que tinham sido adicionados às seções de Configurações. O painel volta ao estado anterior à v0.14.0
+- **Limpeza:** o `app.js` agora remove no carregamento qualquer chave residual `onbPasso:*` do `localStorage` (estado do passo guardado pela barra antiga)
+- **Mantidos por ora** (a decidir no passo do wizard): a rota `POST /api/onboarding/concluir` e o campo `config.onboardingConcluido` (o `configInicial` ainda nasce com `false`). Como o wizard de cadastro vai configurar tudo no momento do signup, o flag tende a ficar **sem uso** — provável remoção no Passo B
+- Validado: painel abre normal em tenant novo e antigo, sem a barra (8/8 checks Playwright, **zero erro de console**); abas navegam; salvar config funciona
