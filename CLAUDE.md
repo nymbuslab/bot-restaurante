@@ -269,7 +269,8 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
   `{numero}`). Envio **MANUAL**, 1 cliente por clique — nunca automático/massa. Exige WhatsApp
   conectado; normaliza o telefone para `<digitos>@s.whatsapp.net`; grava `avisadoEm` no sucesso.
 - **Segurança**: login por e-mail + senha com hash SHA-256+salt. Tokens em memória
-  (somem ao reiniciar). Sem HTTPS por padrão — em produção pública, usar Nginx + TLS.
+  (somem ao reiniciar). **HTTPS automático no Fly.io** (certificado gerenciado no `.fly.dev` +
+  `force_https = true` no `fly.toml`); só em VPS/local o HTTPS depende do operador (Nginx + TLS).
 - **Primeiro acesso (instalação legada)**: se não há tenants e existe `data/config.json`,
   a migração automática cria um tenant com `admin@local` / `admin123`. Alterar a
   senha no painel após o primeiro login.

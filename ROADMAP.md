@@ -35,7 +35,9 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
 
 - [ ] **Pergunta de bebida configurável** — toggle no painel para ativar/desativar (feature já existe no bot)
 - [ ] **Observação configurável** — toggle para ativar/desativar pergunta de observação por item (feature já existe)
-- [ ] **HTTPS automático** — guia e configuração para produção pública (Nginx + TLS ou Fly.io cert)
+- [x] **HTTPS em produção** — ✅ **resolvido no Fly.io**: certificado TLS gerenciado pela
+  plataforma no domínio `.fly.dev` + `force_https = true` no `fly.toml` (redirect http→https).
+  Sem config manual. Ressalva: em **VPS/local** o HTTPS depende do operador (Nginx + TLS).
 - [x] **Backup do volume de dados (Fly.io)** — ✅ **concluído**: `npm run backup` gera um
   `.tar.gz` consistente de toda a `data/` (SQLite via Online Backup API, sem downtime), com
   runbook de download e restauração no `DEPLOY.md`. Estratégia: snapshot do Fly + export

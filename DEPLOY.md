@@ -82,7 +82,8 @@ O painel roda na porta 3000. Acesse com o IP do servidor: `http://SEU_IP:3000`
 
 ### Segurança em produção pública
 
-- Coloque atrás de **HTTPS** (ex.: Nginx como proxy reverso + Let's Encrypt).
+- **HTTPS (só na VPS):** coloque atrás de um proxy com TLS (ex.: Nginx + Let's Encrypt). Isso
+  vale **apenas para a VPS/local** — no Fly.io o HTTPS já é automático (ver Opção 3).
 - Altere a senha padrão pelo painel → Configurações.
 - Considere restringir o acesso ao painel por IP/VPN.
 
@@ -214,6 +215,11 @@ Depois reconecte pelo painel.
 
 ### ⚠️ Importante
 
+- **HTTPS é automático no Fly.io.** O domínio `*.fly.dev` (ex.: `bot-restaurante.fly.dev`) já
+  vem com **certificado TLS gerenciado pela plataforma** — sem Nginx, sem Let's Encrypt, sem
+  configuração manual. O `fly.toml` tem **`force_https = true`**, então todo acesso `http://` é
+  redirecionado para `https://`. Nada a fazer aqui. (O esquema "Nginx + Let's Encrypt" só vale
+  para a Opção 2 — VPS.)
 - `auto_stop_machines = 'off'` no `fly.toml` mantém a máquina **sempre ligada**.
   Não altere — se a máquina parar, o bot desconecta e precisará de novo QR scan.
 - O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento

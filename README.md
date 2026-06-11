@@ -241,6 +241,8 @@ Clique em **Editar** (ou **+ Adicionar item**) para abrir o **editor**, onde voc
   ver `ROADMAP.md`.
 - Sem Chromium: cada tenant é só uma conexão WebSocket, consumo de RAM baixo (a máquina de
   1 GB no Fly.io suporta bem mais que os ~3–4 tenants da versão antiga com Chromium).
-- **Segurança**: painel em HTTP com senha. Em produção pública, use HTTPS
-  (Nginx + Let's Encrypt) e troque a senha padrão.
+- **Segurança**: no **Fly.io o HTTPS é automático** (certificado gerenciado no domínio
+  `.fly.dev` + `force_https` no `fly.toml`) — nada a configurar. Em **VPS/local**, o painel
+  roda em HTTP: aí use um proxy com TLS (Nginx + Let's Encrypt). Em qualquer caso, troque a
+  senha padrão.
 - Não versionar `data/tenants/` (sessões WhatsApp e dados de clientes).
