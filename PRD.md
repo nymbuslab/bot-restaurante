@@ -121,7 +121,8 @@ master não acessa o painel de restaurante.
 - **Isolamento**: dados e sessão WhatsApp de cada tenant completamente separados.
 - **Robustez**: conexão manual com reconexão controlada (teto de tentativas) e opção de recuperar sessão travada.
 - **Portabilidade**: roda em Windows (teste) e Linux/Docker (produção).
-- **Segurança (mínima atual)**: senha com hash; recomendado HTTPS em produção.
+- **Segurança (mínima atual)**: senha com hash. **HTTPS automático no Fly.io** (certificado
+  gerenciado no domínio `.fly.dev` + `force_https`); em VPS/local o HTTPS depende do operador.
 
 ## 8. Decisões e premissas
 
@@ -140,7 +141,8 @@ master não acessa o painel de restaurante.
 - [ ] Notificação para cozinha/atendente quando chega pedido novo (webhook ou push).
 - [ ] Tornar pergunta de bebida e observação configuráveis (liga/desliga) no painel.
 - [ ] Opcionais com regras (ex.: "escolha 1 de 3", "máx. 2").
-- [ ] HTTPS + senha forte para deploy público seguro.
+- [x] **HTTPS em produção** — **resolvido no Fly.io** (TLS gerenciado + `force_https`); em
+  VPS/local depende do operador. Ver `DEPLOY.md`.
 
 ## 10. Métricas de sucesso (sugestão)
 
