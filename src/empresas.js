@@ -64,9 +64,6 @@ function tenantDir(slug) {
 // multi-tenant: um tenant novo nunca pode nascer com dados de outro.
 function configInicial(nomeRestaurante) {
   return {
-    // Assistente de onboarding: tenant NOVO nasce com false → a barra-guia aparece
-    // no painel. Tenant ANTIGO não tem este campo (undefined) → barra não aparece.
-    onboardingConcluido: false,
     restaurante: { nome: nomeRestaurante || "Restaurante", telefone: "", endereco: "", horario: "" },
     atendimento: {
       aberto: true,
