@@ -138,6 +138,17 @@ fly volumes create bot_dados --region gru --size 1
 
 > Um único volume guarda tudo: `data/` com `empresas.db`, `config.json`,
 > `cardapio.json` e `tenants/` (pedidos + sessões WhatsApp de cada restaurante).
+>
+> **Volume em uso:** o app monta **apenas o `bot_dados`** em `/app/data`. Havia um volume
+> órfão `bot_sessao` (sobra de uma configuração antiga, **nunca montado**) — foi **removido**
+> para não pagar/confundir. Confira com `fly volumes list`: deve aparecer só o `bot_dados`.
+>
+> **Nota de HA (futuro, não necessário agora):** o Fly **recomenda 2+ volumes** por app para
+> redundância/alta disponibilidade (uma máquina por volume, em zonas diferentes). Hoje rodamos
+> com **1 volume** de propósito — simples e barato; a proteção de dados atual é **snapshots
+> automáticos (retenção 5 dias) + backup manual baixado pro PC** (ver seção de backup). Migrar
+> para 2+ volumes/máquinas só **quando o volume de clientes justificar** o custo e a
+> complexidade extra (réplica de SQLite por tenant não é trivial).
 
 ### 4. Primeiro deploy
 
