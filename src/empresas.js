@@ -103,46 +103,6 @@ function inicializarDiretorio(slug, nomeRestaurante) {
   }
 }
 
-// ---- Migração automática do setup single-tenant legado ----
-// Se não há nenhum tenant e existe data/config.json, cria um tenant "padrão"
-// com os dados existentes. Roda apenas uma vez.
-function migrarLegado() {
-  const total = db.prepare("SELECT COUNT(*) as n FROM empresas").get().n;
-  if (total > 0) return;
-
-  const cfgLegado = path.join(DATA_DIR, "config.json");
-  if (!fs.existsSync(cfgLegado)) return;
-
-  const cfg = JSON.parse(fs.readFileSync(cfgLegado, "utf8"));
-  const nome = (cfg.restaurante && cfg.restaurante.nome) || "Restaurante";
-  const email = "admin@local";
-  const senha = "admin123";
-  const slug = slugUnico(slugBase(nome));
-  const senhaHash = hashSenha(senha);
-
-  db.prepare("INSERT INTO empresas (slug, nome, email, senha, ativo, criadoEm) VALUES (?, ?, ?, ?, 1, ?)")
-    .run(slug, nome, email, senhaHash, new Date().toISOString());
-
-  const dir = tenantDir(slug);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  // Copia config.json e cardapio.json legados
-  fs.copyFileSync(cfgLegado, path.join(dir, "config.json"));
-  const cardLegado = path.join(DATA_DIR, "cardapio.json");
-  if (fs.existsSync(cardLegado)) fs.copyFileSync(cardLegado, path.join(dir, "cardapio.json"));
-
-  // Copia pedidos.db legado se existir
-  const dbLegado = path.join(DATA_DIR, "pedidos.db");
-  const dbDest = path.join(dir, "pedidos.db");
-  if (fs.existsSync(dbLegado) && !fs.existsSync(dbDest)) fs.copyFileSync(dbLegado, dbDest);
-
-  console.log(`\n✅ Migração: tenant "${slug}" criado automaticamente.`);
-  console.log(`   E-mail: ${email}  |  Senha: ${senha}`);
-  console.log(`   (Altere a senha no painel após o primeiro acesso.)\n`);
-}
-
-migrarLegado();
-
 // ---- CRUD ----
 
 function cadastrar({ nome, email, senha }) {

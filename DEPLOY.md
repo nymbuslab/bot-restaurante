@@ -137,8 +137,8 @@ Depois edite o `fly.toml` e troque `app = "bot-restaurante"` pelo nome escolhido
 fly volumes create bot_dados --region gru --size 1
 ```
 
-> Um único volume guarda tudo: `data/` com `empresas.db`, `config.json`,
-> `cardapio.json` e `tenants/` (pedidos + sessões WhatsApp de cada restaurante).
+> Um único volume guarda tudo: `data/` com o `empresas.db` (banco mestre) e
+> `tenants/{slug}/` (config, cardápio, pedidos e sessão WhatsApp de cada restaurante).
 >
 > **Volume em uso:** o app monta **apenas o `bot_dados`** em `/app/data`. Havia um volume
 > órfão `bot_sessao` (sobra de uma configuração antiga, **nunca montado**) — foi **removido**
@@ -159,18 +159,11 @@ fly deploy
 
 O build é rápido (sem Chromium — Baileys não usa browser); compila apenas o `better-sqlite3`.
 
-### 5. Verificar credenciais iniciais
+### 5. Criar a primeira empresa
 
-```bash
-fly logs
-```
-
-Na primeira execução, o sistema cria um tenant a partir de `data/config.json` e
-imprime as credenciais:
-
-```text
-E-mail: admin@local  |  Senha: admin123
-```
+Abra o painel e crie a primeira empresa pelo onboarding público em `/cadastro.html`
+(nome, e-mail e senha) — ou pelo super-admin em `/admin-master`. O tenant nasce limpo.
+Não há mais migração automática de instalação legada. Acompanhe os logs com `fly logs`.
 
 ### 6. Conectar o WhatsApp
 

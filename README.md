@@ -39,17 +39,12 @@ npm start
 
 Abra `http://localhost:3000` no navegador.
 
-**Primeira execução:** se existir configuração anterior (`data/config.json`), o sistema
-migra automaticamente e exibe no console:
+**Primeiro acesso:** acesse `/cadastro.html` e crie a primeira empresa (nome, e-mail e
+senha). O tenant nasce limpo e o login é feito automaticamente. (Não há mais migração
+automática de instalação legada.)
 
-```text
-E-mail: admin@local  |  Senha: admin123
-```
-
-Use essas credenciais para o primeiro login e altere a senha no painel.
-
-**Novo restaurante:** acesse `/cadastro.html` no painel e preencha o formulário de
-cadastro. Após criar a conta, o login é feito automaticamente.
+**Novo restaurante:** mesma página `/cadastro.html`, ou crie pelo super-admin em
+`/admin-master`.
 
 ### Conectar ao WhatsApp
 
@@ -104,7 +99,8 @@ fly deploy
 fly open
 ```
 
-Na primeira execução na nuvem, o painel exibirá as credenciais no log:
+Com o painel no ar, crie a primeira empresa em `/cadastro.html` (ou pelo super-admin em
+`/admin-master`). Acompanhe os logs com:
 
 ```bash
 fly logs
@@ -196,8 +192,6 @@ bot-restaurante/
 ├── docker-entrypoint.sh      → inicializa dados padrão no volume na 1ª execução
 ├── README.md / DEPLOY.md / PRD.md / CLAUDE.md
 ├── data/
-│   ├── config.json           → template de config para novos tenants
-│   ├── cardapio.json         → template de cardápio para novos tenants
 │   ├── empresas.db           → banco mestre de tenants (SQLite, criado automaticamente)
 │   └── tenants/
 │       └── {slug}/           → dados isolados por restaurante

@@ -1,21 +1,14 @@
 node_modules/
-.wwebjs_auth/
-.wwebjs_cache/
-pedidos.json
 *.log
 
 # Dados de runtime (banco, sessões WhatsApp, tenants)
 data/*.db
 data/tenants/
-data/*.migrado
 
 # Backups manuais (contêm dados de cliente — nunca versionar)
 backups/
 
-# ExpxAgents
+# Ambiente / temporários
 .env
 .mcp.json
 *.tmp
-squads/*/state.json
-squads/*/state.json.tmp
-squads/*/output/
