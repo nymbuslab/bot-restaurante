@@ -27,11 +27,11 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - [ ] **Pergunta de bebida configurável** — toggle no painel para ativar/desativar (feature já existe no bot)
 - [ ] **Observação configurável** — toggle para ativar/desativar pergunta de observação por item (feature já existe)
 - [ ] **HTTPS automático** — guia e configuração para produção pública (Nginx + TLS ou Fly.io cert)
-- [ ] **Backup do volume de dados (Fly.io)** — `cardapio.json`, `pedidos.db`, `config.json` e
-  sessões de **todos os tenants** vivem só no volume do Fly e **não vão pro git**. Sem backup,
-  corrupção ou recriação do volume = perda total dos dados de todos os restaurantes. Definir
-  rotina de snapshot periódico **antes de ter clientes pagando** (o Fly oferece snapshots de
-  volume; avaliar também export periódico de `data/`). **Crítico para produção.**
+- [x] **Backup do volume de dados (Fly.io)** — ✅ **concluído**: `npm run backup` gera um
+  `.tar.gz` consistente de toda a `data/` (SQLite via Online Backup API, sem downtime), com
+  runbook de download e restauração no `DEPLOY.md`. Estratégia: snapshot do Fly + export
+  manual. Backup automático para storage externo (S3/R2) fica para quando houver tração — ver
+  `CHANGELOG.md` v0.10.0
 - [ ] **Exibição de preço com opcional (bot)** — na mensagem do pedido, mostrar o preço base do item e o subtotal com opcionais separadamente (ex.: `Pastel R$ 15,00` + `Queijo R$ 2,50` → `subtotal R$ 17,50`), em vez de só o valor somado. Hoje a linha exibe só o total e parece que o item custa mais caro. Identificado no redesign; é ajuste de **texto** no `fluxo.js`, não de cálculo — o total final está correto.
 - [ ] **Saudação com carrinho aberto (bot)** — se o cliente tem itens no carrinho e manda uma saudação ("oi"/"menu"), perguntar se quer **continuar** o pedido em aberto ou **recomeçar**, em vez de retomar o carrinho antigo silenciosamente. Identificado no redesign (`sessoes.js`/`fluxo.js`).
 
