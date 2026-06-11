@@ -7,6 +7,7 @@
 // ============================================================
 
 const path = require("path");
+const fs = require("fs");
 const Database = require("better-sqlite3");
 
 const conexoes = new Map(); // { dbPath → Database }
@@ -87,6 +88,21 @@ function avisarPedido(tenantDir, id) {
   return agora;
 }
 
+// Conta pedidos criados a partir de `inicioISO` (criadoEm >= inicioISO).
+// `criadoEm` é ISO em UTC, então `inicioISO` também deve ser UTC (ver
+// servidor.js, que calcula o início do mês no fuso BR e converte p/ UTC).
+// Pula tenants cujo pedidos.db ainda não existe (retorna 0) — não cria o
+// arquivo só para contar.
+// NOTA DE PERFORMANCE: cálculo on-demand. Reusa o pool de conexões (uma
+// abertura por tenant, cacheada). Para muitos tenants (centenas), avaliar
+// cache com TTL curto na rota /api/admin/metrics.
+function contarNoMes(tenantDir, inicioISO) {
+  const dbPath = path.join(tenantDir, "pedidos.db");
+  if (!conexoes.has(dbPath) && !fs.existsSync(dbPath)) return 0;
+  const db = getDb(tenantDir);
+  return db.prepare("SELECT COUNT(*) AS n FROM pedidos WHERE criadoEm >= ?").get(inicioISO).n;
+}
+
 // Fecha e remove do pool a conexão SQLite de um tenant. Necessário antes de
 // apagar a pasta do tenant (better-sqlite3 mantém o arquivo aberto — no Windows
 // o rmSync da pasta falha enquanto o handle estiver vivo).
@@ -99,4 +115,4 @@ function fecharConexao(tenantDir) {
   }
 }
 
-module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, fecharConexao };
+module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, fecharConexao, contarNoMes };

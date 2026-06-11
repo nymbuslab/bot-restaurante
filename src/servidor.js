@@ -131,6 +131,42 @@ app.get("/api/admin/tenants", exigeSuperAdmin, (_req, res) => {
   res.json(empresas.listar());
 });
 
+// Início do mês corrente no fuso BR (America/Sao_Paulo, UTC-3 fixo desde 2019,
+// sem horário de verão), convertido para UTC ISO para comparar com criadoEm.
+// Usar o fuso BR deixa "pedidos do mês" intuitivo para o admin brasileiro; a
+// conversão para UTC mantém a comparação consistente com o armazenamento.
+function inicioDoMesBR() {
+  // Ex: "2026-06-10" no fuso de São Paulo
+  const hojeBR = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+  const [ano, mes] = hojeBR.split("-");
+  // Meia-noite do dia 1 no fuso BR (-03:00) → ISO em UTC
+  return new Date(`${ano}-${mes}-01T00:00:00-03:00`).toISOString();
+}
+
+app.get("/api/admin/metrics", exigeSuperAdmin, (_req, res) => {
+  const inicioISO = inicioDoMesBR();
+  const lista = empresas.listar();
+
+  let ativos = 0, suspensos = 0, conectados = 0, pedidosMes = 0;
+  const porTenant = {};
+
+  for (const t of lista) {
+    if (t.ativo) ativos++; else suspensos++;
+    const conectado = multiBot.getEstado(t.slug).status === "conectado";
+    if (conectado) conectados++;
+    const n = pedidos.contarNoMes(empresas.tenantDir(t.slug), inicioISO);
+    pedidosMes += n;
+    porTenant[t.slug] = { pedidosMes: n, conectado };
+  }
+
+  res.json({
+    totais: { restaurantes: lista.length, ativos, suspensos, conectados, pedidosMes },
+    porTenant,
+  });
+});
+
 app.post("/api/admin/tenants", exigeSuperAdmin, (req, res) => {
   try {
     const { nome, email, senha } = req.body || {};

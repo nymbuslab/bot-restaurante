@@ -165,17 +165,39 @@ function formatarData(iso) {
 }
 
 let tenants = [];
+let metricas = { totais: {}, porTenant: {} };
 
 async function carregarTenants() {
   try {
-    const r = await apiAdmin("GET", "/api/admin/tenants");
-    tenants = await r.json();
+    // Lista e métricas em paralelo (ambas sob exigeSuperAdmin).
+    const [rt, rm] = await Promise.all([
+      apiAdmin("GET", "/api/admin/tenants"),
+      apiAdmin("GET", "/api/admin/metrics"),
+    ]);
+    tenants = await rt.json();
+    metricas = await rm.json();
+    renderMetricas();
     renderTenants();
   } catch (e) {
     if (e.message !== "Sessão expirada") {
       $("am-lista").innerHTML = `<div class="estado-vazio"><p>Erro ao carregar restaurantes</p><p class="sub">${escapar(e.message)}</p></div>`;
     }
   }
+}
+
+function renderMetricas() {
+  const t = metricas.totais || {};
+  const card = (label, valor, sub) => `
+    <div class="metrica-card">
+      <span class="metrica-label">${label}</span>
+      <span class="metrica-valor">${valor}</span>
+      ${sub ? `<span class="metrica-subtitulo">${sub}</span>` : ""}
+    </div>`;
+  $("am-metricas").innerHTML =
+    card("Restaurantes", t.restaurantes ?? 0, "cadastrados") +
+    card("Ativos / Suspensos", `${t.ativos ?? 0} · ${t.suspensos ?? 0}`, "ativos · suspensos") +
+    card("Pedidos no mês", t.pedidosMes ?? 0, "somando todos") +
+    card("Conectados agora", t.conectados ?? 0, "no WhatsApp");
 }
 
 function renderTenants() {
@@ -196,10 +218,13 @@ function renderTenants() {
     return;
   }
 
+  const porTenant = metricas.porTenant || {};
   const linhas = tenants.map((t) => {
     const ativo = !!t.ativo;
+    const m = porTenant[t.slug] || {};
+    const conectado = !!m.conectado;
     const statusPill = ativo
-      ? '<span class="am-status ativo">Ativo</span>'
+      ? `<span class="am-status ativo">Ativo</span>${conectado ? '<span class="bolinha on" title="Conectado ao WhatsApp"></span>' : ""}`
       : '<span class="am-status suspenso">Suspenso</span>';
     const acaoStatus = ativo
       ? `<button class="mini secundario" data-acao="suspender" data-slug="${escapar(t.slug)}">Suspender</button>`
@@ -209,7 +234,8 @@ function renderTenants() {
         <td data-label="Nome">${escapar(t.nome)}</td>
         <td data-label="E-mail">${escapar(t.email)}</td>
         <td data-label="Slug"><code class="am-slug">${escapar(t.slug)}</code></td>
-        <td data-label="Status">${statusPill}</td>
+        <td data-label="Status" class="am-col-status">${statusPill}</td>
+        <td data-label="Pedidos no mês" class="am-col-pedidos">${m.pedidosMes ?? 0}</td>
         <td data-label="Criado em">${formatarData(t.criadoEm)}</td>
         <td data-label="Ações" class="am-acoes">
           ${acaoStatus}
@@ -222,7 +248,7 @@ function renderTenants() {
     <table class="am-tabela">
       <thead>
         <tr>
-          <th>Nome</th><th>E-mail</th><th>Slug</th><th>Status</th><th>Criado em</th><th>Ações</th>
+          <th>Nome</th><th>E-mail</th><th>Slug</th><th>Status</th><th>Pedidos no mês</th><th>Criado em</th><th>Ações</th>
         </tr>
       </thead>
       <tbody>${linhas}</tbody>
@@ -251,9 +277,7 @@ async function suspender(slug) {
   if (!ok) return;
   try {
     await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/suspender`);
-    const t = tenants.find((x) => x.slug === slug);
-    if (t) t.ativo = 0;
-    renderTenants();
+    await carregarTenants(); // recarrega lista + métricas (ativos/suspensos/conectados mudam)
     toast("Restaurante suspenso.");
   } catch (e) {
     if (e.message !== "Sessão expirada") toast("Erro ao suspender.", "erro");
@@ -263,9 +287,7 @@ async function suspender(slug) {
 async function reativar(slug) {
   try {
     await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/reativar`);
-    const t = tenants.find((x) => x.slug === slug);
-    if (t) t.ativo = 1;
-    renderTenants();
+    await carregarTenants(); // recarrega lista + métricas
     toast("Restaurante reativado.");
   } catch (e) {
     if (e.message !== "Sessão expirada") toast("Erro ao reativar.", "erro");
@@ -306,9 +328,8 @@ async function confirmarExcluir() {
       toast(d.erro || "Erro ao excluir.", "erro");
       return;
     }
-    tenants = tenants.filter((x) => x.slug !== slug);
-    renderTenants();
     fecharExcluir();
+    await carregarTenants(); // recarrega lista + métricas
     toast("Restaurante excluído.");
   } catch (e) {
     if (e.message !== "Sessão expirada") toast("Erro ao excluir.", "erro");
