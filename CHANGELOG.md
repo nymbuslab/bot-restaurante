@@ -97,3 +97,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Consistência do SQLite**: os bancos do app entram via *Online Backup API* do `better-sqlite3` (`db.backup`) — cópia consistente **mesmo com o servidor no ar** (sem downtime). Demais `.db` (caches do Chromium em pastas órfãs `session-*/`) são copiados crus, sem `db.backup`
 - `backups/` no `.gitignore` (dados de cliente nunca versionados); dep `tar` (JS puro, cross-platform)
 - **DEPLOY.md**: runbook completo — gerar, **baixar do Fly** (`fly ssh sftp get`), **testar a restauração** sem tocar nos dados reais, e **restaurar** com o servidor parado. Inclui o alerta de que `backups/` é efêmero no Fly (baixar na mesma sessão) e a decisão de arquitetura (snapshot do Fly + export manual; S3 fora de escopo por ora)
+
+## [0.11.0] — Backup pelo painel super-admin
+
+- **Aba "Configurações" no `/admin-master`** (estrutura pronta para novas subseções) com a subseção **Backup**: botão "Gerar backup agora" (estado "Gerando…"), lista dos backups (arquivo, tamanho, data) com **Baixar** por linha (download direto pro PC via blob autenticado), e aviso em destaque de que `backups/` é efêmero no Fly
+- **Seção "Como restaurar"** (somente leitura) renderizada a partir do **DEPLOY.md** (fonte única, via marcadores `RESTAURACAO:START/END`), com renderizador de markdown que escapa HTML; deixa explícito que a restauração é **manual**, com o servidor parado, e que o painel **não executa** restauração
+- **Rotas sob `exigeSuperAdmin`** (reusam `scripts/backup.js`, sem reescrever a lógica): `POST /api/admin/backup/gerar`, `GET /api/admin/backup/listar`, `GET /api/admin/backup/baixar/:arquivo` (validação **anti-path-traversal**: só aceita `backup-AAAA-MM-DD-HHmm.tar.gz` confinado em `backups/`), `GET /api/admin/backup/restauracao-doc` (com fallback gracioso se o DEPLOY.md sumir)
+- `scripts/backup.js` refatorado para expor `gerarBackup()`/`listarBackups()` — o `npm run backup` continua igual; restauração permanece 100% manual

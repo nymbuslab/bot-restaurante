@@ -57,11 +57,15 @@ function tamanhoLegivel(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-async function main() {
-  if (!fs.existsSync(DATA_DIR)) {
-    console.error("❌ Pasta data/ não encontrada. Nada a fazer.");
-    process.exit(1);
-  }
+// Padrão do nome de arquivo de backup (usado também na validação anti-traversal
+// da rota de download no servidor).
+const NOME_RE = /^backup-\d{4}-\d{2}-\d{2}-\d{4}\.tar\.gz$/;
+
+// Gera um backup e retorna { arquivo, tamanho (bytes), criadoEm (ISO) }.
+// Chamável tanto pelo CLI (npm run backup) quanto pelo servidor (rota admin) —
+// a lógica é a mesma, sem reescrita.
+async function gerarBackup() {
+  if (!fs.existsSync(DATA_DIR)) throw new Error("Pasta data/ não encontrada.");
 
   fs.mkdirSync(BACKUPS_DIR, { recursive: true });
 
@@ -73,8 +77,6 @@ async function main() {
   if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
 
   try {
-    console.log("📦 Gerando backup de data/ …");
-
     // 1) Espelha data/ → staging, copiando TUDO exceto os bancos do app
     //    (esses entram via snapshot consistente no passo 2). .db de terceiros
     //    (caches do Chromium nas pastas órfãs) são copiados crus normalmente.
@@ -95,24 +97,44 @@ async function main() {
       } finally {
         db.close();
       }
-      console.log(`   ✓ ${rel} (consistente)`);
     }
 
     // 3) Empacota o conteúdo do staging na raiz do tar (cwd = staging, "." ).
     await tar.create({ gzip: true, file: saida, cwd: staging }, ["."]);
 
-    const tamanho = tamanhoLegivel(fs.statSync(saida).size);
-    console.log(`\n✅ Backup criado: ${path.relative(RAIZ, saida)}  (${tamanho})`);
-    console.log(`   ${dbs.length} banco(s) do app incluído(s) de forma consistente.`);
-    console.log("\n⚠️  No Fly.io: backups/ é EFÊMERO (fora do volume). Baixe agora:");
-    console.log(`   fly ssh sftp get /app/${path.relative(RAIZ, saida).replace(/\\/g, "/")} ./`);
+    const stat = fs.statSync(saida);
+    return { arquivo: path.basename(saida), tamanho: stat.size, criadoEm: stat.mtime.toISOString(), bancos: dbs.length };
   } finally {
     // 4) Sempre remove o staging.
     if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
   }
 }
 
-main().catch((e) => {
-  console.error("❌ Falha no backup:", e.message);
-  process.exit(1);
-});
+// Lista os backups existentes em backups/, mais recente primeiro.
+function listarBackups() {
+  if (!fs.existsSync(BACKUPS_DIR)) return [];
+  return fs.readdirSync(BACKUPS_DIR)
+    .filter((n) => NOME_RE.test(n))
+    .map((n) => {
+      const st = fs.statSync(path.join(BACKUPS_DIR, n));
+      return { nome: n, tamanho: st.size, data: st.mtime.toISOString() };
+    })
+    .sort((a, b) => b.data.localeCompare(a.data));
+}
+
+// ---- CLI: só roda quando executado direto (node scripts/backup.js) ----
+if (require.main === module) {
+  gerarBackup()
+    .then(({ arquivo, tamanho, bancos }) => {
+      console.log(`\n✅ Backup criado: backups/${arquivo}  (${tamanhoLegivel(tamanho)})`);
+      console.log(`   ${bancos} banco(s) do app incluído(s) de forma consistente.`);
+      console.log("\n⚠️  No Fly.io: backups/ é EFÊMERO (fora do volume). Baixe agora:");
+      console.log(`   fly ssh sftp get /app/backups/${arquivo} ./`);
+    })
+    .catch((e) => {
+      console.error("❌ Falha no backup:", e.message);
+      process.exit(1);
+    });
+}
+
+module.exports = { gerarBackup, listarBackups, tamanhoLegivel, BACKUPS_DIR, NOME_RE };

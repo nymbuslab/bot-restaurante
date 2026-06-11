@@ -12,6 +12,7 @@ const empresas = require("./empresas");
 const store = require("./store");
 const pedidos = require("./pedidos");
 const multiBot = require("./multi-bot");
+const backup = require("../scripts/backup");
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
@@ -165,6 +166,52 @@ app.get("/api/admin/metrics", exigeSuperAdmin, (_req, res) => {
     totais: { restaurantes: lista.length, ativos, suspensos, conectados, pedidosMes },
     porTenant,
   });
+});
+
+// ---- Super-admin: backup (consome scripts/backup.js, sem reescrever a lógica) ----
+
+app.post("/api/admin/backup/gerar", exigeSuperAdmin, async (_req, res) => {
+  try {
+    const r = await backup.gerarBackup();
+    res.json({ arquivo: r.arquivo, tamanho: r.tamanho, criadoEm: r.criadoEm });
+  } catch (e) {
+    res.status(500).json({ erro: e.message || "Falha ao gerar o backup." });
+  }
+});
+
+app.get("/api/admin/backup/listar", exigeSuperAdmin, (_req, res) => {
+  res.json(backup.listarBackups());
+});
+
+app.get("/api/admin/backup/baixar/:arquivo", exigeSuperAdmin, (req, res) => {
+  // Anti path-traversal (defesa em profundidade):
+  const nome = path.basename(req.params.arquivo);          // 1) tira componentes de path
+  if (!backup.NOME_RE.test(nome)) return res.status(400).json({ erro: "Nome de backup inválido." }); // 2) só backup-AAAA-MM-DD-HHmm.tar.gz
+  const baseDir  = path.resolve(backup.BACKUPS_DIR);
+  const filePath = path.resolve(baseDir, nome);
+  if (!filePath.startsWith(baseDir + path.sep)) return res.status(403).end(); // 3) confinado em backups/
+  if (!fs.existsSync(filePath)) return res.status(404).json({ erro: "Backup não encontrado." }); // 4) existe
+  res.download(filePath, nome);
+});
+
+// Passo a passo de restauração — FONTE ÚNICA: lê a seção entre marcadores no
+// DEPLOY.md (que vai para a imagem do Fly via COPY . .). Restauração é MANUAL;
+// esta rota só serve o texto, nunca executa nada. Falha → fallback (a tela
+// não quebra).
+const DEPLOY_PATH = path.join(__dirname, "..", "DEPLOY.md");
+const RESTAURACAO_FALLBACK =
+  "### Como restaurar\n\nNão foi possível carregar o passo a passo automaticamente. " +
+  "Consulte o **DEPLOY.md** do projeto (seção \"RESTAURAR um backup\"). A restauração é " +
+  "**manual**, com o servidor parado — o painel não executa a restauração.";
+
+app.get("/api/admin/backup/restauracao-doc", exigeSuperAdmin, (_req, res) => {
+  try {
+    const txt = fs.readFileSync(DEPLOY_PATH, "utf8");
+    const m = txt.match(/<!-- RESTAURACAO:START -->([\s\S]*?)<!-- RESTAURACAO:END -->/);
+    res.json({ markdown: m ? m[1].trim() : RESTAURACAO_FALLBACK });
+  } catch (e) {
+    res.json({ markdown: RESTAURACAO_FALLBACK });
+  }
 });
 
 app.post("/api/admin/tenants", exigeSuperAdmin, (req, res) => {

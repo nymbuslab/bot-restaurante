@@ -91,21 +91,67 @@
           <span class="am-topbar-sub">Painel Master</span>
         </div>
       </div>
+      <div class="am-tabs">
+        <button class="am-tab ativa" data-aba="restaurantes">Restaurantes</button>
+        <button class="am-tab" data-aba="config">Configurações</button>
+      </div>
       <div class="am-topbar-acoes">
-        <button id="btnNovo" class="mini">+ Novo restaurante</button>
         <button id="btnSair" class="secundario mini">Sair</button>
       </div>
     </div>
 
     <main class="am-page">
-      <div class="am-cabeca">
-        <h1 class="am-titulo">Restaurantes</h1>
-        <p class="sub" id="am-contagem">Carregando…</p>
-      </div>
 
-      <div id="am-metricas" class="am-metricas"><!-- cards de métrica injetados aqui --></div>
+      <!-- Aba: Restaurantes -->
+      <section id="aba-restaurantes" class="am-aba ativa">
+        <div class="am-cabeca am-cabeca-acao">
+          <div>
+            <h1 class="am-titulo">Restaurantes</h1>
+            <p class="sub" id="am-contagem">Carregando…</p>
+          </div>
+          <button id="btnNovo" class="mini">+ Novo restaurante</button>
+        </div>
 
-      <div id="am-lista"><!-- tabela ou estado vazio injetado aqui --></div>
+        <div id="am-metricas" class="am-metricas"><!-- cards de métrica injetados aqui --></div>
+
+        <div id="am-lista"><!-- tabela ou estado vazio injetado aqui --></div>
+      </section>
+
+      <!-- Aba: Configurações -->
+      <section id="aba-config" class="am-aba" style="display:none">
+        <div class="am-cabeca">
+          <h1 class="am-titulo">Configurações</h1>
+          <p class="sub">Administração da plataforma</p>
+        </div>
+
+        <!-- Subseção: Backup -->
+        <div class="am-config-sub">
+          <h2 class="am-sub-titulo">Backup</h2>
+          <p class="sub">Gera um arquivo único com todos os dados da plataforma (cardápios, pedidos, sessões e contas).</p>
+
+          <div class="am-aviso-efemero">
+            <strong>⚠️ No Fly.io, a pasta de backups é efêmera</strong> (fora do volume). Se o
+            container reiniciar, o arquivo some. <strong>Gere e baixe o backup na mesma sessão.</strong>
+          </div>
+
+          <div class="am-backup-acoes">
+            <button id="btnGerarBackup">Gerar backup agora</button>
+          </div>
+
+          <div id="am-backups-lista"><!-- lista de backups injetada aqui --></div>
+
+          <!-- Como restaurar (somente leitura) -->
+          <div class="am-runbook-bloco">
+            <h3 class="am-sub-titulo">Como restaurar</h3>
+            <p class="sub am-runbook-nota">
+              A restauração é <strong>manual</strong>, feita com o <strong>servidor parado</strong>.
+              Este painel <strong>não executa</strong> a restauração — siga o passo a passo abaixo.
+            </p>
+            <div id="am-runbook" class="am-runbook">Carregando…</div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
