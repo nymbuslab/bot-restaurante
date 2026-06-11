@@ -65,7 +65,9 @@ e soluções prontas costumam ser caras ou engessadas.
   opcionais. Mudanças valem imediatamente (sem reiniciar).
 - **Configurações**: dados do restaurante, mensagens do bot, horário por dia da semana,
   taxa de entrega, formas de pagamento, toggle aberto/fechado.
-- **Pedidos**: lista de pedidos com itens, opcionais, observação, total, entrega e telefone.
+- **Pedidos**: lista de pedidos com itens, opcionais, observação, total, entrega e telefone;
+  botão para **avisar o cliente** que o pedido está pronto (mensagem manual, 1 por clique,
+  pelo WhatsApp do próprio tenant — nunca em massa/automático).
 - **Simulador**: testa o fluxo do bot direto no navegador, sem WhatsApp.
 
 ### 5.4 Persistência
@@ -74,6 +76,28 @@ e soluções prontas costumam ser caras ou engessadas.
 - **Banco mestre de tenants**: SQLite em `data/empresas.db`.
 - **Config e cardápio**: JSON por tenant com recarga ao vivo (cache por mtime).
 - **Sessão WhatsApp**: `useMultiFileAuthState` (Baileys) em `baileys-{slug}/` dentro do diretório do tenant.
+- **Backup**: export manual da pasta `data/` num único `.tar.gz` consistente (snapshot do
+  SQLite via Online Backup API, sem downtime) — por `npm run backup` ou pelo painel de
+  super-admin. Restauração é manual, com o servidor parado.
+
+### 5.5 Super-admin (gestão da plataforma)
+
+Área **separada** do painel de restaurante, em `/admin-master`, com todas as rotas sob
+`exigeSuperAdmin`. **Isolada**: um token de restaurante não acessa o super-admin e o token
+master não acessa o painel de restaurante.
+
+- **Login master próprio** por variáveis de ambiente (`SUPERADMIN_EMAIL` /
+  `SUPERADMIN_SENHA_HASH`, mesmo esquema de hash do projeto); sem essas variáveis, as rotas
+  `/api/admin/*` ficam desativadas (sem credencial padrão).
+- **Gestão de tenants**: listar todos (nome, e-mail, slug, status, data de criação), criar
+  manualmente, **suspender/reativar** (suspenso não consegue logar e tem o bot desconectado na
+  hora) e **excluir** com confirmação forte (exige digitar o slug; remove o registro e a pasta
+  de dados do tenant).
+- **Métricas de uso** (reais, contadas do banco): total de restaurantes, ativos/suspensos,
+  pedidos no mês somando todos os tenants e quantos estão conectados ao WhatsApp agora; além de
+  pedidos no mês por restaurante.
+- **Configurações → Backup**: gerar backup completo, listar e baixar os arquivos para o PC; o
+  passo a passo de restauração (manual) é exibido na própria tela.
 
 ## 6. Fora de escopo (o que o produto NÃO faz)
 
@@ -82,7 +106,6 @@ e soluções prontas costumam ser caras ou engessadas.
 - Não calcula taxa de entrega por região/CEP (taxa única por tenant).
 - Não tem app próprio para o cliente; tudo acontece no WhatsApp.
 - Não usa a API Oficial do WhatsApp (usa biblioteca não-oficial).
-- Não tem painel de super-admin para gerenciar todos os tenants.
 
 ## 7. Requisitos não-funcionais
 
@@ -104,10 +127,12 @@ e soluções prontas costumam ser caras ou engessadas.
 
 ## 9. Roadmap / próximos passos (priorizáveis)
 
+- [x] **Painel de super-admin** para gerenciar tenants (listar, criar, suspender/reativar,
+  excluir) + métricas de uso + backup pelo painel — **concluído** (ver seção 5.5).
+- [x] **Backup manual dos dados** (`npm run backup` + pelo painel) — **concluído** (ver 5.4).
 - [ ] Notificação para cozinha/atendente quando chega pedido novo (webhook ou push).
 - [ ] Botões de status do pedido no painel (preparando / entregue / cancelado).
 - [ ] Taxa de entrega por bairro/CEP.
-- [ ] Painel de super-admin para gerenciar tenants (listar, suspender, ver métricas).
 - [ ] Tornar pergunta de bebida e observação configuráveis (liga/desliga) no painel.
 - [ ] Opcionais com regras (ex.: "escolha 1 de 3", "máx. 2").
 - [ ] HTTPS + senha forte para deploy público seguro.
