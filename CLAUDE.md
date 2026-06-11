@@ -153,7 +153,15 @@ apenas** (a tela vem em passo posterior).
 - **Rotas** (todas sob `exigeSuperAdmin`):
   `GET /api/admin/tenants` (lista) · `POST /api/admin/tenants` (cria, reusa `empresas.cadastrar`) ·
   `PATCH /api/admin/tenants/:slug/suspender` · `PATCH .../reativar` ·
-  `DELETE /api/admin/tenants/:slug` (destrutivo).
+  `DELETE /api/admin/tenants/:slug` (destrutivo) · `GET /api/admin/metrics` (métricas).
+- **Métricas (`GET /api/admin/metrics`):** retorna `{ totais: { restaurantes, ativos,
+  suspensos, conectados, pedidosMes }, porTenant: { <slug>: { pedidosMes, conectado } } }`.
+  Contagem de pedidos do mês é **real e on-demand**: `pedidos.contarNoMes(tenantDir, inicioISO)`
+  faz `COUNT(*) WHERE criadoEm >= ?`, reusa o pool de conexões e **pula tenants sem `pedidos.db`**
+  (retorna 0 sem criar o arquivo). "Conectados" vem de `multiBot.getEstado(slug).status`. O
+  **corte do mês usa o fuso BR** (America/Sao_Paulo, UTC-3, sem DST) convertido para UTC ISO —
+  `inicioDoMesBR()` em `servidor.js` — para o número bater com a intuição do admin brasileiro
+  sem misturar fusos. Se o nº de tenants crescer para centenas, cachear (TTL curto).
 - **Suspensão (efeito real):** `setAtivo(slug,0)` → login do restaurante já é recusado
   (`autenticar` filtra `ativo=1`) + `multiBot.desconectar(slug)` (bot para) +
   invalidação dos tokens de painel ativos do tenant (sessão aberta cai).

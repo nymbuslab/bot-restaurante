@@ -20,7 +20,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 
 - [ ] **Botões de status no painel** — marcar pedido como preparando / entregue / cancelado
 - [ ] **Taxa de entrega por bairro/CEP** — tabela de bairros com taxa específica por área
-- [ ] **Painel de super-admin** — listar todos os tenants, ver métricas básicas, suspender empresa
+- [x] **Painel de super-admin** — ✅ **concluído** (3 passos): backend + auth master isolada por env; tela `/admin-master` (listar/criar/suspender/reativar/excluir tenants com confirmação forte); métricas reais (total, ativos/suspensos, pedidos do mês, conectados). Ver `CHANGELOG.md` e `PROGRESSO.md`
 
 ## P2 — Melhorias de produto
 

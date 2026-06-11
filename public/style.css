@@ -2587,7 +2587,20 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .am-topbar-acoes button.mini { width: auto; }
 
 .am-page { max-width: 1100px; margin: 0 auto; padding: 28px 24px 48px; }
-.am-cabeca { margin-bottom: 22px; }
+.am-cabeca { margin-bottom: 18px; }
+
+/* Faixa de métricas (4 cards) — reusa .metrica-card do design system */
+.am-metricas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Coluna "Pedidos no mês" + bolinha de conectado */
+.am-col-pedidos { font-weight: 700; color: var(--text-primary); }
+.am-col-status { white-space: nowrap; }
+.am-col-status .bolinha { margin-left: 8px; vertical-align: middle; }
 .am-titulo { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: var(--text-primary); }
 .am-cabeca .sub { margin-top: 2px; }
 
@@ -2638,10 +2651,19 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .am-criar-caixa .erro { margin: 0 0 8px; }
 
 /* Tabela → cards no mobile */
+@media (max-width: 1024px) {
+  .am-metricas { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (max-width: 640px) {
   .am-page { padding: 20px 16px 40px; }
   .am-topbar { padding: 0 16px; }
   .am-topbar-acoes button.mini { padding: 6px 10px; }
+
+  .am-metricas { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .am-metrica-card, .am-metricas .metrica-card { padding: 14px; }
+  .am-metricas .metrica-valor { font-size: 24px; }
+  .am-col-status .bolinha { margin-left: 0; }
 
   .am-tabela thead { display: none; }
   .am-tabela, .am-tabela tbody, .am-tabela tr, .am-tabela td { display: block; width: 100%; }
