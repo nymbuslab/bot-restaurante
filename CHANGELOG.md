@@ -126,3 +126,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Default LIGADO** (retrocompatível): tenant sem o campo se comporta como antes — só desliga quem desligar explicitamente (lido como `!== false`)
 - **Bot respeita os flags** (`fluxo.js`): bebida OFF pula `PERGUNTA_BEBIDA` (vai direto ao nome) — o flag é condição **a mais** sobre a regra atual (só perguntaria se houvesse categoria de bebida e o cliente não tivesse adicionado uma); observação OFF pula a etapa por item (vai direto à quantidade, observação vazia). Estados intactos — apenas deixam de ser alcançados
 - Validado: teste nos 5 casos (ON/ON, **bebida OFF com categoria de bebida presente**, obs OFF, ambos OFF, legado sem campos) + painel real (liga/desliga → salvar → reload persiste → `config.json` em disco) + simulador ao vivo (OFF pula as duas; ON volta a perguntar)
+
+## [0.12.1] — Saudação com carrinho aberto: continuar ou recomeçar
+
+- Quando o cliente manda uma **saudação** (oi, olá, menu, bom dia…) **com itens no carrinho**, o bot não volta mais ao menu silenciosamente mantendo o pedido antigo: pergunta **continuar** (mantém o carrinho) ou **recomeçar** (esvazia via `limparSessao`). Novo estado `CONFIRMA_REINICIO` em `fluxo.js`
+- **Só dispara com carrinho não-vazio**; carrinho vazio segue direto ao menu (comportamento atual). Detecção por **match exato** da mensagem (mesma lista de saudações de hoje) — endereço/nome com substring (ex.: "Rua Bom Dia, 100") **não** dispara. `cancelar`/`sair` continuam zerando direto, sem a nova pergunta. Resposta inválida no estado re-pergunta (não trava)
+- Validado: 7 casos (node, mesmo `processarMensagem` do bot) + simulador ao vivo (pergunta → "1" mantém carrinho / "2" zera; vazio vai ao menu; inválida re-pergunta; "oi" no meio do checkout dispara sem quebrar)
