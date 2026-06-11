@@ -260,12 +260,17 @@ exit
 
 (Localmente é o mesmo comando sem o `/app`: `rm -rf data/tenants/*/session-*`.)
 
-### Gerar um backup (`npm run backup`)
+### Gerar um backup (`npm run backup` ou pelo painel)
 
 Gera `backups/backup-AAAA-MM-DD-HHmm.tar.gz` com **toda** a `data/`. Os bancos SQLite
 (`empresas.db` e os `pedidos.db`) entram via *Online Backup API* do SQLite — cópia
 **consistente mesmo com o servidor no ar** (sem downtime). As sessões `baileys-*/` entram
 como estão.
+
+> **Pelo painel:** dá para **gerar e baixar** backups direto no super-admin, em
+> **`/admin-master` → Configurações → Backup** (mesmo motor; gera o mesmo arquivo). O download
+> pelo painel traz o `.tar.gz` direto para o seu PC, sem precisar do `fly ssh sftp`. A
+> **restauração continua manual** (o painel só exibe o passo a passo abaixo, nunca executa).
 
 ```bash
 # Localmente:
@@ -318,6 +323,7 @@ node -e "const D=require('better-sqlite3'); \
 Os números devem bater com o sistema em produção. (Este projeto valida exatamente isso ao
 entregar a feature: empresas e pedidos contados antes e depois do tar batem.)
 
+<!-- RESTAURACAO:START -->
 ### RESTAURAR um backup (com o servidor PARADO)
 
 > Restauração **substitui** os dados atuais. Pare o app antes e mantenha um resguardo
@@ -362,6 +368,7 @@ pm2 start bot-restaurante         # ou npm start
 > O tar guarda o **conteúdo** de `data/` na raiz do arquivo, então `tar -xzf ... -C data`
 > recoloca tudo no lugar certo. As sessões `baileys-*/` voltam juntas — o bot reconecta sem
 > novo QR (a menos que o WhatsApp tenha expirado a sessão nesse meio-tempo).
+<!-- RESTAURACAO:END -->
 
 ---
 

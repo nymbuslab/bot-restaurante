@@ -388,12 +388,188 @@ async function confirmarCriar() {
 }
 
 // ============================================================
+// ABAS (Restaurantes / Configurações)
+// ============================================================
+let configCarregada = false;
+
+function trocarAba(aba) {
+  document.querySelectorAll(".am-tab").forEach((b) => b.classList.toggle("ativa", b.dataset.aba === aba));
+  document.querySelectorAll(".am-aba").forEach((s) => {
+    const ativa = s.id === "aba-" + aba;
+    s.classList.toggle("ativa", ativa);
+    s.style.display = ativa ? "block" : "none";
+  });
+  if (aba === "config" && !configCarregada) {
+    configCarregada = true;
+    carregarBackups();
+    carregarRunbook();
+  }
+}
+
+// ============================================================
+// BACKUP
+// ============================================================
+async function gerarBackup() {
+  const btn = $("btnGerarBackup");
+  btn.disabled = true;
+  btn.textContent = "Gerando…";
+  try {
+    const r = await apiAdmin("POST", "/api/admin/backup/gerar");
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Erro ao gerar backup.", "erro");
+      return;
+    }
+    await carregarBackups();
+    toast("Backup gerado.");
+  } catch (e) {
+    if (e.message !== "Sessão expirada") toast("Erro ao gerar backup.", "erro");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Gerar backup agora";
+  }
+}
+
+async function carregarBackups() {
+  const alvo = $("am-backups-lista");
+  try {
+    const r = await apiAdmin("GET", "/api/admin/backup/listar");
+    const lista = await r.json();
+    renderBackups(lista);
+  } catch (e) {
+    if (e.message !== "Sessão expirada") {
+      alvo.innerHTML = `<div class="estado-vazio"><p>Erro ao listar backups</p><p class="sub">${escapar(e.message)}</p></div>`;
+    }
+  }
+}
+
+function renderBackups(lista) {
+  const alvo = $("am-backups-lista");
+  if (!lista.length) {
+    alvo.innerHTML = `
+      <div class="estado-vazio">
+        <p>Nenhum backup ainda</p>
+        <p class="sub">Clique em "Gerar backup agora" para criar o primeiro.</p>
+      </div>`;
+    return;
+  }
+  const linhas = lista.map((b) => `
+    <tr>
+      <td data-label="Arquivo"><code class="am-slug">${escapar(b.nome)}</code></td>
+      <td data-label="Tamanho">${formatarBytes(b.tamanho)}</td>
+      <td data-label="Data">${formatarDataHora(b.data)}</td>
+      <td data-label="" class="am-acoes">
+        <button class="mini" data-baixar="${escapar(b.nome)}">Baixar</button>
+      </td>
+    </tr>`).join("");
+  alvo.innerHTML = `
+    <table class="am-tabela am-backups-tabela">
+      <thead><tr><th>Arquivo</th><th>Tamanho</th><th>Data</th><th></th></tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+  alvo.querySelectorAll("button[data-baixar]").forEach((b) => {
+    b.addEventListener("click", () => baixarBackup(b.dataset.baixar, b));
+  });
+}
+
+async function baixarBackup(nome, btn) {
+  btn.disabled = true;
+  btn.textContent = "Baixando…";
+  try {
+    // fetch autenticado (mantém o header Authorization) → blob → âncora de download.
+    const r = await apiAdmin("GET", `/api/admin/backup/baixar/${encodeURIComponent(nome)}`);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Erro ao baixar.", "erro");
+      return;
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    if (e.message !== "Sessão expirada") toast("Erro ao baixar.", "erro");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Baixar";
+  }
+}
+
+async function carregarRunbook() {
+  const alvo = $("am-runbook");
+  try {
+    const r = await apiAdmin("GET", "/api/admin/backup/restauracao-doc");
+    const { markdown } = await r.json();
+    alvo.innerHTML = renderMarkdown(markdown || "");
+  } catch (e) {
+    if (e.message !== "Sessão expirada") {
+      alvo.innerHTML = "<p>Não foi possível carregar o passo a passo. Consulte o DEPLOY.md do projeto.</p>";
+    }
+  }
+}
+
+// ---- Helpers de formatação ----
+function formatarBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+function formatarDataHora(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// ---- Renderizador de markdown mínimo (escapa HTML → sem XSS) ----
+function inlineMd(s) {
+  return escapar(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+function renderMarkdown(md) {
+  const out = [];
+  // Normaliza CRLF/CR → LF (o DEPLOY.md pode vir com quebras do Windows).
+  const linhas = String(md).replace(/\r\n?/g, "\n").split("\n");
+  let lista = null, quote = null;
+  const flushLista = () => { if (lista) { out.push("<ul>" + lista.map((li) => `<li>${inlineMd(li)}</li>`).join("") + "</ul>"); lista = null; } };
+  const flushQuote = () => { if (quote) { out.push("<blockquote>" + quote.map(inlineMd).join("<br>") + "</blockquote>"); quote = null; } };
+
+  for (let i = 0; i < linhas.length; i++) {
+    const linha = linhas[i];
+    if (/^```/.test(linha)) {                 // bloco de código
+      flushLista(); flushQuote();
+      const code = [];
+      i++;
+      while (i < linhas.length && !/^```/.test(linhas[i])) { code.push(linhas[i]); i++; }
+      out.push(`<pre><code>${escapar(code.join("\n"))}</code></pre>`);
+      continue;
+    }
+    const h = linha.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { flushLista(); flushQuote(); const lvl = Math.min(h[1].length + 1, 6); out.push(`<h${lvl}>${inlineMd(h[2])}</h${lvl}>`); continue; }
+    if (/^>\s?/.test(linha)) { flushLista(); (quote || (quote = [])).push(linha.replace(/^>\s?/, "")); continue; }
+    if (/^[-*]\s+/.test(linha)) { flushQuote(); (lista || (lista = [])).push(linha.replace(/^[-*]\s+/, "")); continue; }
+    if (/^\d+\.\s+/.test(linha)) { flushQuote(); (lista || (lista = [])).push(linha.replace(/^\d+\.\s+/, "")); continue; }
+    if (linha.trim() === "") { flushLista(); flushQuote(); continue; }
+    flushLista(); flushQuote(); out.push(`<p>${inlineMd(linha)}</p>`);
+  }
+  flushLista(); flushQuote();
+  return out.join("\n");
+}
+
+// ============================================================
 // BIND DE EVENTOS
 // ============================================================
 $("btnEntrar").addEventListener("click", entrar);
 $("formLogin").addEventListener("submit", entrar);
 $("btnSair").addEventListener("click", sair);
 $("btnNovo").addEventListener("click", abrirCriar);
+$("btnGerarBackup").addEventListener("click", gerarBackup);
+document.querySelectorAll(".am-tab").forEach((b) => b.addEventListener("click", () => trocarAba(b.dataset.aba)));
 
 $("del-cancelar").addEventListener("click", fecharExcluir);
 $("del-confirmar").addEventListener("click", confirmarExcluir);
