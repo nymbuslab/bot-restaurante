@@ -45,7 +45,7 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
   `CHANGELOG.md` v0.10.0
 - [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
 - [x] **Saudação com carrinho aberto (bot)** — ✅ **concluído**: saudação com carrinho não-vazio pergunta *continuar* (mantém) ou *recomeçar* (zera), em vez de retomar o carrinho silenciosamente. Estado `CONFIRMA_REINICIO` em `fluxo.js`. Ver `CHANGELOG.md` v0.12.1.
-- [ ] **Assistente de onboarding (1º acesso)** — 🔄 **redirecionado**: a barra-guia no painel (v0.14.0) foi **revertida** (v0.14.1) por decisão de produto; o onboarding vai virar um **wizard no fluxo de cadastro** (configura tudo no signup, antes de cair no painel). A reversão manteve a rota `POST /api/onboarding/concluir` e o flag `config.onboardingConcluido` para avaliação no wizard (provável remoção). Ver `CHANGELOG.md` v0.14.0/v0.14.1.
+- [x] **Onboarding via wizard de cadastro** — ✅ **concluído**: cadastro em 4 etapas (Conta → Dados → Horário → Entrega → painel), reusando `POST /api/cadastro`+`/api/login` (etapa 1) e `PUT /api/config` (etapas 2–4, persistência incremental). Dados obrigatório; horário/entrega puláveis; abandono cai direto no painel no próximo login. Trajeto anterior: a barra-guia no painel (v0.14.0) foi revertida (v0.14.1) e o flag `config.onboardingConcluido`/rota `POST /api/onboarding/concluir` (código morto) foram removidos. Ver `CHANGELOG.md` v0.15.0.
 
 ## P3 — Ideias futuras (sem compromisso)
 

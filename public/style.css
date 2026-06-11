@@ -2793,3 +2793,74 @@ tbody tr:hover td { background: var(--bg-elevated); }
   }
   .am-tabela td.am-acoes { justify-content: flex-end; }
 }
+
+/* ============================================================
+   WIZARD DE CADASTRO (cadastro.html — 4 etapas)
+   Reusa o layout auth-* (painel de marca, card, inputs) e as
+   classes do painel (.tabela-horarios, .pag-*); só acrescenta
+   a barra de progresso e o agrupamento de etapas/ações.
+   ============================================================ */
+@media (min-width: 641px) {
+  .auth-layout.wiz { max-width: 840px; max-height: calc(100vh - 48px); }
+  .auth-layout.wiz .auth-form-area { width: 440px; }
+}
+
+/* O lado do formulário rola internamente quando uma etapa é alta (ex.: horário),
+   mantendo o card dentro da viewport — sem barra de rolagem na página. */
+.auth-layout.wiz .auth-form-area {
+  overflow-y: auto;
+  padding-top: 34px;
+  padding-bottom: 28px;
+}
+
+/* Tabela de horários compacta no wizard: cabe nas 4 colunas sem scroll lateral */
+.auth-layout.wiz .tabela-horarios th { padding-left: 4px; padding-right: 4px; }
+.auth-layout.wiz .hor-linha td { padding: 7px 4px; }
+.auth-layout.wiz .hor-dia { font-size: 13px; }
+.auth-layout.wiz .hor-time { width: 92px; }
+
+/* Etapa 1 (Conta) é a mais alta: aperta rodapé/copyright para caber sem rolar */
+.auth-layout.wiz .auth-footer { margin-top: 18px; }
+.auth-layout.wiz .auth-copy { padding-top: 18px; }
+
+.input-icon-rs { font-size: 13px; font-weight: 600; color: var(--text-secondary); pointer-events: none; }
+
+.wiz-progress { margin-bottom: 24px; }
+.wiz-progress-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.wiz-etapa-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+.wiz-etapa-nome { font-size: 13px; font-weight: 600; color: var(--accent-fg); }
+.wiz-bars { display: flex; gap: 6px; }
+.wiz-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-elevated);
+  transition: background 0.25s;
+}
+.wiz-bar.ativa { background: linear-gradient(90deg, var(--accent), var(--secondary)); }
+
+.wiz-step h1 { font-size: 20px; margin-bottom: 4px; }
+.wiz-step .sub { margin-bottom: 24px; }
+.wiz-campos { display: flex; flex-direction: column; gap: 16px; }
+.wiz-tabela-wrap { overflow-x: auto; }
+
+.wiz-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.wiz-acoes .auth-btn { margin-top: 0; flex: 1; }
+.wiz-acoes .secundario { white-space: nowrap; }
+.wiz-step .erro { margin-top: 10px; }

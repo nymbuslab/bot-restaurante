@@ -294,19 +294,6 @@ app.put("/api/config", exigeAuth, (req, res) => {
   }
 });
 
-// Marca o assistente de onboarding como concluído (passo final ou "Dispensar").
-// Persiste no config do tenant → a barra-guia nunca mais aparece (nem após relogar).
-app.post("/api/onboarding/concluir", exigeAuth, (req, res) => {
-  try {
-    const config = store.getConfig(req.tenantDir);
-    config.onboardingConcluido = true;
-    store.setConfig(req.tenantDir, config);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(400).json({ erro: e.message });
-  }
-});
-
 app.get("/api/cardapio", exigeAuth, (req, res) => {
   res.json(store.getCardapio(req.tenantDir));
 });

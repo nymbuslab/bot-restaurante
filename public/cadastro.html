@@ -10,9 +10,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="tela-auth">
-  <div class="auth-layout">
+  <div class="auth-layout wiz">
 
-    <!-- Painel de marca -->
+    <!-- Painel de marca (preservado) -->
     <div class="auth-marca">
       <div class="auth-logo">
         <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -26,12 +26,26 @@
       <p class="auth-tagline">Atendimento de pedidos no WhatsApp, do cardápio à confirmação.</p>
     </div>
 
-    <!-- Formulário -->
+    <!-- Formulário / wizard -->
     <div class="auth-form-area">
       <div class="auth-card">
 
-        <!-- Etapa 1: cadastro -->
-        <div id="etapa1">
+        <!-- Barra de progresso -->
+        <div class="wiz-progress">
+          <div class="wiz-progress-top">
+            <span class="wiz-etapa-label" id="wizEtapaLabel">Etapa 1 de 4</span>
+            <span class="wiz-etapa-nome" id="wizEtapaNome">Conta</span>
+          </div>
+          <div class="wiz-bars">
+            <span class="wiz-bar"></span>
+            <span class="wiz-bar"></span>
+            <span class="wiz-bar"></span>
+            <span class="wiz-bar"></span>
+          </div>
+        </div>
+
+        <!-- ETAPA 1: Conta (cria conta + loga — lógica atual preservada) -->
+        <div class="wiz-step" id="step1">
           <h1>Criar sua conta</h1>
           <p class="sub">Configure seu restaurante e comece a receber pedidos</p>
 
@@ -94,14 +108,87 @@
           <p class="auth-copy">© 2026 Nymbus Lab</p>
         </div>
 
-        <!-- Etapa 2: sucesso -->
-        <div id="etapa2" style="display:none">
-          <div style="text-align:center;padding:16px 0 24px">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-bottom:16px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <h2 id="msgBemVindo" style="font-size:17px;margin-bottom:8px"></h2>
-            <p class="sub" style="margin-bottom:28px">Sua conta foi criada. Agora é só acessar o painel e configurar seu cardápio.</p>
+        <!-- ETAPA 2: Dados (obrigatória) -->
+        <div class="wiz-step" id="step2" style="display:none">
+          <h1>Dados do restaurante</h1>
+          <p class="sub">Telefone e endereço — usados no atendimento ao cliente.</p>
+
+          <div class="wiz-campos">
+            <div class="auth-campo">
+              <label for="wizTel">Telefone de contato</label>
+              <div class="input-wrap">
+                <span class="input-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.74.34 1.53.57 2.34.7A2 2 0 0 1 22 16.92z"/></svg>
+                </span>
+                <input type="text" id="wizTel" placeholder="(00) 00000-0000" autocomplete="tel" />
+              </div>
+            </div>
+
+            <div class="auth-campo">
+              <label for="wizEnd">Endereço completo</label>
+              <div class="input-wrap">
+                <span class="input-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </span>
+                <input type="text" id="wizEnd" placeholder="Rua, número, bairro, cidade" autocomplete="street-address" />
+              </div>
+            </div>
           </div>
-          <button id="btnIrPainel" class="auth-btn">Acessar o painel</button>
+
+          <p id="erro2" class="erro"></p>
+          <div class="wiz-acoes">
+            <button class="auth-btn" id="btnDados" type="button">Continuar →</button>
+          </div>
+        </div>
+
+        <!-- ETAPA 3: Horário (pulável) -->
+        <div class="wiz-step" id="step3" style="display:none">
+          <h1>Horário de funcionamento</h1>
+          <p class="sub">O bot responde "fechado" fora desses horários. Você pode ajustar depois.</p>
+
+          <div class="wiz-tabela-wrap">
+            <table class="tabela-horarios">
+              <thead>
+                <tr><th>Dia</th><th>Abre</th><th>Fecha</th><th>Fechado</th></tr>
+              </thead>
+              <tbody id="wizHorariosBody"></tbody>
+            </table>
+          </div>
+
+          <p id="erro3" class="erro"></p>
+          <div class="wiz-acoes">
+            <button class="secundario" id="btnVoltar3" type="button">Voltar</button>
+            <button class="secundario" id="btnPularHorario" type="button">Pular</button>
+            <button class="auth-btn" id="btnHorario" type="button">Salvar e continuar →</button>
+          </div>
+        </div>
+
+        <!-- ETAPA 4: Entrega (pulável) -->
+        <div class="wiz-step" id="step4" style="display:none">
+          <h1>Entrega e pagamento</h1>
+          <p class="sub">Taxa de entrega e formas de pagamento aceitas. Você pode ajustar depois.</p>
+
+          <div class="wiz-campos">
+            <div class="auth-campo">
+              <label for="wizTaxa">Taxa de entrega fixa</label>
+              <div class="input-wrap">
+                <span class="input-icon input-icon-rs">R$</span>
+                <input type="text" id="wizTaxa" inputmode="decimal" placeholder="0,00 (grátis)" />
+              </div>
+            </div>
+
+            <div class="auth-campo">
+              <label>Formas de pagamento aceitas</label>
+              <div id="wizPagamentos" class="cfg-pagamentos"></div>
+            </div>
+          </div>
+
+          <p id="erro4" class="erro"></p>
+          <div class="wiz-acoes">
+            <button class="secundario" id="btnVoltar4" type="button">Voltar</button>
+            <button class="secundario" id="btnPularEntrega" type="button">Pular</button>
+            <button class="auth-btn" id="btnEntrega" type="button">Concluir →</button>
+          </div>
         </div>
 
       </div>
@@ -110,24 +197,60 @@
   </div>
 
   <script>
-    const btn  = document.getElementById("btnCadastrar");
-    const erro = document.getElementById("erro");
+    // ====== Estado do wizard ======
+    let token = null;   // token de sessão após o login da Etapa 1
+    let cfg = null;     // config do tenant (GET após login; mutada e salva por etapa)
+    let stepAtual = 1;
+
+    const DIAS = [
+      ["seg", "Segunda"], ["ter", "Terça"], ["qua", "Quarta"], ["qui", "Quinta"],
+      ["sex", "Sexta"], ["sab", "Sábado"], ["dom", "Domingo"],
+    ];
+    const NOMES = ["Conta", "Dados", "Horário", "Entrega"];
+    const $ = (id) => document.getElementById(id);
+    const authHeaders = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + token });
+    // Moeda pt-BR: exibe "0,00"; lê de volta para número (aceita vírgula ou ponto).
+    const fmtBR = (v) => Number(v || 0).toFixed(2).replace(".", ",");
+    const parseBR = (s) => parseFloat(String(s).replace(/\./g, "").replace(",", ".")) || 0;
 
     function toggleSenha(inputId, btnId) {
-      const inp = document.getElementById(inputId);
+      const inp = $(inputId);
       const isHidden = inp.type === "password";
       inp.type = isHidden ? "text" : "password";
-      document.getElementById(btnId + "-icon").innerHTML = isHidden
+      $(btnId + "-icon").innerHTML = isHidden
         ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
         : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
     }
 
+    // ====== Navegação entre etapas ======
+    function irPara(n) {
+      stepAtual = n;
+      for (let i = 1; i <= 4; i++) $("step" + i).style.display = i === n ? "" : "none";
+      $("wizEtapaLabel").textContent = `Etapa ${n} de 4`;
+      $("wizEtapaNome").textContent = NOMES[n - 1];
+      document.querySelectorAll(".wiz-bar").forEach((b, i) => b.classList.toggle("ativa", i < n));
+      if (n === 3) renderHorariosWiz();
+      if (n === 4) renderEntregaWiz();
+    }
+
+    // ====== Persistência (reusa PUT /api/config do painel) ======
+    async function salvarConfig() {
+      try {
+        const r = await fetch("/api/config", { method: "PUT", headers: authHeaders(), body: JSON.stringify(cfg) });
+        return r.ok;
+      } catch (e) { return false; }
+    }
+
+    // ====== ETAPA 1 — cadastro + login (lógica atual, só envolvida no wizard) ======
+    const btn  = $("btnCadastrar");
+    const erro = $("erro");
+
     async function cadastrar() {
       erro.textContent = "";
-      const nome   = document.getElementById("nome").value.trim();
-      const email  = document.getElementById("email").value.trim();
-      const senha  = document.getElementById("senha").value;
-      const senha2 = document.getElementById("senha2").value;
+      const nome   = $("nome").value.trim();
+      const email  = $("email").value.trim();
+      const senha  = $("senha").value;
+      const senha2 = $("senha2").value;
 
       if (!nome || !email || !senha || !senha2) { erro.textContent = "Preencha todos os campos."; return; }
       if (senha !== senha2) { erro.textContent = "As senhas não coincidem."; return; }
@@ -145,23 +268,25 @@
         const data = await r.json();
         if (!r.ok) { erro.textContent = data.erro || "Erro ao criar conta."; btn.disabled = false; btn.textContent = "Criar conta e começar →"; return; }
 
-        // Login automático
+        // Login automático (idêntico ao fluxo atual)
         const lr = await fetch("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, senha }),
         });
         const ld = await lr.json();
-        if (lr.ok) {
-          sessionStorage.setItem("token", ld.token);
-          sessionStorage.setItem("slug", ld.slug);
-          sessionStorage.setItem("empresaNome", ld.nome);
-        }
+        if (!lr.ok) { erro.textContent = "Conta criada, mas falha ao entrar. Faça login."; btn.disabled = false; btn.textContent = "Criar conta e começar →"; return; }
 
-        document.getElementById("etapa1").style.display = "none";
-        document.getElementById("msgBemVindo").textContent = `Bem-vindo(a), ${data.nome}!`;
-        document.getElementById("etapa2").style.display = "";
+        token = ld.token;
+        sessionStorage.setItem("token", ld.token);
+        sessionStorage.setItem("slug", ld.slug);
+        sessionStorage.setItem("empresaNome", ld.nome);
 
+        // Carrega a config limpa do tenant recém-criado (mutada e salva nas próximas etapas)
+        const cr = await fetch("/api/config", { headers: authHeaders() });
+        cfg = await cr.json();
+
+        irPara(2);
       } catch (e) {
         erro.textContent = "Erro ao conectar ao servidor.";
         btn.disabled = false;
@@ -170,11 +295,141 @@
     }
 
     btn.addEventListener("click", cadastrar);
-    document.getElementById("formCadastro").addEventListener("submit", cadastrar);
+    $("formCadastro").addEventListener("submit", cadastrar);
 
-    document.getElementById("btnIrPainel").addEventListener("click", () => {
-      location.href = "admin.html";
+    // ====== ETAPA 2 — Dados (obrigatória) ======
+    $("btnDados").addEventListener("click", async (e) => {
+      const tel = $("wizTel").value.trim();
+      const end = $("wizEnd").value.trim();
+      const e2 = $("erro2");
+      e2.textContent = "";
+      if (!tel || !end) { e2.textContent = "Preencha telefone e endereço para continuar."; return; }
+
+      cfg.restaurante.telefone = tel;
+      cfg.restaurante.endereco = end;
+
+      const b = e.currentTarget;
+      b.disabled = true; b.textContent = "Salvando...";
+      const ok = await salvarConfig();
+      b.disabled = false; b.textContent = "Continuar →";
+      if (ok) irPara(3);
+      else e2.textContent = "Não foi possível salvar. Tente de novo.";
     });
+
+    // ====== ETAPA 3 — Horário (pulável) ======
+    function renderHorariosWiz() {
+      const tb = $("wizHorariosBody");
+      if (tb.dataset.pronto) return; // monta uma vez (preserva edições ao voltar)
+      tb.dataset.pronto = "1";
+      const h = cfg.horarios || {};
+      tb.innerHTML = "";
+      for (const [key, label] of DIAS) {
+        const d = h[key] || { abre: "11:00", fecha: "22:00", fechado: false };
+        const fechado = !!d.fechado;
+        const tr = document.createElement("tr");
+        tr.className = "hor-linha" + (fechado ? " hor-fechado" : "");
+        tr.innerHTML = `
+          <td class="hor-dia" data-label="Dia">${label}</td>
+          <td data-label="Abre"><input type="time" id="wh_abre_${key}" class="hor-time" value="${d.abre || "11:00"}" ${fechado ? "disabled" : ""} /></td>
+          <td data-label="Fecha"><input type="time" id="wh_fecha_${key}" class="hor-time" value="${d.fecha || "22:00"}" ${fechado ? "disabled" : ""} /></td>
+          <td data-label="Fechado" class="hor-fechado-cel"><label class="switch"><input type="checkbox" id="wh_fechado_${key}" ${fechado ? "checked" : ""} /></label></td>`;
+        tb.appendChild(tr);
+        tr.querySelector(`#wh_fechado_${key}`).addEventListener("change", (ev) => {
+          const f = ev.target.checked;
+          tr.querySelector(`#wh_abre_${key}`).disabled = f;
+          tr.querySelector(`#wh_fecha_${key}`).disabled = f;
+          tr.classList.toggle("hor-fechado", f);
+        });
+      }
+    }
+    function lerHorariosWiz() {
+      const h = {};
+      for (const [key] of DIAS) {
+        h[key] = {
+          abre:    ($("wh_abre_" + key)  || {}).value || "11:00",
+          fecha:   ($("wh_fecha_" + key) || {}).value || "22:00",
+          fechado: !!($("wh_fechado_" + key) || {}).checked,
+        };
+      }
+      return h;
+    }
+
+    $("btnVoltar3").addEventListener("click", () => irPara(2));
+    $("btnPularHorario").addEventListener("click", () => irPara(4));
+    $("btnHorario").addEventListener("click", async (e) => {
+      cfg.horarios = lerHorariosWiz();
+      const b = e.currentTarget;
+      b.disabled = true; b.textContent = "Salvando...";
+      const ok = await salvarConfig();
+      b.disabled = false; b.textContent = "Salvar e continuar →";
+      if (ok) irPara(4);
+      else $("erro3").textContent = "Não foi possível salvar. Tente de novo.";
+    });
+
+    // ====== ETAPA 4 — Entrega (pulável) ======
+    function renderEntregaWiz() {
+      $("wizTaxa").value = fmtBR(cfg.atendimento.taxaEntrega || 0);
+      renderPagsWiz();
+    }
+    // Reformata a taxa para "0,00" ao sair do campo.
+    $("wizTaxa").addEventListener("blur", (e) => { e.target.value = fmtBR(parseBR(e.target.value)); });
+    function renderPagsWiz() {
+      const cont = $("wizPagamentos");
+      cont.innerHTML = "";
+      cfg.pagamentos.forEach((p, i) => {
+        const pill = document.createElement("span");
+        pill.className = "pag-pill";
+        pill.innerHTML = `<span class="pag-pill-txt"></span><button type="button" class="pag-pill-del" aria-label="Remover">×</button>`;
+        pill.querySelector(".pag-pill-txt").textContent = p;
+        pill.querySelector(".pag-pill-del").addEventListener("click", () => { cfg.pagamentos.splice(i, 1); renderPagsWiz(); });
+        cont.appendChild(pill);
+      });
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "pag-add";
+      add.id = "wizAddPag";
+      add.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar`;
+      add.addEventListener("click", addPagInline);
+      cont.appendChild(add);
+    }
+    function addPagInline() {
+      const cont = $("wizPagamentos");
+      if (cont.querySelector(".pag-input")) { cont.querySelector(".pag-input").focus(); return; }
+      const add = $("wizAddPag");
+      const input = document.createElement("input");
+      input.className = "pag-input";
+      input.placeholder = "Nome do método";
+      cont.insertBefore(input, add);
+      input.focus();
+      let confirmado = false;
+      const commit = () => {
+        if (confirmado) return;
+        confirmado = true;
+        const v = input.value.trim();
+        if (v) cfg.pagamentos.push(v);
+        renderPagsWiz();
+      };
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+        else if (ev.key === "Escape") { confirmado = true; renderPagsWiz(); }
+      });
+      input.addEventListener("blur", commit);
+    }
+
+    $("btnVoltar4").addEventListener("click", () => irPara(3));
+    $("btnPularEntrega").addEventListener("click", () => { location.href = "admin.html"; });
+    $("btnEntrega").addEventListener("click", async (e) => {
+      cfg.atendimento.taxaEntrega = parseBR($("wizTaxa").value);
+      const b = e.currentTarget;
+      b.disabled = true; b.textContent = "Salvando...";
+      const ok = await salvarConfig();
+      if (ok) { location.href = "admin.html"; return; }
+      b.disabled = false; b.textContent = "Concluir →";
+      $("erro4").textContent = "Não foi possível salvar. Tente de novo.";
+    });
+
+    // Inicializa na Etapa 1
+    irPara(1);
   </script>
 </body>
 </html>
