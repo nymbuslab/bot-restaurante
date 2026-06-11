@@ -238,7 +238,7 @@ async function resetarBot() {
   const r = await api("POST", "/api/bot/resetar");
   if (r && !r.ok) {
     const d = await r.json().catch(() => ({}));
-    toast(d.erro || "Não foi possível limpar a sessão. Apague a pasta .wwebjs_auth manualmente.", "erro");
+    toast(d.erro || "Não foi possível limpar a sessão. Pare o bot e tente novamente.", "erro");
   }
   setTimeout(atualizarStatus, 1200);
 }

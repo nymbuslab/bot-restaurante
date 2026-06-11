@@ -139,3 +139,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Correção:** novo tenant nasce de um **`configInicial()` limpo inline** (identidade — nome do cadastro, telefone/endereço/horário **vazios**; `atendimento`/`mensagens`/`pagamentos` genéricos) e **cardápio vazio** (`{ categorias: [] }`) — sem depender de nenhum template com dados reais. Os arquivos da raiz foram **descontaminados** (placeholders genéricos), usados agora só pela migração legada (`migrarLegado`, que só roda quando não há nenhum tenant)
 - Não havia vazamento em runtime — `store.js`/painel sempre gravam no diretório do tenant. O login usa a senha do cadastro (tabela `empresas`); `config.admin.senha` é vestigial e não autentica
 - Validado: 2 cadastros novos nascem com identidade e cardápio vazios, zero dado do Sabor; tenant legítimo intacto. Tenants de teste afetados serão removidos manualmente (sem rotina de correção)
+
+## [0.13.0] — Limpeza de legado
+
+- **Removida a migração single-tenant** (`migrarLegado` em `empresas.js`) e os arquivos-semente da raiz `data/config.json`, `data/cardapio.json` e `data/pedidos.db` — só serviam a essa migração. O app é 100% multi-tenant: a primeira empresa é criada via `/cadastro.html` (onboarding) ou pelo super-admin. **Não há mais auto-criação de `admin@local`/`admin123`** num deploy novo
+- **`.gitignore` enxuto:** removidas entradas obsoletas (`.wwebjs_auth/`, `.wwebjs_cache/`, `pedidos.json`, `data/*.migrado`, bloco `squads/*`) — resquícios do whatsapp-web.js e de outra ferramenta
+- **Textos legados corrigidos:** mensagem do painel que mandava "apagar `.wwebjs_auth`" (não existe mais; é `baileys-{slug}/`) e comentário sobre "Puppeteer/whatsapp-web.js" no `index.js`
+- Pastas vazias `.agents/`/`.claude/` removidas; docs (CLAUDE/README/DEPLOY) atualizados (árvore de `data/`, primeiro acesso via cadastro)
+- Sem mudança de comportamento do bot/painel; todas as 9 dependências seguem em uso. Validado: cadastro + login + tenant nasce limpo, sem os arquivos da raiz

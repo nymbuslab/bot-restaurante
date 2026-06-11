@@ -15,7 +15,7 @@ require("dotenv").config();
 const servidor = require("./src/servidor");
 const PORTA = process.env.PORT || 3000;
 
-// Impede que erros do Puppeteer/whatsapp-web.js derrubem o servidor.
+// Impede que erros do bot/WhatsApp derrubem o servidor.
 // O bot pode travar ou cair; o painel continua no ar.
 process.on("uncaughtException", (err) => {
   console.error("❌ Erro não tratado (servidor continua):", err.message);

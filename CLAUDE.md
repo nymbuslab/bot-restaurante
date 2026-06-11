@@ -37,14 +37,10 @@ npm install
 npm start            # inicia o painel em http://localhost:3000
 ```
 
-Na **primeira execução**, se existir `data/config.json` legado, o sistema cria
-automaticamente um tenant a partir dele e imprime as credenciais no console:
-
-```
-E-mail: admin@local  |  Senha: admin123
-```
-
-Abra o painel, faça login e, na aba **Conexão**, clique em "Conectar ao WhatsApp".
+No **primeiro acesso**, crie a primeira empresa pelo onboarding público em
+`/cadastro.html` (nome, e-mail e senha). O tenant nasce limpo (cardápio vazio,
+identidade só com o nome). Depois faça login e, na aba **Conexão**, clique em
+"Conectar ao WhatsApp".
 
 Não há suíte de testes automatizada. Use o simulador de conversa para testar
 o fluxo do bot sem WhatsApp (ver seção **Testando o bot** abaixo).
@@ -106,8 +102,6 @@ public/
   admin.html          -> painel administrativo
   app.js, style.css   -> lógica e estilos do painel
 data/
-  config.json         -> template/fallback para novos tenants (legado compatível)
-  cardapio.json       -> template/fallback para novos tenants
   empresas.db         -> banco mestre de tenants (criado automaticamente)
   tenants/
     {slug}/
@@ -271,9 +265,9 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
 - **Segurança**: login por e-mail + senha com hash SHA-256+salt. Tokens em memória
   (somem ao reiniciar). **HTTPS automático no Fly.io** (certificado gerenciado no `.fly.dev` +
   `force_https = true` no `fly.toml`); só em VPS/local o HTTPS depende do operador (Nginx + TLS).
-- **Primeiro acesso (instalação legada)**: se não há tenants e existe `data/config.json`,
-  a migração automática cria um tenant com `admin@local` / `admin123`. Alterar a
-  senha no painel após o primeiro login.
+- **Primeiro acesso**: não há mais migração automática de instalação legada (removida). A
+  primeira empresa é criada pelo onboarding público (`/cadastro.html`) ou pelo super-admin
+  (`/admin-master`). Tenant novo nasce limpo (ver `empresas.configInicial`).
 - **Pool SQLite**: `pedidos.js` mantém conexões abertas (Map keyed por dbPath). É o
   comportamento esperado — `better-sqlite3` é síncrono e thread-safe para leitura.
 - **Volume único no Fly.io**: toda a pasta `data/` (incluindo `tenants/`, `empresas.db`
