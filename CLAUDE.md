@@ -259,7 +259,10 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
   consumo de RAM baixíssimo. A máquina de 1 GB no Fly.io suporta muito mais tenants do que
   os ~3–4 da era Chromium/Puppeteer.
 - **Sessão WhatsApp**: salva em `data/tenants/{slug}/baileys-{slug}/` (`useMultiFileAuthState`).
-  Apagar = novo QR. Sessões antigas `session-{slug}/` (era whatsapp-web.js) ficaram órfãs.
+  Apagar = novo QR. As sessões antigas `session-{slug}/` (legado do whatsapp-web.js, caches do
+  Chromium) eram lixo órfão — **já removidas localmente** (`rm -rf data/tenants/*/session-*`).
+  Resta limpar o **volume de produção no Fly** via SSH (`fly ssh console` →
+  `rm -rf /app/data/tenants/*/session-*`, preservando `baileys-*/`) — ver `DEPLOY.md`.
 - **Avisar cliente**: `POST /api/pedido/avisar` envia, pelo socket do tenant
   (`enviarMensagem(slug, jid, texto)`), uma mensagem de "pedido pronto". Templates editáveis
   em `config.json` → `mensagens.pedidoPronto.entrega`/`.retirada` (variáveis `{cliente}` e
