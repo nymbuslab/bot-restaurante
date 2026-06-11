@@ -44,7 +44,7 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
   manual. Backup automático para storage externo (S3/R2) fica para quando houver tração — ver
   `CHANGELOG.md` v0.10.0
 - [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
-- [ ] **Saudação com carrinho aberto (bot)** — se o cliente tem itens no carrinho e manda uma saudação ("oi"/"menu"), perguntar se quer **continuar** o pedido em aberto ou **recomeçar**, em vez de retomar o carrinho antigo silenciosamente. Identificado no redesign (`sessoes.js`/`fluxo.js`).
+- [x] **Saudação com carrinho aberto (bot)** — ✅ **concluído**: saudação com carrinho não-vazio pergunta *continuar* (mantém) ou *recomeçar* (zera), em vez de retomar o carrinho silenciosamente. Estado `CONFIRMA_REINICIO` em `fluxo.js`. Ver `CHANGELOG.md` v0.12.1.
 
 ## P3 — Ideias futuras (sem compromisso)
 

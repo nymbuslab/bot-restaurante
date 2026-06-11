@@ -181,6 +181,15 @@ function opcoesAposItem(carrinho) {
   );
 }
 
+// Pergunta exibida quando o cliente manda uma saudação com o carrinho já aberto.
+function perguntaReinicio(carrinho) {
+  return (
+    "👋 Você já tem um pedido em andamento:\n\n" +
+    resumoCarrinho(carrinho) +
+    `\n\nO que deseja fazer?\n*1* — ➡️ Continuar este pedido\n*2* — 🗑️ Recomeçar (esvaziar o carrinho)`
+  );
+}
+
 function textoOpcionais(ip) {
   let t = `Deseja algum opcional para *${ip.nome}*?\n\n`;
   ip.opcionaisDisp.forEach((o, idx) => {
@@ -288,6 +297,12 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
     return { respostas: [aplicar(config.mensagens.fechado, { horario: config.restaurante.horario })] };
   }
   if (saudacoes.includes(lower)) {
+    // Saudação com carrinho aberto: não volta ao menu silenciosamente —
+    // pergunta se quer continuar o pedido em andamento ou recomeçar.
+    if (sessao.carrinho.length > 0) {
+      sessao.estado = "CONFIRMA_REINICIO";
+      return { respostas: [perguntaReinicio(sessao.carrinho)] };
+    }
     sessao.estado = "MENU";
     return { respostas: [menuPrincipal(tenantDir)] };
   }
@@ -300,6 +315,19 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
     case "INICIO":
       sessao.estado = "MENU";
       return { respostas: [menuPrincipal(tenantDir)] };
+
+    case "CONFIRMA_REINICIO":
+      if (msg === "1") { // continuar — mantém o carrinho
+        sessao.estado = "MENU";
+        return { respostas: ["Beleza, seguindo com seu pedido! 🛒\n\n" + menuPrincipal(tenantDir)] };
+      }
+      if (msg === "2") { // recomeçar — zera o carrinho
+        limparSessao(sessao);
+        sessao.estado = "MENU";
+        return { respostas: ["Pronto, recomeçando do zero! 🗑️\n\n" + menuPrincipal(tenantDir)] };
+      }
+      // qualquer outra resposta: re-pergunta (não trava, estado inalterado)
+      return { respostas: ["Por favor, digite *1* para continuar ou *2* para recomeçar.\n\n" + perguntaReinicio(sessao.carrinho)] };
 
     case "MENU":
       if (msg === "1") {
