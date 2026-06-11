@@ -57,30 +57,49 @@ function tenantDir(slug) {
   return path.join(TENANTS_DIR, slug);
 }
 
+// Config inicial LIMPA de um tenant novo. NÃO herda de nenhum template com
+// dados reais: identidade (nome/telefone/endereço/horário) nasce em branco
+// (só o nome vem do cadastro), cardápio nasce vazio. mensagens/pagamentos/
+// atendimento são defaults GENÉRICOS (não identificam ninguém). Isolamento
+// multi-tenant: um tenant novo nunca pode nascer com dados de outro.
+function configInicial(nomeRestaurante) {
+  return {
+    restaurante: { nome: nomeRestaurante || "Restaurante", telefone: "", endereco: "", horario: "" },
+    atendimento: {
+      aberto: true,
+      tempoEstimado: "30 a 45 min",
+      taxaEntrega: 0,
+      perguntarBebida: true,
+      perguntarObservacao: true,
+    },
+    mensagens: {
+      boasVindas: "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.\n\nComo posso ajudar? Digite o número da opção:",
+      fechado: "No momento estamos *fechados* 😴. Nosso horário é: {horario}.\n\nVolte mais tarde para fazer seu pedido!",
+      atendente: "Tudo bem! Um de nossos atendentes vai continuar por aqui em instantes. 🧑‍🍳\n\n(Digite *menu* para voltar ao atendimento automático.)",
+      pedidoConfirmado: "🎉 *Pedido confirmado!* Número *#{numero}*.\n\nJá estamos preparando. Tempo estimado: *{tempo}*.\nObrigado pela preferência! 🍴",
+      pedidoPronto: {
+        entrega:  "Olá, {cliente}! Seu pedido #{numero} está pronto e já saiu para entrega. Logo chega aí!",
+        retirada: "Olá, {cliente}! Seu pedido #{numero} está pronto para retirada. Pode vir buscar quando quiser!",
+      },
+    },
+    pagamentos: ["Pix", "Cartão (na entrega)", "Dinheiro"],
+    admin: { senha: "admin123" }, // vestigial (login usa a senha da tabela empresas)
+  };
+}
+
 function inicializarDiretorio(slug, nomeRestaurante) {
   const dir = tenantDir(slug);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
+  // Tenant novo nasce LIMPO — sem herdar de templates com dados reais.
   const cfgDestino = path.join(dir, "config.json");
   if (!fs.existsSync(cfgDestino)) {
-    // Usa o config.json global como template
-    const cfgTemplate = path.join(DATA_DIR, "config.json");
-    const cfg = fs.existsSync(cfgTemplate)
-      ? JSON.parse(fs.readFileSync(cfgTemplate, "utf8"))
-      : { restaurante: {}, atendimento: { aberto: true, tempoEstimado: "30 a 45 min", taxaEntrega: 0 }, mensagens: {}, pagamentos: [], admin: {} };
-    cfg.restaurante = { ...cfg.restaurante, nome: nomeRestaurante };
-    cfg.admin = { senha: "admin123" };
-    fs.writeFileSync(cfgDestino, JSON.stringify(cfg, null, 2), "utf8");
+    fs.writeFileSync(cfgDestino, JSON.stringify(configInicial(nomeRestaurante), null, 2), "utf8");
   }
 
   const cardDestino = path.join(dir, "cardapio.json");
   if (!fs.existsSync(cardDestino)) {
-    const cardTemplate = path.join(DATA_DIR, "cardapio.json");
-    if (fs.existsSync(cardTemplate)) {
-      fs.copyFileSync(cardTemplate, cardDestino);
-    } else {
-      fs.writeFileSync(cardDestino, JSON.stringify({ categorias: [] }, null, 2), "utf8");
-    }
+    fs.writeFileSync(cardDestino, JSON.stringify({ categorias: [] }, null, 2), "utf8");
   }
 }
 
