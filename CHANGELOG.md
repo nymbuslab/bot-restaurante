@@ -147,3 +147,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Textos legados corrigidos:** mensagem do painel que mandava "apagar `.wwebjs_auth`" (não existe mais; é `baileys-{slug}/`) e comentário sobre "Puppeteer/whatsapp-web.js" no `index.js`
 - Pastas vazias `.agents/`/`.claude/` removidas; docs (CLAUDE/README/DEPLOY) atualizados (árvore de `data/`, primeiro acesso via cadastro)
 - Sem mudança de comportamento do bot/painel; todas as 9 dependências seguem em uso. Validado: cadastro + login + tenant nasce limpo, sem os arquivos da raiz
+
+## [0.14.0] — Assistente de onboarding (barra-guia do 1º acesso)
+
+- **Barra-guia no topo do painel**, só no primeiro acesso, conduzindo o dono por 3 passos — **Dados** (telefone/endereço) → **Horário** → **Entrega** (taxa + pagamento). Cada passo leva à **seção correspondente que já existe** na aba Configurações (ativa a aba + rola até a seção com destaque temporário); **não cria tela nova**. Cardápio e Conexão ficam de fora (o dono faz pelo painel)
+- **Controle por flag no servidor** (`config.onboardingConcluido`): tenant **novo** nasce com `false` (`empresas.configInicial`) → barra aparece. Tenant **antigo** não tem o campo (`undefined`) → barra **não** aparece (quem já usa nunca vê). A barra só renderiza quando o flag é explicitamente `false` — **o servidor manda**; o passo atual fica em `localStorage` por tenant, só como conveniência de UX
+- **Avançar passo:** salvar a config avança o passo atual (+1), e **"Pular este passo"** também avança (sem exigir preenchimento — o campo segue editável nas Configurações normais). Ao concluir os 3 ou clicar **"Dispensar assistente"** → `POST /api/onboarding/concluir` grava `onboardingConcluido=true` e a barra **nunca mais aparece** (nem após relogar)
+- Nova rota mínima `POST /api/onboarding/concluir` (sob `exigeAuth`): lê o config, seta o flag e salva — evita reenviar a config inteira e o race com edições não salvas do formulário
+- Validado: 12 checks no painel real (Playwright) — tenant novo vê a barra (Passo 1/3, chip atual), "Ir para Dados" ativa a aba e rola à seção, salvar avança a Passo 2, pular avança a 3, concluir esconde a barra e **persiste após reload**; tenant antigo (sem flag) **não** vê a barra; `localStorage` do passo limpo ao finalizar

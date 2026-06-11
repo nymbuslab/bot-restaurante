@@ -4,7 +4,24 @@
 
 ## 🔄 Em Andamento
 
-_(nada no momento)_
+**Checkpoint salvo em 2026-06-11 12:36**
+
+### Feito nesta sessão
+
+- **Assistente de onboarding (1º acesso)** — barra-guia no topo do painel (Dados → Horário → Entrega) que leva às seções já existentes em Configurações; flag `config.onboardingConcluido` (novo=`false`, antigo=`undefined` não mostra), pular/salvar avança, dispensar/concluir grava `true` e some pra sempre. Rota `POST /api/onboarding/concluir`. Validado com 12 checks (Playwright) + visual. Ver `CHANGELOG.md` v0.14.0.
+- **Fix grave de isolamento multi-tenant** — novo cadastro nascia com dados do "Sabor D'Casa"; agora `empresas.configInicial()` cria tenant limpo (identidade vazia, cardápio vazio).
+- **Limpeza de legado** — removida a migração single-tenant (`migrarLegado` + arquivos-semente da raiz), `.gitignore` enxuto, textos `.wwebjs_auth`/Puppeteer corrigidos, pastas vazias removidas, docs atualizados (1º acesso via `/cadastro.html`).
+- **Limpeza do histórico do git** — PII (telefone/endereço) redigido em todo o histórico via `git-filter-repo` + `force-push`; local e `origin/main` sincronizados em `2abfe33`, zero ocorrências do PII.
+- Antes, no mesmo dia: toggles de bebida/observação no painel, exibição de preço base+opcional+subtotal, saudação com carrinho aberto (`CONFIRMA_REINICIO`), fix do `resetSessao` — todos commitados.
+
+### Próximo passo
+
+- Decidir entre: (a) abrir ticket no GitHub Support para purgar cache dos commits antigos com PII, ou (b) seguir para a limpeza operacional `session-*/` no volume do Fly (P2, via SSH).
+
+### Decisões pendentes
+
+- **GitHub cache:** o force-push reescreveu `origin/main`, mas SHAs antigas podem persistir em cache do GitHub / forks — purga total exige ticket ao Support (opcional, depende do usuário).
+- **Limpeza no Fly:** `rm -rf /app/data/tenants/*/session-*` no volume de produção — ação manual sua via SSH.
 
 ## 📋 Próximos Passos
 
@@ -60,3 +77,4 @@ _(nada no momento)_
 - [x] **Saudação com carrinho aberto (bot)** — saudação com carrinho não-vazio pergunta continuar/recomeçar (novo estado `CONFIRMA_REINICIO`) em vez de voltar ao menu mantendo o pedido antigo. "1" mantém o carrinho; "2" zera (`limparSessao`); resposta inválida re-pergunta. Carrinho vazio → menu direto (intacto); `cancelar`/`sair` zeram direto; detecção por match exato (substring como "Rua Bom Dia" não dispara). Validado: 7 casos node + simulador ao vivo
 - [x] **Fix GRAVE de isolamento — novo tenant nascia com dados de outro** — cadastro herdava telefone/endereço/horário e cardápio do "Sabor D'Casa" porque `inicializarDiretorio` usava `data/config.json`/`cardapio.json` da raiz (com dados reais, commitados) como template e a cópia preservava os campos. Fix: `configInicial()` limpo inline (identidade vazia, só nome; cardápio vazio) + templates da raiz descontaminados (placeholders). Sem vazamento em runtime (store sempre grava no tenant). Validado: 2 cadastros novos nascem limpos, Sabor intacto. Tenants de teste afetados serão removidos manualmente
 - [x] **Limpeza de legado** — removida a migração single-tenant (`migrarLegado`) + arquivos-semente da raiz (`data/config.json`/`cardapio.json`/`pedidos.db`); `.gitignore` enxuto (fora `.wwebjs_*`, `pedidos.json`, `data/*.migrado`, `squads/*`); textos legados corrigidos (`.wwebjs_auth` no painel, comentário de Puppeteer no `index.js`); pastas vazias `.agents`/`.claude` removidas; docs atualizados (1º acesso via `/cadastro.html`, árvore de `data/`). App segue 100% funcional (cadastro+login+tenant limpo validados); todas as deps em uso. Ver `CHANGELOG.md` v0.13.0
+- [x] **Assistente de onboarding (1º acesso)** — barra-guia no topo do painel (Dados → Horário → Entrega) que ativa a aba Configurações e rola até a seção já existente (com destaque), sem criar tela nova. Controle por `config.onboardingConcluido`: tenant novo nasce `false` (mostra), antigo `undefined` (não mostra) — o servidor manda, `localStorage` só guarda o passo. Salvar config ou "Pular este passo" avança; "Dispensar"/concluir os 3 → `POST /api/onboarding/concluir` grava `true` e a barra some pra sempre (persiste após relogar). Validado: 12 checks Playwright (novo vê / antigo não vê / avança / persiste após reload / localStorage limpo) + visual. Ver `CHANGELOG.md` v0.14.0
