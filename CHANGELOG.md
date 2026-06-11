@@ -104,3 +104,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Seção "Como restaurar"** (somente leitura) renderizada a partir do **DEPLOY.md** (fonte única, via marcadores `RESTAURACAO:START/END`), com renderizador de markdown que escapa HTML; deixa explícito que a restauração é **manual**, com o servidor parado, e que o painel **não executa** restauração
 - **Rotas sob `exigeSuperAdmin`** (reusam `scripts/backup.js`, sem reescrever a lógica): `POST /api/admin/backup/gerar`, `GET /api/admin/backup/listar`, `GET /api/admin/backup/baixar/:arquivo` (validação **anti-path-traversal**: só aceita `backup-AAAA-MM-DD-HHmm.tar.gz` confinado em `backups/`), `GET /api/admin/backup/restauracao-doc` (com fallback gracioso se o DEPLOY.md sumir)
 - `scripts/backup.js` refatorado para expor `gerarBackup()`/`listarBackups()` — o `npm run backup` continua igual; restauração permanece 100% manual
+
+## [0.11.1] — Fixes na tela de Backup
+
+- **"Como restaurar" virou texto fixo no painel** — antes uma rota lia o `DEPLOY.md` em runtime e renderizava markdown; em produção isso falhava (queda no fallback) e exigia parsing frágil. Agora o passo a passo é HTML estático no `admin-master.html` (zero leitura de arquivo, zero ponto de falha). Removidas a rota `GET /api/admin/backup/restauracao-doc` e o renderizador de markdown do front. O mesmo conteúdo segue no `DEPLOY.md`, escrito normalmente
+- **Listagem de backups blindada** — `GET /api/admin/backup/listar` já retornava JSON `[]` quando não há backups; o front passou a checar `content-type`/status e exibir um aviso claro ("reinicie o servidor") em vez de quebrar com `Unexpected token '<'` caso receba HTML (ex.: servidor desatualizado sem a rota registrada)

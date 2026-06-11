@@ -402,7 +402,6 @@ function trocarAba(aba) {
   if (aba === "config" && !configCarregada) {
     configCarregada = true;
     carregarBackups();
-    carregarRunbook();
   }
 }
 
@@ -434,8 +433,15 @@ async function carregarBackups() {
   const alvo = $("am-backups-lista");
   try {
     const r = await apiAdmin("GET", "/api/admin/backup/listar");
-    const lista = await r.json();
-    renderBackups(lista);
+    // Blindagem: a rota deve responder JSON. Se vier HTML (ex.: 404 de servidor
+    // desatualizado sem esta rota), não deixa o JSON.parse explodir — mostra um
+    // aviso claro em vez de "Unexpected token '<'".
+    const tipo = r.headers.get("content-type") || "";
+    if (!r.ok || !tipo.includes("application/json")) {
+      alvo.innerHTML = `<div class="estado-vazio"><p>Não foi possível listar os backups</p><p class="sub">O servidor respondeu de forma inesperada (HTTP ${r.status}). Se acabou de atualizar o código, reinicie o servidor.</p></div>`;
+      return;
+    }
+    renderBackups(await r.json());
   } catch (e) {
     if (e.message !== "Sessão expirada") {
       alvo.innerHTML = `<div class="estado-vazio"><p>Erro ao listar backups</p><p class="sub">${escapar(e.message)}</p></div>`;
@@ -500,19 +506,6 @@ async function baixarBackup(nome, btn) {
   }
 }
 
-async function carregarRunbook() {
-  const alvo = $("am-runbook");
-  try {
-    const r = await apiAdmin("GET", "/api/admin/backup/restauracao-doc");
-    const { markdown } = await r.json();
-    alvo.innerHTML = renderMarkdown(markdown || "");
-  } catch (e) {
-    if (e.message !== "Sessão expirada") {
-      alvo.innerHTML = "<p>Não foi possível carregar o passo a passo. Consulte o DEPLOY.md do projeto.</p>";
-    }
-  }
-}
-
 // ---- Helpers de formatação ----
 function formatarBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -523,42 +516,6 @@ function formatarDataHora(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return "—";
   return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-// ---- Renderizador de markdown mínimo (escapa HTML → sem XSS) ----
-function inlineMd(s) {
-  return escapar(s)
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
-}
-function renderMarkdown(md) {
-  const out = [];
-  // Normaliza CRLF/CR → LF (o DEPLOY.md pode vir com quebras do Windows).
-  const linhas = String(md).replace(/\r\n?/g, "\n").split("\n");
-  let lista = null, quote = null;
-  const flushLista = () => { if (lista) { out.push("<ul>" + lista.map((li) => `<li>${inlineMd(li)}</li>`).join("") + "</ul>"); lista = null; } };
-  const flushQuote = () => { if (quote) { out.push("<blockquote>" + quote.map(inlineMd).join("<br>") + "</blockquote>"); quote = null; } };
-
-  for (let i = 0; i < linhas.length; i++) {
-    const linha = linhas[i];
-    if (/^```/.test(linha)) {                 // bloco de código
-      flushLista(); flushQuote();
-      const code = [];
-      i++;
-      while (i < linhas.length && !/^```/.test(linhas[i])) { code.push(linhas[i]); i++; }
-      out.push(`<pre><code>${escapar(code.join("\n"))}</code></pre>`);
-      continue;
-    }
-    const h = linha.match(/^(#{1,6})\s+(.*)$/);
-    if (h) { flushLista(); flushQuote(); const lvl = Math.min(h[1].length + 1, 6); out.push(`<h${lvl}>${inlineMd(h[2])}</h${lvl}>`); continue; }
-    if (/^>\s?/.test(linha)) { flushLista(); (quote || (quote = [])).push(linha.replace(/^>\s?/, "")); continue; }
-    if (/^[-*]\s+/.test(linha)) { flushQuote(); (lista || (lista = [])).push(linha.replace(/^[-*]\s+/, "")); continue; }
-    if (/^\d+\.\s+/.test(linha)) { flushQuote(); (lista || (lista = [])).push(linha.replace(/^\d+\.\s+/, "")); continue; }
-    if (linha.trim() === "") { flushLista(); flushQuote(); continue; }
-    flushLista(); flushQuote(); out.push(`<p>${inlineMd(linha)}</p>`);
-  }
-  flushLista(); flushQuote();
-  return out.join("\n");
 }
 
 // ============================================================

@@ -194,25 +194,9 @@ app.get("/api/admin/backup/baixar/:arquivo", exigeSuperAdmin, (req, res) => {
   res.download(filePath, nome);
 });
 
-// Passo a passo de restauração — FONTE ÚNICA: lê a seção entre marcadores no
-// DEPLOY.md (que vai para a imagem do Fly via COPY . .). Restauração é MANUAL;
-// esta rota só serve o texto, nunca executa nada. Falha → fallback (a tela
-// não quebra).
-const DEPLOY_PATH = path.join(__dirname, "..", "DEPLOY.md");
-const RESTAURACAO_FALLBACK =
-  "### Como restaurar\n\nNão foi possível carregar o passo a passo automaticamente. " +
-  "Consulte o **DEPLOY.md** do projeto (seção \"RESTAURAR um backup\"). A restauração é " +
-  "**manual**, com o servidor parado — o painel não executa a restauração.";
-
-app.get("/api/admin/backup/restauracao-doc", exigeSuperAdmin, (_req, res) => {
-  try {
-    const txt = fs.readFileSync(DEPLOY_PATH, "utf8");
-    const m = txt.match(/<!-- RESTAURACAO:START -->([\s\S]*?)<!-- RESTAURACAO:END -->/);
-    res.json({ markdown: m ? m[1].trim() : RESTAURACAO_FALLBACK });
-  } catch (e) {
-    res.json({ markdown: RESTAURACAO_FALLBACK });
-  }
-});
+// (O passo a passo de restauração NÃO tem rota: é texto fixo no próprio painel
+//  — admin-master.html — para nunca depender de leitura de arquivo em runtime.
+//  O mesmo conteúdo está no DEPLOY.md, escrito normalmente.)
 
 app.post("/api/admin/tenants", exigeSuperAdmin, (req, res) => {
   try {

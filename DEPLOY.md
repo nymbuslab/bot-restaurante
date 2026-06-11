@@ -323,7 +323,6 @@ node -e "const D=require('better-sqlite3'); \
 Os números devem bater com o sistema em produção. (Este projeto valida exatamente isso ao
 entregar a feature: empresas e pedidos contados antes e depois do tar batem.)
 
-<!-- RESTAURACAO:START -->
 ### RESTAURAR um backup (com o servidor PARADO)
 
 > Restauração **substitui** os dados atuais. Pare o app antes e mantenha um resguardo
@@ -368,7 +367,6 @@ pm2 start bot-restaurante         # ou npm start
 > O tar guarda o **conteúdo** de `data/` na raiz do arquivo, então `tar -xzf ... -C data`
 > recoloca tudo no lugar certo. As sessões `baileys-*/` voltam juntas — o bot reconecta sem
 > novo QR (a menos que o WhatsApp tenha expirado a sessão nesse meio-tempo).
-<!-- RESTAURACAO:END -->
 
 ---
 
