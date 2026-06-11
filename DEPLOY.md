@@ -225,18 +225,36 @@ Faça backup periódico **antes de ter clientes pagando**.
 
 Duas camadas complementares:
 
-1. **Snapshots de volume do Fly** (automático, infra): o Fly tira snapshots diários do
-   volume e os retém por alguns dias. Cobre o desastre "volume sumiu".
+1. **Snapshots de volume do Fly** (automático, infra): cobre o desastre "volume sumiu".
+   Neste projeto, o volume é o **`bot_dados`** e os snapshots automáticos estão **ATIVOS**,
+   tirados **~diariamente**, com **retenção de 5 dias**.
 
    ```bash
-   fly volumes list                      # veja o ID do volume (ex: vol_xxx)
-   fly volumes snapshots list <vol_id>   # lista snapshots disponíveis
+   fly volumes list                      # veja o ID do volume bot_dados (ex: vol_xxx)
+   fly volumes snapshots list <vol_id>   # lista os snapshots disponíveis (e seus IDs)
    ```
 
-2. **Export manual** (`npm run backup`, abaixo): um arquivo único que você **baixa para fora
-   do Fly** (seu PC). É o que protege contra erro humano (exclusão acidental) e contra perda
-   da própria conta/região. **Recomendado antes de cada operação de risco** (migração, deploy
-   grande, exclusão de tenant).
+   > **⚠️ Implicação prática da retenção de 5 dias:** se um problema só for percebido
+   > **depois de 5 dias** (ex.: um dado corrompido/apagado que ninguém notou na hora), o
+   > snapshot daquele período **já expirou** — não dá mais para voltar a ele. Por isso o
+   > **backup manual baixado pro PC (item 2) é a proteção de longo prazo**: não expira.
+   > Para algo importante, baixe um export manual e guarde fora do Fly.
+
+   **Restaurar a partir de um snapshot** (cria um volume novo a partir do snapshot; o app
+   precisa ser apontado para ele / a máquina recriada nesse volume):
+
+   ```bash
+   fly volumes snapshots list <vol_id>                       # pegue o <snap_id> desejado
+   fly volumes create bot_dados --snapshot-id <snap_id> \
+     --region gru --size 1                                   # cria um novo volume a partir do snapshot
+   # depois, recrie/realoque a máquina nesse volume novo (ver docs do Fly: fly machine ...)
+   ```
+
+2. **Export manual** (`npm run backup`, abaixo — ou pelo painel, em **Configurações → Backup**):
+   um arquivo único que você **baixa para fora do Fly** (seu PC) e que **não expira**. É o que
+   protege contra erro humano (exclusão acidental), contra perda da própria conta/região e
+   contra o **limite de 5 dias** dos snapshots. **Recomendado antes de cada operação de risco**
+   (migração, deploy grande, exclusão de tenant) e como guarda de longo prazo.
 
 > **Decisão de arquitetura:** ficamos em **snapshot do Fly + export manual** por ora.
 > Backup automático para storage externo (S3/R2) está **fora de escopo** até haver volume de
