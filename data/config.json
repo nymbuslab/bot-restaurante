@@ -1,23 +1,16 @@
 {
   "restaurante": {
-    "nome": "Sabor D'Casa - Restaurante e Pastelaria",
-    "horario": "Seg a Sáb, das 07h às 18h",
-    "endereco": "***REDACTED***",
-    "telefone": "***REDACTED***"
+    "nome": "Restaurante",
+    "horario": "",
+    "endereco": "",
+    "telefone": ""
   },
   "atendimento": {
     "aberto": true,
     "tempoEstimado": "30 a 45 min",
-    "taxaEntrega": 5
-  },
-  "horarios": {
-    "seg": { "abre": "07:00", "fecha": "18:00", "fechado": false },
-    "ter": { "abre": "07:00", "fecha": "18:00", "fechado": false },
-    "qua": { "abre": "07:00", "fecha": "18:00", "fechado": false },
-    "qui": { "abre": "07:00", "fecha": "18:00", "fechado": false },
-    "sex": { "abre": "07:00", "fecha": "18:00", "fechado": false },
-    "sab": { "abre": "07:00", "fecha": "18:00", "fechado": false },
-    "dom": { "abre": "08:00", "fecha": "14:00", "fechado": true }
+    "taxaEntrega": 0,
+    "perguntarBebida": true,
+    "perguntarObservacao": true
   },
   "mensagens": {
     "boasVindas": "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.\n\nComo posso ajudar? Digite o número da opção:",
@@ -25,7 +18,7 @@
     "atendente": "Tudo bem! Um de nossos atendentes vai continuar por aqui em instantes. 🧑‍🍳\n\n(Digite *menu* para voltar ao atendimento automático.)",
     "pedidoConfirmado": "🎉 *Pedido confirmado!* Número *#{numero}*.\n\nJá estamos preparando. Tempo estimado: *{tempo}*.\nObrigado pela preferência! 🍴",
     "pedidoPronto": {
-      "entrega":  "Olá, {cliente}! Seu pedido #{numero} está pronto e já saiu para entrega. Logo chega aí!",
+      "entrega": "Olá, {cliente}! Seu pedido #{numero} está pronto e já saiu para entrega. Logo chega aí!",
       "retirada": "Olá, {cliente}! Seu pedido #{numero} está pronto para retirada. Pode vir buscar quando quiser!"
     }
   },
