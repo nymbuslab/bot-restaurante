@@ -43,7 +43,7 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
   runbook de download e restauração no `DEPLOY.md`. Estratégia: snapshot do Fly + export
   manual. Backup automático para storage externo (S3/R2) fica para quando houver tração — ver
   `CHANGELOG.md` v0.10.0
-- [ ] **Exibição de preço com opcional (bot)** — na mensagem do pedido, mostrar o preço base do item e o subtotal com opcionais separadamente (ex.: `Pastel R$ 15,00` + `Queijo R$ 2,50` → `subtotal R$ 17,50`), em vez de só o valor somado. Hoje a linha exibe só o total e parece que o item custa mais caro. Identificado no redesign; é ajuste de **texto** no `fluxo.js`, não de cálculo — o total final está correto.
+- [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
 - [ ] **Saudação com carrinho aberto (bot)** — se o cliente tem itens no carrinho e manda uma saudação ("oi"/"menu"), perguntar se quer **continuar** o pedido em aberto ou **recomeçar**, em vez de retomar o carrinho antigo silenciosamente. Identificado no redesign (`sessoes.js`/`fluxo.js`).
 
 ## P3 — Ideias futuras (sem compromisso)

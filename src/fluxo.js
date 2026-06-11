@@ -138,20 +138,33 @@ function precoLinha(item) {
   return (item.preco + extras) * item.qtd;
 }
 
+// Monta as linhas de UM item do carrinho para os resumos (revisão e confirmação).
+// SÓ exibição — o cálculo (precoLinha) não muda:
+//  - sem opcional: uma linha só, mostrando o total da linha (preço*qtd);
+//  - com opcional: linha do nome com o preço BASE unitário, os opcionais e, por
+//    fim, o subtotal da linha em itálico = (base + opcionais) * qtd.
+function linhasItemPedido(item) {
+  const subtotal = precoLinha(item);
+  const temOpcional = (item.opcionais || []).length > 0;
+  let texto;
+  if (!temOpcional) {
+    texto = `• ${item.qtd}x ${item.nome} — ${formatarMoeda(subtotal)}\n`;
+  } else {
+    texto = `• ${item.qtd}x ${item.nome} — ${formatarMoeda(item.preco)}\n`;
+    for (const o of item.opcionais) {
+      texto += `   + ${o.nome}${o.preco ? " (" + formatarMoeda(o.preco) + ")" : ""}\n`;
+    }
+    texto += `   _subtotal: ${formatarMoeda(subtotal)}_\n`;
+  }
+  if (item.observacao) texto += `   📝 _${item.observacao}_\n`;
+  return texto;
+}
+
 function resumoCarrinho(carrinho) {
   if (carrinho.length === 0) return "_Seu carrinho está vazio._";
   let texto = "*🛒 Seu pedido até agora:*\n";
-  let total = 0;
-  for (const item of carrinho) {
-    const subtotal = precoLinha(item);
-    total += subtotal;
-    texto += `• ${item.qtd}x ${item.nome} — ${formatarMoeda(subtotal)}\n`;
-    for (const o of item.opcionais || []) {
-      texto += `   + ${o.nome}${o.preco ? " (" + formatarMoeda(o.preco) + ")" : ""}\n`;
-    }
-    if (item.observacao) texto += `   📝 _${item.observacao}_\n`;
-  }
-  texto += `\n*Total: ${formatarMoeda(total)}*`;
+  for (const item of carrinho) texto += linhasItemPedido(item);
+  texto += `\n*Total: ${formatarMoeda(totalCarrinho(carrinho))}*`;
   return texto;
 }
 
@@ -217,14 +230,7 @@ function textoConfirmacao(sessao, tenantDir) {
   const totalFinal = totalItens + taxa;
 
   let texto = `*📦 Confirme seu pedido:*\n\n`;
-  for (const item of sessao.carrinho) {
-    const subtotal = precoLinha(item);
-    texto += `• ${item.qtd}x ${item.nome} — ${formatarMoeda(subtotal)}\n`;
-    for (const o of item.opcionais || []) {
-      texto += `   + ${o.nome}${o.preco ? " (" + formatarMoeda(o.preco) + ")" : ""}\n`;
-    }
-    if (item.observacao) texto += `   📝 _${item.observacao}_\n`;
-  }
+  for (const item of sessao.carrinho) texto += linhasItemPedido(item);
   if (taxa > 0) texto += `🛵 Taxa de entrega: ${formatarMoeda(taxa)}\n`;
   texto += `*Total: ${formatarMoeda(totalFinal)}*`;
   texto += `\n\n*Nome:* ${p.nome}\n*Tipo:* ${p.tipoEntrega}\n*Endereço:* ${p.endereco}\n*Pagamento:* ${p.pagamento}\n\n`;

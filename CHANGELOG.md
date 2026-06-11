@@ -114,3 +114,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Bug de chave de sessão corrigido.** No WhatsApp real, a sessão é guardada sob `${slug}:${jid}`, mas `fluxo.js` chamava `resetSessao(chatId)` com o `jid` cru → apagava uma chave inexistente e a sessão antiga **continuava viva**. Sintomas: `"cancelar"`/`"sair"` respondiam "cancelado" mas **não zeravam** o carrinho/estado; após confirmar um pedido a sessão **não reiniciava** (carrinho vazava para o próximo atendimento e um novo `"1"` podia **duplicar** o pedido). O simulador não exibia o bug porque ali a chave coincide
 - **Correção:** novo `limparSessao(sessao)` em `sessoes.js` que reseta o **próprio objeto** da sessão (in-place), independente da chave; `fluxo.js` passou a usá-lo no cancelar/sair e no pós-confirmação. O `chatId` do canal (usado pelo "avisar cliente") permanece intacto — por isso não se passou a chave de armazenamento como `chatId`. Validado por teste no caminho real (`slug:jid`): cancelar, sair, pós-confirmação sem duplicar, e `chatId` do pedido gravado corretamente
+
+## [0.11.3] — Exibição de preço com opcional no resumo do pedido
+
+- **Só exibição (cálculo inalterado).** Na revisão e na confirmação, itens **com opcionais** passam a mostrar o **preço base** do item, os opcionais e o **subtotal** (em itálico) — em vez de só o valor já somado, que parecia o preço do item. Ex.: `2x Pastel — R$ 15,00` + `Queijo (R$ 2,50)` + `subtotal: R$ 35,00`. Itens **sem opcional** continuam numa linha só
+- Helper único `linhasItemPedido()` usado pela revisão e pela confirmação (mesmo formato nos dois). `precoLinha`/`totalCarrinho` **não mudaram** — total final idêntico (validado: pedido misto com qtd>1 e opcionais soma exatamente o mesmo, centavo a centavo)
