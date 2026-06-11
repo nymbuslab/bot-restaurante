@@ -9,6 +9,9 @@ data/*.db
 data/tenants/
 data/*.migrado
 
+# Backups manuais (contêm dados de cliente — nunca versionar)
+backups/
+
 # ExpxAgents
 .env
 .mcp.json

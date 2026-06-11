@@ -214,6 +214,140 @@ Depois reconecte pelo painel.
 
 ---
 
+## 💾 Backup e restauração dos dados
+
+Toda a operação vive na pasta `data/` (config, cardápio, `pedidos.db` de cada tenant,
+sessões WhatsApp e `empresas.db`). **No Fly.io tudo isso fica num único volume.** Sem
+backup, corromper ou recriar o volume = **perda total dos dados de todos os restaurantes**.
+Faça backup periódico **antes de ter clientes pagando**.
+
+### Estratégia
+
+Duas camadas complementares:
+
+1. **Snapshots de volume do Fly** (automático, infra): o Fly tira snapshots diários do
+   volume e os retém por alguns dias. Cobre o desastre "volume sumiu".
+
+   ```bash
+   fly volumes list                      # veja o ID do volume (ex: vol_xxx)
+   fly volumes snapshots list <vol_id>   # lista snapshots disponíveis
+   ```
+
+2. **Export manual** (`npm run backup`, abaixo): um arquivo único que você **baixa para fora
+   do Fly** (seu PC). É o que protege contra erro humano (exclusão acidental) e contra perda
+   da própria conta/região. **Recomendado antes de cada operação de risco** (migração, deploy
+   grande, exclusão de tenant).
+
+> **Decisão de arquitetura:** ficamos em **snapshot do Fly + export manual** por ora.
+> Backup automático para storage externo (S3/R2) está **fora de escopo** até haver volume de
+> clientes que justifique — adiciona custo e credenciais a gerir. Quando migrar, o export já
+> gera o artefato pronto para subir a um bucket.
+
+### Gerar um backup (`npm run backup`)
+
+Gera `backups/backup-AAAA-MM-DD-HHmm.tar.gz` com **toda** a `data/`. Os bancos SQLite
+(`empresas.db` e os `pedidos.db`) entram via *Online Backup API* do SQLite — cópia
+**consistente mesmo com o servidor no ar** (sem downtime). As sessões `baileys-*/` entram
+como estão.
+
+```bash
+# Localmente:
+npm run backup
+
+# No Fly.io:
+fly ssh console
+cd /app && npm run backup
+exit
+```
+
+> ### ⚠️ ATENÇÃO no Fly.io — o backup NÃO sobrevive a um restart
+>
+> A pasta `backups/` fica no **filesystem efêmero do container** (em `/app/backups`), **fora
+> do volume montado em `/app/data`**. Se o container reiniciar, **o arquivo de backup some**.
+> **Gere e BAIXE o backup na MESMA sessão.** Não confie que ele continua lá depois.
+>
+> *Por que não gerar dentro do volume (`/app/data/backups`)?* Porque o backup é uma cópia da
+> própria `data/` — guardá-lo dentro do volume **incha o volume que estamos justamente
+> protegendo** (e o próximo backup passaria a copiar os backups antigos). O lugar do backup é
+> **fora do Fly**: no seu PC.
+
+### Baixar o arquivo do Fly para o seu PC
+
+```bash
+# Substitua pelo nome real impresso pelo comando de backup:
+fly ssh sftp get /app/backups/backup-AAAA-MM-DD-HHmm.tar.gz ./
+```
+
+Guarde esse `.tar.gz` em local seguro (outro disco / nuvem pessoal).
+
+### Testar se o backup realmente restaura (faça isso!)
+
+Backup que nunca foi testado não é backup. Teste **sem tocar** na `data/` real — extraia numa
+pasta separada e confira que os bancos abrem e têm as linhas certas:
+
+```bash
+mkdir -p /tmp/teste-restore
+tar -xzf backup-AAAA-MM-DD-HHmm.tar.gz -C /tmp/teste-restore
+ls /tmp/teste-restore                       # deve ter config.json, empresas.db, tenants/, ...
+
+# Conferir um banco (conta empresas e pedidos de um tenant):
+node -e "const D=require('better-sqlite3'); \
+  const e=new D('/tmp/teste-restore/empresas.db',{readonly:true}); \
+  console.log('empresas:', e.prepare('SELECT COUNT(*) n FROM empresas').get().n); \
+  const p=new D('/tmp/teste-restore/tenants/<slug>/pedidos.db',{readonly:true}); \
+  console.log('pedidos:', p.prepare('SELECT COUNT(*) n FROM pedidos').get().n);"
+```
+
+Os números devem bater com o sistema em produção. (Este projeto valida exatamente isso ao
+entregar a feature: empresas e pedidos contados antes e depois do tar batem.)
+
+### RESTAURAR um backup (com o servidor PARADO)
+
+> Restauração **substitui** os dados atuais. Pare o app antes e mantenha um resguardo
+> (`data.old`) até confirmar que deu certo.
+
+**No Fly.io:**
+
+```bash
+# 1) Suba o arquivo do seu PC para o container
+fly ssh sftp shell
+  put backup-AAAA-MM-DD-HHmm.tar.gz /app/backups/
+  exit
+
+# 2) Pare o processo e restaure
+fly ssh console
+  cd /app
+  # resguardo do estado atual (não apague ainda):
+  mv data data.old
+  mkdir data
+  tar -xzf backups/backup-AAAA-MM-DD-HHmm.tar.gz -C data
+  ls data data/tenants            # confira a estrutura
+  exit
+
+# 3) Reinicie a máquina para o servidor subir com os dados restaurados
+fly machine restart <machine_id>
+
+# 4) Valide login no painel + conexão do bot. Se tudo ok:
+fly ssh console -C "rm -rf /app/data.old"
+```
+
+**Localmente (PM2 / VPS):**
+
+```bash
+pm2 stop bot-restaurante          # ou Ctrl+C no npm start
+mv data data.old
+mkdir data
+tar -xzf backup-AAAA-MM-DD-HHmm.tar.gz -C data
+pm2 start bot-restaurante         # ou npm start
+# valide e depois: rm -rf data.old
+```
+
+> O tar guarda o **conteúdo** de `data/` na raiz do arquivo, então `tar -xzf ... -C data`
+> recoloca tudo no lugar certo. As sessões `baileys-*/` voltam juntas — o bot reconecta sem
+> novo QR (a menos que o WhatsApp tenha expirado a sessão nesse meio-tempo).
+
+---
+
 ## 🆘 Problemas comuns
 
 - **QR travado em "iniciando"**: sessão antiga inválida. No painel, clique em

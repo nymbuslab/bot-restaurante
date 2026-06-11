@@ -274,6 +274,12 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
   comportamento esperado — `better-sqlite3` é síncrono e thread-safe para leitura.
 - **Volume único no Fly.io**: toda a pasta `data/` (incluindo `tenants/`, `empresas.db`
   e sessões WhatsApp) está no único volume montado em `/app/data`.
+- **Backup**: `npm run backup` (`scripts/backup.js`) gera um `.tar.gz` consistente de toda a
+  `data/` em `backups/` (gitignored). Bancos do app via Online Backup API do `better-sqlite3`
+  (`db.backup`, sem downtime); demais `.db` (caches Chromium órfãos) copiados crus. No Fly,
+  `backups/` é **efêmero** — baixar na mesma sessão (`fly ssh sftp get`). Runbook de
+  download/teste/restauração em `DEPLOY.md`. Estratégia: snapshot do Fly + export manual
+  (S3/storage externo fora de escopo por ora).
 
 ## Convenções
 
