@@ -204,3 +204,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Limpeza automática** das linhas de sessão (`session:*`) inativas há mais de **90 dias**, em todos os tenants (`limparSessoesAntigas` em `src/wa-auth.js`). Roda 1x no boot e a cada 24h (`index.js`). É **seguro** — o Baileys recria a sessão do cliente no próximo contato; **não toca** em creds/pre-keys/app-state (essas não envelhecem)
 - Nova coluna `wa_auth.atualizado_em` (carimbada a cada escrita) habilita o corte por inatividade. Não-bloqueante e barato; só importa quando um restaurante acumula milhares de clientes
 - Validado: sessão recente preservada, sessão de 100 dias removida, `creds`/`pre-key` antigos intocados
+
+## [0.18.0] — Remoção do backup manual (obsoleto pós-stateless)
+
+- **Backup do lado do app removido.** Na era SQLite, `npm run backup` (`scripts/backup.js`) empacotava a pasta `data/` (sessões `baileys-*/` + imagens) num `.tar.gz`, com tela de gerar/listar/baixar na aba **Configurações** do `/admin-master`. Com o app **stateless** (v0.17.0), tudo migrou para o Supabase — dados em Postgres, sessões em `wa_auth`, imagens no Storage — e a pasta `data/` ficou vazia: o backup empacotava **nada** e dava uma falsa sensação de segurança
+- **O que foi removido:** `scripts/backup.js`, as 3 rotas `/api/admin/backup/{gerar,listar,baixar}` (`servidor.js`), a aba **Configurações** inteira do `/admin-master` (HTML + JS + CSS — era exclusiva do backup), o script `npm run backup` e a dependência `tar` do `package.json`. A gestão de tenants (aba **Restaurantes**) e as métricas seguem intactas
+- **Backup agora é 100% gerenciado pelo Supabase** (point-in-time recovery do Postgres + Storage). Docs atualizadas (CLAUDE.md, ROADMAP.md, DEPLOY.md, PRD.md, `.gitignore`)
+- O `/admin-master` abre direto em **Restaurantes**, sem barra de abas

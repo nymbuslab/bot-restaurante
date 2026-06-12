@@ -2682,89 +2682,8 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .am-criar-caixa .auth-card-form { gap: 0; }
 .am-criar-caixa .erro { margin: 0 0 8px; }
 
-/* ---- Abas (Restaurantes / Configurações) ---- */
-.am-tabs { display: flex; gap: 4px; }
-.am-tab {
-  width: auto;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-.am-tab:hover { background: var(--bg-elevated); color: var(--text-primary); }
-.am-tab.ativa { background: var(--accent-subtle); color: var(--accent-fg); }
-
 .am-cabeca-acao { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .am-cabeca-acao button.mini { width: auto; }
-
-/* ---- Configurações: subseções ---- */
-.am-config-sub {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 22px 24px;
-  box-shadow: var(--shadow-sm);
-}
-.am-sub-titulo { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
-
-.am-aviso-efemero {
-  background: var(--warning-subtle);
-  border: 1px solid rgba(234,179,8,0.4);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.55;
-  margin: 16px 0;
-}
-.am-aviso-efemero strong { color: var(--warning); }
-
-.am-backup-acoes { margin-bottom: 16px; }
-.am-backup-acoes button { width: auto; }
-.am-backups-tabela { margin-bottom: 8px; }
-
-/* ---- Runbook de restauração (somente leitura) ---- */
-.am-runbook-bloco { margin-top: 28px; border-top: 1px solid var(--border-subtle); padding-top: 22px; }
-.am-runbook-nota {
-  background: var(--accent-subtle);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-bottom: 16px;
-}
-.am-runbook { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
-.am-runbook h3, .am-runbook h4, .am-runbook h5 {
-  color: var(--text-primary); font-size: 14px; font-weight: 700;
-  margin: 18px 0 8px; text-transform: none; letter-spacing: 0; border: none; padding: 0;
-}
-.am-runbook p { margin: 0 0 10px; }
-.am-runbook strong { color: var(--text-primary); }
-.am-runbook ul { margin: 0 0 10px; padding-left: 20px; }
-.am-runbook li { margin-bottom: 4px; }
-.am-runbook code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px; background: var(--bg-elevated); color: var(--accent-fg);
-  padding: 1px 5px; border-radius: var(--radius-sm);
-}
-.am-runbook pre {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  overflow-x: auto;
-  margin: 0 0 12px;
-}
-.am-runbook pre code { background: none; color: var(--text-primary); padding: 0; font-size: 12px; line-height: 1.5; }
-.am-runbook blockquote {
-  border-left: 3px solid var(--accent);
-  background: var(--accent-subtle);
-  margin: 0 0 12px;
-  padding: 10px 14px;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
 
 /* Tabela → cards no mobile */
 @media (max-width: 1024px) {

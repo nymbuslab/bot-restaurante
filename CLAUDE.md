@@ -329,10 +329,11 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
   coerente; várias instâncias exigiriam invalidação/pub-sub.
 - **Pooler do Supabase**: para app sempre-ligado, prefira o **Session pooler (5432)** ao
   Transaction pooler (6543) — `db.js` avisa no boot se detectar 6543.
-- **Backup**: `npm run backup` (`scripts/backup.js`) empacota a `data/` (sessões `baileys-*/`
-  e imagens) num `.tar.gz` em `backups/` (gitignored). **Os dados do banco (empresas/pedidos/
-  config/cardápio) são backup do Supabase** (point-in-time recovery gerenciado), não entram
-  neste tar. No Fly, `backups/` é efêmero — baixar na mesma sessão (`fly ssh sftp get`).
+- **Backup**: **gerenciado 100% pelo Supabase** (point-in-time recovery). Com o app stateless,
+  TUDO mora no Supabase — dados em Postgres (`empresas`/`pedidos`/`config`/`cardapio`), sessões
+  do WhatsApp em `wa_auth` e imagens no Storage. Não há mais backup do lado do app: o antigo
+  `npm run backup`/`scripts/backup.js` (empacotava a `data/` em `.tar.gz`) foi **removido na
+  v0.18.0** por ficar obsoleto — não havia mais nada em disco para empacotar.
 
 ## Convenções
 

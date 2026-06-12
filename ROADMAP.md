@@ -46,11 +46,11 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - [x] **HTTPS em produção** — ✅ **resolvido no Fly.io**: certificado TLS gerenciado pela
   plataforma no domínio `.fly.dev` + `force_https = true` no `fly.toml` (redirect http→https).
   Sem config manual. Ressalva: em **VPS/local** o HTTPS depende do operador (Nginx + TLS).
-- [x] **Backup do volume de dados (Fly.io)** — ✅ **concluído**: `npm run backup` gera um
-  `.tar.gz` consistente de toda a `data/` (SQLite via Online Backup API, sem downtime), com
-  runbook de download e restauração no `DEPLOY.md`. Estratégia: snapshot do Fly + export
-  manual. Backup automático para storage externo (S3/R2) fica para quando houver tração — ver
-  `CHANGELOG.md` v0.10.0
+- [x] **Backup dos dados** — ✅ **resolvido pelo Supabase** (point-in-time recovery gerenciado).
+  Com o app stateless (v0.17.0), tudo migrou para o Supabase — dados, sessões do WhatsApp
+  (`wa_auth`) e imagens (Storage) — e não há mais nada em disco. O backup manual do lado do app
+  (`npm run backup` + tela no `/admin-master`), feito na era SQLite, foi **removido na v0.18.0**
+  por ficar obsoleto. Ver `CHANGELOG.md` v0.10.0 (criação) e v0.18.0 (remoção).
 - [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
 - [x] **Saudação com carrinho aberto (bot)** — ✅ **concluído**: saudação com carrinho não-vazio pergunta *continuar* (mantém) ou *recomeçar* (zera), em vez de retomar o carrinho silenciosamente. Estado `CONFIRMA_REINICIO` em `fluxo.js`. Ver `CHANGELOG.md` v0.12.1.
 - [x] **Onboarding via wizard de cadastro** — ✅ **concluído**: cadastro em 4 etapas (Conta → Dados → Horário → Entrega → painel), reusando `POST /api/cadastro`+`/api/login` (etapa 1) e `PUT /api/config` (etapas 2–4, persistência incremental). Dados obrigatório; horário/entrega puláveis; abandono cai direto no painel no próximo login. Trajeto anterior: a barra-guia no painel (v0.14.0) foi revertida (v0.14.1) e o flag `config.onboardingConcluido`/rota `POST /api/onboarding/concluir` (código morto) foram removidos. Ver `CHANGELOG.md` v0.15.0.

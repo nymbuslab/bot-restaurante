@@ -4,7 +4,6 @@
 
 const express = require("express");
 const path    = require("path");
-const fs      = require("fs");
 const crypto  = require("crypto");
 const multer  = require("multer");
 
@@ -13,7 +12,6 @@ const store = require("./store");
 const pedidos = require("./pedidos");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin } = require("./supabase");
-const backup = require("../scripts/backup");
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
@@ -159,31 +157,6 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
   } catch (e) {
     res.status(500).json({ erro: "Falha ao calcular métricas." });
   }
-});
-
-// ---- Super-admin: backup (consome scripts/backup.js) ----
-
-app.post("/api/admin/backup/gerar", exigeSuperAdmin, async (_req, res) => {
-  try {
-    const r = await backup.gerarBackup();
-    res.json({ arquivo: r.arquivo, tamanho: r.tamanho, criadoEm: r.criadoEm });
-  } catch (e) {
-    res.status(500).json({ erro: e.message || "Falha ao gerar o backup." });
-  }
-});
-
-app.get("/api/admin/backup/listar", exigeSuperAdmin, (_req, res) => {
-  res.json(backup.listarBackups());
-});
-
-app.get("/api/admin/backup/baixar/:arquivo", exigeSuperAdmin, (req, res) => {
-  const nome = path.basename(req.params.arquivo);
-  if (!backup.NOME_RE.test(nome)) return res.status(400).json({ erro: "Nome de backup inválido." });
-  const baseDir  = path.resolve(backup.BACKUPS_DIR);
-  const filePath = path.resolve(baseDir, nome);
-  if (!filePath.startsWith(baseDir + path.sep)) return res.status(403).end();
-  if (!fs.existsSync(filePath)) return res.status(404).json({ erro: "Backup não encontrado." });
-  res.download(filePath, nome);
 });
 
 app.post("/api/admin/tenants", exigeSuperAdmin, async (req, res) => {

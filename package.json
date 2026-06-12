@@ -7,8 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "setup-storage": "node scripts/setup-storage.js",
-    "gerar-hash-admin": "node scripts/gerar-hash.js",
-    "backup": "node scripts/backup.js"
+    "gerar-hash-admin": "node scripts/gerar-hash.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
@@ -20,7 +19,6 @@
     "pg": "^8.21.0",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
-    "qrcode-terminal": "^0.12.0",
-    "tar": "^7.5.16"
+    "qrcode-terminal": "^0.12.0"
   }
 }

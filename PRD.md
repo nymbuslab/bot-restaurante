@@ -77,8 +77,8 @@ e soluções prontas costumam ser caras ou engessadas.
 - **Contas/senhas**: Supabase Auth (bcrypt). Sessão = JWT.
 - **Sessão WhatsApp**: persistida no Postgres (adapter custom do Baileys) — stateless.
 - **Imagens do cardápio**: Supabase Storage.
-- **Backup**: do banco é gerenciado pelo Supabase (point-in-time recovery). `npm run backup`
-  cobre só o que ainda mora em disco (legado/transição).
+- **Backup**: gerenciado 100% pelo Supabase (point-in-time recovery). Com o app stateless,
+  nada mora em disco — o backup manual do lado do app foi removido (v0.18.0).
 
 ### 5.5 Super-admin (gestão da plataforma)
 
@@ -96,8 +96,6 @@ master não acessa o painel de restaurante.
 - **Métricas de uso** (reais, contadas do banco): total de restaurantes, ativos/suspensos,
   pedidos no mês somando todos os tenants e quantos estão conectados ao WhatsApp agora; além de
   pedidos no mês por restaurante.
-- **Configurações → Backup**: gerar backup completo, listar e baixar os arquivos para o PC; o
-  passo a passo de restauração (manual) é exibido na própria tela.
 
 ## 6. Fora de escopo (o que o produto NÃO faz)
 
@@ -138,8 +136,10 @@ master não acessa o painel de restaurante.
 ## 9. Roadmap / próximos passos (priorizáveis)
 
 - [x] **Painel de super-admin** para gerenciar tenants (listar, criar, suspender/reativar,
-  excluir) + métricas de uso + backup pelo painel — **concluído** (ver seção 5.5).
-- [x] **Backup manual dos dados** (`npm run backup` + pelo painel) — **concluído** (ver 5.4).
+  excluir) + métricas de uso — **concluído** (ver seção 5.5).
+- [x] **Backup dos dados** — **resolvido pelo Supabase** (point-in-time recovery gerenciado). O
+  backup manual do lado do app (`npm run backup` + tela no painel), da era SQLite, foi removido
+  na v0.18.0 quando o app virou stateless (nada mais em disco). Ver `CHANGELOG.md` v0.18.0.
 - [ ] Notificação para cozinha/atendente quando chega pedido novo (webhook ou push).
 - [ ] Tornar pergunta de bebida e observação configuráveis (liga/desliga) no painel.
 - [ ] Opcionais com regras (ex.: "escolha 1 de 3", "máx. 2").
