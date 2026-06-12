@@ -15,11 +15,8 @@ const empresas = require("./src/empresas");
 
 const CHAT_ID = "simulador@c.us";
 
-// Usa o primeiro tenant disponível (ou o diretório padrão como fallback)
-const lista = empresas.listar();
-const TENANT_DIR = lista.length > 0
-  ? empresas.tenantDir(lista[0].slug)
-  : path.join(__dirname, "data");
+// Resolvido no init() — empresas.listar() agora é async (Postgres).
+let TENANT_DIR = null;
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -51,7 +48,7 @@ function mostrarStatus() {
 
 function prompt() {
   mostrarStatus();
-  rl.question(`${AZUL}Você: ${RESET}`, (entrada) => {
+  rl.question(`${AZUL}Você: ${RESET}`, async (entrada) => {
     const msg = (entrada || "").trim();
 
     if (!msg) return prompt();
@@ -75,7 +72,7 @@ function prompt() {
     }
 
     const sessao = getSessao(CHAT_ID);
-    const { respostas } = processarMensagem(CHAT_ID, msg, sessao, TENANT_DIR);
+    const { respostas } = await processarMensagem(CHAT_ID, msg, sessao, TENANT_DIR);
     mostrarRespostas(respostas);
     prompt();
   });
@@ -89,4 +86,8 @@ Comandos especiais: ${CINZA}/reset${RESET}  ${CINZA}/status${RESET}  ${CINZA}/qu
 Comece digitando ${NEGRITO}oi${RESET} para iniciar o atendimento.
 `);
 
-prompt();
+(async () => {
+  const lista = await empresas.listar();
+  TENANT_DIR = lista.length > 0 ? empresas.tenantDir(lista[0].slug) : path.join(__dirname, "data");
+  prompt();
+})().catch((e) => { console.error("Erro ao iniciar o simulador:", e.message); process.exit(1); });

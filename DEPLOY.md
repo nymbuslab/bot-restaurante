@@ -62,14 +62,17 @@ Use Linux (Ubuntu). Com Baileys (WebSocket, sem Chromium) o consumo de RAM por t
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# 2) git + ferramentas de build (libsignal do Baileys vem do GitHub; better-sqlite3 compila)
-sudo apt-get install -y git python3 make g++
+# 2) git (libsignal do Baileys vem do GitHub)
+sudo apt-get install -y git
 
 # 3) Enviar os arquivos (git, scp ou FileZilla)
 
-# 4) Instalar e rodar
+# 4) Configurar o .env com as credenciais do Supabase (ver .env.example)
+
+# 5) Instalar e rodar
 cd bot-restaurante
 npm install
+npx supabase db push   # aplica o schema no seu projeto Supabase (uma vez)
 npm install -g pm2
 pm2 start ecosystem.config.js
 pm2 save && pm2 startup
@@ -137,19 +140,15 @@ Depois edite o `fly.toml` e troque `app = "bot-restaurante"` pelo nome escolhido
 fly volumes create bot_dados --region gru --size 1
 ```
 
-> Um único volume guarda tudo: `data/` com o `empresas.db` (banco mestre) e
-> `tenants/{slug}/` (config, cardápio, pedidos e sessão WhatsApp de cada restaurante).
+> **O banco está no Supabase** (Postgres gerenciado: empresas, pedidos, config, cardápio).
+> O volume guarda só o que ainda mora em disco: `data/tenants/{slug}/` com a **sessão
+> WhatsApp** (`baileys-*/`) e as **imagens** do cardápio (`uploads/`).
 >
-> **Volume em uso:** o app monta **apenas o `bot_dados`** em `/app/data`. Havia um volume
-> órfão `bot_sessao` (sobra de uma configuração antiga, **nunca montado**) — foi **removido**
-> para não pagar/confundir. Confira com `fly volumes list`: deve aparecer só o `bot_dados`.
+> **Secrets do Supabase** (necessários no Fly): `fly secrets set DATABASE_URL=... SUPABASE_URL=...
+> SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=...` — sem eles o app não sobe.
 >
-> **Nota de HA (futuro, não necessário agora):** o Fly **recomenda 2+ volumes** por app para
-> redundância/alta disponibilidade (uma máquina por volume, em zonas diferentes). Hoje rodamos
-> com **1 volume** de propósito — simples e barato; a proteção de dados atual é **snapshots
-> automáticos (retenção 5 dias) + backup manual baixado pro PC** (ver seção de backup). Migrar
-> para 2+ volumes/máquinas só **quando o volume de clientes justificar** o custo e a
-> complexidade extra (réplica de SQLite por tenant não é trivial).
+> **HA (futuro):** a proteção dos dados do banco agora é do **Supabase** (point-in-time
+> recovery gerenciado). O volume só tem sessões/imagens (recriáveis: re-escanear QR / re-upload).
 
 ### 4. Primeiro deploy
 
@@ -157,7 +156,7 @@ fly volumes create bot_dados --region gru --size 1
 fly deploy
 ```
 
-O build é rápido (sem Chromium — Baileys não usa browser); compila apenas o `better-sqlite3`.
+O build é rápido (sem Chromium e sem módulo nativo — Baileys é WebSocket, `pg` é JS puro).
 
 ### 5. Criar a primeira empresa
 
@@ -226,52 +225,45 @@ Depois reconecte pelo painel.
 
 ## 💾 Backup e restauração dos dados
 
-Toda a operação vive na pasta `data/` (config, cardápio, `pedidos.db` de cada tenant,
-sessões WhatsApp e `empresas.db`). **No Fly.io tudo isso fica num único volume.** Sem
-backup, corromper ou recriar o volume = **perda total dos dados de todos os restaurantes**.
-Faça backup periódico **antes de ter clientes pagando**.
+Desde a migração para o **Supabase**, os dados que importam (empresas, pedidos, config,
+cardápio, contas/senhas) vivem no **Postgres gerenciado** — **o backup deles é do Supabase**
+(point-in-time recovery automático no plano Pro). Não há mais bancos SQLite no disco.
 
-### Estratégia
+Em disco sobra só o que é **recriável**: as **sessões do WhatsApp** (`baileys-*/`, perdê-las
+= re-escanear o QR) e as **imagens** do cardápio (`uploads/`). Ou seja, perder o volume hoje
+**não perde dado de cliente** — só obriga a reconectar e re-subir fotos.
 
-Duas camadas complementares:
+### Backup do banco → Supabase (gerenciado)
 
-1. **Snapshots de volume do Fly** (automático, infra): cobre o desastre "volume sumiu".
-   Neste projeto, o volume é o **`bot_dados`** e os snapshots automáticos estão **ATIVOS**,
-   tirados **~diariamente**, com **retenção de 5 dias**.
+Nada manual: o Supabase faz backups automáticos do Postgres. Para restaurar a um ponto no
+tempo, use o **dashboard do Supabase → Database → Backups** (PITR no plano Pro). Para um
+export pontual, dá para rodar `pg_dump` com a `DATABASE_URL`.
 
-   ```bash
-   fly volumes list                      # veja o ID do volume bot_dados (ex: vol_xxx)
-   fly volumes snapshots list <vol_id>   # lista os snapshots disponíveis (e seus IDs)
-   ```
+### Backup de sessões/imagens (`npm run backup`)
 
-   > **⚠️ Implicação prática da retenção de 5 dias:** se um problema só for percebido
-   > **depois de 5 dias** (ex.: um dado corrompido/apagado que ninguém notou na hora), o
-   > snapshot daquele período **já expirou** — não dá mais para voltar a ele. Por isso o
-   > **backup manual baixado pro PC (item 2) é a proteção de longo prazo**: não expira.
-   > Para algo importante, baixe um export manual e guarde fora do Fly.
+Opcional (recriável), mas evita re-escanear QR e re-subir fotos. Gera
+`backups/backup-AAAA-MM-DD-HHmm.tar.gz` com a `data/` (sessões `baileys-*/` + `uploads/`).
+Também dá para gerar/baixar pelo super-admin em **`/admin-master` → Configurações → Backup**.
 
-   **Restaurar a partir de um snapshot** (cria um volume novo a partir do snapshot; o app
-   precisa ser apontado para ele / a máquina recriada nesse volume):
+```bash
+# Localmente:
+npm run backup
 
-   ```bash
-   fly volumes snapshots list <vol_id>                       # pegue o <snap_id> desejado
-   fly volumes create bot_dados --snapshot-id <snap_id> \
-     --region gru --size 1                                   # cria um novo volume a partir do snapshot
-   # depois, recrie/realoque a máquina nesse volume novo (ver docs do Fly: fly machine ...)
-   ```
+# No Fly.io:
+fly ssh console
+cd /app && npm run backup
+exit
+```
 
-2. **Export manual** (`npm run backup`, abaixo — ou pelo painel, em **Configurações → Backup**):
-   um arquivo único que você **baixa para fora do Fly** (seu PC) e que **não expira**. É o que
-   protege contra erro humano (exclusão acidental), contra perda da própria conta/região e
-   contra o **limite de 5 dias** dos snapshots. **Recomendado antes de cada operação de risco**
-   (migração, deploy grande, exclusão de tenant) e como guarda de longo prazo.
+> **⚠️ No Fly.io o backup é EFÊMERO:** `backups/` fica no filesystem do container (fora do
+> volume). Se o container reiniciar, o arquivo some. **Gere e BAIXE na mesma sessão:**
+> `fly ssh sftp get /app/backups/backup-AAAA-MM-DD-HHmm.tar.gz ./`
 
-> **Decisão de arquitetura:** ficamos em **snapshot do Fly + export manual** por ora.
-> Backup automático para storage externo (S3/R2) está **fora de escopo** até haver volume de
-> clientes que justifique — adiciona custo e credenciais a gerir. Quando migrar, o export já
-> gera o artefato pronto para subir a um bucket.
+**Restaurar sessões/imagens:** com o app parado, extraia o tar de volta em `data/`
+(`tar -xzf backup-....tar.gz -C data`) e suba o app. As sessões `baileys-*/` voltam e o bot
+reconecta sem novo QR (a menos que o WhatsApp já tenha expirado a sessão).
 
-### Antes de fazer backup: limpar pastas órfãs (reduz o tamanho)
+### Limpar pastas órfãs (reduz o tamanho do volume)
 
 Instalações que já rodaram o antigo `whatsapp-web.js` deixaram pastas órfãs
 `data/tenants/{slug}/session-*/` (caches do Chromium) que **não são usadas pelo Baileys** e
@@ -287,114 +279,6 @@ exit
 ```
 
 (Localmente é o mesmo comando sem o `/app`: `rm -rf data/tenants/*/session-*`.)
-
-### Gerar um backup (`npm run backup` ou pelo painel)
-
-Gera `backups/backup-AAAA-MM-DD-HHmm.tar.gz` com **toda** a `data/`. Os bancos SQLite
-(`empresas.db` e os `pedidos.db`) entram via *Online Backup API* do SQLite — cópia
-**consistente mesmo com o servidor no ar** (sem downtime). As sessões `baileys-*/` entram
-como estão.
-
-> **Pelo painel:** dá para **gerar e baixar** backups direto no super-admin, em
-> **`/admin-master` → Configurações → Backup** (mesmo motor; gera o mesmo arquivo). O download
-> pelo painel traz o `.tar.gz` direto para o seu PC, sem precisar do `fly ssh sftp`. A
-> **restauração continua manual** (o painel só exibe o passo a passo abaixo, nunca executa).
-
-```bash
-# Localmente:
-npm run backup
-
-# No Fly.io:
-fly ssh console
-cd /app && npm run backup
-exit
-```
-
-> ### ⚠️ ATENÇÃO no Fly.io — o backup NÃO sobrevive a um restart
->
-> A pasta `backups/` fica no **filesystem efêmero do container** (em `/app/backups`), **fora
-> do volume montado em `/app/data`**. Se o container reiniciar, **o arquivo de backup some**.
-> **Gere e BAIXE o backup na MESMA sessão.** Não confie que ele continua lá depois.
->
-> *Por que não gerar dentro do volume (`/app/data/backups`)?* Porque o backup é uma cópia da
-> própria `data/` — guardá-lo dentro do volume **incha o volume que estamos justamente
-> protegendo** (e o próximo backup passaria a copiar os backups antigos). O lugar do backup é
-> **fora do Fly**: no seu PC.
-
-### Baixar o arquivo do Fly para o seu PC
-
-```bash
-# Substitua pelo nome real impresso pelo comando de backup:
-fly ssh sftp get /app/backups/backup-AAAA-MM-DD-HHmm.tar.gz ./
-```
-
-Guarde esse `.tar.gz` em local seguro (outro disco / nuvem pessoal).
-
-### Testar se o backup realmente restaura (faça isso!)
-
-Backup que nunca foi testado não é backup. Teste **sem tocar** na `data/` real — extraia numa
-pasta separada e confira que os bancos abrem e têm as linhas certas:
-
-```bash
-mkdir -p /tmp/teste-restore
-tar -xzf backup-AAAA-MM-DD-HHmm.tar.gz -C /tmp/teste-restore
-ls /tmp/teste-restore                       # deve ter config.json, empresas.db, tenants/, ...
-
-# Conferir um banco (conta empresas e pedidos de um tenant):
-node -e "const D=require('better-sqlite3'); \
-  const e=new D('/tmp/teste-restore/empresas.db',{readonly:true}); \
-  console.log('empresas:', e.prepare('SELECT COUNT(*) n FROM empresas').get().n); \
-  const p=new D('/tmp/teste-restore/tenants/<slug>/pedidos.db',{readonly:true}); \
-  console.log('pedidos:', p.prepare('SELECT COUNT(*) n FROM pedidos').get().n);"
-```
-
-Os números devem bater com o sistema em produção. (Este projeto valida exatamente isso ao
-entregar a feature: empresas e pedidos contados antes e depois do tar batem.)
-
-### RESTAURAR um backup (com o servidor PARADO)
-
-> Restauração **substitui** os dados atuais. Pare o app antes e mantenha um resguardo
-> (`data.old`) até confirmar que deu certo.
-
-**No Fly.io:**
-
-```bash
-# 1) Suba o arquivo do seu PC para o container
-fly ssh sftp shell
-  put backup-AAAA-MM-DD-HHmm.tar.gz /app/backups/
-  exit
-
-# 2) Pare o processo e restaure
-fly ssh console
-  cd /app
-  # resguardo do estado atual (não apague ainda):
-  mv data data.old
-  mkdir data
-  tar -xzf backups/backup-AAAA-MM-DD-HHmm.tar.gz -C data
-  ls data data/tenants            # confira a estrutura
-  exit
-
-# 3) Reinicie a máquina para o servidor subir com os dados restaurados
-fly machine restart <machine_id>
-
-# 4) Valide login no painel + conexão do bot. Se tudo ok:
-fly ssh console -C "rm -rf /app/data.old"
-```
-
-**Localmente (PM2 / VPS):**
-
-```bash
-pm2 stop bot-restaurante          # ou Ctrl+C no npm start
-mv data data.old
-mkdir data
-tar -xzf backup-AAAA-MM-DD-HHmm.tar.gz -C data
-pm2 start bot-restaurante         # ou npm start
-# valide e depois: rm -rf data.old
-```
-
-> O tar guarda o **conteúdo** de `data/` na raiz do arquivo, então `tar -xzf ... -C data`
-> recoloca tudo no lugar certo. As sessões `baileys-*/` voltam juntas — o bot reconecta sem
-> novo QR (a menos que o WhatsApp tenha expirado a sessão nesse meio-tempo).
 
 ---
 

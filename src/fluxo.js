@@ -271,7 +271,8 @@ function textoConfirmacao(sessao, tenantDir) {
 
 // ---------- Máquina de estados ----------
 
-function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
+async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
+  await store.ensure(tenantDir); // garante config/cardápio no cache (reads síncronos abaixo)
   const config = store.getConfig(tenantDir);
   const msg = (texto || "").trim();
   const lower = msg.toLowerCase();
@@ -526,7 +527,7 @@ function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
       if (msg === "1") {
         const taxa = sessao.pedido.tipoEntrega === "Entrega" ? (config.atendimento.taxaEntrega || 0) : 0;
         const total = totalCarrinho(sessao.carrinho) + taxa;
-        const registro = pedidos.salvarPedido(tenantDir, {
+        const registro = await pedidos.salvarPedido(tenantDir, {
           cliente: sessao.pedido.nome,
           telefone: sessao.telefone || "", // telefone real (senderPn) capturado na sessão; vazio no simulador
           chatId: sessao.chatId || "",     // canal da conversa (LID/phone JID) para o "avisar"

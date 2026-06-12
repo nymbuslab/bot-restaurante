@@ -21,9 +21,19 @@ Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-B
 - `@whiskeysockets/baileys` (biblioteca **não-oficial** de WhatsApp via **WebSocket**,
   **sem browser/Chromium**) + `pino` (logger)
 - `express` (API do painel + arquivos estáticos)
-- `better-sqlite3` (pedidos por tenant + banco mestre de empresas)
+- **`pg` (PostgreSQL gerenciado no Supabase)** — empresas, pedidos, config e cardápio.
+  Acesso async via pool (`src/db.js`). Migrações versionadas em `supabase/migrations/`
+  (Supabase CLI: `npx supabase db push`).
+- **`@supabase/supabase-js` — autenticação (Supabase Auth / bcrypt + JWT)**. O login de
+  restaurante usa o Auth (`src/supabase.js`); o token é o JWT do Supabase.
 - `qrcode` / `qrcode-terminal` (QR de conexão — data URL no painel + impressão no terminal)
 - Front-end em HTML/CSS/JS puro (sem framework)
+
+> **Histórico de dados:** o projeto usava `better-sqlite3` (1 banco por tenant + banco
+> mestre, em disco). Migrado para **Postgres no Supabase** (uma tabela `pedidos` isolada
+> por `empresa_id`; `config`/`cardapio` em colunas `jsonb` na `empresas`; senha no Supabase
+> Auth). O disco local hoje guarda só as **sessões do WhatsApp** (`baileys-*/`) e as
+> **imagens** do cardápio.
 
 > **Histórico:** o projeto usava `whatsapp-web.js` (Puppeteer/Chromium), trocado por
 > Baileys por instabilidade (QR parava de gerar quando o WhatsApp Web mudava o HTML;
@@ -34,8 +44,20 @@ Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-B
 
 ```bash
 npm install
-npm start            # inicia o painel em http://localhost:3000
+npm start            # inicia o painel (porta de PORT no .env, ex.: 3001)
 ```
+
+**Requer `.env`** (ver `.env.example`) com as credenciais do Supabase — sem elas o app
+não sobe:
+
+```
+DATABASE_URL=...                 # Postgres (Settings → Database; prefira Session pooler 5432)
+SUPABASE_URL=...                 # Settings → API
+SUPABASE_ANON_KEY=...            # anon public
+SUPABASE_SERVICE_ROLE_KEY=...    # service_role (secreto, só backend)
+```
+
+Schema: `npx supabase db push` aplica as migrações de `supabase/migrations/`.
 
 No **primeiro acesso**, crie a primeira empresa pelo onboarding público em
 `/cadastro.html` (nome, e-mail e senha). O tenant nasce limpo (cardápio vazio,
@@ -81,7 +103,7 @@ Rua X, 10  → endereço
 1           → confirmar
 ```
 
-O pedido confirmado é gravado em `data/tenants/{slug}/pedidos.db` e aparece
+O pedido confirmado é gravado na tabela `pedidos` (Postgres/Supabase) e aparece
 no painel na aba **Pedidos**.
 
 ## Arquitetura
@@ -89,44 +111,53 @@ no painel na aba **Pedidos**.
 ```
 index.js              -> sobe o servidor (NÃO inicia o bot)
 src/
+  db.js               -> pool Postgres (pg), lê DATABASE_URL do .env
+  supabase.js         -> clients do Supabase Auth (admin service_role + anon)
   servidor.js         -> Express: API REST multi-tenant + serve /public
-  empresas.js         -> banco mestre SQLite (data/empresas.db): CRUD de tenants
+  empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
-  fluxo.js            -> máquina de estados; todas as funções recebem tenantDir
-  store.js            -> lê/grava config.json e cardapio.json por tenant (cache mtime)
+  fluxo.js            -> máquina de estados; processarMensagem é async (await store.ensure)
+  store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
-  pedidos.js          -> SQLite por tenant; pool de conexões keyed por dbPath
+  pedidos.js          -> tabela `pedidos` no Postgres, isolada por empresa_id (async)
 public/
   login.html          -> tela de login (e-mail + senha)
-  cadastro.html       -> onboarding: cria nova empresa
+  cadastro.html       -> wizard de onboarding (4 etapas): cria empresa + configura
   admin.html          -> painel administrativo
   app.js, style.css   -> lógica e estilos do painel
-data/
-  empresas.db         -> banco mestre de tenants (criado automaticamente)
+supabase/
+  migrations/         -> schema versionado (npx supabase db push)
+data/                 -> SÓ disco: sessões e imagens (o resto está no Postgres)
   tenants/
     {slug}/
-      config.json     -> configurações do restaurante
-      cardapio.json   -> categorias e itens
-      pedidos.db      -> SQLite de pedidos (criado automaticamente)
+      uploads/        -> imagens dos itens do cardápio
       baileys-{slug}/ -> sessão WhatsApp (Baileys useMultiFileAuthState, não versionar)
 ```
 
-**Fluxo de dados:** painel edita `data/tenants/{slug}/*.json` via API →
-`store.js` detecta a mudança (mtime) e `fluxo.js` lê os dados novos no
-próximo atendimento, **sem reiniciar**.
+**Fluxo de dados:** painel edita config/cardápio via API → `store.setConfig/setCardapio`
+grava no Postgres e atualiza o cache em memória (processo único) → `fluxo.js` lê do cache
+no próximo atendimento, **sem reiniciar**. Como o cache é por processo, múltiplas instâncias
+exigiriam invalidação/pub-sub (hoje é instância única).
 
 ## Multi-tenant
 
 Cada empresa tem:
 
-- **Slug** gerado do nome (ex: `sabor-d-casa`), único, usado como chave em tudo.
-- **Diretório isolado** `data/tenants/{slug}/` com config, cardápio e pedidos.
-- **Sessão WhatsApp** em `data/tenants/{slug}/baileys-{slug}/` (via `useMultiFileAuthState` do Baileys).
-- **Token de sessão** do painel em memória, mapeado para `{ slug, tenantDir }`.
+- **Slug** gerado do nome (ex: `sabor-d-casa`), único, usado como chave em tudo
+  (linha `empresas`, `empresa_id` dos pedidos, pasta em disco, sessão).
+- **Linha em `empresas`** (Postgres) com `config`/`cardapio` (jsonb), ligada ao usuário
+  do Supabase Auth por `user_id`.
+- **Diretório isolado** `data/tenants/{slug}/` só para **sessão WhatsApp** (`baileys-{slug}/`)
+  e **imagens** (`uploads/`). Config/cardápio/pedidos ficam no Postgres.
+- O `tenantDir` segue sendo a "alça" do tenant no código; o `basename` é o slug, usado
+  como chave no banco.
 
-Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`.
-O token viaja em `Authorization: Bearer ...` em todas as chamadas protegidas.
-O middleware `exigeAuth` resolve `req.slug` e `req.tenantDir` automaticamente.
+Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`, onde `token`
+é o **JWT do Supabase Auth**. Viaja em `Authorization: Bearer ...`. O middleware `exigeAuth`
+(async) valida o JWT (`empresas.resolverPorToken` → `supabaseAdmin.auth.getUser`), checa
+`ativo` a cada request (suspensão é imediata) e resolve `req.slug` / `req.tenantDir`.
+Não há mais mapa de tokens em memória para restaurante (JWT é stateless); logout é só
+descartar o token no cliente.
 
 ## Super-admin (conta master)
 
@@ -140,10 +171,12 @@ apenas** (a tela vem em passo posterior).
   Sem as duas envs, as rotas `/api/admin/*` ficam desativadas (login responde **503**;
   nunca há credencial default). Carregamento de `.env` via `dotenv` (ver `.env.example`).
   Em produção (Fly.io): `fly secrets set SUPERADMIN_EMAIL=... SUPERADMIN_SENHA_HASH=...`.
-- **Isolamento total de auth:** Map `tokensAdmin` separado do `tokens` de restaurante.
-  `exigeSuperAdmin` valida só o token master; `exigeAuth` (inalterado) só o de restaurante.
+- **Isolamento total de auth:** o super-admin usa um Map `tokensAdmin` próprio (token opaco
+  em memória, SHA-256+salt) — **separado e diferente** do JWT do Supabase usado pelo
+  restaurante. `exigeSuperAdmin` valida só o token master; `exigeAuth` só o JWT de restaurante.
   Um token nunca cruza para o outro lado. Login master: `POST /api/admin/login { email, senha }`
-  → `{ token }`. Comparação de hash com `crypto.timingSafeEqual`.
+  → `{ token }`. Comparação de hash com `crypto.timingSafeEqual`. (O super-admin **não** migrou
+  para o Supabase Auth — segue env-based, por ser conta única e isolada.)
 - **Rotas** (todas sob `exigeSuperAdmin`):
   `GET /api/admin/tenants` (lista) · `POST /api/admin/tenants` (cria, reusa `empresas.cadastrar`) ·
   `PATCH /api/admin/tenants/:slug/suspender` · `PATCH .../reativar` ·
@@ -151,19 +184,19 @@ apenas** (a tela vem em passo posterior).
 - **Métricas (`GET /api/admin/metrics`):** retorna `{ totais: { restaurantes, ativos,
   suspensos, conectados, pedidosMes }, porTenant: { <slug>: { pedidosMes, conectado } } }`.
   Contagem de pedidos do mês é **real e on-demand**: `pedidos.contarNoMes(tenantDir, inicioISO)`
-  faz `COUNT(*) WHERE criadoEm >= ?`, reusa o pool de conexões e **pula tenants sem `pedidos.db`**
-  (retorna 0 sem criar o arquivo). "Conectados" vem de `multiBot.getEstado(slug).status`. O
+  faz `COUNT(*) WHERE empresa_id = ? AND criado_em >= ?` no Postgres. "Conectados" vem de
+  `multiBot.getEstado(slug).status`. O
   **corte do mês usa o fuso BR** (America/Sao_Paulo, UTC-3, sem DST) convertido para UTC ISO —
   `inicioDoMesBR()` em `servidor.js` — para o número bater com a intuição do admin brasileiro
   sem misturar fusos. Se o nº de tenants crescer para centenas, cachear (TTL curto).
 - **Suspensão (efeito real):** `setAtivo(slug,0)` → login do restaurante já é recusado
-  (`autenticar` filtra `ativo=1`) + `multiBot.desconectar(slug)` (bot para) +
-  invalidação dos tokens de painel ativos do tenant (sessão aberta cai).
+  (`autenticar` filtra `ativo`) + `exigeAuth` checa `ativo` a cada request (a sessão aberta
+  cai no próximo request, mesmo com JWT válido) + `multiBot.desconectar(slug)` (bot para).
 - **Exclusão (destrutiva, ordem importa):** `multiBot.desconectar` (libera sessão Baileys)
-  → `pedidos.fecharConexao(tenantDir)` (fecha o handle SQLite — senão o `rmSync` falha no
-  Windows) → invalida tokens → `empresas.excluir(slug)` (apaga linha em `empresas.db` +
-  `data/tenants/{slug}/`). **Trava de segurança:** o corpo deve trazer
-  `{ confirmacao: "<slug>" }` igual ao slug da URL, senão responde 400 sem apagar nada.
+  → `empresas.excluir(slug)`, que apaga a linha em `empresas` (**cascateia** os `pedidos`),
+  remove o **usuário do Supabase Auth** (`auth.admin.deleteUser`) e apaga `data/tenants/{slug}/`
+  (sessões/imagens). **Trava de segurança:** o corpo deve trazer `{ confirmacao: "<slug>" }`
+  igual ao slug da URL, senão responde 400 sem apagar nada.
 - **Tela (`public/admin-master.html` + `public/app-admin.js`):** página **separada** do
   painel de restaurante (não usar `admin.html`/`app.js`). Login master + dashboard de tenants
   na mesma página (gate por token). Token guardado em `sessionStorage["tokenAdmin"]` — chave
@@ -194,7 +227,7 @@ O painel mostra a tabela de horários na aba **Configurações**.
 
 ## Modelo de dados
 
-**Item do cardápio** (`cardapio.json` por tenant):
+**Item do cardápio** (dentro do `cardapio` jsonb da `empresas`):
 ```json
 { "id": 10, "nome": "Marmitex P", "preco": 18.0, "desc": "...",
   "disponivel": true,
@@ -203,19 +236,25 @@ O painel mostra a tabela de horários na aba **Configurações**.
 ```
 `composicao` e `opcionais` são texto parseado em runtime.
 
-**Tabela `pedidos`** (SQLite por tenant, `data/tenants/{slug}/pedidos.db`):
+**Tabela `pedidos`** (Postgres/Supabase, uma só, isolada por `empresa_id`):
 
 ```text
-id, numero, status, cliente, telefone, tipoEntrega, endereco,
-pagamento, taxaEntrega, itens (JSON serializado), total, criadoEm, avisadoEm
+id (bigint), empresa_id (uuid→empresas), numero (sequencial por empresa),
+status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
+taxa_entrega, itens (jsonb), total, criado_em (timestamptz), avisado_em
 ```
-`avisadoEm` = timestamp do aviso "pedido pronto" enviado ao cliente (null se não avisado).
+Colunas em snake_case no banco; `pedidos.js` mapeia para camelCase (`tipoEntrega`,
+`criadoEm`, etc.) que o painel/bot esperam. `avisado_em` = timestamp do aviso
+"pedido pronto" (null se não avisado).
 
-**Tabela `empresas`** (SQLite mestre, `data/empresas.db`):
+**Tabela `empresas`** (Postgres/Supabase):
 
 ```text
-id, slug, nome, email, senha (sha256+salt), ativo, criadoEm
+id (uuid), user_id (uuid→auth.users), slug, nome, email, ativo,
+config (jsonb), cardapio (jsonb), criado_em (timestamptz)
 ```
+A **senha não fica aqui** — vive no Supabase Auth (`auth.users`, bcrypt). `config` e
+`cardapio` são os antigos `config.json`/`cardapio.json`.
 
 **Linha do carrinho / pedido**:
 ```js
@@ -262,22 +301,22 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
   em `config.json` → `mensagens.pedidoPronto.entrega`/`.retirada` (variáveis `{cliente}` e
   `{numero}`). Envio **MANUAL**, 1 cliente por clique — nunca automático/massa. Exige WhatsApp
   conectado; normaliza o telefone para `<digitos>@s.whatsapp.net`; grava `avisadoEm` no sucesso.
-- **Segurança**: login por e-mail + senha com hash SHA-256+salt. Tokens em memória
-  (somem ao reiniciar). **HTTPS automático no Fly.io** (certificado gerenciado no `.fly.dev` +
-  `force_https = true` no `fly.toml`); só em VPS/local o HTTPS depende do operador (Nginx + TLS).
-- **Primeiro acesso**: não há mais migração automática de instalação legada (removida). A
-  primeira empresa é criada pelo onboarding público (`/cadastro.html`) ou pelo super-admin
-  (`/admin-master`). Tenant novo nasce limpo (ver `empresas.configInicial`).
-- **Pool SQLite**: `pedidos.js` mantém conexões abertas (Map keyed por dbPath). É o
-  comportamento esperado — `better-sqlite3` é síncrono e thread-safe para leitura.
-- **Volume único no Fly.io**: toda a pasta `data/` (incluindo `tenants/`, `empresas.db`
-  e sessões WhatsApp) está no único volume montado em `/app/data`.
-- **Backup**: `npm run backup` (`scripts/backup.js`) gera um `.tar.gz` consistente de toda a
-  `data/` em `backups/` (gitignored). Bancos do app via Online Backup API do `better-sqlite3`
-  (`db.backup`, sem downtime); demais `.db` (caches Chromium órfãos) copiados crus. No Fly,
-  `backups/` é **efêmero** — baixar na mesma sessão (`fly ssh sftp get`). Runbook de
-  download/teste/restauração em `DEPLOY.md`. Estratégia: snapshot do Fly + export manual
-  (S3/storage externo fora de escopo por ora).
+- **Segurança**: login de restaurante via **Supabase Auth** (senha em bcrypt; sessão é JWT
+  stateless, sobrevive a reinício do app). Super-admin segue SHA-256+salt env-based (conta
+  única e isolada). HTTPS é responsabilidade do host (no Fly era automático; em VPS depende
+  de Nginx + TLS).
+- **Primeiro acesso**: a primeira empresa é criada pelo wizard público (`/cadastro.html`) ou
+  pelo super-admin (`/admin-master`). Tenant novo nasce limpo (ver `empresas.configInicial`,
+  gravado no `config` jsonb).
+- **Cache do store (1 instância)**: `store.js` mantém config/cardápio em memória por tenant;
+  `setConfig/setCardapio` gravam no Postgres e atualizam o cache. Como é processo único, fica
+  coerente; várias instâncias exigiriam invalidação/pub-sub.
+- **Pooler do Supabase**: para app sempre-ligado, prefira o **Session pooler (5432)** ao
+  Transaction pooler (6543) — `db.js` avisa no boot se detectar 6543.
+- **Backup**: `npm run backup` (`scripts/backup.js`) empacota a `data/` (sessões `baileys-*/`
+  e imagens) num `.tar.gz` em `backups/` (gitignored). **Os dados do banco (empresas/pedidos/
+  config/cardápio) são backup do Supabase** (point-in-time recovery gerenciado), não entram
+  neste tar. No Fly, `backups/` é efêmero — baixar na mesma sessão (`fly ssh sftp get`).
 
 ## Convenções
 
