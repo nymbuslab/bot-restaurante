@@ -29,8 +29,8 @@ async function usePostgresAuthState(slug) {
   async function writeData(chave, valor) {
     const encoded = JSON.parse(JSON.stringify(valor, BufferJSON.replacer));
     await db.query(
-      `INSERT INTO wa_auth (slug, chave, valor) VALUES ($1, $2, $3::jsonb)
-       ON CONFLICT (slug, chave) DO UPDATE SET valor = EXCLUDED.valor`,
+      `INSERT INTO wa_auth (slug, chave, valor, atualizado_em) VALUES ($1, $2, $3::jsonb, now())
+       ON CONFLICT (slug, chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = now()`,
       [slug, chave, JSON.stringify(encoded)]
     );
   }
@@ -80,4 +80,16 @@ async function limparSessao(slug) {
   await db.query("DELETE FROM wa_auth WHERE slug = $1", [slug]);
 }
 
-module.exports = { usePostgresAuthState, limparSessao };
+// Higiene: apaga linhas de SESSÃO (`session:*`) inativas há mais de `dias`,
+// em todos os tenants. Seguro — o Baileys recria a sessão do cliente no próximo
+// contato. NÃO toca em creds/pre-keys/app-state (essas não envelhecem). Retorna
+// o nº de linhas removidas.
+async function limparSessoesAntigas(dias = 90) {
+  const r = await db.query(
+    "DELETE FROM wa_auth WHERE chave LIKE 'session:%' AND atualizado_em < now() - make_interval(days => $1)",
+    [dias]
+  );
+  return r.rowCount;
+}
+
+module.exports = { usePostgresAuthState, limparSessao, limparSessoesAntigas };
