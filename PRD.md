@@ -40,10 +40,10 @@ e soluções prontas costumam ser caras ou engessadas.
 
 ### 5.1 Onboarding e autenticação
 
-- Página de cadastro pública (`/cadastro.html`): nome do restaurante, e-mail, senha.
-- Login por e-mail + senha (hash SHA-256); token em sessão.
-- Cada empresa recebe um **slug** único e um diretório isolado em `data/tenants/{slug}/`.
-- Migração automática de instalações legadas (cria tenant a partir de `data/config.json`).
+- Página de cadastro pública (`/cadastro.html`, wizard de 4 etapas): nome do restaurante,
+  e-mail, senha, e configuração inicial.
+- Login por e-mail + senha via **Supabase Auth** (bcrypt + JWT).
+- Cada empresa recebe um **slug** único e uma linha na tabela `empresas` (Postgres/Supabase).
 
 ### 5.2 Atendimento (bot)
 
@@ -72,13 +72,13 @@ e soluções prontas costumam ser caras ou engessadas.
 
 ### 5.4 Persistência
 
-- **Pedidos**: SQLite por tenant (`data/tenants/{slug}/pedidos.db`).
-- **Banco mestre de tenants**: SQLite em `data/empresas.db`.
-- **Config e cardápio**: JSON por tenant com recarga ao vivo (cache por mtime).
-- **Sessão WhatsApp**: `useMultiFileAuthState` (Baileys) em `baileys-{slug}/` dentro do diretório do tenant.
-- **Backup**: export manual da pasta `data/` num único `.tar.gz` consistente (snapshot do
-  SQLite via Online Backup API, sem downtime) — por `npm run backup` ou pelo painel de
-  super-admin. Restauração é manual, com o servidor parado.
+- **Banco**: Postgres gerenciado no **Supabase**. Tabela `empresas` (perfil + `config`/
+  `cardapio` em `jsonb`) e tabela `pedidos` (uma só, isolada por `empresa_id`).
+- **Contas/senhas**: Supabase Auth (bcrypt). Sessão = JWT.
+- **Sessão WhatsApp**: persistida no Postgres (adapter custom do Baileys) — stateless.
+- **Imagens do cardápio**: Supabase Storage.
+- **Backup**: do banco é gerenciado pelo Supabase (point-in-time recovery). `npm run backup`
+  cobre só o que ainda mora em disco (legado/transição).
 
 ### 5.5 Super-admin (gestão da plataforma)
 
@@ -126,8 +126,10 @@ master não acessa o painel de restaurante.
 
 ## 8. Decisões e premissas
 
-- Multi-tenant via diretórios: simples, sem risco de vazamento entre tenants.
-- SQLite para pedidos: sem servidor externo, ACID, suporta volume do segmento.
+- Multi-tenant por linha (`empresa_id`) no Postgres, com isolamento garantido no backend
+  (e RLS como defesa em profundidade).
+- Postgres gerenciado (Supabase): backup/HA gerenciados, escala horizontal possível, e
+  Auth/Storage prontos — em troca de custo fixo e dependência do fornecedor.
 - Bebida e observação são comportamentos automáticos do fluxo (não configuráveis hoje).
 - Bebidas identificadas pela categoria com "bebida" no nome.
 - Cada WhatsApp conectado é uma conexão WebSocket (Baileys, sem Chromium) — consumo de

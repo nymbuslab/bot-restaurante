@@ -134,21 +134,19 @@ Quando perguntar:
 
 Depois edite o `fly.toml` e troque `app = "bot-restaurante"` pelo nome escolhido.
 
-### 3. Criar o volume persistente
+### 3. Secrets do Supabase (sem volume — app stateless)
+
+O app **não grava nada em disco** (dados, sessões e imagens estão no Supabase), então
+**não precisa de volume persistente**. Se houver um `[[mounts]]` no `fly.toml`, é resíduo
+e pode ser removido. Configure os secrets (sem eles o app não sobe):
 
 ```bash
-fly volumes create bot_dados --region gru --size 1
+fly secrets set DATABASE_URL="..." SUPABASE_URL="..." \
+  SUPABASE_ANON_KEY="..." SUPABASE_SERVICE_ROLE_KEY="..."
 ```
 
-> **O banco está no Supabase** (Postgres gerenciado: empresas, pedidos, config, cardápio).
-> O volume guarda só o que ainda mora em disco: `data/tenants/{slug}/` com a **sessão
-> WhatsApp** (`baileys-*/`) e as **imagens** do cardápio (`uploads/`).
->
-> **Secrets do Supabase** (necessários no Fly): `fly secrets set DATABASE_URL=... SUPABASE_URL=...
-> SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=...` — sem eles o app não sobe.
->
-> **HA (futuro):** a proteção dos dados do banco agora é do **Supabase** (point-in-time
-> recovery gerenciado). O volume só tem sessões/imagens (recriáveis: re-escanear QR / re-upload).
+> Stateless = pode rodar em **múltiplas instâncias / hosts efêmeros** sem perder sessão.
+> A proteção dos dados é do próprio Supabase (point-in-time recovery gerenciado).
 
 ### 4. Primeiro deploy
 
@@ -193,92 +191,33 @@ fly volumes list           # listar volumes
 
 ### Limpar sessão WhatsApp de um tenant (se travar)
 
-No painel → aba **Conexão** → **Gerar novo QR (limpar sessão)**.
-
-Ou via terminal:
-
-```bash
-fly ssh console
-rm -rf /app/data/tenants/{slug}/baileys-{slug}
-exit
-```
-
-Depois reconecte pelo painel.
+No painel → aba **Conexão** → **Gerar novo QR (limpar sessão)**. Isso apaga as linhas da
+sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há nada em disco.
 
 ### ⚠️ Importante
 
-- **HTTPS é automático no Fly.io.** O domínio `*.fly.dev` (ex.: `bot-restaurante.fly.dev`) já
-  vem com **certificado TLS gerenciado pela plataforma** — sem Nginx, sem Let's Encrypt, sem
-  configuração manual. O `fly.toml` tem **`force_https = true`**, então todo acesso `http://` é
-  redirecionado para `https://`. Nada a fazer aqui. (O esquema "Nginx + Let's Encrypt" só vale
-  para a Opção 2 — VPS.)
-- `auto_stop_machines = 'off'` no `fly.toml` mantém a máquina **sempre ligada**.
-  Não altere — se a máquina parar, o bot desconecta e precisará de novo QR scan.
+- **HTTPS é automático no Fly.io.** O domínio `*.fly.dev` já vem com **certificado TLS
+  gerenciado** + **`force_https = true`** no `fly.toml`. Nada a fazer. (Nginx + Let's Encrypt
+  só na Opção 2 — VPS.)
+- O app é **stateless**: se a máquina reiniciar, **a sessão NÃO se perde** (está no Postgres) —
+  o bot reconecta sem novo QR. Manter a máquina ligada (`auto_stop_machines = 'off'`) é só pra
+  o bot não ficar offline enquanto está parada.
 - O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento
-  (Pay As You Go) — custa ~$5–7/mês para 1 GB RAM em São Paulo.
-- Cada tenant WhatsApp conectado é só uma conexão WebSocket (Baileys, sem Chromium) —
-  consumo de RAM baixo. 1 GB atende vários restaurantes; aumente `memory` no `fly.toml`
-  só se o volume justificar.
-- Altere a senha padrão do painel em **Configurações** antes de deixar público.
+  (~$5–7/mês para 1 GB RAM em São Paulo).
+- Cada tenant WhatsApp é uma conexão WebSocket (Baileys, sem Chromium) — RAM baixa.
+- Login é via Supabase Auth (não há senha padrão a trocar).
 
 ---
 
-## 💾 Backup e restauração dos dados
+## 💾 Backup dos dados
 
-Desde a migração para o **Supabase**, os dados que importam (empresas, pedidos, config,
-cardápio, contas/senhas) vivem no **Postgres gerenciado** — **o backup deles é do Supabase**
-(point-in-time recovery automático no plano Pro). Não há mais bancos SQLite no disco.
+**App stateless — tudo está no Supabase.** O backup é **gerenciado pelo Supabase**:
+point-in-time recovery do Postgres (dashboard → **Database → Backups**, no plano Pro) ou um
+export pontual com `pg_dump` usando a `DATABASE_URL`. As imagens ficam no **Storage** (também
+no Supabase).
 
-Em disco sobra só o que é **recriável**: as **sessões do WhatsApp** (`baileys-*/`, perdê-las
-= re-escanear o QR) e as **imagens** do cardápio (`uploads/`). Ou seja, perder o volume hoje
-**não perde dado de cliente** — só obriga a reconectar e re-subir fotos.
-
-### Backup do banco → Supabase (gerenciado)
-
-Nada manual: o Supabase faz backups automáticos do Postgres. Para restaurar a um ponto no
-tempo, use o **dashboard do Supabase → Database → Backups** (PITR no plano Pro). Para um
-export pontual, dá para rodar `pg_dump` com a `DATABASE_URL`.
-
-### Backup de sessões/imagens (`npm run backup`)
-
-Opcional (recriável), mas evita re-escanear QR e re-subir fotos. Gera
-`backups/backup-AAAA-MM-DD-HHmm.tar.gz` com a `data/` (sessões `baileys-*/` + `uploads/`).
-Também dá para gerar/baixar pelo super-admin em **`/admin-master` → Configurações → Backup**.
-
-```bash
-# Localmente:
-npm run backup
-
-# No Fly.io:
-fly ssh console
-cd /app && npm run backup
-exit
-```
-
-> **⚠️ No Fly.io o backup é EFÊMERO:** `backups/` fica no filesystem do container (fora do
-> volume). Se o container reiniciar, o arquivo some. **Gere e BAIXE na mesma sessão:**
-> `fly ssh sftp get /app/backups/backup-AAAA-MM-DD-HHmm.tar.gz ./`
-
-**Restaurar sessões/imagens:** com o app parado, extraia o tar de volta em `data/`
-(`tar -xzf backup-....tar.gz -C data`) e suba o app. As sessões `baileys-*/` voltam e o bot
-reconecta sem novo QR (a menos que o WhatsApp já tenha expirado a sessão).
-
-### Limpar pastas órfãs (reduz o tamanho do volume)
-
-Instalações que já rodaram o antigo `whatsapp-web.js` deixaram pastas órfãs
-`data/tenants/{slug}/session-*/` (caches do Chromium) que **não são usadas pelo Baileys** e
-incham o volume e os backups (podem ser dezenas de MB). É seguro removê-las — **preserve as
-`baileys-*/`**, que são as sessões ativas:
-
-```bash
-# No Fly.io:
-fly ssh console
-rm -rf /app/data/tenants/*/session-*
-ls -d /app/data/tenants/*/baileys-*    # confirme que as sessões do Baileys continuam
-exit
-```
-
-(Localmente é o mesmo comando sem o `/app`: `rm -rf data/tenants/*/session-*`.)
+Não há mais nada relevante em disco. O `npm run backup` (e a aba Backup do super-admin)
+empacotam só a pasta `data/` legada — hoje vazia; são vestigiais e podem ser removidos depois.
 
 ---
 

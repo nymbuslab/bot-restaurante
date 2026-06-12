@@ -34,7 +34,8 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - [x] **Migração SQLite → Supabase (Postgres + Auth)** — ✅ **concluído**: dados em Postgres gerenciado (empresas/pedidos/config/cardápio), schema versionado em `supabase/migrations/`, isolamento por `empresa_id` (+ RLS). Ver `CHANGELOG.md` v0.16.0.
 - [x] **Hash de senha com bcrypt/argon2** — ✅ **resolvido pelo Supabase Auth** (senha em bcrypt no `auth.users`; o login de restaurante não usa mais o SHA-256). Só o super-admin (conta única env-based) segue SHA-256+salt. Ver `CHANGELOG.md` v0.16.0.
 - [x] **Sessão persistente (não deslogar no deploy)** — ✅ **resolvido pelo Supabase Auth** (sessão é JWT stateless; sobrevive a reinício/deploy do app). O super-admin segue com token em memória (conta única). Ver `CHANGELOG.md` v0.16.0.
-- [ ] **(follow-up) Validar JWT localmente** — hoje `exigeAuth` chama `supabaseAdmin.auth.getUser(token)` (1 ida à rede por request autenticado). Otimizar verificando o JWT localmente com o `SUPABASE_JWT_SECRET` (HS256), eliminando a chamada de rede. Baixo esforço; relevante quando o volume de requests do painel crescer.
+- [x] **App stateless (sessões + imagens fora do disco)** — ✅ **concluído**: sessões do WhatsApp no Postgres (`wa_auth` + adapter `wa-auth.js`), imagens no Supabase Storage (bucket `cardapio`). O app não grava nada em disco → dispensa volume persistente e habilita múltiplas instâncias. Ver `CHANGELOG.md` v0.17.0.
+- [x] **Validar JWT localmente** — ✅ **concluído**: `exigeAuth` valida o JWT pelo JWKS público do Supabase (ES256), sem ida à rede por request (fallback para `getUser` em erro). Ver `CHANGELOG.md` v0.17.0.
 
 (Os dois itens *funcionais* que já estiveram aqui — botões de status do pedido e taxa por bairro/CEP — foram decididos como **fora de escopo**; ver a seção acima.)
 

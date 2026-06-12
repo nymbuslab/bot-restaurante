@@ -43,7 +43,8 @@ SUPABASE_SERVICE_ROLE_KEY=...    # secreto, só backend
 
 ```bash
 npm install
-npx supabase db push   # aplica o schema (supabase/migrations/) no seu projeto
+npx supabase db push     # aplica o schema (supabase/migrations/) no seu projeto
+npm run setup-storage    # cria o bucket público de imagens (uma vez)
 npm start
 ```
 
@@ -98,19 +99,20 @@ fly launch --no-deploy
 
 # 3. Editar fly.toml: troque app = "bot-restaurante" pelo nome escolhido
 
-# 4. Criar o volume (só sessões WhatsApp baileys-*/ e imagens; o banco fica no Supabase)
-fly volumes create bot_dados --region gru --size 1
-
-# 5. Configurar os secrets do Supabase (banco + auth)
+# 4. Configurar os secrets do Supabase (banco + auth + storage)
 fly secrets set DATABASE_URL="..." SUPABASE_URL="..." SUPABASE_ANON_KEY="..." SUPABASE_SERVICE_ROLE_KEY="..."
 
-# 6. Deploy
+# 5. Deploy (app stateless — NÃO precisa de volume persistente)
 fly deploy
-# Build rápido (sem Chromium — Baileys não usa browser)
+# Build rápido (sem Chromium e sem módulo nativo)
 
-# 7. Abrir o painel
+# 6. Abrir o painel
 fly open
 ```
+
+> **App stateless:** nada é gravado em disco (sessões no Postgres, imagens no Storage),
+> então **não é preciso criar volume**. Pode rodar em múltiplas instâncias / hosts efêmeros.
+> Se o `fly.toml` ainda tiver um `[[mounts]]`, é resíduo e pode ser removido.
 
 Com o painel no ar, crie a primeira empresa em `/cadastro.html` (ou pelo super-admin em
 `/admin-master`). Acompanhe os logs com:
@@ -129,8 +131,8 @@ Sempre que fizer mudanças no código:
 fly deploy
 ```
 
-As sessões do WhatsApp e imagens ficam no volume — não precisa re-escanear o QR. Os dados
-(empresas, pedidos, config, cardápio) ficam no Supabase, independentes do deploy.
+Tudo (dados, sessões do WhatsApp e imagens) fica no Supabase — o deploy é stateless, então
+o bot reconecta sem re-escanear o QR mesmo trocando de máquina.
 
 ---
 
@@ -148,15 +150,8 @@ fly deploy            # publicar nova versão
 
 ### Se o QR travar ou a sessão invalidar
 
-No painel → aba **Conexão** → **Gerar novo QR (limpar sessão)**.
-Ou pelo terminal:
-
-```bash
-fly ssh console
-rm -rf /app/data/tenants/{slug}/baileys-{slug}
-exit
-# Depois reconecte pelo painel
-```
+No painel → aba **Conexão** → **Gerar novo QR (limpar sessão)**. Isso apaga as linhas da
+sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há nada em disco.
 
 ---
 
@@ -206,25 +201,25 @@ bot-restaurante/
 ├── supabase/
 │   ├── config.toml
 │   └── migrations/           → schema do banco (npx supabase db push)
-├── data/                     → SÓ em disco: sessões e imagens
-│   └── tenants/
-│       └── {slug}/
-│           ├── uploads/      → imagens dos itens do cardápio
-│           └── baileys-{slug}/ → sessão WhatsApp Baileys (não versionar)
+├── scripts/
+│   └── setup-storage.js      → cria o bucket de imagens (npm run setup-storage)
 ├── public/                   → painel web
 │   ├── login.html            → login por e-mail + senha (Supabase Auth)
 │   ├── cadastro.html         → wizard de onboarding (4 etapas)
 │   ├── admin.html, app.js, style.css
 └── src/
     ├── db.js                 → pool Postgres (pg)
-    ├── supabase.js           → clients do Supabase Auth
+    ├── supabase.js           → clients do Supabase (Auth + Storage)
     ├── servidor.js           → API REST multi-tenant (Express)
     ├── empresas.js           → tenants na tabela `empresas` + Supabase Auth
+    ├── wa-auth.js            → sessão Baileys no Postgres (stateless)
     ├── multi-bot.js          → gerencia um socket WhatsApp (Baileys) por tenant
     ├── fluxo.js              → máquina de estados do atendimento
     ├── store.js              → config/cardápio (jsonb) com cache em memória
     ├── pedidos.js            → tabela `pedidos` no Postgres, por empresa_id
     └── sessoes.js            → estado de conversa por cliente (memória, 30min)
+
+App stateless: nada é gravado em disco (sessões no Postgres, imagens no Storage).
 ```
 
 ## ✏️ Como configurar o cardápio
