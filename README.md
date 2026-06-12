@@ -30,18 +30,28 @@ próprio ambiente isolado — cardápio, configurações, pedidos e conexão Wha
 
 ## 📦 Como rodar
 
-Pré-requisito: **Node.js 18+**.
+Pré-requisito: **Node.js 20+** e um projeto **Supabase** (Postgres + Auth).
+
+Crie um `.env` (ver `.env.example`) com as credenciais do Supabase:
+
+```
+DATABASE_URL=...                 # Settings → Database (prefira Session pooler, porta 5432)
+SUPABASE_URL=...                 # Settings → API
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...    # secreto, só backend
+```
 
 ```bash
 npm install
+npx supabase db push   # aplica o schema (supabase/migrations/) no seu projeto
 npm start
 ```
 
-Abra `http://localhost:3000` no navegador.
+Abra o painel na porta configurada (`PORT` no `.env`, padrão 3000).
 
 **Primeiro acesso:** acesse `/cadastro.html` e crie a primeira empresa (nome, e-mail e
-senha). O tenant nasce limpo e o login é feito automaticamente. (Não há mais migração
-automática de instalação legada.)
+senha). O tenant nasce limpo e o login é feito automaticamente. A conta é criada no
+**Supabase Auth** (senha em bcrypt).
 
 **Novo restaurante:** mesma página `/cadastro.html`, ou crie pelo super-admin em
 `/admin-master`.
@@ -88,14 +98,17 @@ fly launch --no-deploy
 
 # 3. Editar fly.toml: troque app = "bot-restaurante" pelo nome escolhido
 
-# 4. Criar o volume de dados (configs + pedidos + sessões WhatsApp de todos os tenants)
+# 4. Criar o volume (só sessões WhatsApp baileys-*/ e imagens; o banco fica no Supabase)
 fly volumes create bot_dados --region gru --size 1
 
-# 5. Deploy
+# 5. Configurar os secrets do Supabase (banco + auth)
+fly secrets set DATABASE_URL="..." SUPABASE_URL="..." SUPABASE_ANON_KEY="..." SUPABASE_SERVICE_ROLE_KEY="..."
+
+# 6. Deploy
 fly deploy
 # Build rápido (sem Chromium — Baileys não usa browser)
 
-# 6. Abrir o painel
+# 7. Abrir o painel
 fly open
 ```
 
@@ -116,7 +129,8 @@ Sempre que fizer mudanças no código:
 fly deploy
 ```
 
-Os dados e as sessões do WhatsApp são preservados no volume — não precisa re-escanear o QR.
+As sessões do WhatsApp e imagens ficam no volume — não precisa re-escanear o QR. Os dados
+(empresas, pedidos, config, cardápio) ficam no Supabase, independentes do deploy.
 
 ---
 
@@ -179,7 +193,7 @@ Rua X, 10       → endereço
 1               → confirmar pedido
 ```
 
-O pedido é gravado em `data/tenants/{slug}/pedidos.db` e aparece no painel na aba **Pedidos**.
+O pedido é gravado na tabela `pedidos` (Supabase) e aparece no painel na aba **Pedidos**.
 
 ## 🗂️ Estrutura
 
@@ -189,27 +203,27 @@ bot-restaurante/
 ├── package.json
 ├── testar-bot.js             → simulador de conversa no terminal
 ├── Dockerfile, fly.toml      → configuração para deploy no Fly.io
-├── docker-entrypoint.sh      → inicializa dados padrão no volume na 1ª execução
-├── README.md / DEPLOY.md / PRD.md / CLAUDE.md
-├── data/
-│   ├── empresas.db           → banco mestre de tenants (SQLite, criado automaticamente)
+├── supabase/
+│   ├── config.toml
+│   └── migrations/           → schema do banco (npx supabase db push)
+├── data/                     → SÓ em disco: sessões e imagens
 │   └── tenants/
-│       └── {slug}/           → dados isolados por restaurante
-│           ├── config.json
-│           ├── cardapio.json
-│           ├── pedidos.db    → pedidos em SQLite (criado automaticamente)
+│       └── {slug}/
+│           ├── uploads/      → imagens dos itens do cardápio
 │           └── baileys-{slug}/ → sessão WhatsApp Baileys (não versionar)
 ├── public/                   → painel web
-│   ├── login.html            → login por e-mail + senha
-│   ├── cadastro.html         → onboarding de novos restaurantes
+│   ├── login.html            → login por e-mail + senha (Supabase Auth)
+│   ├── cadastro.html         → wizard de onboarding (4 etapas)
 │   ├── admin.html, app.js, style.css
 └── src/
+    ├── db.js                 → pool Postgres (pg)
+    ├── supabase.js           → clients do Supabase Auth
     ├── servidor.js           → API REST multi-tenant (Express)
-    ├── empresas.js           → CRUD de tenants (banco mestre SQLite)
+    ├── empresas.js           → tenants na tabela `empresas` + Supabase Auth
     ├── multi-bot.js          → gerencia um socket WhatsApp (Baileys) por tenant
     ├── fluxo.js              → máquina de estados do atendimento
-    ├── store.js              → lê/grava config e cardápio por tenant (cache mtime)
-    ├── pedidos.js            → SQLite de pedidos por tenant
+    ├── store.js              → config/cardápio (jsonb) com cache em memória
+    ├── pedidos.js            → tabela `pedidos` no Postgres, por empresa_id
     └── sessoes.js            → estado de conversa por cliente (memória, 30min)
 ```
 
@@ -235,8 +249,8 @@ Clique em **Editar** (ou **+ Adicionar item**) para abrir o **editor**, onde voc
   ver `ROADMAP.md`.
 - Sem Chromium: cada tenant é só uma conexão WebSocket, consumo de RAM baixo (a máquina de
   1 GB no Fly.io suporta bem mais que os ~3–4 tenants da versão antiga com Chromium).
-- **Segurança**: no **Fly.io o HTTPS é automático** (certificado gerenciado no domínio
-  `.fly.dev` + `force_https` no `fly.toml`) — nada a configurar. Em **VPS/local**, o painel
-  roda em HTTP: aí use um proxy com TLS (Nginx + Let's Encrypt). Em qualquer caso, troque a
-  senha padrão.
-- Não versionar `data/tenants/` (sessões WhatsApp e dados de clientes).
+- **Segurança**: login via **Supabase Auth** (senha em bcrypt, sessão JWT). HTTPS depende do
+  host — no Fly era automático (`.fly.dev` + `force_https`); em **VPS/local** use um proxy com
+  TLS (Nginx + Let's Encrypt). O `SUPABASE_SERVICE_ROLE_KEY` é admin total do banco: só backend,
+  nunca no front ou no git.
+- Não versionar `data/tenants/` (sessões WhatsApp e imagens) nem o `.env`.

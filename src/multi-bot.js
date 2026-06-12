@@ -195,7 +195,7 @@ async function conectar(slug, tenantDir) {
         // Mantém remoteJid (identidade estável, mesmo quando é LID).
         const sessaoKey = `${slug}:${jid}`;
         const sessao = getSessao(sessaoKey);
-        const { respostas } = processarMensagem(jid, texto, sessao, tenantDir, telefone);
+        const { respostas } = await processarMensagem(jid, texto, sessao, tenantDir, telefone);
         for (const r of respostas) {
           if (r && r.trim()) {
             await sock.sendMessage(jid, { text: r });

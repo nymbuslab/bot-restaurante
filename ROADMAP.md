@@ -29,7 +29,14 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 
 - [x] **Painel de super-admin** — ✅ **concluído** (3 passos): backend + auth master isolada por env; tela `/admin-master` (listar/criar/suspender/reativar/excluir tenants com confirmação forte); métricas reais (total, ativos/suspensos, pedidos do mês, conectados). Ver `CHANGELOG.md` e `PROGRESSO.md`
 
-Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status do pedido e taxa por bairro/CEP) foram decididos como **fora de escopo**; ver a seção acima.
+**Robustez para produto comercial** (levantado na revisão de arquitetura "crescer e vender"):
+
+- [x] **Migração SQLite → Supabase (Postgres + Auth)** — ✅ **concluído**: dados em Postgres gerenciado (empresas/pedidos/config/cardápio), schema versionado em `supabase/migrations/`, isolamento por `empresa_id` (+ RLS). Ver `CHANGELOG.md` v0.16.0.
+- [x] **Hash de senha com bcrypt/argon2** — ✅ **resolvido pelo Supabase Auth** (senha em bcrypt no `auth.users`; o login de restaurante não usa mais o SHA-256). Só o super-admin (conta única env-based) segue SHA-256+salt. Ver `CHANGELOG.md` v0.16.0.
+- [x] **Sessão persistente (não deslogar no deploy)** — ✅ **resolvido pelo Supabase Auth** (sessão é JWT stateless; sobrevive a reinício/deploy do app). O super-admin segue com token em memória (conta única). Ver `CHANGELOG.md` v0.16.0.
+- [ ] **(follow-up) Validar JWT localmente** — hoje `exigeAuth` chama `supabaseAdmin.auth.getUser(token)` (1 ida à rede por request autenticado). Otimizar verificando o JWT localmente com o `SUPABASE_JWT_SECRET` (HS256), eliminando a chamada de rede. Baixo esforço; relevante quando o volume de requests do painel crescer.
+
+(Os dois itens *funcionais* que já estiveram aqui — botões de status do pedido e taxa por bairro/CEP — foram decididos como **fora de escopo**; ver a seção acima.)
 
 ## P2 — Melhorias de produto
 
@@ -63,3 +70,4 @@ Sem itens P1 abertos no momento — os dois que estavam aqui (botões de status 
 - Integração com sistemas de PDV / impressora de cupom
 - App mobile para o atendente receber pedidos
 - **Limpeza ativa de sessões abandonadas (bot)** — varredura periódica (`setInterval`) removendo sessões expiradas, no lugar da expiração lazy atual (que só limpa quando chega nova mensagem). Relevante só quando o volume de clientes simultâneos justificar — cruza com a nota de RAM por tenant no `PROGRESSO.md`.
+- **Resiliência: sair de processo/máquina única** — hoje é **um processo Node numa máquina só**: se cai, cai para todos, e **todos os bots rodam no mesmo processo** (um crash afeta geral). Caminhos, em ordem: (1) supervisor que reinicia sozinho (PM2/systemd — já no `DEPLOY.md`); (2) redundância real (múltiplas instâncias com sessão/estado compartilhados — exige sair do SQLite local para **Postgres**); (3) isolamento de falha entre tenants. **Prematuro — só importa com volume**; levantado na revisão "crescer e vender".

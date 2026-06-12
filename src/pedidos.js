@@ -1,118 +1,117 @@
 // ============================================================
-// PEDIDOS — SQLite por tenant (data/tenants/{slug}/pedidos.db)
+// PEDIDOS — tabela única no Postgres (Supabase), isolada por
+// empresa_id. itens em jsonb. `numero` é sequencial por empresa.
 //
-// Interface pública:
-//   salvarPedido(tenantDir, pedido) → registro
-//   lerTodos(tenantDir)             → array (ordem de criação)
+// As funções recebem `dir` (tenantDir) como antes; o basename é o
+// slug, resolvido para empresa_id (cacheado). O retorno mantém o
+// shape camelCase que o painel e o bot já esperam.
 // ============================================================
 
 const path = require("path");
-const fs = require("fs");
-const Database = require("better-sqlite3");
+const db = require("./db");
 
-const conexoes = new Map(); // { dbPath → Database }
+const slugDe = (dir) => path.basename(dir);
+const idCache = {}; // slug -> empresa_id (uuid)
 
-function getDb(tenantDir) {
-  const dbPath = path.join(tenantDir, "pedidos.db");
-  if (conexoes.has(dbPath)) return conexoes.get(dbPath);
-
-  const db = new Database(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS pedidos (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      numero      INTEGER NOT NULL,
-      status      TEXT    NOT NULL DEFAULT 'novo',
-      cliente     TEXT,
-      telefone    TEXT,
-      tipoEntrega TEXT,
-      endereco    TEXT,
-      pagamento   TEXT,
-      taxaEntrega REAL    DEFAULT 0,
-      itens       TEXT    NOT NULL DEFAULT '[]',
-      total       REAL    DEFAULT 0,
-      criadoEm    TEXT    NOT NULL,
-      avisadoEm   TEXT,
-      chatId      TEXT
-    )
-  `);
-  // Migração: adiciona colunas em bancos criados antes desta versão
-  try { db.exec("ALTER TABLE pedidos ADD COLUMN avisadoEm TEXT"); } catch (_) { /* já existe */ }
-  try { db.exec("ALTER TABLE pedidos ADD COLUMN chatId TEXT"); } catch (_) { /* já existe */ }
-  conexoes.set(dbPath, db);
-  return db;
+async function empresaId(dir) {
+  const slug = slugDe(dir);
+  if (idCache[slug]) return idCache[slug];
+  const r = await db.query("SELECT id FROM empresas WHERE slug = $1", [slug]);
+  if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+  idCache[slug] = r.rows[0].id;
+  return idCache[slug];
 }
 
-function salvarPedido(tenantDir, pedido) {
-  const db = getDb(tenantDir);
-  const numero = (db.prepare("SELECT COALESCE(MAX(numero), 0) AS max FROM pedidos").get().max) + 1;
-  const criadoEm = new Date().toISOString();
-
-  db.prepare(`
-    INSERT INTO pedidos
-      (numero, status, cliente, telefone, chatId, tipoEntrega, endereco, pagamento, taxaEntrega, itens, total, criadoEm)
-    VALUES
-      (@numero, 'novo', @cliente, @telefone, @chatId, @tipoEntrega, @endereco, @pagamento, @taxaEntrega, @itens, @total, @criadoEm)
-  `).run({
-    numero,
-    cliente:     pedido.cliente     || "",
-    telefone:    pedido.telefone    || "",
-    chatId:      pedido.chatId      || "",
-    tipoEntrega: pedido.tipoEntrega || "",
-    endereco:    pedido.endereco    || "",
-    pagamento:   pedido.pagamento   || "",
-    taxaEntrega: pedido.taxaEntrega || 0,
-    itens:       JSON.stringify(pedido.itens || []),
-    total:       pedido.total       || 0,
-    criadoEm,
-  });
-
-  return { numero, status: "novo", criadoEm, ...pedido, itens: pedido.itens || [] };
+// snake_case (banco) -> camelCase (app). Datas em ISO; numéricos como Number.
+function mapRow(r) {
+  return {
+    id: r.id,
+    numero: r.numero,
+    status: r.status,
+    cliente: r.cliente,
+    telefone: r.telefone,
+    chatId: r.chat_id,
+    tipoEntrega: r.tipo_entrega,
+    endereco: r.endereco,
+    pagamento: r.pagamento,
+    taxaEntrega: r.taxa_entrega == null ? 0 : Number(r.taxa_entrega),
+    itens: r.itens || [],
+    total: r.total == null ? 0 : Number(r.total),
+    criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
+    avisadoEm: r.avisado_em ? new Date(r.avisado_em).toISOString() : null,
+  };
 }
 
-function lerTodos(tenantDir) {
-  return getDb(tenantDir)
-    .prepare("SELECT * FROM pedidos ORDER BY id ASC")
-    .all()
-    .map((r) => ({ ...r, itens: JSON.parse(r.itens) }));
+async function salvarPedido(dir, pedido) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `INSERT INTO pedidos
+       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total)
+     VALUES
+       ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
+        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+     RETURNING numero, criado_em`,
+    [
+      empId,
+      pedido.cliente || "",
+      pedido.telefone || "",
+      pedido.chatId || "",
+      pedido.tipoEntrega || "",
+      pedido.endereco || "",
+      pedido.pagamento || "",
+      pedido.taxaEntrega || 0,
+      JSON.stringify(pedido.itens || []),
+      pedido.total || 0,
+    ]
+  );
+  const row = r.rows[0];
+  return {
+    numero: row.numero,
+    status: "novo",
+    criadoEm: new Date(row.criado_em).toISOString(),
+    ...pedido,
+    itens: pedido.itens || [],
+  };
 }
 
-function lerPorId(tenantDir, id) {
-  const r = getDb(tenantDir).prepare("SELECT * FROM pedidos WHERE id = ?").get(id);
-  if (!r) return null;
-  return { ...r, itens: JSON.parse(r.itens) };
+async function lerTodos(dir) {
+  const empId = await empresaId(dir);
+  const r = await db.query("SELECT * FROM pedidos WHERE empresa_id = $1 ORDER BY id ASC", [empId]);
+  return r.rows.map(mapRow);
 }
 
-function avisarPedido(tenantDir, id) {
-  const agora = new Date().toISOString();
-  getDb(tenantDir).prepare("UPDATE pedidos SET avisadoEm = ? WHERE id = ?").run(agora, id);
-  return agora;
+async function lerPorId(dir, id) {
+  const empId = await empresaId(dir);
+  const r = await db.query("SELECT * FROM pedidos WHERE empresa_id = $1 AND id = $2", [empId, id]);
+  return r.rows[0] ? mapRow(r.rows[0]) : null;
 }
 
-// Conta pedidos criados a partir de `inicioISO` (criadoEm >= inicioISO).
-// `criadoEm` é ISO em UTC, então `inicioISO` também deve ser UTC (ver
-// servidor.js, que calcula o início do mês no fuso BR e converte p/ UTC).
-// Pula tenants cujo pedidos.db ainda não existe (retorna 0) — não cria o
-// arquivo só para contar.
-// NOTA DE PERFORMANCE: cálculo on-demand. Reusa o pool de conexões (uma
-// abertura por tenant, cacheada). Para muitos tenants (centenas), avaliar
-// cache com TTL curto na rota /api/admin/metrics.
-function contarNoMes(tenantDir, inicioISO) {
-  const dbPath = path.join(tenantDir, "pedidos.db");
-  if (!conexoes.has(dbPath) && !fs.existsSync(dbPath)) return 0;
-  const db = getDb(tenantDir);
-  return db.prepare("SELECT COUNT(*) AS n FROM pedidos WHERE criadoEm >= ?").get(inicioISO).n;
+async function avisarPedido(dir, id) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "UPDATE pedidos SET avisado_em = now() WHERE empresa_id = $1 AND id = $2 RETURNING avisado_em",
+    [empId, id]
+  );
+  return r.rows[0] ? new Date(r.rows[0].avisado_em).toISOString() : null;
 }
 
-// Fecha e remove do pool a conexão SQLite de um tenant. Necessário antes de
-// apagar a pasta do tenant (better-sqlite3 mantém o arquivo aberto — no Windows
-// o rmSync da pasta falha enquanto o handle estiver vivo).
-function fecharConexao(tenantDir) {
-  const dbPath = path.join(tenantDir, "pedidos.db");
-  const db = conexoes.get(dbPath);
-  if (db) {
-    try { db.close(); } catch (_) { /* já fechado */ }
-    conexoes.delete(dbPath);
-  }
+// Conta pedidos do tenant criados a partir de `inicioISO` (UTC).
+async function contarNoMes(dir, inicioISO) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "SELECT COUNT(*)::int AS n FROM pedidos WHERE empresa_id = $1 AND criado_em >= $2",
+    [empId, inicioISO]
+  );
+  return r.rows[0].n;
 }
 
-module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, fecharConexao, contarNoMes };
+// Antes (SQLite) liberava o handle do arquivo antes de apagar a pasta.
+// No Postgres não há handle local — no-op mantido por compatibilidade.
+function fecharConexao(_dir) {}
+
+// Limpa o empresa_id cacheado de um slug (ex.: ao excluir).
+function esquecer(slug) {
+  delete idCache[slug];
+}
+
+module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, contarNoMes, fecharConexao, esquecer };

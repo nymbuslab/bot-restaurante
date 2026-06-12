@@ -4,27 +4,27 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-11 12:36**
+**Checkpoint salvo em 2026-06-12 09:23**
 
 ### Feito nesta sessão
 
-- **Texto de horário gerado da tabela** — botão "Gerar automaticamente" sob o campo *Horário (texto exibido ao cliente)* (Configurações) monta o texto pt-BR a partir da tabela de horários ao vivo (agrupa dias seguidos, pula fechados; ex.: "Nosso atendimento é de *Segunda* a *Sexta* das *11:00* às *22:00*"). Não-destrutivo, editável à mão; só front (`resumirHorarios()` em `app.js`), persiste pela rota de config. Validado: 5 casos da lógica + painel real. Ver `CHANGELOG.md` v0.15.1.
-- **Wizard de cadastro (4 etapas)** — cadastro de tela única virou wizard **Conta → Dados → Horário → Entrega → painel** (`cadastro.html`), barra de progresso "Etapa X de 4", identidade Nymbus preservada. Etapa 1 reusa `cadastro`+`login` atuais (e-mail duplicado barra na etapa 1); etapas 2–4 salvam pela MESMA rota `PUT /api/config` (incremental). Dados obrigatório; horário/entrega puláveis; abandono cai direto no painel no relogin. **Removido código morto:** flag `config.onboardingConcluido` + rota `POST /api/onboarding/concluir`. Validado por Playwright (fluxo completo + pular + duplicado + abandono + isolamento; config gravada certa). Ver `CHANGELOG.md` v0.15.0.
-- **Reversão da barra de onboarding no painel** — decisão de produto: o onboarding vai virar **wizard no cadastro**, não barra no painel. Removidos `#onbBarra` (`admin.html`), o módulo de onboarding (`app.js`), os estilos `.onb-*` (`style.css`) e os `id` `cfg-sec-*`; `app.js` agora limpa chaves `onbPasso:*` do `localStorage`. **Mantidos** (avaliação no wizard): rota `POST /api/onboarding/concluir` + flag `config.onboardingConcluido` (provável remoção no Passo B). Validado: painel abre normal, sem a barra, 8/8 checks Playwright, zero erro de console. Ver `CHANGELOG.md` v0.14.1.
-- **Assistente de onboarding (1º acesso)** — barra-guia no topo do painel (Dados → Horário → Entrega) que leva às seções já existentes em Configurações; flag `config.onboardingConcluido` (novo=`false`, antigo=`undefined` não mostra), pular/salvar avança, dispensar/concluir grava `true` e some pra sempre. Rota `POST /api/onboarding/concluir`. Validado com 12 checks (Playwright) + visual. Ver `CHANGELOG.md` v0.14.0. **(revertido — ver acima)**
-- **Fix grave de isolamento multi-tenant** — novo cadastro nascia com dados do "Sabor D'Casa"; agora `empresas.configInicial()` cria tenant limpo (identidade vazia, cardápio vazio).
-- **Limpeza de legado** — removida a migração single-tenant (`migrarLegado` + arquivos-semente da raiz), `.gitignore` enxuto, textos `.wwebjs_auth`/Puppeteer corrigidos, pastas vazias removidas, docs atualizados (1º acesso via `/cadastro.html`).
-- **Limpeza do histórico do git** — PII (telefone/endereço) redigido em todo o histórico via `git-filter-repo` + `force-push`; local e `origin/main` sincronizados em `2abfe33`, zero ocorrências do PII.
-- Antes, no mesmo dia: toggles de bebida/observação no painel, exibição de preço base+opcional+subtotal, saudação com carrinho aberto (`CONFIRMA_REINICIO`), fix do `resetSessao` — todos commitados.
+- **Migração completa SQLite → Supabase (Postgres + Auth)** — tabelas `empresas`/`pedidos` no Postgres, `config`/`cardápio` em `jsonb`, login via Supabase Auth (bcrypt + JWT, resolve as dívidas P1 de segurança), `better-sqlite3` removido. Novos `src/db.js` e `src/supabase.js`; camada de dados async com cache no `store.js`. Schema em `supabase/migrations/` (aplicado via CLI).
+- **Validada ponta-a-ponta:** 20 checks de dados/auth + 14 HTTP + pedido completo gravado pelo simulador + Playwright (wizard de cadastro → painel → relogin), zero erro de console. Tenants de teste removidos.
+- **Docs atualizadas:** CLAUDE.md, CHANGELOG v0.16.0, ROADMAP (P1 de segurança resolvidos pelo Auth), `.env.example`.
+
+### Em meio de edição
+
+- Nada de código pendente — a migração está completa. **Mas tudo está NÃO COMMITADO**: 15 arquivos modificados + `src/db.js`, `src/supabase.js` e `supabase/` novos (`.env` e `supabase/.temp` confirmados fora do git).
 
 ### Próximo passo
 
-- Decidir entre: (a) abrir ticket no GitHub Support para purgar cache dos commits antigos com PII, ou (b) seguir para a limpeza operacional `session-*/` no volume do Fly (P2, via SSH).
+- Commitar a migração (msg sugerida: `feat(db): migra de SQLite para Supabase (Postgres + Auth)`) e dar push.
 
 ### Decisões pendentes
 
-- **GitHub cache:** o force-push reescreveu `origin/main`, mas SHAs antigas podem persistir em cache do GitHub / forks — purga total exige ticket ao Support (opcional, depende do usuário).
-- **Limpeza no Fly:** `rm -rf /app/data/tenants/*/session-*` no volume de produção — ação manual sua via SSH.
+- **Pooler:** trocar `:6543/` → `:5432/` (Session pooler) no `DATABASE_URL` do `.env` — recomendado p/ app sempre-ligado, não-bloqueante.
+- **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
+- **(operacional) Limpeza `session-*` no Fly:** bloqueada — o trial do Fly expirou (produção offline até adicionar cartão ou migrar de host).
 
 ## 📋 Próximos Passos
 
@@ -83,3 +83,5 @@
 - [x] **Assistente de onboarding (1º acesso)** — barra-guia no topo do painel (Dados → Horário → Entrega) que ativa a aba Configurações e rola até a seção já existente (com destaque), sem criar tela nova. Controle por `config.onboardingConcluido`: tenant novo nasce `false` (mostra), antigo `undefined` (não mostra) — o servidor manda, `localStorage` só guarda o passo. Salvar config ou "Pular este passo" avança; "Dispensar"/concluir os 3 → `POST /api/onboarding/concluir` grava `true` e a barra some pra sempre (persiste após relogar). Validado: 12 checks Playwright + visual. Ver `CHANGELOG.md` v0.14.0. **⚠️ REVERTIDO em v0.14.1** (vira wizard no cadastro)
 - [x] **Reversão da barra de onboarding no painel** — removida a barra do painel (`#onbBarra`, módulo `app.js`, estilos `.onb-*`, `id` `cfg-sec-*`) por decisão de produto: o onboarding vira wizard no cadastro. Limpeza de `localStorage` `onbPasso:*`. Rota `POST /api/onboarding/concluir` e flag `config.onboardingConcluido` mantidos para avaliação no wizard. Painel de volta ao estado anterior; 8/8 checks Playwright, zero erro de console. Ver `CHANGELOG.md` v0.14.1
 - [x] **Wizard de cadastro (4 etapas)** — `cadastro.html` virou wizard Conta → Dados → Horário → Entrega → painel, com barra de progresso "Etapa X de 4" e identidade Nymbus preservada (painel gradiente, logo). Etapa 1 reusa `POST /api/cadastro`+`/api/login` (e-mail duplicado barra na etapa 1, conta criada já loga); etapas 2–4 salvam por `PUT /api/config` (mesma rota do painel, persistência incremental — GET config após login, muta e PUT por etapa). Dados (telefone+endereço) obrigatório; horário e entrega puláveis; "Voltar" simples preserva valores. Abandono: conta existe desde a etapa 1, relogin cai direto no painel (sem retomar wizard). Render das etapas 3/4 inline reusando classes do painel (`.tabela-horarios`, `.pag-*`) — sem duplicar a lógica de persistência. **Código morto removido:** `config.onboardingConcluido` (`empresas.js`) + rota `POST /api/onboarding/concluir` (`servidor.js`), confirmado por grep que nada mais usava. Validado por Playwright no fluxo real: completo (config gravada certa: telefone/endereço/domingo fechado/taxa 7,50/pagamento extra), pular horário+entrega, e-mail duplicado, abandono+relogin, isolamento, zero erro de console no fluxo feliz. Ver `CHANGELOG.md` v0.15.0
+- [x] **Texto de horário gerado da tabela** — botão "Gerar automaticamente" sob o campo *Horário (texto exibido ao cliente)* (Configurações) monta o texto pt-BR a partir da tabela de horários ao vivo (agrupa dias seguidos, pula fechados; ex.: "Nosso atendimento é de *Segunda* a *Sexta* das *11:00* às *22:00*"). Não-destrutivo, editável à mão; só front (`resumirHorarios()` em `app.js`), persiste pela rota de config. Validado: 5 casos da lógica + painel real. Ver `CHANGELOG.md` v0.15.1 — 2026-06-11
+- [x] **Migração SQLite → Supabase (Postgres + Auth)** — `better-sqlite3` (bancos em disco) → **Postgres gerenciado no Supabase**. Tabelas `empresas` (perfil + `config`/`cardapio` jsonb) e `pedidos` (uma só, isolada por `empresa_id`); schema versionado em `supabase/migrations/` (Supabase CLI). **Login via Supabase Auth** (bcrypt + JWT) — resolve as dívidas P1 de hash forte e sessão persistente de uma vez; super-admin segue env-based. Novos módulos `db.js` (pool pg) e `supabase.js` (clients). Camada de dados ficou async; `store.js` ganhou cache em memória para o `fluxo.js` seguir síncrono. Disco agora só guarda sessões WhatsApp + imagens; `better-sqlite3` removido. Validado ponta-a-ponta: 20 checks de dados/auth + 14 HTTP + pedido completo gravado + wizard→painel→relogin (Playwright). Ver `CHANGELOG.md` v0.16.0 — 2026-06-12

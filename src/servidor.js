@@ -22,35 +22,30 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/", (_req, res) => res.redirect("/login.html"));
 
-// ---- Autenticação ----
-// token → { slug, tenantDir }
-const tokens = new Map();
+// ---- Autenticação de restaurante — Supabase Auth (JWT) ----
+// O token é o access_token (JWT) do Supabase. O middleware valida o JWT e
+// resolve o tenant; também checa `ativo` a cada request (suspensão imediata).
+async function exigeAuth(req, res, next) {
+  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+  let emp;
+  try {
+    emp = await empresas.resolverPorToken(token);
+  } catch (e) {
+    return res.status(500).json({ erro: "Falha ao validar a sessão." });
+  }
+  if (!emp || !emp.ativo) return res.status(401).json({ erro: "Não autorizado" });
+  req.slug = emp.slug;
+  req.tenantDir = empresas.tenantDir(emp.slug);
+  next();
+}
+
+// ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
+// Token próprio em memória, separado do JWT de restaurante.
+const tokensAdmin = new Map(); // token → true
 
 function gerarToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
-
-function exigeAuth(req, res, next) {
-  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
-  const info = tokens.get(token);
-  if (!info) return res.status(401).json({ erro: "Não autorizado" });
-  req.slug = info.slug;
-  req.tenantDir = info.tenantDir;
-  next();
-}
-
-// Invalida (faz logout forçado de) todos os tokens de restaurante de um slug.
-// Usado ao suspender/excluir: a sessão aberta do tenant cai imediatamente.
-function invalidarTokensDoSlug(slug) {
-  for (const [tk, info] of tokens) {
-    if (info.slug === slug) tokens.delete(tk);
-  }
-}
-
-// ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
-// Map próprio, separado de `tokens`: um token de restaurante nunca acessa
-// /api/admin/*, e o token master nunca acessa rotas de restaurante.
-const tokensAdmin = new Map(); // token → true
 
 const SUPERADMIN_EMAIL      = process.env.SUPERADMIN_EMAIL || "";
 const SUPERADMIN_SENHA_HASH = process.env.SUPERADMIN_SENHA_HASH || "";
@@ -60,8 +55,7 @@ if (!SUPERADMIN_CONFIGURADO) {
   console.warn("⚠️  Super-admin não configurado (defina SUPERADMIN_EMAIL e SUPERADMIN_SENHA_HASH). Rotas /api/admin/* desativadas até configurar.");
 }
 
-// Comparação de hash resistente a timing attack. Strings de tamanhos diferentes
-// retornam false sem vazar tempo.
+// Comparação de hash resistente a timing attack.
 function hashConfere(hashInformado, hashEsperado) {
   const a = Buffer.from(hashInformado);
   const b = Buffer.from(hashEsperado);
@@ -77,32 +71,31 @@ function exigeSuperAdmin(req, res, next) {
 
 // ---- Rotas públicas ----
 
-app.post("/api/cadastro", (req, res) => {
+app.post("/api/cadastro", async (req, res) => {
   try {
     const { nome, email, senha } = req.body || {};
     if (!nome || !email || !senha) return res.status(400).json({ erro: "Preencha todos os campos." });
     if (senha.length < 6) return res.status(400).json({ erro: "Senha deve ter pelo menos 6 caracteres." });
-    const empresa = empresas.cadastrar({ nome, email, senha });
+    const empresa = await empresas.cadastrar({ nome, email, senha });
     res.json({ ok: true, slug: empresa.slug, nome: empresa.nome });
   } catch (e) {
     res.status(400).json({ erro: e.message });
   }
 });
 
-app.post("/api/login", (req, res) => {
-  const { email, senha } = req.body || {};
-  const empresa = empresas.autenticar(email, senha);
-  if (!empresa) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
-  const token = gerarToken();
-  tokens.set(token, { slug: empresa.slug, tenantDir: empresas.tenantDir(empresa.slug) });
-  res.json({ token, slug: empresa.slug, nome: empresa.nome });
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, senha } = req.body || {};
+    const r = await empresas.autenticar(email, senha);
+    if (!r) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+    res.json({ token: r.token, slug: r.slug, nome: r.nome });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao entrar. Tente de novo." });
+  }
 });
 
-app.post("/api/logout", (req, res) => {
-  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
-  tokens.delete(token);
-  res.json({ ok: true });
-});
+// Logout: o JWT é descartado no cliente (sessionStorage). Sem estado no servidor.
+app.post("/api/logout", (_req, res) => res.json({ ok: true }));
 
 // ---- Super-admin: autenticação master ----
 
@@ -128,47 +121,46 @@ app.post("/api/admin/logout", (req, res) => {
 
 // ---- Super-admin: gestão de tenants ----
 
-app.get("/api/admin/tenants", exigeSuperAdmin, (_req, res) => {
-  res.json(empresas.listar());
+app.get("/api/admin/tenants", exigeSuperAdmin, async (_req, res) => {
+  res.json(await empresas.listar());
 });
 
-// Início do mês corrente no fuso BR (America/Sao_Paulo, UTC-3 fixo desde 2019,
-// sem horário de verão), convertido para UTC ISO para comparar com criadoEm.
-// Usar o fuso BR deixa "pedidos do mês" intuitivo para o admin brasileiro; a
-// conversão para UTC mantém a comparação consistente com o armazenamento.
+// Início do mês corrente no fuso BR (America/Sao_Paulo, UTC-3 fixo), em UTC ISO.
 function inicioDoMesBR() {
-  // Ex: "2026-06-10" no fuso de São Paulo
   const hojeBR = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
   const [ano, mes] = hojeBR.split("-");
-  // Meia-noite do dia 1 no fuso BR (-03:00) → ISO em UTC
   return new Date(`${ano}-${mes}-01T00:00:00-03:00`).toISOString();
 }
 
-app.get("/api/admin/metrics", exigeSuperAdmin, (_req, res) => {
-  const inicioISO = inicioDoMesBR();
-  const lista = empresas.listar();
+app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
+  try {
+    const inicioISO = inicioDoMesBR();
+    const lista = await empresas.listar();
 
-  let ativos = 0, suspensos = 0, conectados = 0, pedidosMes = 0;
-  const porTenant = {};
+    let ativos = 0, suspensos = 0, conectados = 0, pedidosMes = 0;
+    const porTenant = {};
 
-  for (const t of lista) {
-    if (t.ativo) ativos++; else suspensos++;
-    const conectado = multiBot.getEstado(t.slug).status === "conectado";
-    if (conectado) conectados++;
-    const n = pedidos.contarNoMes(empresas.tenantDir(t.slug), inicioISO);
-    pedidosMes += n;
-    porTenant[t.slug] = { pedidosMes: n, conectado };
+    for (const t of lista) {
+      if (t.ativo) ativos++; else suspensos++;
+      const conectado = multiBot.getEstado(t.slug).status === "conectado";
+      if (conectado) conectados++;
+      const n = await pedidos.contarNoMes(empresas.tenantDir(t.slug), inicioISO);
+      pedidosMes += n;
+      porTenant[t.slug] = { pedidosMes: n, conectado };
+    }
+
+    res.json({
+      totais: { restaurantes: lista.length, ativos, suspensos, conectados, pedidosMes },
+      porTenant,
+    });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao calcular métricas." });
   }
-
-  res.json({
-    totais: { restaurantes: lista.length, ativos, suspensos, conectados, pedidosMes },
-    porTenant,
-  });
 });
 
-// ---- Super-admin: backup (consome scripts/backup.js, sem reescrever a lógica) ----
+// ---- Super-admin: backup (consome scripts/backup.js) ----
 
 app.post("/api/admin/backup/gerar", exigeSuperAdmin, async (_req, res) => {
   try {
@@ -184,26 +176,21 @@ app.get("/api/admin/backup/listar", exigeSuperAdmin, (_req, res) => {
 });
 
 app.get("/api/admin/backup/baixar/:arquivo", exigeSuperAdmin, (req, res) => {
-  // Anti path-traversal (defesa em profundidade):
-  const nome = path.basename(req.params.arquivo);          // 1) tira componentes de path
-  if (!backup.NOME_RE.test(nome)) return res.status(400).json({ erro: "Nome de backup inválido." }); // 2) só backup-AAAA-MM-DD-HHmm.tar.gz
+  const nome = path.basename(req.params.arquivo);
+  if (!backup.NOME_RE.test(nome)) return res.status(400).json({ erro: "Nome de backup inválido." });
   const baseDir  = path.resolve(backup.BACKUPS_DIR);
   const filePath = path.resolve(baseDir, nome);
-  if (!filePath.startsWith(baseDir + path.sep)) return res.status(403).end(); // 3) confinado em backups/
-  if (!fs.existsSync(filePath)) return res.status(404).json({ erro: "Backup não encontrado." }); // 4) existe
+  if (!filePath.startsWith(baseDir + path.sep)) return res.status(403).end();
+  if (!fs.existsSync(filePath)) return res.status(404).json({ erro: "Backup não encontrado." });
   res.download(filePath, nome);
 });
 
-// (O passo a passo de restauração NÃO tem rota: é texto fixo no próprio painel
-//  — admin-master.html — para nunca depender de leitura de arquivo em runtime.
-//  O mesmo conteúdo está no DEPLOY.md, escrito normalmente.)
-
-app.post("/api/admin/tenants", exigeSuperAdmin, (req, res) => {
+app.post("/api/admin/tenants", exigeSuperAdmin, async (req, res) => {
   try {
     const { nome, email, senha } = req.body || {};
     if (!nome || !email || !senha) return res.status(400).json({ erro: "Preencha todos os campos." });
     if (senha.length < 6) return res.status(400).json({ erro: "Senha deve ter pelo menos 6 caracteres." });
-    const empresa = empresas.cadastrar({ nome, email, senha });
+    const empresa = await empresas.cadastrar({ nome, email, senha });
     res.json({ ok: true, slug: empresa.slug, nome: empresa.nome });
   } catch (e) {
     res.status(400).json({ erro: e.message });
@@ -212,17 +199,16 @@ app.post("/api/admin/tenants", exigeSuperAdmin, (req, res) => {
 
 app.patch("/api/admin/tenants/:slug/suspender", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
-  if (!empresas.setAtivo(slug, 0)) return res.status(404).json({ erro: "Tenant não encontrado." });
-  // Efeito real: login já é recusado (autenticar filtra ativo=1); aqui derrubamos
-  // o bot e a sessão de painel ativa do tenant.
+  if (!(await empresas.setAtivo(slug, 0))) return res.status(404).json({ erro: "Tenant não encontrado." });
+  // Efeito real: login recusado (autenticar filtra ativo) + exigeAuth checa ativo
+  // a cada request (sessão aberta cai no próximo request); e o bot é derrubado.
   await multiBot.desconectar(slug);
-  invalidarTokensDoSlug(slug);
   res.json({ ok: true, ativo: false });
 });
 
-app.patch("/api/admin/tenants/:slug/reativar", exigeSuperAdmin, (req, res) => {
+app.patch("/api/admin/tenants/:slug/reativar", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
-  if (!empresas.setAtivo(slug, 1)) return res.status(404).json({ erro: "Tenant não encontrado." });
+  if (!(await empresas.setAtivo(slug, 1))) return res.status(404).json({ erro: "Tenant não encontrado." });
   res.json({ ok: true, ativo: true });
 });
 
@@ -230,22 +216,17 @@ app.delete("/api/admin/tenants/:slug", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
   const { confirmacao } = req.body || {};
 
-  // Defesa em profundidade: exige o slug exato no corpo. Um DELETE acidental
-  // sem confirmação não apaga um restaurante inteiro.
   if (confirmacao !== slug) {
     return res.status(400).json({ erro: "Confirmação não confere. Envie { confirmacao: \"<slug>\" } igual ao slug." });
   }
 
-  const empresa = empresas.buscarPorSlug(slug);
+  const empresa = await empresas.buscarPorSlug(slug);
   if (!empresa) return res.status(404).json({ erro: "Tenant não encontrado." });
 
-  const tenantDir = empresas.tenantDir(slug);
-  // Ordem importa: parar o bot (libera arquivos da sessão) → fechar o handle
-  // SQLite de pedidos → excluir o registro e apagar a pasta.
+  // Ordem: parar o bot (libera a sessão em disco) → excluir (linha + cascade de
+  // pedidos + usuário do Auth + pasta do tenant).
   await multiBot.desconectar(slug);
-  pedidos.fecharConexao(tenantDir);
-  invalidarTokensDoSlug(slug);
-  empresas.excluir(slug);
+  await empresas.excluir(slug);
 
   res.json({ ok: true });
 });
@@ -277,30 +258,36 @@ app.post("/api/bot/resetar", exigeAuth, async (req, res) => {
 
 // ---- Config / Cardápio ----
 
-app.get("/api/config", exigeAuth, (req, res) => {
-  const config = store.getConfig(req.tenantDir);
-  res.json({ ...config, admin: undefined });
+app.get("/api/config", exigeAuth, async (req, res) => {
+  try {
+    await store.ensure(req.tenantDir);
+    res.json(store.getConfig(req.tenantDir));
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao ler a configuração." });
+  }
 });
 
-app.put("/api/config", exigeAuth, (req, res) => {
+app.put("/api/config", exigeAuth, async (req, res) => {
   try {
-    const atual = store.getConfig(req.tenantDir);
-    const novo = req.body || {};
-    novo.admin = (novo.admin && novo.admin.senha) ? novo.admin : atual.admin;
-    store.setConfig(req.tenantDir, novo);
+    await store.setConfig(req.tenantDir, req.body || {});
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });
   }
 });
 
-app.get("/api/cardapio", exigeAuth, (req, res) => {
-  res.json(store.getCardapio(req.tenantDir));
+app.get("/api/cardapio", exigeAuth, async (req, res) => {
+  try {
+    await store.ensure(req.tenantDir);
+    res.json(store.getCardapio(req.tenantDir));
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao ler o cardápio." });
+  }
 });
 
-app.put("/api/cardapio", exigeAuth, (req, res) => {
+app.put("/api/cardapio", exigeAuth, async (req, res) => {
   try {
-    store.setCardapio(req.tenantDir, req.body || { categorias: [] });
+    await store.setCardapio(req.tenantDir, req.body || { categorias: [] });
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });
@@ -320,7 +307,6 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 });
 
-// Upload autenticado de imagem de item (multipart, campo "imagem")
 app.post("/api/imagem", exigeAuth, (req, res) => {
   upload.single("imagem")(req, res, (err) => {
     if (err && err.code === "LIMIT_FILE_SIZE")
@@ -328,7 +314,6 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
     if (err) return res.status(400).json({ erro: "Erro no envio do arquivo." });
     if (!req.file) return res.status(400).json({ erro: "Nenhum arquivo enviado." });
 
-    // Extensão derivada do mimetype validado — nunca do nome do arquivo enviado
     const ext = MIME_TO_EXT[req.file.mimetype];
     if (!ext) return res.status(400).json({ erro: "Tipo inválido. Use JPEG, PNG ou WebP." });
 
@@ -336,8 +321,6 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
     const uploadsDir = path.join(req.tenantDir, "uploads");
     fs.mkdirSync(uploadsDir, { recursive: true });
 
-    // TODO: ao trocar a foto de um item ou excluir o item, apagar o arquivo anterior
-    //       para evitar acúmulo de arquivos órfãos no volume (data/tenants/{slug}/uploads/).
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, req.file.buffer);
 
@@ -345,21 +328,18 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
   });
 });
 
-// Servir imagem de item — isolamento por tenant (slug + filename validados e confinados)
-app.get("/imagens/:slug/:filename", (req, res) => {
+// Servir imagem de item — isolamento por tenant (slug + filename validados)
+app.get("/imagens/:slug/:filename", async (req, res) => {
   const slug     = path.basename(req.params.slug);
   const filename = path.basename(req.params.filename);
 
-  // Regex estrita: slug ^[a-z0-9-]+$, filename ^[a-z0-9-]+\.(jpg|png|webp)$
   if (!SLUG_RE.test(slug) || !FILE_RE.test(filename)) return res.status(400).end();
 
-  // Slug deve corresponder a um tenant cadastrado
-  if (!empresas.buscarPorSlug(slug)) return res.status(404).end();
+  if (!(await empresas.buscarPorSlug(slug))) return res.status(404).end();
 
   const uploadsDir = path.resolve(DATA_DIR, "tenants", slug, "uploads");
   const filePath   = path.resolve(uploadsDir, filename);
 
-  // Confinamento: path resolvido deve começar dentro de uploadsDir
   if (!filePath.startsWith(uploadsDir + path.sep)) return res.status(403).end();
   if (!fs.existsSync(filePath)) return res.status(404).end();
 
@@ -368,8 +348,12 @@ app.get("/imagens/:slug/:filename", (req, res) => {
   res.sendFile(filePath);
 });
 
-app.get("/api/pedidos", exigeAuth, (req, res) => {
-  res.json(pedidos.lerTodos(req.tenantDir).reverse());
+app.get("/api/pedidos", exigeAuth, async (req, res) => {
+  try {
+    res.json((await pedidos.lerTodos(req.tenantDir)).reverse());
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao ler os pedidos." });
+  }
 });
 
 const MSG_PRONTO_PADRAO = {
@@ -382,9 +366,10 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
     const { pedidoId } = req.body || {};
     if (!pedidoId) return res.status(400).json({ erro: "pedidoId obrigatório." });
 
-    const pedido = pedidos.lerPorId(req.tenantDir, pedidoId);
+    const pedido = await pedidos.lerPorId(req.tenantDir, pedidoId);
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
 
+    await store.ensure(req.tenantDir);
     const config = store.getConfig(req.tenantDir);
     const templates = config.mensagens?.pedidoPronto || MSG_PRONTO_PADRAO;
     const tipoChave = (pedido.tipoEntrega || "").toLowerCase() === "entrega" ? "entrega" : "retirada";
@@ -394,9 +379,6 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
       .replace(/\{cliente\}/g, pedido.cliente || "")
       .replace(/\{numero\}/g,  String(pedido.numero));
 
-    // Destino do aviso: o JID da conversa (canal real por onde o cliente falou —
-    // pode ser @lid no modelo de privacidade novo). Para pedidos antigos sem chatId,
-    // fallback legado: reconstruir um phone JID a partir do telefone gravado.
     let destino = pedido.chatId || "";
     const ehJidReal = destino.endsWith("@s.whatsapp.net") || destino.endsWith("@lid");
     if (!ehJidReal) {
@@ -408,7 +390,7 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
     }
 
     await multiBot.enviarMensagem(req.slug, destino, texto);
-    const avisadoEm = pedidos.avisarPedido(req.tenantDir, pedidoId);
+    const avisadoEm = await pedidos.avisarPedido(req.tenantDir, pedidoId);
 
     res.json({ ok: true, avisadoEm });
   } catch (e) {
@@ -425,17 +407,22 @@ app.get("/api/simulador/status", exigeAuth, (req, res) => {
   res.json({ estado: s.estado, carrinho: s.carrinho });
 });
 
-app.post("/api/simulador/mensagem", exigeAuth, (req, res) => {
-  const { mensagem } = req.body || {};
-  if (!mensagem && mensagem !== "0") return res.status(400).json({ erro: "mensagem ausente" });
-  const sid = `sim:${req.slug}`;
-  const sessao = getSessao(sid);
-  const resultado = processarMensagem(sid, String(mensagem), sessao, req.tenantDir);
-  res.json({
-    respostas: resultado.respostas || [],
-    estado: sessao.estado,
-    carrinho: sessao.carrinho,
-  });
+app.post("/api/simulador/mensagem", exigeAuth, async (req, res) => {
+  try {
+    const { mensagem } = req.body || {};
+    if (!mensagem && mensagem !== "0") return res.status(400).json({ erro: "mensagem ausente" });
+    const sid = `sim:${req.slug}`;
+    const sessao = getSessao(sid);
+    await store.ensure(req.tenantDir);
+    const resultado = await processarMensagem(sid, String(mensagem), sessao, req.tenantDir);
+    res.json({
+      respostas: resultado.respostas || [],
+      estado: sessao.estado,
+      carrinho: sessao.carrinho,
+    });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha no simulador." });
+  }
 });
 
 app.post("/api/simulador/reset", exigeAuth, (req, res) => {

@@ -1,37 +1,26 @@
 // ============================================================
-// EMPRESAS — banco mestre de tenants (data/empresas.db)
-//
-// Cada empresa tem uma pasta própria em data/tenants/{slug}/
-// com config.json, cardapio.json e pedidos.db isolados.
+// EMPRESAS — perfil dos tenants na tabela `empresas` (Postgres/Supabase).
+// A SENHA não fica aqui: o login usa o Supabase Auth (bcrypt + JWT).
+// Cada empresa tem um diretório em disco (data/tenants/{slug}/) só
+// para sessão do WhatsApp (baileys) e imagens do cardápio.
 // ============================================================
 
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const Database = require("better-sqlite3");
+const db = require("./db");
+const store = require("./store");
+const pedidos = require("./pedidos");
+const { supabaseAdmin, supabaseAnon } = require("./supabase");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
-const DB_PATH  = path.join(DATA_DIR, "empresas.db");
 const TENANTS_DIR = path.join(DATA_DIR, "tenants");
 
 if (!fs.existsSync(TENANTS_DIR)) fs.mkdirSync(TENANTS_DIR, { recursive: true });
 
-const db = new Database(DB_PATH);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS empresas (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug      TEXT    NOT NULL UNIQUE,
-    nome      TEXT    NOT NULL,
-    email     TEXT    NOT NULL UNIQUE,
-    senha     TEXT    NOT NULL,
-    ativo     INTEGER NOT NULL DEFAULT 1,
-    criadoEm  TEXT    NOT NULL
-  )
-`);
-
+// Hash SHA-256+salt — usado SOMENTE pela conta super-admin (env-based).
+// O login de restaurante usa o Supabase Auth (bcrypt), não esta função.
 const SALT = "nymbus-lab-bot-v2";
-
 function hashSenha(senha) {
   return crypto.createHash("sha256").update(senha + SALT).digest("hex");
 }
@@ -46,10 +35,10 @@ function slugBase(nome) {
     .slice(0, 30) || "empresa";
 }
 
-function slugUnico(base) {
+async function slugUnico(base) {
   let slug = base;
   let i = 2;
-  while (db.prepare("SELECT id FROM empresas WHERE slug = ?").get(slug)) slug = `${base}-${i++}`;
+  while ((await db.query("SELECT 1 FROM empresas WHERE slug = $1", [slug])).rows[0]) slug = `${base}-${i++}`;
   return slug;
 }
 
@@ -57,11 +46,9 @@ function tenantDir(slug) {
   return path.join(TENANTS_DIR, slug);
 }
 
-// Config inicial LIMPA de um tenant novo. NÃO herda de nenhum template com
-// dados reais: identidade (nome/telefone/endereço/horário) nasce em branco
-// (só o nome vem do cadastro), cardápio nasce vazio. mensagens/pagamentos/
-// atendimento são defaults GENÉRICOS (não identificam ninguém). Isolamento
-// multi-tenant: um tenant novo nunca pode nascer com dados de outro.
+// Config inicial LIMPA de um tenant novo (sem dados de ninguém). Vai para a
+// coluna jsonb `config`. Sem `admin.senha` (vestigial, removido) — o login
+// agora é o Supabase Auth.
 function configInicial(nomeRestaurante) {
   return {
     restaurante: { nome: nomeRestaurante || "Restaurante", telefone: "", endereco: "", horario: "" },
@@ -83,66 +70,110 @@ function configInicial(nomeRestaurante) {
       },
     },
     pagamentos: ["Pix", "Cartão (na entrega)", "Dinheiro"],
-    admin: { senha: "admin123" }, // vestigial (login usa a senha da tabela empresas)
   };
 }
 
-function inicializarDiretorio(slug, nomeRestaurante) {
+// Cria o diretório do tenant (sessão WhatsApp + imagens). Config/cardápio
+// ficam no banco, não em arquivo.
+function inicializarDiretorio(slug) {
   const dir = tenantDir(slug);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-  // Tenant novo nasce LIMPO — sem herdar de templates com dados reais.
-  const cfgDestino = path.join(dir, "config.json");
-  if (!fs.existsSync(cfgDestino)) {
-    fs.writeFileSync(cfgDestino, JSON.stringify(configInicial(nomeRestaurante), null, 2), "utf8");
-  }
-
-  const cardDestino = path.join(dir, "cardapio.json");
-  if (!fs.existsSync(cardDestino)) {
-    fs.writeFileSync(cardDestino, JSON.stringify({ categorias: [] }, null, 2), "utf8");
-  }
 }
 
 // ---- CRUD ----
 
-function cadastrar({ nome, email, senha }) {
+async function cadastrar({ nome, email, senha }) {
   if (!nome || !email || !senha) throw new Error("nome, email e senha são obrigatórios");
-  if (db.prepare("SELECT id FROM empresas WHERE email = ?").get(email)) throw new Error("E-mail já cadastrado");
-  const slug = slugUnico(slugBase(nome));
-  db.prepare("INSERT INTO empresas (slug, nome, email, senha, ativo, criadoEm) VALUES (?, ?, ?, ?, 1, ?)")
-    .run(slug, nome, email, hashSenha(senha), new Date().toISOString());
-  inicializarDiretorio(slug, nome);
+
+  // 1) cria o usuário no Supabase Auth (bcrypt). email_confirm: true → já ativo.
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password: senha,
+    email_confirm: true,
+  });
+  if (error) {
+    if (/already|exist|registered/i.test(error.message)) throw new Error("E-mail já cadastrado");
+    throw new Error(error.message);
+  }
+  const userId = data.user.id;
+
+  // 2) cria a linha de perfil (com slug único, config/cardápio iniciais).
+  const slug = await slugUnico(slugBase(nome));
+  try {
+    await db.query(
+      `INSERT INTO empresas (user_id, slug, nome, email, ativo, config, cardapio)
+       VALUES ($1, $2, $3, $4, true, $5::jsonb, $6::jsonb)`,
+      [userId, slug, nome, email, JSON.stringify(configInicial(nome)), JSON.stringify({ categorias: [] })]
+    );
+  } catch (e) {
+    // rollback do usuário Auth se a inserção falhar (não deixa órfão)
+    await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+    throw e;
+  }
+
+  inicializarDiretorio(slug);
   return { slug, nome };
 }
 
-function autenticar(email, senha) {
-  return db.prepare("SELECT * FROM empresas WHERE email = ? AND senha = ? AND ativo = 1")
-    .get(email, hashSenha(senha)) || null;
+// Autentica via Supabase Auth. Retorna { slug, nome, token } ou null.
+async function autenticar(email, senha) {
+  const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password: senha });
+  if (error || !data || !data.session) return null;
+  const r = await db.query("SELECT slug, nome, ativo FROM empresas WHERE user_id = $1", [data.user.id]);
+  const emp = r.rows[0];
+  if (!emp || !emp.ativo) return null;
+  return { slug: emp.slug, nome: emp.nome, token: data.session.access_token };
 }
 
-function buscarPorSlug(slug) {
-  return db.prepare("SELECT * FROM empresas WHERE slug = ?").get(slug) || null;
+// Resolve o tenant a partir de um JWT do Supabase (usado no middleware).
+// Retorna { slug, ativo } ou null se o token for inválido.
+async function resolverPorToken(token) {
+  if (!token) return null;
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data || !data.user) return null;
+  const r = await db.query("SELECT slug, ativo FROM empresas WHERE user_id = $1", [data.user.id]);
+  return r.rows[0] || null;
 }
 
-function listar() {
-  return db.prepare("SELECT id, slug, nome, email, ativo, criadoEm FROM empresas ORDER BY id").all();
+async function buscarPorSlug(slug) {
+  const r = await db.query(
+    "SELECT id, user_id, slug, nome, email, ativo, criado_em FROM empresas WHERE slug = $1",
+    [slug]
+  );
+  return r.rows[0] || null;
 }
 
-// Suspende (ativo=0) ou reativa (ativo=1) um tenant. Retorna true se a linha existia.
-function setAtivo(slug, ativo) {
-  const r = db.prepare("UPDATE empresas SET ativo = ? WHERE slug = ?").run(ativo ? 1 : 0, slug);
-  return r.changes > 0;
+async function listar() {
+  const r = await db.query(
+    "SELECT slug, nome, email, ativo, criado_em AS \"criadoEm\" FROM empresas ORDER BY criado_em"
+  );
+  return r.rows;
 }
 
-// Exclusão DESTRUTIVA: apaga o registro em empresas.db e a pasta data/tenants/{slug}/.
-// IMPORTANTE: o chamador deve antes desconectar o bot e fechar a conexão SQLite de
-// pedidos (better-sqlite3 mantém o arquivo aberto — no Windows o rmSync falha senão).
-function excluir(slug) {
-  const r = db.prepare("DELETE FROM empresas WHERE slug = ?").run(slug);
-  if (r.changes === 0) return false;
+async function setAtivo(slug, ativo) {
+  const r = await db.query("UPDATE empresas SET ativo = $1 WHERE slug = $2", [!!ativo, slug]);
+  return r.rowCount > 0;
+}
+
+// Exclusão DESTRUTIVA: apaga a linha (cascateia pedidos), o usuário do Auth e
+// a pasta do tenant em disco (sessões/imagens).
+async function excluir(slug) {
+  const r = await db.query("SELECT user_id FROM empresas WHERE slug = $1", [slug]);
+  const row = r.rows[0];
+  if (!row) return false;
+
+  await db.query("DELETE FROM empresas WHERE slug = $1", [slug]); // cascade → pedidos
+  await supabaseAdmin.auth.admin.deleteUser(row.user_id).catch(() => {});
+
+  store.esquecer(slug);
+  pedidos.esquecer(slug);
+
   const dir = tenantDir(slug);
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
   return true;
 }
 
-module.exports = { cadastrar, autenticar, buscarPorSlug, listar, tenantDir, setAtivo, excluir, hashSenha };
+module.exports = {
+  cadastrar, autenticar, resolverPorToken, buscarPorSlug, listar,
+  tenantDir, setAtivo, excluir, hashSenha,
+};

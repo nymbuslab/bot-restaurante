@@ -1,15 +1,14 @@
 // ============================================================
-// BACKUP MANUAL — gera um arquivo único e CONSISTENTE de data/
+// BACKUP MANUAL — gera um arquivo único de data/
 //
-// Empacota TODA a pasta data/ (config, cardápio, pedidos.db de cada
-// tenant, sessões baileys, empresas.db) num backup-AAAA-MM-DD-HHmm.tar.gz
-// dentro de backups/ (gitignored — contém dados de cliente).
+// Empacota a pasta data/ (sessões do WhatsApp em baileys-*/ e imagens
+// do cardápio em tenants/{slug}/uploads/) num backup-AAAA-MM-DD-HHmm.tar.gz
+// dentro de backups/ (gitignored).
 //
-// Consistência do SQLite: os .db podem estar ABERTOS/em escrita pelo
-// servidor. NÃO copiamos o arquivo cru (risco de backup torn/corrompido).
-// Para cada .db usamos a Online Backup API do SQLite via better-sqlite3
-// (db.backup), que produz uma cópia consistente página-a-página mesmo
-// com o banco aberto. Roda SEM downtime (servidor pode estar no ar).
+// NOTA: os dados de pedidos/config/cardápio e as contas agora vivem no
+// Supabase (Postgres) — o backup deles é GERENCIADO pelo Supabase
+// (point-in-time recovery). Este backup cobre só o que ainda mora em
+// disco: sessões e imagens.
 //
 // Uso:
 //   npm run backup
@@ -21,7 +20,6 @@
 const path = require("path");
 const fs = require("fs");
 const tar = require("tar");
-const Database = require("better-sqlite3");
 
 const RAIZ = path.join(__dirname, "..");
 const DATA_DIR = path.join(RAIZ, "data");
@@ -32,23 +30,6 @@ function carimbo() {
   const d = new Date();
   const z = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`;
-}
-
-// Bancos DO APP (abertos pelo servidor) → precisam de snapshot consistente.
-// Qualquer outro .db em data/ (ex.: caches do Chromium nas pastas órfãs
-// session-{slug}/) NÃO é nosso e é copiado cru — inclusive porque pode nem
-// ser SQLite válido, o que quebraria o new Database().
-const DBS_DO_APP = new Set(["empresas.db", "pedidos.db"]);
-const ehDbDoApp = (p) => DBS_DO_APP.has(path.basename(p));
-
-// ---- Lista recursiva dos bancos do app dentro de data/ ----
-function listarDbsDoApp(dir, encontrados = []) {
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, ent.name);
-    if (ent.isDirectory()) listarDbsDoApp(full, encontrados);
-    else if (ent.isFile() && ehDbDoApp(ent.name)) encontrados.push(full);
-  }
-  return encontrados;
 }
 
 function tamanhoLegivel(bytes) {
@@ -62,52 +43,22 @@ function tamanhoLegivel(bytes) {
 const NOME_RE = /^backup-\d{4}-\d{2}-\d{2}-\d{4}\.tar\.gz$/;
 
 // Gera um backup e retorna { arquivo, tamanho (bytes), criadoEm (ISO) }.
-// Chamável tanto pelo CLI (npm run backup) quanto pelo servidor (rota admin) —
-// a lógica é a mesma, sem reescrita.
+// Chamável pelo CLI (npm run backup) e pelo servidor (rota admin).
 async function gerarBackup() {
   if (!fs.existsSync(DATA_DIR)) throw new Error("Pasta data/ não encontrada.");
 
   fs.mkdirSync(BACKUPS_DIR, { recursive: true });
 
   const ts = carimbo();
-  const staging = path.join(BACKUPS_DIR, `.staging-${ts}`);
   const saida = path.join(BACKUPS_DIR, `backup-${ts}.tar.gz`);
 
-  // Limpa staging anterior eventualmente deixado por uma execução interrompida.
-  if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+  // Empacota TODA a data/ (sessões baileys-*/ + imagens). cwd = DATA_DIR para
+  // a raiz do tar ser o conteúdo de data/. backups/ fica fora de data/, sem
+  // risco de auto-recursão.
+  await tar.create({ gzip: true, file: saida, cwd: DATA_DIR }, ["."]);
 
-  try {
-    // 1) Espelha data/ → staging, copiando TUDO exceto os bancos do app
-    //    (esses entram via snapshot consistente no passo 2). .db de terceiros
-    //    (caches do Chromium nas pastas órfãs) são copiados crus normalmente.
-    fs.cpSync(DATA_DIR, staging, {
-      recursive: true,
-      filter: (src) => !ehDbDoApp(src),
-    });
-
-    // 2) Para cada banco do app: snapshot consistente (Online Backup API).
-    const dbs = listarDbsDoApp(DATA_DIR);
-    for (const src of dbs) {
-      const rel = path.relative(DATA_DIR, src);
-      const dest = path.join(staging, rel);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      const db = new Database(src, { readonly: true });
-      try {
-        await db.backup(dest); // cópia consistente mesmo com o banco aberto
-      } finally {
-        db.close();
-      }
-    }
-
-    // 3) Empacota o conteúdo do staging na raiz do tar (cwd = staging, "." ).
-    await tar.create({ gzip: true, file: saida, cwd: staging }, ["."]);
-
-    const stat = fs.statSync(saida);
-    return { arquivo: path.basename(saida), tamanho: stat.size, criadoEm: stat.mtime.toISOString(), bancos: dbs.length };
-  } finally {
-    // 4) Sempre remove o staging.
-    if (fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
-  }
+  const stat = fs.statSync(saida);
+  return { arquivo: path.basename(saida), tamanho: stat.size, criadoEm: stat.mtime.toISOString() };
 }
 
 // Lista os backups existentes em backups/, mais recente primeiro.
@@ -125,9 +76,9 @@ function listarBackups() {
 // ---- CLI: só roda quando executado direto (node scripts/backup.js) ----
 if (require.main === module) {
   gerarBackup()
-    .then(({ arquivo, tamanho, bancos }) => {
+    .then(({ arquivo, tamanho }) => {
       console.log(`\n✅ Backup criado: backups/${arquivo}  (${tamanhoLegivel(tamanho)})`);
-      console.log(`   ${bancos} banco(s) do app incluído(s) de forma consistente.`);
+      console.log("   Cobre sessões do WhatsApp + imagens (os dados do banco ficam no Supabase).");
       console.log("\n⚠️  No Fly.io: backups/ é EFÊMERO (fora do volume). Baixe agora:");
       console.log(`   fly ssh sftp get /app/backups/${arquivo} ./`);
     })
