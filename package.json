@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node index.js",
+    "setup-storage": "node scripts/setup-storage.js",
     "gerar-hash-admin": "node scripts/gerar-hash.js",
     "backup": "node scripts/backup.js"
   },
@@ -14,6 +15,7 @@
     "@whiskeysockets/baileys": "^6.7.23",
     "dotenv": "^16.6.1",
     "express": "^4.19.2",
+    "jose": "^6.2.3",
     "multer": "^2.1.1",
     "pg": "^8.21.0",
     "pino": "^10.3.1",

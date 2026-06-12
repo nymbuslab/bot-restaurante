@@ -15,8 +15,8 @@ const { supabaseAdmin, supabaseAnon } = require("./supabase");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const TENANTS_DIR = path.join(DATA_DIR, "tenants");
-
-if (!fs.existsSync(TENANTS_DIR)) fs.mkdirSync(TENANTS_DIR, { recursive: true });
+// App stateless: nada é gravado em disco (sessões → Postgres, imagens → Storage).
+// `tenantDir(slug)` ainda existe só como CHAVE do tenant (seu basename é o slug).
 
 // Hash SHA-256+salt — usado SOMENTE pela conta super-admin (env-based).
 // O login de restaurante usa o Supabase Auth (bcrypt), não esta função.
@@ -73,13 +73,6 @@ function configInicial(nomeRestaurante) {
   };
 }
 
-// Cria o diretório do tenant (sessão WhatsApp + imagens). Config/cardápio
-// ficam no banco, não em arquivo.
-function inicializarDiretorio(slug) {
-  const dir = tenantDir(slug);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-
 // ---- CRUD ----
 
 async function cadastrar({ nome, email, senha }) {
@@ -111,7 +104,6 @@ async function cadastrar({ nome, email, senha }) {
     throw e;
   }
 
-  inicializarDiretorio(slug);
   return { slug, nome };
 }
 
@@ -125,13 +117,39 @@ async function autenticar(email, senha) {
   return { slug: emp.slug, nome: emp.nome, token: data.session.access_token };
 }
 
+// Verificação LOCAL do JWT (sem ida à rede) via JWKS público do Supabase.
+// Os tokens são ES256 (chave assimétrica); o JWKS é cacheado e rotaciona sozinho.
+// `jose` é ESM-only → import() dinâmico, cacheado.
+let _jose = null, _jwks = null;
+async function getJWKS() {
+  if (!_jose) _jose = await import("jose");
+  if (!_jwks) {
+    _jwks = _jose.createRemoteJWKSet(new URL(`${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1/.well-known/jwks.json`));
+  }
+  return { jose: _jose, jwks: _jwks };
+}
+
 // Resolve o tenant a partir de um JWT do Supabase (usado no middleware).
+// Valida o JWT LOCALMENTE (sem rede). Em qualquer erro de verificação, faz
+// fallback para getUser (rede) — cobre rotação de chave/HS256 legado.
 // Retorna { slug, ativo } ou null se o token for inválido.
 async function resolverPorToken(token) {
   if (!token) return null;
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !data || !data.user) return null;
-  const r = await db.query("SELECT slug, ativo FROM empresas WHERE user_id = $1", [data.user.id]);
+  let userId = null;
+  try {
+    const { jose, jwks } = await getJWKS();
+    const { payload } = await jose.jwtVerify(token, jwks, {
+      issuer: `${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1`,
+      audience: "authenticated",
+    });
+    userId = payload.sub;
+  } catch (_) {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data || !data.user) return null;
+    userId = data.user.id;
+  }
+  if (!userId) return null;
+  const r = await db.query("SELECT slug, ativo FROM empresas WHERE user_id = $1", [userId]);
   return r.rows[0] || null;
 }
 
@@ -163,11 +181,21 @@ async function excluir(slug) {
   if (!row) return false;
 
   await db.query("DELETE FROM empresas WHERE slug = $1", [slug]); // cascade → pedidos
+  await db.query("DELETE FROM wa_auth WHERE slug = $1", [slug]);  // sessão WhatsApp
   await supabaseAdmin.auth.admin.deleteUser(row.user_id).catch(() => {});
 
   store.esquecer(slug);
   pedidos.esquecer(slug);
 
+  // Limpa imagens do tenant no Storage (best-effort).
+  try {
+    const { data: arquivos } = await supabaseAdmin.storage.from("cardapio").list(slug);
+    if (arquivos && arquivos.length) {
+      await supabaseAdmin.storage.from("cardapio").remove(arquivos.map((a) => `${slug}/${a.name}`));
+    }
+  } catch (_) { /* best-effort */ }
+
+  // Pasta legada em disco, se existir (instalações pré-stateless).
   const dir = tenantDir(slug);
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
   return true;

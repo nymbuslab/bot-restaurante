@@ -12,6 +12,7 @@ const empresas = require("./empresas");
 const store = require("./store");
 const pedidos = require("./pedidos");
 const multiBot = require("./multi-bot");
+const { supabaseAdmin } = require("./supabase");
 const backup = require("../scripts/backup");
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
@@ -294,21 +295,20 @@ app.put("/api/cardapio", exigeAuth, async (req, res) => {
   }
 });
 
-// ---- Imagens de item ----
+// ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----
 
-const DATA_DIR    = path.join(__dirname, "..", "data");
 const MIME_TO_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
-const EXT_TO_MIME = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
-const SLUG_RE     = /^[a-z0-9-]+$/;
-const FILE_RE     = /^[a-z0-9-]+\.(jpg|png|webp)$/;
+const BUCKET_IMAGENS = "cardapio";
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 });
 
+// Upload da imagem direto para o Storage; o item guarda a URL pública retornada.
+// (Não há mais rota /imagens nem arquivos em disco — o Storage serve a URL.)
 app.post("/api/imagem", exigeAuth, (req, res) => {
-  upload.single("imagem")(req, res, (err) => {
+  upload.single("imagem")(req, res, async (err) => {
     if (err && err.code === "LIMIT_FILE_SIZE")
       return res.status(400).json({ erro: "Arquivo muito grande. Máximo: 2 MB." });
     if (err) return res.status(400).json({ erro: "Erro no envio do arquivo." });
@@ -317,35 +317,20 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
     const ext = MIME_TO_EXT[req.file.mimetype];
     if (!ext) return res.status(400).json({ erro: "Tipo inválido. Use JPEG, PNG ou WebP." });
 
-    const filename   = `${crypto.randomBytes(16).toString("hex")}-${Date.now()}.${ext}`;
-    const uploadsDir = path.join(req.tenantDir, "uploads");
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    try {
+      const filename = `${crypto.randomBytes(16).toString("hex")}-${Date.now()}.${ext}`;
+      const caminho  = `${req.slug}/${filename}`; // isolamento por tenant na pasta do bucket
+      const { error } = await supabaseAdmin.storage
+        .from(BUCKET_IMAGENS)
+        .upload(caminho, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+      if (error) return res.status(500).json({ erro: "Falha ao enviar a imagem." });
 
-    const filePath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filePath, req.file.buffer);
-
-    res.json({ url: `/imagens/${req.slug}/${filename}` });
+      const { data } = supabaseAdmin.storage.from(BUCKET_IMAGENS).getPublicUrl(caminho);
+      res.json({ url: data.publicUrl });
+    } catch (e) {
+      res.status(500).json({ erro: "Falha ao enviar a imagem." });
+    }
   });
-});
-
-// Servir imagem de item — isolamento por tenant (slug + filename validados)
-app.get("/imagens/:slug/:filename", async (req, res) => {
-  const slug     = path.basename(req.params.slug);
-  const filename = path.basename(req.params.filename);
-
-  if (!SLUG_RE.test(slug) || !FILE_RE.test(filename)) return res.status(400).end();
-
-  if (!(await empresas.buscarPorSlug(slug))) return res.status(404).end();
-
-  const uploadsDir = path.resolve(DATA_DIR, "tenants", slug, "uploads");
-  const filePath   = path.resolve(uploadsDir, filename);
-
-  if (!filePath.startsWith(uploadsDir + path.sep)) return res.status(403).end();
-  if (!fs.existsSync(filePath)) return res.status(404).end();
-
-  const ext = filename.split(".").pop();
-  res.set("Content-Type", EXT_TO_MIME[ext]);
-  res.sendFile(filePath);
 });
 
 app.get("/api/pedidos", exigeAuth, async (req, res) => {

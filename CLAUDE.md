@@ -24,16 +24,17 @@ Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-B
 - **`pg` (PostgreSQL gerenciado no Supabase)** — empresas, pedidos, config e cardápio.
   Acesso async via pool (`src/db.js`). Migrações versionadas em `supabase/migrations/`
   (Supabase CLI: `npx supabase db push`).
-- **`@supabase/supabase-js` — autenticação (Supabase Auth / bcrypt + JWT)**. O login de
-  restaurante usa o Auth (`src/supabase.js`); o token é o JWT do Supabase.
+- **`@supabase/supabase-js` — Auth (bcrypt + JWT) + Storage (imagens)**. Login em
+  `src/supabase.js`; o token é o JWT do Supabase. Imagens do cardápio no bucket `cardapio`.
+- **`jose`** — validação LOCAL do JWT (JWKS), sem ida à rede por request (`exigeAuth`).
 - `qrcode` / `qrcode-terminal` (QR de conexão — data URL no painel + impressão no terminal)
 - Front-end em HTML/CSS/JS puro (sem framework)
 
-> **Histórico de dados:** o projeto usava `better-sqlite3` (1 banco por tenant + banco
-> mestre, em disco). Migrado para **Postgres no Supabase** (uma tabela `pedidos` isolada
-> por `empresa_id`; `config`/`cardapio` em colunas `jsonb` na `empresas`; senha no Supabase
-> Auth). O disco local hoje guarda só as **sessões do WhatsApp** (`baileys-*/`) e as
-> **imagens** do cardápio.
+> **App stateless — NADA é gravado em disco.** Histórico: usava `better-sqlite3` (bancos em
+> disco). Hoje **tudo no Supabase**: dados em Postgres (`empresas`, `pedidos`, `config`/
+> `cardapio` jsonb), contas no Auth, **sessões do WhatsApp** na tabela `wa_auth` (adapter
+> `src/wa-auth.js`, no lugar do `useMultiFileAuthState`) e **imagens** no Storage. Sem volume
+> persistente; habilita múltiplas instâncias / hosts efêmeros.
 
 > **Histórico:** o projeto usava `whatsapp-web.js` (Puppeteer/Chromium), trocado por
 > Baileys por instabilidade (QR parava de gerar quando o WhatsApp Web mudava o HTML;
@@ -112,9 +113,10 @@ no painel na aba **Pedidos**.
 index.js              -> sobe o servidor (NÃO inicia o bot)
 src/
   db.js               -> pool Postgres (pg), lê DATABASE_URL do .env
-  supabase.js         -> clients do Supabase Auth (admin service_role + anon)
+  supabase.js         -> clients do Supabase (Auth admin/anon + Storage)
   servidor.js         -> Express: API REST multi-tenant + serve /public
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
+  wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> máquina de estados; processarMensagem é async (await store.ensure)
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
@@ -127,12 +129,13 @@ public/
   app.js, style.css   -> lógica e estilos do painel
 supabase/
   migrations/         -> schema versionado (npx supabase db push)
-data/                 -> SÓ disco: sessões e imagens (o resto está no Postgres)
-  tenants/
-    {slug}/
-      uploads/        -> imagens dos itens do cardápio
-      baileys-{slug}/ -> sessão WhatsApp (Baileys useMultiFileAuthState, não versionar)
+scripts/
+  setup-storage.js    -> cria o bucket público de imagens (npm run setup-storage)
 ```
+
+**App stateless:** não há mais pasta `data/` em uso — sessões do WhatsApp ficam na tabela
+`wa_auth` (Postgres) e imagens no Storage. O `tenantDir(slug)` ainda existe no código só
+como CHAVE do tenant (o basename é o slug); nenhum arquivo é lido/gravado nesse caminho.
 
 **Fluxo de dados:** painel edita config/cardápio via API → `store.setConfig/setCardapio`
 grava no Postgres e atualiza o cache em memória (processo único) → `fluxo.js` lê do cache
@@ -144,17 +147,18 @@ exigiriam invalidação/pub-sub (hoje é instância única).
 Cada empresa tem:
 
 - **Slug** gerado do nome (ex: `sabor-d-casa`), único, usado como chave em tudo
-  (linha `empresas`, `empresa_id` dos pedidos, pasta em disco, sessão).
+  (linha `empresas`, `empresa_id` dos pedidos, `wa_auth` da sessão, pasta de imagens no Storage).
 - **Linha em `empresas`** (Postgres) com `config`/`cardapio` (jsonb), ligada ao usuário
   do Supabase Auth por `user_id`.
-- **Diretório isolado** `data/tenants/{slug}/` só para **sessão WhatsApp** (`baileys-{slug}/`)
-  e **imagens** (`uploads/`). Config/cardápio/pedidos ficam no Postgres.
-- O `tenantDir` segue sendo a "alça" do tenant no código; o `basename` é o slug, usado
-  como chave no banco.
+- **Sessão WhatsApp** na tabela `wa_auth` (por slug); **imagens** no Storage (`cardapio/{slug}/`).
+  Nada em disco.
+- O `tenantDir(slug)` segue sendo a "alça" do tenant no código; o `basename` é o slug, usado
+  como chave no banco. O caminho físico não existe/não é usado.
 
 Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`, onde `token`
 é o **JWT do Supabase Auth**. Viaja em `Authorization: Bearer ...`. O middleware `exigeAuth`
-(async) valida o JWT (`empresas.resolverPorToken` → `supabaseAdmin.auth.getUser`), checa
+(async) valida o JWT **localmente** (`empresas.resolverPorToken` → `jose.jwtVerify` com o JWKS
+público; fallback para `getUser` em erro), checa
 `ativo` a cada request (suspensão é imediata) e resolve `req.slug` / `req.tenantDir`.
 Não há mais mapa de tokens em memória para restaurante (JWT é stateless); logout é só
 descartar o token no cliente.
@@ -291,11 +295,21 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
 - **Memória por tenant**: sem Chromium — cada tenant é só uma conexão WebSocket (Baileys),
   consumo de RAM baixíssimo. A máquina de 1 GB no Fly.io suporta muito mais tenants do que
   os ~3–4 da era Chromium/Puppeteer.
-- **Sessão WhatsApp**: salva em `data/tenants/{slug}/baileys-{slug}/` (`useMultiFileAuthState`).
-  Apagar = novo QR. As sessões antigas `session-{slug}/` (legado do whatsapp-web.js, caches do
-  Chromium) eram lixo órfão — **já removidas localmente** (`rm -rf data/tenants/*/session-*`).
-  Resta limpar o **volume de produção no Fly** via SSH (`fly ssh console` →
-  `rm -rf /app/data/tenants/*/session-*`, preservando `baileys-*/`) — ver `DEPLOY.md`.
+- **Sessão WhatsApp**: persistida na tabela `wa_auth` (Postgres), por slug — adapter
+  `usePostgresAuthState` em `src/wa-auth.js` (substitui o `useMultiFileAuthState`). Reset =
+  `multiBot.resetarSessao` → apaga as linhas do tenant (novo QR). Creds/chaves serializadas
+  com `BufferJSON`. NÃO há mais pasta `baileys-*/` em disco.
+  - **Escala/volume:** uma conexão gera ~50 linhas minúsculas (≈20 KB): `pre-key` (~30,
+    **bounded** — repostas conforme consumidas), `app-state-sync-key`, `creds`, e 1 `session:`
+    por cliente atendido. PK `(slug, chave)` + **UPSERT** (`ON CONFLICT DO UPDATE`): **reconectar
+    NÃO duplica** — o nº de linhas depende do conteúdo da sessão, não de quantas vezes conecta.
+    O único crescimento é ~1 `session:` por cliente novo (≈1 KB cada); trivial pro Postgres —
+    se um dia incomodar, dá pra adicionar limpeza periódica de `session:` antigas.
+  - **Sensível:** essas linhas SÃO a sessão do WhatsApp (quem lê pode sequestrar a conexão).
+    Protegidas por RLS + conexão privilegiada do backend; `SERVICE_ROLE_KEY` nunca no front/git.
+- **Imagens do cardápio**: no Supabase Storage (bucket público `cardapio`, pasta `{slug}/`).
+  O upload (`POST /api/imagem`) sobe pro Storage e o item guarda a URL pública; não há mais
+  rota `/imagens` nem arquivos em disco. Bucket criado por `npm run setup-storage`.
 - **Avisar cliente**: `POST /api/pedido/avisar` envia, pelo socket do tenant
   (`enviarMensagem(slug, jid, texto)`), uma mensagem de "pedido pronto". Templates editáveis
   em `config.json` → `mensagens.pedidoPronto.entrega`/`.retirada` (variáveis `{cliente}` e

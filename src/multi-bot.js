@@ -14,14 +14,13 @@
 // NÃO remover essa checagem.
 // ============================================================
 
-const fs = require("fs");
-const path = require("path");
 const pino = require("pino");
 const qrcodeTerminal = require("qrcode-terminal");
 const QRCode = require("qrcode");
 
 const { getSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
+const { usePostgresAuthState, limparSessao } = require("./wa-auth");
 
 // Logger silencioso para o Baileys (não polui o console com debug interno).
 const logger = pino({ level: "silent" });
@@ -63,11 +62,10 @@ async function conectar(slug, tenantDir) {
   const t = tenants.get(slug);
   if (!t) return;
 
-  const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, Browsers, DisconnectReason, isJidUser, jidDecode } = await getBaileys();
+  const { makeWASocket, fetchLatestBaileysVersion, Browsers, DisconnectReason, isJidUser, jidDecode } = await getBaileys();
 
-  // Sessão isolada por tenant (substitui session-{slug}/ do whatsapp-web.js).
-  const pastaSessao = path.join(tenantDir, `baileys-${slug}`);
-  const { state, saveCreds } = await useMultiFileAuthState(pastaSessao);
+  // Sessão persistida no Postgres (stateless — sem arquivo em disco).
+  const { state, saveCreds } = await usePostgresAuthState(slug);
 
   // Versão do WhatsApp Web mais recente suportada pelo Baileys (com fallback
   // para a embutida se a busca remota falhar).
@@ -220,16 +218,14 @@ async function desconectar(slug) {
   console.log(`[${slug}] ⏹️ Bot pausado.`);
 }
 
-async function resetarSessao(slug, tenantDir) {
+async function resetarSessao(slug, _tenantDir) {
   await desconectar(slug);
   await new Promise((r) => setTimeout(r, 1000));
-  // Baileys guarda a sessão em tenantDir/baileys-{slug}/ (useMultiFileAuthState).
-  const pasta = path.join(tenantDir, `baileys-${slug}`);
   try {
-    fs.rmSync(pasta, { recursive: true, force: true });
+    await limparSessao(slug); // apaga as linhas de wa_auth do tenant (Postgres)
     console.log(`[${slug}] 🧹 Sessão limpa.`);
   } catch (e) {
-    throw new Error("Não foi possível apagar a sessão. Tente parar o bot e apagar manualmente.");
+    throw new Error("Não foi possível apagar a sessão. Tente parar o bot e tentar de novo.");
   }
 }
 
