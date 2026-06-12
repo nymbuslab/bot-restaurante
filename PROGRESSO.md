@@ -4,22 +4,21 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-12 12:30**
+**Checkpoint salvo em 2026-06-12 14:30**
 
 ### Feito nesta sessão
 
-- **Migração SQLite → Supabase (Postgres + Auth)** — commitada e pushed (`14df8df`, v0.16.0).
-- **App stateless + JWT local + Docker corrigido (v0.17.0)** — sessões do WhatsApp no Postgres (`wa_auth` + adapter `src/wa-auth.js`), imagens no Supabase Storage (bucket `cardapio`, `npm run setup-storage`), `exigeAuth` valida o JWT localmente via JWKS (`jose`, sem ida à rede), e o `Dockerfile`/`docker-entrypoint.sh` corrigidos (não crashavam mais no boot). App não grava nada em disco. Validado: adapter round-trip (8 checks), bot chega ao QR, upload→Storage, JWT warm ~144ms, exclusão limpa banco/sessão/Storage.
-- **Docs atualizadas:** CLAUDE.md, README, DEPLOY, PRD, CHANGELOG v0.17.0, ROADMAP (stateless + JWT local concluídos).
+- **Migração SQLite → Supabase** (`14df8df`, v0.16.0) e **app stateless + JWT local + Docker** (`4086f14`, v0.17.0) — commitados e pushed.
+- **Reconexão CONFIRMADA em produção:** o usuário sincronizou o WhatsApp (populou `wa_auth`) e **desconectar→reconectar funcionou sem novo QR** — a sessão é lida do Postgres. Fecha a última ressalva de validação.
+- **Higiene de sessões (v0.17.1)** — `limparSessoesAntigas` apaga `session:*` inativas há +90d (coluna nova `wa_auth.atualizado_em`), agendada no `index.js` (boot + 24h). Validado (recente preservada, antiga removida, creds/pre-key intocados). **Ainda NÃO commitado.**
 
 ### Em meio de edição
 
-- **v0.17.0 (stateless) NÃO COMMITADO** — arquivos novos (`src/wa-auth.js`, `scripts/setup-storage.js`, migration `wa_auth`) + modificados (servidor/empresas/multi-bot/Dockerfile/entrypoint/package + docs). `.env`/`supabase/.temp` fora do git.
+- **v0.17.1 (higiene de sessões) NÃO COMMITADO** — migration `wa_auth_atualizado_em` + `src/wa-auth.js` + `index.js` + docs. Falta: limpeza de arquivos-lixo da pasta (pedido do usuário), depois commit+push.
 
 ### Próximo passo
 
-- Commitar v0.17.0 (`feat: app stateless ...`) e dar push.
-- **Ressalva de validação:** a prova final das sessões (escanear QR → reiniciar → reconectar sem novo QR) precisa de um celular real — testar quando possível.
+- Limpar arquivos-lixo do projeto + commitar v0.17.1 (`feat: higiene de sessões antigas`) e push.
 
 ### Decisões pendentes
 
@@ -85,4 +84,5 @@
 - [x] **Wizard de cadastro (4 etapas)** — `cadastro.html` virou wizard Conta → Dados → Horário → Entrega → painel, com barra de progresso "Etapa X de 4" e identidade Nymbus preservada (painel gradiente, logo). Etapa 1 reusa `POST /api/cadastro`+`/api/login` (e-mail duplicado barra na etapa 1, conta criada já loga); etapas 2–4 salvam por `PUT /api/config` (mesma rota do painel, persistência incremental — GET config após login, muta e PUT por etapa). Dados (telefone+endereço) obrigatório; horário e entrega puláveis; "Voltar" simples preserva valores. Abandono: conta existe desde a etapa 1, relogin cai direto no painel (sem retomar wizard). Render das etapas 3/4 inline reusando classes do painel (`.tabela-horarios`, `.pag-*`) — sem duplicar a lógica de persistência. **Código morto removido:** `config.onboardingConcluido` (`empresas.js`) + rota `POST /api/onboarding/concluir` (`servidor.js`), confirmado por grep que nada mais usava. Validado por Playwright no fluxo real: completo (config gravada certa: telefone/endereço/domingo fechado/taxa 7,50/pagamento extra), pular horário+entrega, e-mail duplicado, abandono+relogin, isolamento, zero erro de console no fluxo feliz. Ver `CHANGELOG.md` v0.15.0
 - [x] **Texto de horário gerado da tabela** — botão "Gerar automaticamente" sob o campo *Horário (texto exibido ao cliente)* (Configurações) monta o texto pt-BR a partir da tabela de horários ao vivo (agrupa dias seguidos, pula fechados; ex.: "Nosso atendimento é de *Segunda* a *Sexta* das *11:00* às *22:00*"). Não-destrutivo, editável à mão; só front (`resumirHorarios()` em `app.js`), persiste pela rota de config. Validado: 5 casos da lógica + painel real. Ver `CHANGELOG.md` v0.15.1 — 2026-06-11
 - [x] **Migração SQLite → Supabase (Postgres + Auth)** — `better-sqlite3` (bancos em disco) → **Postgres gerenciado no Supabase**. Tabelas `empresas` (perfil + `config`/`cardapio` jsonb) e `pedidos` (uma só, isolada por `empresa_id`); schema versionado em `supabase/migrations/` (Supabase CLI). **Login via Supabase Auth** (bcrypt + JWT) — resolve as dívidas P1 de hash forte e sessão persistente de uma vez; super-admin segue env-based. Novos módulos `db.js` (pool pg) e `supabase.js` (clients). Camada de dados ficou async; `store.js` ganhou cache em memória para o `fluxo.js` seguir síncrono. Disco agora só guarda sessões WhatsApp + imagens; `better-sqlite3` removido. Validado ponta-a-ponta: 20 checks de dados/auth + 14 HTTP + pedido completo gravado + wizard→painel→relogin (Playwright). Ver `CHANGELOG.md` v0.16.0 — 2026-06-12
-- [x] **App stateless + JWT local + Docker corrigido** — sessões do WhatsApp no Postgres (`wa_auth` + adapter `src/wa-auth.js`, BufferJSON, no lugar do `useMultiFileAuthState`); imagens no Supabase Storage (bucket `cardapio`, `npm run setup-storage`); `exigeAuth` valida o JWT localmente via JWKS (`jose`, sem ida à rede por request — warm ~144ms); `Dockerfile`/`docker-entrypoint.sh` corrigidos (semeavam config.json inexistente com `set -e` → crash no boot; build-deps nativos removidos). App não grava nada em disco → dispensa volume, habilita múltiplas instâncias. `excluir` limpa banco+sessão+Storage. Validado: adapter round-trip (8 checks), bot chega ao QR, upload→Storage→URL pública, JWT warm, exclusão limpa tudo. **Ressalva:** prova final das sessões (QR→reiniciar→reconectar) exige celular real. Ver `CHANGELOG.md` v0.17.0 — 2026-06-12
+- [x] **App stateless + JWT local + Docker corrigido** — sessões do WhatsApp no Postgres (`wa_auth` + adapter `src/wa-auth.js`, BufferJSON, no lugar do `useMultiFileAuthState`); imagens no Supabase Storage (bucket `cardapio`, `npm run setup-storage`); `exigeAuth` valida o JWT localmente via JWKS (`jose`, sem ida à rede por request — warm ~144ms); `Dockerfile`/`docker-entrypoint.sh` corrigidos (semeavam config.json inexistente com `set -e` → crash no boot; build-deps nativos removidos). App não grava nada em disco → dispensa volume, habilita múltiplas instâncias. `excluir` limpa banco+sessão+Storage. Validado: adapter round-trip (8 checks), bot chega ao QR, upload→Storage→URL pública, JWT warm, exclusão limpa tudo. **Reconexão confirmada em produção** (desconectar→reconectar sem novo QR). Ver `CHANGELOG.md` v0.17.0 — 2026-06-12
+- [x] **Higiene de sessões antigas (v0.17.1)** — `limparSessoesAntigas` (em `wa-auth.js`) apaga `session:*` inativas há +90 dias (nova coluna `wa_auth.atualizado_em`), agendada no `index.js` (boot + 24h). Seguro (Baileys recria no próximo contato); não toca creds/pre-keys/app-state. Validado: recente preservada, antiga (100d) removida, creds/pre-key intocados. Ver `CHANGELOG.md` v0.17.1 — 2026-06-12

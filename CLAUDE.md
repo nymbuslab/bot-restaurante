@@ -303,8 +303,10 @@ FIN_NOME → FIN_ENTREGA → [FIN_ENDERECO] → FIN_PAGAMENTO → CONFIRMACAO`
     **bounded** — repostas conforme consumidas), `app-state-sync-key`, `creds`, e 1 `session:`
     por cliente atendido. PK `(slug, chave)` + **UPSERT** (`ON CONFLICT DO UPDATE`): **reconectar
     NÃO duplica** — o nº de linhas depende do conteúdo da sessão, não de quantas vezes conecta.
-    O único crescimento é ~1 `session:` por cliente novo (≈1 KB cada); trivial pro Postgres —
-    se um dia incomodar, dá pra adicionar limpeza periódica de `session:` antigas.
+    O único crescimento é ~1 `session:` por cliente novo (≈1 KB cada); trivial pro Postgres.
+    **Higiene automática:** `limparSessoesAntigas` (em `wa-auth.js`, agendada no `index.js` —
+    1x no boot + a cada 24h) apaga `session:*` inativas há +90 dias (coluna `atualizado_em`);
+    seguro, pois o Baileys recria a sessão no próximo contato. NÃO toca creds/pre-keys.
   - **Sensível:** essas linhas SÃO a sessão do WhatsApp (quem lê pode sequestrar a conexão).
     Protegidas por RLS + conexão privilegiada do backend; `SERVICE_ROLE_KEY` nunca no front/git.
 - **Imagens do cardápio**: no Supabase Storage (bucket público `cardapio`, pasta `{slug}/`).
