@@ -5,9 +5,6 @@ node_modules/
 data/*.db
 data/tenants/
 
-# Backups manuais (contêm dados de cliente — nunca versionar)
-backups/
-
 # Ambiente / temporários
 .env
 .mcp.json

@@ -213,11 +213,12 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 
 **App stateless — tudo está no Supabase.** O backup é **gerenciado pelo Supabase**:
 point-in-time recovery do Postgres (dashboard → **Database → Backups**, no plano Pro) ou um
-export pontual com `pg_dump` usando a `DATABASE_URL`. As imagens ficam no **Storage** (também
-no Supabase).
+export pontual com `pg_dump` usando a `DATABASE_URL`. As imagens ficam no **Storage** e as
+sessões do WhatsApp na tabela `wa_auth` (também no Supabase).
 
-Não há mais nada relevante em disco. O `npm run backup` (e a aba Backup do super-admin)
-empacotam só a pasta `data/` legada — hoje vazia; são vestigiais e podem ser removidos depois.
+Não há nada relevante em disco, então não há backup do lado do app. O antigo `npm run backup`
+(e a aba Backup do super-admin), da era SQLite, foi **removido na v0.18.0** por ter ficado
+obsoleto com o app stateless.
 
 ---
 
