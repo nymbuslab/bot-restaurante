@@ -13,6 +13,15 @@ _(nada no momento)_
 
 ## 📋 Próximos Passos
 
+### Pacote de melhorias — UI/UX e conta (jun/2026) — fazer 1 por vez
+
+- [x] **T1 — Fix barra de rolagem no horário (wizard)** — `.hor-time` do wizard passou de 118px (que estourava o card e criava scroll-x) para 100px + padding reduzido; cabe sem cortar a hora nem gerar barra. Validado (Playwright: scrollW == clientW, "22:00" inteiro)
+- [ ] **T2 — Bug: aba Assinatura não reflete `cortesia`** (P0) — `renderAssinatura` (app.js) não tem `cortesia` no mapa → tenant com cortesia aparece como "Sem assinatura". Adicionar status + textos + ações; corrigir desalinhamento da tela
+- [ ] **T3 — Configurações em abas (Empresa × Bot)** (P1) — hoje tudo numa página só (muita rolagem, dados da empresa misturados com comportamento do bot). Separar em abas: **Empresa** (nome, telefone, endereço/CEP, **e-mail cadastrado**, **trocar senha**, **trocar e-mail**) × **Bot** (status de atendimento, horários, mensagens, entrega/pagamento, comportamento). Inclui backend de trocar senha/e-mail (Supabase Auth)
+- [ ] **T4 — Gestão de cartões na assinatura** (P1) — mostrar cartão cadastrado, trocar cartão e **adicionar mais de um** (fallback se um falhar). Via Stripe (listar payment methods, definir padrão, adicionar por SetupIntent) no próprio painel
+- [ ] **T5 — Polimento de UI (mais bonita)** (P1) — passada de design, 1 tela por vez: **T5a** landing (tela principal) · **T5b** painel do usuário · **T5c** painel master
+- [ ] **T6 — Auditoria de responsividade** (P2) — rodar skill de frontend e verificar telas grandes e smartphones (ideal após o polimento de UI)
+
 - [ ] (P2) **[operacional]** Limpar pastas órfãs `session-*/` no volume de produção (Fly) — lixo do whatsapp-web.js que incha o volume e os backups. Local já limpo; falta rodar no Fly: `fly ssh console` → `rm -rf /app/data/tenants/*/session-*` (preservar `baileys-*/`). Ver `DEPLOY.md`
 
 ## ✅ Concluído
