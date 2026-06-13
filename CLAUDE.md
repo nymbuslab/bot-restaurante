@@ -131,6 +131,8 @@ public/
   admin.html          -> painel administrativo (inclui aba Assinatura + gate)
   admin-master.html   -> painel super-admin (sidebar; gestão de tenants + assinatura)
   app.js, app-admin.js, style.css -> lógica dos painéis e estilos
+  endereco-cep.js     -> util compartilhado: máscara/busca de CEP (ViaCEP) + composição de endereço
+  dinheiro.js         -> util compartilhado: máscara monetária (centavos primeiro) + formatação BR
 supabase/
   migrations/         -> schema versionado (npx supabase db push)
 scripts/
@@ -267,6 +269,40 @@ Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KE
   **cortesia** (`PATCH .../assinatura/cortesia|revogar`), **cancelar no Stripe**
   (`PATCH .../assinatura/cancelar`), suspender/reativar (eixo `ativo`) e excluir.
   Métricas de billing (trial/pagantes/cortesia/atraso/cancelados) em `GET /api/admin/metrics`.
+
+## Onboarding (wizard) e retomada
+
+Cadastro público em `/cadastro.html` é um **wizard de 4 etapas**: Conta → Dados (telefone +
+endereço) → Horário → Entrega → checkout. Só a **Etapa 1** (conta) e a **Etapa 2** (dados)
+são obrigatórias; Horário/Entrega são puláveis.
+
+- **Progresso rastreado** em `config.onboarding = { concluido, etapa }`. O wizard salva a
+  `etapa` ao avançar e marca `concluido: true` ao finalizar/pular a Entrega.
+- **Retomada:** `autenticar`/`POST /api/login` retornam `onboardingConcluido`/`onboardingEtapa`.
+  `login.html` manda pro wizard se incompleto (retoma na etapa salva, com a Etapa 2 preenchida);
+  senão, painel. O re-cadastro com e-mail existente **loga com a senha digitada e retoma** (ou vai
+  ao painel). `cadastro.html` também retoma sozinho no boot se já houver sessão.
+- **Auto-reparo de conta órfã:** se o usuário existe no Supabase Auth **sem** linha em `empresas`
+  (cadastro interrompido), `empresas.cadastrar` loga com a senha para obter o `user_id` e **recria
+  a linha** — corrige o caso "diz que já existe mas o login não valida". Senha errada → bloqueia.
+- **Retrocompatível:** contas antigas (config sem `onboarding`) são tratadas como **concluídas**.
+
+## Formulários — utils compartilhados (`public/`)
+
+Para padronização entre onboarding e painel, dois utils carregados por `<script>` antes do
+`app.js`/script inline (em `cadastro.html` e `admin.html`):
+
+- **`endereco-cep.js`** (`window.EnderecoCep`): endereço **estruturado** (CEP, logradouro, número,
+  bairro, complemento, cidade, UF) com **autofill via ViaCEP** (`viacep.com.br`, direto do
+  navegador). `comporEndereco(...)` monta a string única `config.restaurante.endereco` que
+  painel/pedido/bot já consomem; os campos estruturados também ficam em `config.restaurante`.
+  No painel, endereço legado (só string) é preservado e mostrado como dica até preencher o CEP.
+- **`dinheiro.js`** (`window.Dinheiro`): **padrão monetário único** da plataforma. Máscara
+  **"centavos primeiro"** (`mascarar(campo)`): digita-se da direita pra esquerda — `1`→`0,01`,
+  `1000`→`10,00`, `123456`→`1.234,56`. `valor(campo)` lê o número, `setValor(campo, reais)` grava,
+  `formatar(reais)`/`comPrefixo(reais)` exibem em BR (vírgula + ponto de milhar). **Todo campo de
+  dinheiro usa isto** (taxa de entrega, preço de item, opcionais) — `type=text inputmode=numeric`,
+  nunca `type=number` nem `parseFloat` direto.
 
 ## Horário de funcionamento
 
