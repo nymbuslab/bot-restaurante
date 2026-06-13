@@ -115,6 +115,24 @@ function atualizarBadgeAtendimento(aberto) {
   texto.textContent = aberto ? "Aberto" : "Fechado";
 }
 
+// Dias indexados por getDay() (0=dom) — para o estado real de abertura.
+const DIAS_KEY = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+// Estado REAL de abertura agora: respeita o toggle E o horário do dia (espelha o
+// estaAberto do backend). O badge do header usa isto, não só o toggle manual.
+function lojaAbertaAgora(config) {
+  if (!config || !config.atendimento || !config.atendimento.aberto) return false;
+  const horarios = config.horarios;
+  if (!horarios) return true;
+  const agora = new Date();
+  const h = horarios[DIAS_KEY[agora.getDay()]];
+  if (!h || h.fechado) return false;
+  if (!h.abre || !h.fecha) return true;
+  const [hA, mA] = h.abre.split(":").map(Number);
+  const [hF, mF] = h.fecha.split(":").map(Number);
+  const min = agora.getHours() * 60 + agora.getMinutes();
+  return min >= hA * 60 + mA && min < hF * 60 + mF;
+}
+
 // ============================================================
 // NAVEGAÇÃO POR ABAS
 // ============================================================
@@ -999,7 +1017,8 @@ function preencherConfig() {
   const c = configAtual;
   $("cfgNome").value = c.restaurante.nome || "";
   $("cfgTelefone").value = c.restaurante.telefone || "";
-  $("cfgHorario").value = c.restaurante.horario || "";
+  // Texto de horário é gerado automaticamente da tabela (campo read-only).
+  $("cfgHorario").value = resumirHorarios(c.horarios || {}) || c.restaurante.horario || "";
   // Endereço estruturado (CEP + autofill). Tenants antigos só têm a string `endereco`.
   const r = c.restaurante;
   $("cfgCep").value = r.cep || "";
@@ -1029,7 +1048,7 @@ function preencherConfig() {
   $("cfgConfirmado").value = c.mensagens.pedidoConfirmado || "";
   $("cfgMsgProntoEntrega").value  = c.mensagens?.pedidoPronto?.entrega  || "";
   $("cfgMsgProntoRetirada").value = c.mensagens?.pedidoPronto?.retirada || "";
-  atualizarBadgeAtendimento(!!c.atendimento.aberto);
+  atualizarBadgeAtendimento(lojaAbertaAgora(c));
   atualizarStatusConfig(!!c.atendimento.aberto);
   renderHorarios();
   renderPagamentos();
@@ -1097,18 +1116,22 @@ function adicionarPagamentoInline() {
   input.addEventListener("blur", commit);
 }
 
+// Recalcula AO VIVO o texto de horário (campo read-only) e o badge a partir da
+// tabela de horários + toggle. O texto é gerado automaticamente — sem botão.
+function sincronizarHorario() {
+  const horarios = lerHorariosDoDOM();
+  $("cfgHorario").value = resumirHorarios(horarios);
+  atualizarBadgeAtendimento(lojaAbertaAgora({ atendimento: { aberto: $("cfgAberto").checked }, horarios }));
+}
+
 $("cfgAberto").addEventListener("change", (e) => {
-  atualizarBadgeAtendimento(e.target.checked);
+  sincronizarHorario();
   atualizarStatusConfig(e.target.checked);
 });
 
-// Gera o texto de horário a partir da tabela ao vivo (não sobrescreve sozinho).
-$("btnGerarHorario").addEventListener("click", () => {
-  const texto = resumirHorarios(lerHorariosDoDOM());
-  if (!texto) { toast("Defina ao menos um dia aberto na tabela de horários.", "erro"); return; }
-  $("cfgHorario").value = texto;
-  toast("Texto de horário gerado. Revise e salve as configurações.");
-});
+// Editar a tabela de horários atualiza o texto exibido ao cliente e o badge.
+$("horariosBody").addEventListener("input", sincronizarHorario);
+$("horariosBody").addEventListener("change", sincronizarHorario);
 
 async function carregarConfig() {
   const r = await api("GET", "/api/config");
@@ -1138,7 +1161,8 @@ $("btnDescartarConfig").addEventListener("click", async () => {
 $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.restaurante.nome = $("cfgNome").value;
   configAtual.restaurante.telefone = $("cfgTelefone").value;
-  configAtual.restaurante.horario = $("cfgHorario").value;
+  // Horário exibido ao cliente é sempre o gerado da tabela (auto).
+  configAtual.restaurante.horario = resumirHorarios(lerHorariosDoDOM());
   // Endereço: recompõe a string a partir dos campos estruturados. Se nenhum
   // estiver preenchido, preserva o endereço atual (não apaga legados).
   const endStruct = {

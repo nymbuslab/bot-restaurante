@@ -320,7 +320,19 @@ A função `estaAberto(tenantDir)` em `fluxo.js` verifica:
 2. Se `horarios` existe → compara dia/hora atual com o range do dia.
 3. Se não existe → considera aberto.
 
-Fora do horário, saudações recebem a mensagem `config.mensagens.fechado`.
+Fora do horário, saudações e o "1" (fazer pedido) recebem `config.mensagens.fechado`.
+
+- **Simulador ignora o horário:** `processarMensagem(..., opts)` aceita `{ ignorarHorario: true }`
+  (passado pela rota `/api/simulador/mensagem`). O console de testes sempre atende, para testar o
+  fluxo a qualquer hora; o **bot real no WhatsApp** (multi-bot, sem `opts`) continua respeitando.
+- **Texto `{horario}` automático:** a variável `{horario}` das mensagens é **gerada da tabela**
+  por `textoHorario(config)` em `fluxo.js` (mesmo formato do painel), garantindo que o cliente
+  receba o horário correto/atualizado. No painel, o campo "Horário (texto exibido ao cliente)" é
+  **read-only** e atualiza ao vivo conforme a tabela (sem botão "gerar").
+- **Badge do header segue o horário real:** `lojaAbertaAgora(config)` (em `app.js`, espelha o
+  `estaAberto`) — fica "Fechado" mesmo com o toggle ligado se estiver fora do horário. O toggle
+  "Status do Atendimento" continua sendo só o override manual.
+
 O painel mostra a tabela de horários na aba **Configurações**.
 
 ## Modelo de dados

@@ -1243,22 +1243,9 @@ button:disabled {
 .pag-input { width: 170px; border-radius: 20px; padding: 6px 14px; }
 
 /* Botão "Gerar automaticamente" sob o campo de texto do horário */
-.cfg-gerar-horario {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  margin-top: 8px;
-  background: transparent;
-  border: none;
-  padding: 2px 0;
-  color: var(--accent-fg);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.cfg-gerar-horario:hover { color: var(--secondary); background: none; transform: none; }
-.cfg-gerar-horario svg { flex-shrink: 0; }
+/* Texto de horário é gerado automaticamente da tabela (campo read-only). */
+.cfg-horario-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; }
+#cfgHorario[readonly] { color: var(--text-secondary); cursor: default; }
 
 /* Barra inferior com Descartar + Salvar */
 .cfg-barra { justify-content: space-between; }
