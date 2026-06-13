@@ -122,6 +122,64 @@ async function criarCheckout({ slug, nome, email, stripeCustomerId, baseUrl }) {
   return session.url;
 }
 
+// ---- Gestão de cartões no painel (sem o portal hospedado) ----
+
+// Lista os cartões do Customer + marca qual é o padrão (o que o Stripe cobra).
+async function listarCartoes(stripeCustomerId) {
+  if (!stripe || !stripeCustomerId) return [];
+  const cust = await stripe.customers.retrieve(stripeCustomerId);
+  const padraoId = cust && cust.invoice_settings && cust.invoice_settings.default_payment_method;
+  const r = await stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" });
+  return r.data.map((pm) => ({
+    id: pm.id,
+    marca: pm.card ? pm.card.brand : "card",     // visa, mastercard, ...
+    ultimos4: pm.card ? pm.card.last4 : "",
+    mes: pm.card ? pm.card.exp_month : null,
+    ano: pm.card ? pm.card.exp_year : null,
+    padrao: pm.id === padraoId,
+  }));
+}
+
+// SetupIntent avulso para ADICIONAR um cartão a um Customer já existente
+// (sem criar assinatura). Reusa o fluxo do Payment Element do checkout.
+async function criarSetupIntentCartao(stripeCustomerId) {
+  if (!stripeCustomerId) throw new Error("Cliente sem assinatura iniciada.");
+  const si = await stripe.setupIntents.create({
+    customer: stripeCustomerId,
+    usage: "off_session",
+    payment_method_types: ["card"],
+  });
+  return { clientSecret: si.client_secret, publishableKey: PUBLISHABLE_KEY };
+}
+
+// Define um cartão como padrão: no Customer (faturas futuras) E na assinatura
+// viva (cobrança da próxima fatura). O PM precisa pertencer ao Customer.
+async function definirCartaoPadrao({ stripeCustomerId, stripeSubscriptionId, paymentMethodId }) {
+  const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+  if (!pm || pm.customer !== stripeCustomerId) throw new Error("Cartão não pertence a este cliente.");
+  await stripe.customers.update(stripeCustomerId, {
+    invoice_settings: { default_payment_method: paymentMethodId },
+  });
+  if (stripeSubscriptionId) {
+    await stripe.subscriptions.update(stripeSubscriptionId, { default_payment_method: paymentMethodId }).catch(() => {});
+  }
+  return true;
+}
+
+// Remove (detach) um cartão. Trava: não pode ser o padrão nem o último cartão,
+// para o tenant nunca ficar sem forma de cobrança.
+async function removerCartao({ stripeCustomerId, paymentMethodId }) {
+  const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+  if (!pm || pm.customer !== stripeCustomerId) throw new Error("Cartão não pertence a este cliente.");
+  const cust = await stripe.customers.retrieve(stripeCustomerId);
+  const padraoId = cust && cust.invoice_settings && cust.invoice_settings.default_payment_method;
+  if (paymentMethodId === padraoId) throw new Error("Defina outro cartão como padrão antes de remover este.");
+  const lista = await stripe.paymentMethods.list({ customer: stripeCustomerId, type: "card" });
+  if (lista.data.length <= 1) throw new Error("Você precisa manter ao menos um cartão cadastrado.");
+  await stripe.paymentMethods.detach(paymentMethodId);
+  return true;
+}
+
 // Abre o Customer Portal (gerenciar cartão/cancelamento/faturas).
 async function criarPortal({ stripeCustomerId, baseUrl }) {
   const session = await stripe.billingPortal.sessions.create({
@@ -236,4 +294,5 @@ module.exports = {
   criarCheckout, criarPortal, verificarEvento, tratarEvento,
   listarFaturas, cancelarAssinatura,
   garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup,
+  listarCartoes, criarSetupIntentCartao, definirCartaoPadrao, removerCartao,
 };

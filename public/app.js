@@ -188,6 +188,7 @@ async function carregarAssinatura() {
   assinaturaAtual = await r.json();
   renderAssinatura(assinaturaAtual);
   aplicarGate(assinaturaAtual);
+  carregarCartoes();
 }
 
 function renderAssinatura(a) {
@@ -282,6 +283,138 @@ async function abrirPortal(e) {
 
 const _gateSair = $("gate-sair");
 if (_gateSair) _gateSair.addEventListener("click", sair);
+
+// ---- Gestão de cartões (Stripe) no painel ----
+const MARCAS_CARTAO = {
+  visa: "Visa", mastercard: "Mastercard", amex: "Amex", elo: "Elo",
+  hipercard: "Hipercard", diners: "Diners", discover: "Discover", jcb: "JCB",
+};
+function nomeMarca(m) { return MARCAS_CARTAO[m] || (m ? m[0].toUpperCase() + m.slice(1) : "Cartão"); }
+
+async function carregarCartoes() {
+  const card = $("assinCartoesCard");
+  if (!card) return;
+  const r = await api("GET", "/api/assinatura/cartoes");
+  if (!r || !r.ok) { card.style.display = "none"; return; }
+  const { cartoes } = await r.json();
+  // Sem Customer no Stripe (cortesia/sem assinatura) → não há cartões a gerenciar.
+  if (!cartoes || !cartoes.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  renderCartoes(cartoes);
+}
+
+function renderCartoes(cartoes) {
+  const lista = $("assinCartoesLista");
+  lista.innerHTML = "";
+  cartoes.forEach((c) => {
+    const exp = c.mes && c.ano ? `${String(c.mes).padStart(2, "0")}/${String(c.ano).slice(-2)}` : "";
+    const item = document.createElement("div");
+    item.className = "cartao-item" + (c.padrao ? " padrao" : "");
+    const acoes = c.padrao
+      ? `<span class="cartao-padrao-tag">Padrão</span>`
+      : `<button type="button" class="secundario mini" data-padrao="${c.id}">Tornar padrão</button>
+         <button type="button" class="perigo mini" data-remover="${c.id}">Remover</button>`;
+    item.innerHTML = `
+      <div class="cartao-info">
+        <svg class="cartao-icone" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <div class="cartao-texto">
+          <span class="cartao-marca">${escapar(nomeMarca(c.marca))} •••• ${escapar(c.ultimos4)}</span>
+          ${exp ? `<span class="cartao-exp">Expira ${exp}</span>` : ""}
+        </div>
+      </div>
+      <div class="cartao-item-acoes">${acoes}</div>`;
+    lista.appendChild(item);
+  });
+
+  lista.querySelectorAll("[data-padrao]").forEach((b) =>
+    b.addEventListener("click", () => definirPadrao(b.dataset.padrao, b)));
+  lista.querySelectorAll("[data-remover]").forEach((b) =>
+    b.addEventListener("click", () => removerCartao(b.dataset.remover, b)));
+}
+
+async function definirPadrao(id, btn) {
+  btn.disabled = true;
+  const r = await api("PATCH", `/api/assinatura/cartoes/${id}/padrao`);
+  const d = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.ok) { toast("✓ Cartão padrão atualizado!"); await carregarCartoes(); }
+  else { toast((d && d.erro) || "Não foi possível definir o cartão padrão.", "erro"); btn.disabled = false; }
+}
+
+async function removerCartao(id, btn) {
+  const ok = await confirmar("Remover cartão", "Tem certeza que deseja remover este cartão?");
+  if (!ok) return;
+  btn.disabled = true;
+  const r = await api("DELETE", `/api/assinatura/cartoes/${id}`);
+  const d = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.ok) { toast("✓ Cartão removido."); await carregarCartoes(); }
+  else { toast((d && d.erro) || "Não foi possível remover o cartão.", "erro"); btn.disabled = false; }
+}
+
+// Modal de adicionar cartão (Payment Element, mesmo visual do checkout).
+let _cartaoStripe = null, _cartaoElements = null;
+function aparenciaStripe() {
+  return {
+    theme: "night",
+    variables: {
+      colorPrimary: "#6344BC", colorBackground: "#222533", colorText: "#F0F2FA",
+      colorTextSecondary: "#8B92B3", colorDanger: "#EF4444",
+      fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+      borderRadius: "10px", spacingUnit: "4px",
+    },
+  };
+}
+
+async function abrirModalCartao() {
+  const overlay = $("cartao-overlay");
+  const btn = $("cartao-salvar");
+  const erro = $("cartao-erro");
+  erro.textContent = "";
+  btn.disabled = true; btn.textContent = "Carregando…";
+  overlay.style.display = "flex";
+  $("cartao-payment").innerHTML = "";
+  try {
+    const r = await api("POST", "/api/assinatura/cartoes/setup-intent");
+    if (!r || !r.ok) { erro.textContent = "Não foi possível iniciar a adição do cartão."; return; }
+    const { clientSecret, publishableKey } = await r.json();
+    _cartaoStripe = Stripe(publishableKey);
+    _cartaoElements = _cartaoStripe.elements({ clientSecret, appearance: aparenciaStripe() });
+    const pe = _cartaoElements.create("payment", { layout: "tabs" });
+    pe.mount("#cartao-payment");
+    pe.on("ready", () => { btn.disabled = false; btn.textContent = "Salvar cartão"; });
+  } catch (e) {
+    erro.textContent = "Erro ao conectar ao servidor.";
+  }
+}
+
+function fecharModalCartao() {
+  $("cartao-overlay").style.display = "none";
+  _cartaoStripe = null; _cartaoElements = null;
+}
+
+if ($("btnAddCartao")) $("btnAddCartao").addEventListener("click", abrirModalCartao);
+if ($("cartao-fechar")) $("cartao-fechar").addEventListener("click", fecharModalCartao);
+if ($("cartao-cancelar")) $("cartao-cancelar").addEventListener("click", fecharModalCartao);
+
+if ($("cartao-form")) $("cartao-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!_cartaoStripe || !_cartaoElements) return;
+  const btn = $("cartao-salvar");
+  const erro = $("cartao-erro");
+  erro.textContent = "";
+  btn.disabled = true; btn.textContent = "Salvando…";
+  const { error, setupIntent } = await _cartaoStripe.confirmSetup({
+    elements: _cartaoElements,
+    redirect: "if_required",
+  });
+  if (error) { erro.textContent = error.message || "Não foi possível salvar o cartão."; btn.disabled = false; btn.textContent = "Salvar cartão"; return; }
+  if (!setupIntent || setupIntent.status !== "succeeded") {
+    erro.textContent = "Não foi possível confirmar o cartão. Tente novamente.";
+    btn.disabled = false; btn.textContent = "Salvar cartão"; return;
+  }
+  fecharModalCartao();
+  toast("✓ Cartão adicionado!");
+  await carregarCartoes();
+});
 
 // ============================================================
 // CONEXÃO (status do bot + QR)
