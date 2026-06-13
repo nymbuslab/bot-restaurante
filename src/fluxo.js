@@ -69,6 +69,36 @@ function estaAberto(tenantDir) {
   return min >= hA * 60 + mA && min < hF * 60 + mF;
 }
 
+// Texto do horário de funcionamento gerado a partir da tabela `horarios`
+// (mesmo formato do painel). Usado para a variável {horario} nas mensagens,
+// garantindo que o cliente sempre receba o horário correto/atualizado.
+const DIAS_LABEL = [
+  { key: "seg", label: "Segunda" }, { key: "ter", label: "Terça" },
+  { key: "qua", label: "Quarta" }, { key: "qui", label: "Quinta" },
+  { key: "sex", label: "Sexta" }, { key: "sab", label: "Sábado" },
+  { key: "dom", label: "Domingo" },
+];
+function textoHorario(config) {
+  const horarios = config.horarios;
+  if (!horarios) return config.restaurante.horario || "";
+  const grupos = [];
+  let atual = null;
+  for (const { key, label } of DIAS_LABEL) {
+    const h = horarios[key] || {};
+    if (h.fechado) { atual = null; continue; } // dia fechado quebra a sequência
+    const abre = h.abre || "11:00";
+    const fecha = h.fecha || "22:00";
+    if (atual && atual.abre === abre && atual.fecha === fecha) atual.fim = label;
+    else { atual = { ini: label, fim: label, abre, fecha }; grupos.push(atual); }
+  }
+  if (!grupos.length) return config.restaurante.horario || "";
+  const trechos = grupos.map((g) => {
+    const dias = g.ini === g.fim ? `*${g.ini}*` : `de *${g.ini}* a *${g.fim}*`;
+    return `${dias} das *${g.abre}* às *${g.fecha}*`;
+  });
+  return "Nosso atendimento é " + trechos.join("; ");
+}
+
 // ---------- Cardápio / bebidas ----------
 
 function textoCardapio(tenantDir) {
@@ -271,11 +301,13 @@ function textoConfirmacao(sessao, tenantDir) {
 
 // ---------- Máquina de estados ----------
 
-async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "") {
+async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = "", opts = {}) {
   await store.ensure(tenantDir); // garante config/cardápio no cache (reads síncronos abaixo)
   const config = store.getConfig(tenantDir);
   const msg = (texto || "").trim();
   const lower = msg.toLowerCase();
+  // Simulador (console de testes) ignora o horário comercial; o bot real respeita.
+  const aberto = opts.ignorarHorario ? true : estaAberto(tenantDir);
 
   // Captura cedo na sessão (robusto): o chatId é o canal da conversa (LID ou phone
   // JID) por onde o "avisar" vai enviar; o telefone real (de senderPn) pode não vir
@@ -293,9 +325,9 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
   }
 
   const saudacoes = ["menu", "início", "inicio", "oi", "olá", "ola", "bom dia", "boa tarde", "boa noite"];
-  if (!estaAberto(tenantDir) && saudacoes.includes(lower)) {
+  if (!aberto && saudacoes.includes(lower)) {
     sessao.estado = "MENU";
-    return { respostas: [aplicar(config.mensagens.fechado, { horario: config.restaurante.horario })] };
+    return { respostas: [aplicar(config.mensagens.fechado, { horario: textoHorario(config) })] };
   }
   if (saudacoes.includes(lower)) {
     // Saudação com carrinho aberto: não volta ao menu silenciosamente —
@@ -332,8 +364,8 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
 
     case "MENU":
       if (msg === "1") {
-        if (!estaAberto(tenantDir))
-          return { respostas: [aplicar(config.mensagens.fechado, { horario: config.restaurante.horario })] };
+        if (!aberto)
+          return { respostas: [aplicar(config.mensagens.fechado, { horario: textoHorario(config) })] };
         sessao.estado = "CATEGORIA";
         return { respostas: [textoCategorias(tenantDir)] };
       }
