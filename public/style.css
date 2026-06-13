@@ -309,6 +309,28 @@ header {
 
 .header-sair { display: none; } /* Sair no header só no mobile */
 
+/* Chip de teste grátis no header (atalho pra aba Assinatura) */
+.header-trial {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--secondary-subtle);
+  color: var(--secondary);
+  border: 1px solid rgba(115,210,230,0.28);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+.header-trial::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+}
+.header-trial:hover { background: var(--secondary-subtle); transform: translateY(-1px); }
+
 /* ---------- Badge de status do atendimento ---------- */
 .badge-atendimento {
   display: inline-flex;
@@ -355,6 +377,7 @@ nav {
 }
 
 nav button {
+  position: relative;
   background: none;
   color: var(--text-secondary);
   border: none;
@@ -371,6 +394,18 @@ nav button {
   transition: background 0.15s, color 0.15s;
 }
 
+/* Indicador de ativo: barra de acento que cresce à esquerda */
+nav button::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 50%;
+  width: 3px; height: 0;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-fg);
+  transform: translateY(-50%);
+  transition: height 0.18s ease;
+}
+
 nav button:hover {
   background: var(--bg-elevated);
   color: var(--text-primary);
@@ -381,6 +416,7 @@ nav button.ativo {
   background: var(--accent-subtle);
   color: var(--accent-fg);
 }
+nav button.ativo::before { height: 20px; }
 
 nav button svg {
   flex-shrink: 0;
@@ -414,13 +450,26 @@ main {
 .aba { display: none; }
 .aba.ativa { display: block; }
 
-.aba.ativa {
-  animation: fadeSlide 0.18s ease both;
+/* Entrada em cascata: cada bloco de topo da aba sobe com fade em sequência.
+   Recomeça a cada troca de aba (display none→block reinicia a animação). */
+.aba.ativa > * {
+  animation: fadeSlide 0.42s cubic-bezier(.22,.61,.36,1) both;
 }
+.aba.ativa > *:nth-child(1) { animation-delay: 0.02s; }
+.aba.ativa > *:nth-child(2) { animation-delay: 0.07s; }
+.aba.ativa > *:nth-child(3) { animation-delay: 0.12s; }
+.aba.ativa > *:nth-child(4) { animation-delay: 0.17s; }
+.aba.ativa > *:nth-child(5) { animation-delay: 0.22s; }
+.aba.ativa > *:nth-child(6) { animation-delay: 0.27s; }
+.aba.ativa > *:nth-child(n+7) { animation-delay: 0.3s; }
 
 @keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aba.ativa > * { animation: none; }
 }
 
 /* ---------- Inputs e textarea ---------- */
@@ -1349,6 +1398,12 @@ button:disabled {
   flex-direction: column;
   gap: 8px;
   box-shadow: var(--shadow-sm);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.metrica-card:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 .metrica-label {
   font-size: 11px;
@@ -1509,7 +1564,9 @@ th {
 }
 
 tbody tr:last-child td { border-bottom: none; }
+tbody tr td { transition: background 0.14s ease, box-shadow 0.14s ease; }
 tbody tr:hover td { background: var(--bg-elevated); }
+tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 
 .tag {
   font-size: 11px;
@@ -2510,6 +2567,13 @@ tbody tr:hover td { background: var(--bg-elevated); }
     border-radius: 0;
   }
   nav button.ativo { background: none; color: var(--accent-fg); }
+  /* No bottom-nav o indicador vira uma barra no topo do item */
+  nav button::before {
+    left: 50%; top: 0; transform: translateX(-50%);
+    width: 0; height: 3px; border-radius: 0 0 3px 3px;
+    transition: width 0.18s ease;
+  }
+  nav button.ativo::before { width: 22px; height: 3px; }
 
   .card { padding: 16px; }
 
