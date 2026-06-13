@@ -2825,6 +2825,9 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .cep-hint.erro-hint { color: var(--error); }
 /* Campo estreito (Número / UF) dentro de uma .linha no painel */
 .linha > .campo.campo-curto { flex: 0 0 110px; min-width: 0; }
+/* CEP não precisa ocupar a linha toda (só 9 caracteres) */
+.wiz-cep-campo .input-wrap { max-width: 220px; }
+.campo-cep input { max-width: 220px; }
 .wiz-tabela-wrap { overflow-x: auto; }
 
 .wiz-acoes {
