@@ -2779,7 +2779,7 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .auth-layout.wiz .tabela-horarios th { padding-left: 4px; padding-right: 4px; }
 .auth-layout.wiz .hor-linha td { padding: 7px 4px; }
 .auth-layout.wiz .hor-dia { font-size: 13px; }
-.auth-layout.wiz .hor-time { width: 92px; }
+.auth-layout.wiz .hor-time { width: 118px; }
 
 /* Etapa 1 (Conta) é a mais alta: aperta rodapé/copyright para caber sem rolar */
 .auth-layout.wiz .auth-footer { margin-top: 18px; }
