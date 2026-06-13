@@ -577,7 +577,8 @@ app.post("/api/simulador/mensagem", exigeAuth, async (req, res) => {
     const sid = `sim:${req.slug}`;
     const sessao = getSessao(sid);
     await store.ensure(req.tenantDir);
-    const resultado = await processarMensagem(sid, String(mensagem), sessao, req.tenantDir);
+    // Simulador é console de testes: ignora o horário comercial (5º arg telefone = null).
+    const resultado = await processarMensagem(sid, String(mensagem), sessao, req.tenantDir, null, { ignorarHorario: true });
     res.json({
       respostas: resultado.respostas || [],
       estado: sessao.estado,
