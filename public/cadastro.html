@@ -241,6 +241,19 @@
       } catch (e) { return false; }
     }
 
+    // Fim do onboarding: abre o checkout do trial (cartão) e manda pro Stripe.
+    // Se algo falhar, cai no painel — o gate de assinatura lá pede a ativação.
+    async function irParaPlano() {
+      try {
+        const r = await fetch("/api/assinatura/checkout", { method: "POST", headers: authHeaders() });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.url) { location.href = d.url; return; }
+        }
+      } catch (e) { /* cai no fallback */ }
+      location.href = "admin.html";
+    }
+
     // ====== ETAPA 1 — cadastro + login (lógica atual, só envolvida no wizard) ======
     const btn  = $("btnCadastrar");
     const erro = $("erro");
@@ -417,13 +430,13 @@
     }
 
     $("btnVoltar4").addEventListener("click", () => irPara(3));
-    $("btnPularEntrega").addEventListener("click", () => { location.href = "admin.html"; });
+    $("btnPularEntrega").addEventListener("click", () => { irParaPlano(); });
     $("btnEntrega").addEventListener("click", async (e) => {
       cfg.atendimento.taxaEntrega = parseBR($("wizTaxa").value);
       const b = e.currentTarget;
       b.disabled = true; b.textContent = "Salvando...";
       const ok = await salvarConfig();
-      if (ok) { location.href = "admin.html"; return; }
+      if (ok) { irParaPlano(); return; }
       b.disabled = false; b.textContent = "Concluir →";
       $("erro4").textContent = "Não foi possível salvar. Tente de novo.";
     });

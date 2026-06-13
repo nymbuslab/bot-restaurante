@@ -126,6 +126,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     $("aba-" + btn.dataset.aba).classList.add("ativa");
     if (btn.dataset.aba === "pedidos") carregarPedidos();
     if (btn.dataset.aba === "conexao") atualizarStatus();
+    if (btn.dataset.aba === "assinatura") carregarAssinatura();
   });
 });
 
@@ -136,6 +137,134 @@ async function sair() {
   location.href = "login.html";
 }
 document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click", sair));
+
+// ============================================================
+// ASSINATURA (Stripe) — status, gate e ações de checkout/portal
+// ============================================================
+let assinaturaAtual = null;
+
+function diasRestantes(iso) {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86400000));
+}
+
+function fmtDataAssin(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function botaoAssin(texto, onClick, classe = "") {
+  const b = document.createElement("button");
+  if (classe) b.className = classe;
+  b.textContent = texto;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+async function carregarAssinatura() {
+  const r = await api("GET", "/api/assinatura");
+  if (!r || !r.ok) return;
+  assinaturaAtual = await r.json();
+  renderAssinatura(assinaturaAtual);
+  aplicarGate(assinaturaAtual);
+}
+
+function renderAssinatura(a) {
+  const badge = $("assinBadge");
+  const info = $("assinInfo");
+  const acoes = $("assinAcoes");
+  if (!badge || !info || !acoes) return;
+
+  const mapa = {
+    trialing: ["Em teste grátis", "trial"],
+    active:   ["Ativa", "ok"],
+    past_due: ["Pagamento pendente", "alerta"],
+    canceled: ["Cancelada", "alerta"],
+    nenhuma:  ["Sem assinatura", "neutro"],
+  };
+  const [texto, cls] = mapa[a.status] || mapa.nenhuma;
+  badge.textContent = texto;
+  badge.className = "assin-badge " + cls;
+
+  if (a.status === "trialing") {
+    const d = diasRestantes(a.trialAte);
+    info.innerHTML = `Seu teste grátis termina em <strong>${d} dia${d === 1 ? "" : "s"}</strong> (${fmtDataAssin(a.trialAte)}). Depois disso a cobrança de <strong>R$ 79,00/mês</strong> é automática no cartão cadastrado.`;
+  } else if (a.status === "active") {
+    info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · R$ 79,00/mês.`;
+  } else if (a.status === "past_due") {
+    info.innerHTML = `Houve um problema com a cobrança. Atualize sua forma de pagamento para manter o bot ativo.`;
+  } else if (a.status === "canceled") {
+    info.innerHTML = `Sua assinatura foi cancelada. Reative para voltar a usar o bot.`;
+  } else {
+    info.innerHTML = `Você ainda não ativou o teste grátis de 7 dias.`;
+  }
+
+  acoes.innerHTML = "";
+  if (a.status === "nenhuma" || a.status === "canceled") {
+    acoes.appendChild(botaoAssin("Iniciar teste grátis de 7 dias", iniciarCheckout));
+  } else if (a.status === "past_due") {
+    acoes.appendChild(botaoAssin("Atualizar pagamento", abrirPortal));
+  } else {
+    acoes.appendChild(botaoAssin("Gerenciar assinatura", abrirPortal, "secundario"));
+  }
+}
+
+function aplicarGate(a) {
+  const overlay = $("gate-overlay");
+  if (!overlay) return;
+  if (a.acessoLiberado) { overlay.style.display = "none"; return; }
+
+  const titulo = $("gate-titulo");
+  const msg = $("gate-mensagem");
+  const acao = $("gate-acao");
+  if (a.status === "past_due") {
+    titulo.textContent = "Pagamento pendente";
+    msg.textContent = "Houve um problema com a cobrança da sua assinatura. Atualize sua forma de pagamento para reativar o bot.";
+    acao.textContent = "Atualizar pagamento";
+    acao.onclick = abrirPortal;
+  } else if (a.status === "canceled") {
+    titulo.textContent = "Assinatura cancelada";
+    msg.textContent = "Reative sua assinatura para voltar a usar o bot e o painel.";
+    acao.textContent = "Reativar assinatura";
+    acao.onclick = iniciarCheckout;
+  } else {
+    titulo.textContent = "Ative seu teste grátis";
+    msg.textContent = "Comece com 7 dias grátis. Você só é cobrado a partir do 8º dia — e pode cancelar antes sem custo.";
+    acao.textContent = "Iniciar teste grátis de 7 dias";
+    acao.onclick = iniciarCheckout;
+  }
+  overlay.style.display = "flex";
+}
+
+async function iniciarCheckout(e) {
+  const btn = e && e.currentTarget;
+  if (btn) btn.disabled = true;
+  const r = await api("POST", "/api/assinatura/checkout");
+  if (r && r.ok) {
+    const d = await r.json();
+    if (d.url) { location.href = d.url; return; }
+  }
+  toast("Não foi possível abrir o pagamento. Tente de novo.", "erro");
+  if (btn) btn.disabled = false;
+}
+
+async function abrirPortal(e) {
+  const btn = e && e.currentTarget;
+  if (btn) btn.disabled = true;
+  const r = await api("POST", "/api/assinatura/portal");
+  if (r && r.ok) {
+    const d = await r.json();
+    if (d.url) { location.href = d.url; return; }
+  }
+  toast("Não foi possível abrir o portal de assinatura.", "erro");
+  if (btn) btn.disabled = false;
+}
+
+const _gateSair = $("gate-sair");
+if (_gateSair) _gateSair.addEventListener("click", sair);
 
 // ============================================================
 // CONEXÃO (status do bot + QR)
@@ -1651,5 +1780,22 @@ async function inicial() {
   const rc = await api("GET", "/api/cardapio");
   if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }
   await carregarConfig();
+  await carregarAssinatura();   // aplica o gate de billing
+
+  // Volta do Stripe Checkout: avisa e, se o webhook ainda não chegou, re-tenta
+  // algumas vezes até a assinatura virar ativa (evita gate piscando após pagar).
+  const params = new URLSearchParams(location.search);
+  const ret = params.get("assinatura");
+  if (ret === "ok") {
+    for (let i = 0; i < 5 && assinaturaAtual && !assinaturaAtual.acessoLiberado; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      await carregarAssinatura();
+    }
+    toast("Assinatura iniciada! Aproveite seu teste grátis. 🎉");
+    history.replaceState(null, "", location.pathname);
+  } else if (ret === "cancelado") {
+    toast("Pagamento não concluído. Você pode tentar de novo quando quiser.", "erro");
+    history.replaceState(null, "", location.pathname);
+  }
 }
 inicial();
