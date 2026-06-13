@@ -93,12 +93,13 @@ function mostrarDash() {
   carregarTenants();
 }
 
-// Troca de aba na sidebar (Visão geral / Restaurantes).
+// Troca de aba na sidebar (Dashboard / Clientes / Configurações Master).
 function trocarAba(aba) {
   document.querySelectorAll("#view-dash nav button[data-aba]").forEach((b) =>
     b.classList.toggle("ativo", b.dataset.aba === aba));
   document.querySelectorAll("#view-dash .aba").forEach((s) =>
     s.classList.toggle("ativa", s.id === "aba-" + aba));
+  if (aba === "config" && !plataformaCarregada) carregarPlataforma();
 }
 
 // ============================================================
@@ -226,6 +227,7 @@ async function carregarTenants() {
     tenants = await rt.json();
     metricas = await rm.json();
     renderMetricas();
+    renderUltimos();
     renderTenants();
   } catch (e) {
     if (e.message !== "Sessão expirada") {
@@ -234,24 +236,90 @@ async function carregarTenants() {
   }
 }
 
+// Ícones (SVG) das métricas hero.
+const ICO = {
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  teste: '<path d="M9 2v6l-5 9a2 2 0 0 0 1.8 3h12.4a2 2 0 0 0 1.8-3l-5-9V2"/><path d="M7 2h10"/>',
+  assin: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  alerta: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+};
+
 function renderMetricas() {
   const t = metricas.totais || {};
-  const card = (label, valor, sub, cls = "") => `
-    <div class="metrica-card ${cls}">
+  // 4 cards "hero" (ícone + rótulo + número), como o protótipo.
+  const hero = (ico, label, valor, cls = "") => `
+    <div class="am-hero-card ${cls}">
+      <span class="am-hero-ico"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico}</svg></span>
+      <span class="am-hero-label">${label}</span>
+      <span class="am-hero-valor">${(valor ?? 0).toLocaleString("pt-BR")}</span>
+    </div>`;
+  $("am-metricas").innerHTML =
+    hero(ICO.users, "Clientes ativos", t.ativos) +
+    hero(ICO.teste, "Em teste", t.trial) +
+    hero(ICO.assin, "Assinantes", t.pagantes) +
+    hero(ICO.alerta, "Cancelados", t.cancelados, "alerta");
+
+  // Faixa secundária: demais métricas reais úteis (sem perder informação).
+  const sec = (label, valor, cls = "") => `
+    <div class="metrica-card am-sec-card ${cls}">
       <span class="metrica-label">${label}</span>
-      <span class="metrica-valor">${valor}</span>
-      ${sub ? `<span class="metrica-subtitulo">${sub}</span>` : ""}
+      <span class="metrica-valor">${(valor ?? 0).toLocaleString("pt-BR")}</span>
     </div>`;
   const atrasoCls = (t.atraso ?? 0) > 0 ? "am-metrica-alerta" : "";
-  $("am-metricas").innerHTML =
-    card("Restaurantes", t.restaurantes ?? 0, "cadastrados") +
-    card("Em teste", t.trial ?? 0, "período grátis") +
-    card("Pagantes", t.pagantes ?? 0, "assinatura ativa") +
-    card("Cortesia", t.cortesia ?? 0, "acesso manual") +
-    card("Em atraso", t.atraso ?? 0, "pagamento pendente", atrasoCls) +
-    card("Cancelados", t.cancelados ?? 0, "sem acesso") +
-    card("Pedidos no mês", t.pedidosMes ?? 0, "somando todos") +
-    card("Conectados", t.conectados ?? 0, "no WhatsApp");
+  $("am-metricas-sec").innerHTML =
+    sec("Cortesia", t.cortesia) +
+    sec("Em atraso", t.atraso, atrasoCls) +
+    sec("Pedidos no mês", t.pedidosMes) +
+    sec("Conectados", t.conectados);
+}
+
+// Iniciais para o avatar neutro (sem foto de rosto).
+function iniciais(nome) {
+  const p = String(nome || "").trim().split(/\s+/).filter(Boolean);
+  if (!p.length) return "?";
+  return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : "")).toUpperCase();
+}
+
+// "Últimos Clientes Cadastrados": top 5 por data de cadastro (desc).
+function renderUltimos() {
+  const cont = $("am-ultimos");
+  if (!cont) return;
+  if (!tenants.length) {
+    cont.innerHTML = `<div class="estado-vazio"><p>Nenhum cliente ainda</p><p class="sub">Os últimos cadastros aparecem aqui.</p></div>`;
+    return;
+  }
+  const recentes = [...tenants]
+    .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0))
+    .slice(0, 5);
+  const linhas = recentes.map((t) => {
+    const st = t.assinaturaStatus || "nenhuma";
+    return `
+      <tr>
+        <td data-label="Cliente">
+          <div class="am-cliente">
+            <span class="am-avatar">${escapar(iniciais(t.nome))}</span>
+            <div class="am-cliente-txt">
+              <span class="am-cliente-nome">${escapar(t.nome)}</span>
+              <span class="am-cliente-email">${escapar(t.email)}</span>
+            </div>
+          </div>
+        </td>
+        <td data-label="Status" class="am-col-status">${planoBadge(st)}</td>
+        <td data-label="Cadastro">${formatarData(t.criadoEm)}</td>
+        <td data-label="Ações" class="am-acoes">
+          <button class="am-olho" data-gerenciar="${escapar(t.slug)}" aria-label="Ver / gerenciar" title="Ver / gerenciar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </td>
+      </tr>`;
+  }).join("");
+  cont.innerHTML = `
+    <table class="am-tabela am-ultimos-tabela">
+      <thead><tr><th>Cliente</th><th>Status</th><th>Data de Cadastro</th><th>Ações</th></tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+  cont.querySelectorAll("button[data-gerenciar]").forEach((b) =>
+    b.addEventListener("click", () => abrirGerenciar(b.dataset.gerenciar)));
 }
 
 function renderTenants() {
@@ -678,6 +746,62 @@ async function confirmarCriar() {
 }
 
 // ============================================================
+// EXPORTAR CSV (clientes)
+// ============================================================
+function exportarCSV() {
+  if (!tenants.length) { toast("Nenhum cliente para exportar.", "erro"); return; }
+  const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+  const cab = ["Nome", "E-mail", "Plano", "Ativo", "Cadastro"];
+  const linhas = tenants.map((t) => {
+    const [plano] = PLANO_MAP[t.assinaturaStatus || "nenhuma"] || PLANO_MAP.nenhuma;
+    return [t.nome, t.email, plano, t.ativo ? "Sim" : "Suspenso", formatarData(t.criadoEm)].map(esc).join(";");
+  });
+  const csv = "﻿" + [cab.map(esc).join(";"), ...linhas].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "clientes-nymbus.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ============================================================
+// CONFIGURAÇÕES MASTER (plataforma — base da futura aba Nymbus)
+// ============================================================
+let plataformaCarregada = false;
+async function carregarPlataforma() {
+  try {
+    const r = await apiAdmin("GET", "/api/admin/plataforma");
+    if (!r.ok) return;
+    const d = await r.json();
+    const inp = $("cfg-suporte-wa");
+    inp.value = d.suporteWhatsapp || "";
+    inp.placeholder = d.envFallback
+      ? `Herdado do servidor: ${d.envFallback}`
+      : "Ex.: 5511999999999 (com DDI e DDD)";
+    plataformaCarregada = true;
+  } catch (e) { /* sessão expirada já tratada */ }
+}
+
+async function salvarPlataforma() {
+  const btn = $("btnSalvarPlataforma");
+  const aviso = $("cfg-suporte-aviso");
+  aviso.textContent = ""; aviso.className = "aviso";
+  btn.disabled = true; btn.textContent = "Salvando...";
+  try {
+    const wa = $("cfg-suporte-wa").value.replace(/\D/g, "");
+    const r = await apiAdmin("PUT", "/api/admin/plataforma", { suporteWhatsapp: wa });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { $("cfg-suporte-wa").value = d.suporteWhatsapp || ""; toast("✓ Configurações salvas!"); }
+    else { aviso.textContent = d.erro || "Não foi possível salvar."; aviso.className = "aviso erro"; }
+  } catch (e) {
+    if (e.message !== "Sessão expirada") { aviso.textContent = "Erro ao conectar."; aviso.className = "aviso erro"; }
+  } finally {
+    btn.disabled = false; btn.textContent = "Salvar";
+  }
+}
+
+// ============================================================
 // BIND DE EVENTOS
 // ============================================================
 $("btnEntrar").addEventListener("click", entrar);
@@ -686,6 +810,9 @@ $("btnSair").addEventListener("click", sair);
 $("btnSairTopo").addEventListener("click", sair);
 $("btnNovo").addEventListener("click", abrirCriar);
 $("am-filtro-status").addEventListener("change", (e) => { filtroStatus = e.target.value; renderTenants(); });
+$("btnExportar").addEventListener("click", exportarCSV);
+$("btnVerTodos").addEventListener("click", () => trocarAba("restaurantes"));
+$("btnSalvarPlataforma").addEventListener("click", salvarPlataforma);
 
 // Navegação por abas (sidebar)
 document.querySelectorAll("#view-dash nav button[data-aba]").forEach((b) => {

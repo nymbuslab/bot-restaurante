@@ -8,6 +8,7 @@ const crypto  = require("crypto");
 const multer  = require("multer");
 
 const empresas = require("./empresas");
+const plataforma = require("./plataforma");
 const store = require("./store");
 const pedidos = require("./pedidos");
 const multiBot = require("./multi-bot");
@@ -232,9 +233,15 @@ app.get("/api/assinatura", exigeAuth, async (req, res) => {
 });
 
 // Informações da plataforma (Nymbus) para o painel do cliente.
-// Hoje só o WhatsApp de suporte (via env); futuramente vem da aba master "Nymbus".
-app.get("/api/plataforma", exigeAuth, (req, res) => {
-  res.json({ suporteWhatsapp: SUPORTE_WHATSAPP || null });
+// Fonte: tabela plataforma_config (editável no painel master); cai pra env
+// SUPORTE_WHATSAPP se ainda não houver valor salvo.
+app.get("/api/plataforma", exigeAuth, async (req, res) => {
+  try {
+    const cfg = await plataforma.obter();
+    res.json({ suporteWhatsapp: cfg.suporteWhatsapp || SUPORTE_WHATSAPP || null });
+  } catch (e) {
+    res.json({ suporteWhatsapp: SUPORTE_WHATSAPP || null });
+  }
 });
 
 // ---- Gestão de cartões no painel (Stripe) ----
@@ -369,6 +376,31 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
     });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao calcular métricas." });
+  }
+});
+
+// ---- Configurações da plataforma (aba "Configurações Master") ----
+// Lê/grava a config global (hoje: WhatsApp de suporte). Reflete na env como
+// fallback (mostra o valor herdado quando ainda não foi salvo no banco).
+app.get("/api/admin/plataforma", exigeSuperAdmin, async (_req, res) => {
+  try {
+    const cfg = await plataforma.obter();
+    res.json({
+      suporteWhatsapp: cfg.suporteWhatsapp || "",
+      envFallback: SUPORTE_WHATSAPP || "",
+      atualizadoEm: cfg.atualizadoEm || null,
+    });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao carregar as configurações." });
+  }
+});
+
+app.put("/api/admin/plataforma", exigeSuperAdmin, async (req, res) => {
+  try {
+    const wa = await plataforma.salvar({ suporteWhatsapp: (req.body || {}).suporteWhatsapp });
+    res.json({ ok: true, suporteWhatsapp: wa || "" });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
   }
 });
 
