@@ -2965,9 +2965,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 /* ============================================================
    ASSINATURA (painel) + GATE de billing
    ============================================================ */
-.assin-topo { margin-bottom: 22px; }
+/* Coluna de billing centralizada (título + cards no mesmo eixo) */
+.assin-topo { margin: 0 auto 22px; max-width: 600px; text-align: center; }
 .assin-titulo { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
-.assin-card { max-width: 560px; }
+.assin-card { max-width: 600px; margin: 0 auto; }
 .assin-cab {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding-bottom: 16px; border-bottom: 1px solid var(--border-subtle);
@@ -3034,10 +3035,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .assin-info strong { color: var(--text-primary); }
 .assin-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
 .assin-acoes button { width: auto; }
-.assin-rodape { margin-top: 14px; }
+.assin-rodape { margin: 14px auto 0; max-width: 600px; text-align: center; }
 
 /* Forma de pagamento — cartões salvos no painel */
-.assin-cartoes-card { max-width: 560px; margin-top: 18px; }
+.assin-cartoes-card { max-width: 600px; margin: 18px auto 0; }
 .assin-cartoes-cab {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   flex-wrap: wrap;
