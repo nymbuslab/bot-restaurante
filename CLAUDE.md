@@ -270,8 +270,19 @@ Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KE
   `multiBot.desconectar`). Não toca `ativo`.
 
 - **Gerenciar** (cliente): aba **Assinatura** no painel + **gate** que trava o painel sem acesso.
-  "Gerenciar assinatura" abre o **Customer Portal** hospedado (`/api/assinatura/portal` — trocar
-  cartão/cancelar/faturas). Reativar = passar pelo checkout próprio de novo.
+  "Gerenciar assinatura" abre o **Customer Portal** hospedado (`/api/assinatura/portal` — faturas/
+  cancelamento). Reativar = passar pelo checkout próprio de novo.
+
+- **Gestão de cartões NO PAINEL** (sem o portal hospedado) — seção "Forma de pagamento" na aba
+  Assinatura. `admin.html` carrega `js.stripe.com/v3` e reusa o **Payment Element** (mesma
+  Appearance API escura do checkout) num modal pra adicionar cartão. Rotas (sob `exigeAuth`):
+  `GET /api/assinatura/cartoes` (lista bandeira/últimos4/validade + qual é o padrão) ·
+  `POST .../cartoes/setup-intent` (SetupIntent avulso, só anexa cartão ao Customer, não cria
+  assinatura) · `PATCH .../cartoes/:id/padrao` (`stripe.definirCartaoPadrao` → atualiza
+  `invoice_settings.default_payment_method` do Customer **e** a subscription) · `DELETE
+  .../cartoes/:id` (detach). **Travas** em `removerCartao`: não remove o cartão **padrão** nem
+  o **último** (tenant nunca fica sem forma de cobrança). A seção só aparece com Customer no
+  Stripe — em **cortesia**/sem assinatura fica oculta (lista vazia). Funções em `src/stripe.js`.
 
 - **Gerenciar (super-admin):** no painel master, o botão **Gerenciar** de cada restaurante abre
   um modal com status + ações + **histórico de faturas** (`GET .../assinatura`): liberar/revogar

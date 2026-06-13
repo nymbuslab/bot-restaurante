@@ -221,6 +221,64 @@ app.get("/api/assinatura", exigeAuth, async (req, res) => {
   }
 });
 
+// ---- Gestão de cartões no painel (Stripe) ----
+app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp.stripeCustomerId) return res.json({ cartoes: [] });
+    const cartoes = await stripeBilling.listarCartoes(emp.stripeCustomerId);
+    res.json({ cartoes });
+  } catch (e) {
+    console.error("listar cartoes:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar os cartões." });
+  }
+});
+
+// Passo 1 de adicionar cartão: SetupIntent para o Payment Element do painel.
+app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    const customer = await stripeBilling.garantirCustomer({
+      slug: emp.slug, nome: emp.nome, email: emp.email, stripeCustomerId: emp.stripeCustomerId,
+    });
+    const r = await stripeBilling.criarSetupIntentCartao(customer);
+    res.json(r);
+  } catch (e) {
+    console.error("setup-intent cartao:", e.message);
+    res.status(500).json({ erro: "Não foi possível iniciar a adição do cartão." });
+  }
+});
+
+app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp.stripeCustomerId) return res.status(400).json({ erro: "Você ainda não iniciou uma assinatura." });
+    await stripeBilling.definirCartaoPadrao({
+      stripeCustomerId: emp.stripeCustomerId,
+      stripeSubscriptionId: emp.stripeSubscriptionId,
+      paymentMethodId: req.params.id,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
+  }
+});
+
+app.delete("/api/assinatura/cartoes/:id", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp.stripeCustomerId) return res.status(400).json({ erro: "Você ainda não iniciou uma assinatura." });
+    await stripeBilling.removerCartao({ stripeCustomerId: emp.stripeCustomerId, paymentMethodId: req.params.id });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
+  }
+});
+
 // ---- Super-admin: autenticação master ----
 
 app.post("/api/admin/login", (req, res) => {
