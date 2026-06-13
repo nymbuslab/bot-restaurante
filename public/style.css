@@ -3200,6 +3200,94 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .lp-footer-links a:hover { color: var(--text-primary); }
 .lp-footer-copy { font-size: 13px; color: var(--text-disabled); }
 
+/* ---- Polimento (T5a): reveal, eyebrow, moldura, cartão flutuante ---- */
+
+/* Reveal ao rolar */
+.lp-reveal {
+  opacity: 0; transform: translateY(22px);
+  transition: opacity .6s ease, transform .6s cubic-bezier(.22,.61,.36,1);
+  will-change: opacity, transform;
+}
+.lp-reveal.visivel { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* Rótulo de seção (eyebrow) */
+.lp-eyebrow {
+  display: inline-block; margin-bottom: 14px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--accent-fg);
+  background: var(--accent-subtle);
+  padding: 5px 13px; border-radius: 999px;
+}
+
+/* Brilho suave no botão primário (CTA) */
+.lp-btn-primary { box-shadow: 0 6px 20px -8px rgba(99,68,188,0.65); }
+.lp-btn-primary:hover { box-shadow: 0 10px 26px -8px rgba(99,68,188,0.8); }
+
+/* Glow no ícone dos cards ao passar o mouse */
+.lp-card-icone { transition: background .15s ease, box-shadow .15s ease, color .15s ease; }
+.lp-card:hover .lp-card-icone {
+  background: linear-gradient(135deg, var(--accent), var(--secondary)); color: #fff;
+  box-shadow: 0 8px 22px -10px rgba(99,68,188,0.9);
+}
+
+/* Separadores sutis na faixa de números */
+.lp-stat { position: relative; }
+.lp-stat + .lp-stat::before {
+  content: ""; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 38px; background: var(--border-subtle);
+}
+
+/* Moldura com gradiente no card de preço (foco da página) */
+.lp-preco-card {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--bg-surface), var(--bg-surface)) padding-box,
+    linear-gradient(135deg, var(--accent), var(--secondary)) border-box;
+  box-shadow: var(--shadow-lg), 0 0 60px -20px rgba(99,68,188,0.5);
+}
+
+/* Indicador de "digitando…" no chat do mockup */
+.lp-bubble-typing { display: inline-flex; gap: 4px; align-items: center; padding: 12px 14px; }
+.lp-bubble-typing span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--text-secondary);
+  animation: lp-typing 1.2s infinite ease-in-out;
+}
+.lp-bubble-typing span:nth-child(2) { animation-delay: .18s; }
+.lp-bubble-typing span:nth-child(3) { animation-delay: .36s; }
+@keyframes lp-typing {
+  0%, 60%, 100% { opacity: .3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Cartão flutuante sobreposto ao celular */
+.lp-hero-visual { position: relative; }
+.lp-float-card {
+  position: absolute; bottom: 22px; left: -6px;
+  display: flex; align-items: center; gap: 11px;
+  background: var(--bg-overlay); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 11px 14px;
+  box-shadow: var(--shadow-lg);
+  animation: lp-flutua 4s ease-in-out infinite;
+}
+.lp-float-icone {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--success-subtle); color: var(--success);
+}
+.lp-float-txt { display: flex; flex-direction: column; gap: 1px; }
+.lp-float-tit { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.lp-float-sub { font-size: 11.5px; color: var(--text-secondary); }
+@keyframes lp-flutua {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-float-card, .lp-bubble-typing span { animation: none; }
+}
+
 /* Responsivo */
 @media (max-width: 900px) {
   .lp-hero-grid { grid-template-columns: 1fr; gap: 40px; }
@@ -3220,4 +3308,6 @@ tbody tr:hover td { background: var(--bg-elevated); }
   .lp-passos { grid-template-columns: 1fr; gap: 28px; }
   .lp-nav-acoes .lp-btn-ghost { display: none; }
   .lp-footer-inner { flex-direction: column; text-align: center; }
+  .lp-float-card { left: 8px; bottom: 12px; padding: 9px 12px; }
+  .lp-stat + .lp-stat::before { display: none; }
 }
