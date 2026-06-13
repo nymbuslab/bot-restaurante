@@ -241,17 +241,10 @@
       } catch (e) { return false; }
     }
 
-    // Fim do onboarding: abre o checkout do trial (cartão) e manda pro Stripe.
-    // Se algo falhar, cai no painel — o gate de assinatura lá pede a ativação.
-    async function irParaPlano() {
-      try {
-        const r = await fetch("/api/assinatura/checkout", { method: "POST", headers: authHeaders() });
-        if (r.ok) {
-          const d = await r.json();
-          if (d.url) { location.href = d.url; return; }
-        }
-      } catch (e) { /* cai no fallback */ }
-      location.href = "admin.html";
+    // Fim do onboarding: vai para o checkout próprio (cartão + trial de 7 dias).
+    // Se o cliente abandonar, o gate de assinatura no painel pede a ativação.
+    function irParaPlano() {
+      location.href = "checkout.html";
     }
 
     // ====== ETAPA 1 — cadastro + login (lógica atual, só envolvida no wizard) ======

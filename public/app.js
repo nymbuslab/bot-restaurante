@@ -239,16 +239,10 @@ function aplicarGate(a) {
   overlay.style.display = "flex";
 }
 
-async function iniciarCheckout(e) {
-  const btn = e && e.currentTarget;
-  if (btn) btn.disabled = true;
-  const r = await api("POST", "/api/assinatura/checkout");
-  if (r && r.ok) {
-    const d = await r.json();
-    if (d.url) { location.href = d.url; return; }
-  }
-  toast("Não foi possível abrir o pagamento. Tente de novo.", "erro");
-  if (btn) btn.disabled = false;
+function iniciarCheckout(e) {
+  if (e && e.currentTarget) e.currentTarget.disabled = true;
+  // Checkout próprio (Stripe Elements) com a identidade do site.
+  location.href = "checkout.html";
 }
 
 async function abrirPortal(e) {
