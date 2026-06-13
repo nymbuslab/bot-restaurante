@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nymbus Lab — Atendimento de pedidos no WhatsApp, no automático</title>
+  <meta name="description" content="O bot que recebe os pedidos do seu restaurante no WhatsApp — do cardápio à confirmação. 7 dias grátis, R$ 79/mês, sem taxa por pedido." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="lp-body">
+
+  <!-- NAV -->
+  <header class="lp-nav">
+    <div class="lp-container lp-nav-inner">
+      <a class="lp-logo" href="/">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h1"/><path d="M21 15v7"/>
+        </svg>
+        <span>Nymbus Lab</span>
+      </a>
+      <nav class="lp-nav-links">
+        <a href="#vantagens">Vantagens</a>
+        <a href="#como">Como funciona</a>
+        <a href="#preco">Preço</a>
+      </nav>
+      <div class="lp-nav-acoes">
+        <a href="login.html" class="lp-btn lp-btn-ghost">Entrar</a>
+        <a href="cadastro.html" class="lp-btn lp-btn-primary">Começar grátis</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="lp-hero">
+    <div class="lp-container lp-hero-grid">
+      <div class="lp-hero-texto">
+        <span class="lp-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          7 dias grátis · sem taxa por pedido
+        </span>
+        <h1>Seu atendimento no WhatsApp <span class="lp-grad">no piloto automático</span></h1>
+        <p class="lp-hero-sub">O bot recebe o pedido do começo ao fim — cardápio, opcionais, entrega e pagamento — e registra tudo pra você. Sem app pra baixar, direto no WhatsApp do seu restaurante.</p>
+        <div class="lp-hero-ctas">
+          <a href="cadastro.html" class="lp-btn lp-btn-primary lp-btn-lg">Criar conta grátis</a>
+          <a href="login.html" class="lp-btn lp-btn-ghost lp-btn-lg">Já tenho conta</a>
+        </div>
+        <p class="lp-hero-nota">Comece em minutos · cancele quando quiser</p>
+      </div>
+
+      <div class="lp-hero-visual">
+        <div class="lp-phone">
+          <div class="lp-phone-topo">
+            <span class="lp-phone-dot">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>
+            </span>
+            <span class="lp-phone-nome">Cantinho da Brasa</span>
+            <span class="lp-phone-online">online</span>
+          </div>
+          <div class="lp-chat">
+            <div class="lp-bubble bot">Olá! Bem-vindo ao <b>Cantinho da Brasa</b>. Digite o número:<br>1 · Ver cardápio &nbsp; 2 · Falar com atendente</div>
+            <div class="lp-bubble user">1</div>
+            <div class="lp-bubble bot"><b>Lanches</b><br>10 · X-Salada — R$ 22,00<br>11 · X-Bacon — R$ 26,00</div>
+            <div class="lp-bubble user">10</div>
+            <div class="lp-bubble bot">Quantos <b>X-Salada</b> você quer?</div>
+            <div class="lp-bubble user">2</div>
+            <div class="lp-bubble bot"><b>Pedido confirmado!</b> Nº <b>#042</b><br>Total: R$ 44,00 · Saindo em ~35 min</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAIXA DE NÚMEROS -->
+  <section class="lp-stats">
+    <div class="lp-container lp-stats-grid">
+      <div class="lp-stat">
+        <span class="lp-stat-num">24/7</span>
+        <span class="lp-stat-label">Sempre atendendo</span>
+      </div>
+      <div class="lp-stat">
+        <span class="lp-stat-num">0%</span>
+        <span class="lp-stat-label">De comissão por pedido</span>
+      </div>
+      <div class="lp-stat">
+        <span class="lp-stat-num">∞</span>
+        <span class="lp-stat-label">Pedidos e itens no cardápio</span>
+      </div>
+      <div class="lp-stat">
+        <span class="lp-stat-num">~2 min</span>
+        <span class="lp-stat-label">Pra colocar no ar</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- VANTAGENS -->
+  <section class="lp-secao" id="vantagens">
+    <div class="lp-container">
+      <div class="lp-secao-cabeca">
+        <h2>Por que colocar o bot pra atender</h2>
+        <p class="lp-secao-sub">Mais pedidos, menos correria — e o lucro continua todo seu.</p>
+      </div>
+      <div class="lp-cards">
+
+        <div class="lp-card">
+          <div class="lp-card-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>Atende na hora, sempre</h3>
+          <p>Cada cliente é respondido no mesmo segundo, mesmo no pico do almoço. Acabou a mensagem acumulada e o pedido perdido por demora.</p>
+        </div>
+
+        <div class="lp-card">
+          <div class="lp-card-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3>Menos custo com atendente</h3>
+          <p>O bot monta o pedido inteiro sozinho — itens, opcionais, observação, endereço e forma de pagamento. Sua equipe foca na cozinha.</p>
+        </div>
+
+        <div class="lp-card">
+          <div class="lp-card-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+          </div>
+          <h3>Sem taxa por pedido</h3>
+          <p>Você paga um valor fixo por mês. Vendeu mais? O lucro é todo seu — não cobramos comissão nenhuma sobre as suas vendas.</p>
+        </div>
+
+        <div class="lp-card">
+          <div class="lp-card-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h1"/><path d="M21 15v7"/></svg>
+          </div>
+          <h3>Cardápio que dá vontade</h3>
+          <p>Fotos, descrições e opcionais bem montados aumentam o ticket médio. Edite quando quiser — vale já no próximo pedido, sem reiniciar nada.</p>
+        </div>
+
+        <div class="lp-card">
+          <div class="lp-card-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>
+          </div>
+          <h3>No WhatsApp que o cliente já usa</h3>
+          <p>Sem app pra baixar, sem link complicado. O pedido acontece na conversa que o cliente já tem aberta — onde ele se sente à vontade pra pedir.</p>
+        </div>
+
+        <div class="lp-card">
+          <div class="lp-card-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+          </div>
+          <h3>Você no controle pelo painel</h3>
+          <p>Acompanhe os pedidos do dia, métricas reais por período e avise o cliente com um clique quando o pedido fica pronto.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- COMO FUNCIONA -->
+  <section class="lp-secao lp-como" id="como">
+    <div class="lp-container">
+      <div class="lp-secao-cabeca">
+        <h2>Comece em 3 passos</h2>
+        <p class="lp-secao-sub">Do cadastro ao primeiro pedido, em minutos.</p>
+      </div>
+      <div class="lp-passos">
+        <div class="lp-passo">
+          <span class="lp-passo-num">1</span>
+          <h3>Crie sua conta</h3>
+          <p>Cadastre o restaurante e monte o cardápio no onboarding guiado.</p>
+        </div>
+        <div class="lp-passo">
+          <span class="lp-passo-num">2</span>
+          <h3>Conecte o WhatsApp</h3>
+          <p>Escaneie o QR code uma vez na aba Conexão. Seu número fica pronto pra atender.</p>
+        </div>
+        <div class="lp-passo">
+          <span class="lp-passo-num">3</span>
+          <h3>Receba pedidos</h3>
+          <p>O bot atende, monta o pedido e registra no painel. Você só prepara e entrega.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREÇO -->
+  <section class="lp-secao" id="preco">
+    <div class="lp-container lp-preco-wrap">
+      <div class="lp-secao-cabeca">
+        <h2>Um plano. Tudo incluído.</h2>
+        <p class="lp-secao-sub">Sem pegadinha, sem taxa por pedido. Comece grátis.</p>
+      </div>
+      <div class="lp-preco-card">
+        <div class="lp-preco-selo">7 dias grátis</div>
+        <div class="lp-preco-valor">
+          <span class="lp-preco-cifra">R$</span>
+          <span class="lp-preco-num">79</span>
+          <span class="lp-preco-por">/mês</span>
+        </div>
+        <p class="lp-preco-desc">Depois do teste grátis. Cancele quando quiser.</p>
+        <ul class="lp-preco-lista">
+          <li>Pedidos ilimitados no WhatsApp</li>
+          <li>Cardápio e categorias ilimitados</li>
+          <li>Painel de pedidos e métricas</li>
+          <li>Avisar o cliente quando o pedido fica pronto</li>
+          <li>Horário de funcionamento e taxa de entrega</li>
+          <li>Sem comissão sobre suas vendas</li>
+        </ul>
+        <a href="cadastro.html" class="lp-btn lp-btn-primary lp-btn-lg lp-btn-bloco">Começar teste grátis</a>
+        <p class="lp-preco-nota">Não pedimos cartão para criar a conta — só ao ativar o teste.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA FINAL -->
+  <section class="lp-cta-final">
+    <div class="lp-container">
+      <h2>Pronto pra automatizar seu atendimento?</h2>
+      <p>Crie sua conta agora e veja o bot trabalhando ainda hoje.</p>
+      <a href="cadastro.html" class="lp-btn lp-btn-primary lp-btn-lg">Criar conta grátis</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="lp-footer">
+    <div class="lp-container lp-footer-inner">
+      <a class="lp-logo" href="/">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h1"/><path d="M21 15v7"/></svg>
+        <span>Nymbus Lab</span>
+      </a>
+      <div class="lp-footer-links">
+        <a href="login.html">Entrar</a>
+        <a href="cadastro.html">Criar conta</a>
+      </div>
+      <span class="lp-footer-copy">© 2026 Nymbus Lab</span>
+    </div>
+  </footer>
+
+</body>
+</html>
