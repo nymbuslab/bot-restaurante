@@ -19,6 +19,7 @@ const multiBot = require("./multi-bot");
 const SECRET = process.env.STRIPE_SECRET_KEY || "";
 const PRICE_ID = process.env.STRIPE_PRICE_ID || "";
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+const PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || ""; // público, vai pro front
 
 // Sem chave + preço, as rotas de assinatura respondem 503 (igual ao super-admin).
 const CONFIGURADO = Boolean(SECRET && PRICE_ID);
@@ -46,14 +47,68 @@ function paraISO(epoch) {
   return epoch ? new Date(epoch * 1000).toISOString() : null;
 }
 
-// Cria (ou reusa) o Customer do tenant e abre a Checkout Session de assinatura.
-async function criarCheckout({ slug, nome, email, stripeCustomerId, baseUrl }) {
-  let customer = stripeCustomerId;
-  if (!customer) {
-    const c = await stripe.customers.create({ email, name: nome, metadata: { slug } });
-    customer = c.id;
-    await empresas.atualizarAssinatura(slug, { stripeCustomerId: customer });
+// Garante o Customer do tenant no Stripe (cria se não existir) e devolve o id.
+async function garantirCustomer({ slug, nome, email, stripeCustomerId }) {
+  if (stripeCustomerId) return stripeCustomerId;
+  const c = await stripe.customers.create({ email, name: nome, metadata: { slug } });
+  await empresas.atualizarAssinatura(slug, { stripeCustomerId: c.id });
+  return c.id;
+}
+
+// ---- Checkout PRÓPRIO (Stripe Elements) ----
+// Coleta o cartão via SetupIntent (sem cobrar) e só depois cria a assinatura,
+// para que o acesso (trialing) só seja liberado COM cartão na conta.
+
+// Passo 1: cria o SetupIntent e devolve o que o front precisa pro Payment Element.
+async function criarSetupIntent({ slug, nome, email, stripeCustomerId }) {
+  const customer = await garantirCustomer({ slug, nome, email, stripeCustomerId });
+  const si = await stripe.setupIntents.create({
+    customer,
+    usage: "off_session",
+    payment_method_types: ["card"],
+    metadata: { slug },
+  });
+  return { clientSecret: si.client_secret, publishableKey: PUBLISHABLE_KEY };
+}
+
+// Passo 2: com o cartão já confirmado pelo front, define-o como padrão do Customer
+// e cria a assinatura (trial 7d). Idempotente: não duplica se já houver assinatura viva.
+async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId, stripeSubscriptionId }) {
+  const si = await stripe.setupIntents.retrieve(setupIntentId);
+  if (si.status !== "succeeded") throw new Error("Cartão ainda não confirmado.");
+  if (si.customer !== stripeCustomerId) throw new Error("Cartão não pertence a este cliente.");
+  const pm = si.payment_method;
+  if (!pm) throw new Error("Nenhum cartão associado ao checkout.");
+
+  // Cartão padrão do Customer → é o que o Stripe cobra no fim do trial.
+  await stripe.customers.update(stripeCustomerId, {
+    invoice_settings: { default_payment_method: pm },
+  });
+
+  // Já tem assinatura ativa/trial/atraso? Não cria outra (só aplica o estado atual).
+  if (stripeSubscriptionId) {
+    const atual = await stripe.subscriptions.retrieve(stripeSubscriptionId).catch(() => null);
+    if (atual && ["trialing", "active", "past_due"].includes(atual.status)) {
+      await aplicarSubscription(slug, atual, stripeCustomerId);
+      return atual;
+    }
   }
+
+  const sub = await stripe.subscriptions.create({
+    customer: stripeCustomerId,
+    items: [{ price: PRICE_ID }],
+    trial_period_days: 7,
+    default_payment_method: pm,
+    metadata: { slug },
+  });
+  await aplicarSubscription(slug, sub, stripeCustomerId);
+  return sub;
+}
+
+// Cria (ou reusa) o Customer do tenant e abre a Checkout Session HOSPEDADA
+// (fallback; o fluxo padrão agora é o checkout próprio acima).
+async function criarCheckout({ slug, nome, email, stripeCustomerId, baseUrl }) {
+  const customer = await garantirCustomer({ slug, nome, email, stripeCustomerId });
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer,
@@ -177,7 +232,8 @@ async function tratarEvento(event) {
 }
 
 module.exports = {
-  stripe, CONFIGURADO, PRICE_ID,
+  stripe, CONFIGURADO, PRICE_ID, PUBLISHABLE_KEY,
   criarCheckout, criarPortal, verificarEvento, tratarEvento,
   listarFaturas, cancelarAssinatura,
+  garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup,
 };
