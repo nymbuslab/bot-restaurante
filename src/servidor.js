@@ -167,6 +167,42 @@ app.post("/api/assinatura/portal", exigeAuth, async (req, res) => {
   }
 });
 
+// Checkout PRÓPRIO (Stripe Elements) — passo 1: cria o SetupIntent (coleta o cartão).
+app.post("/api/assinatura/setup-intent", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    const r = await stripeBilling.criarSetupIntent({
+      slug: emp.slug, nome: emp.nome, email: emp.email, stripeCustomerId: emp.stripeCustomerId,
+    });
+    res.json(r);
+  } catch (e) {
+    console.error("setup-intent:", e.message);
+    res.status(500).json({ erro: "Não foi possível iniciar o checkout." });
+  }
+});
+
+// Checkout PRÓPRIO — passo 2: confirma o cartão e cria a assinatura (trial 7d).
+app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  const { setupIntentId } = req.body || {};
+  if (!setupIntentId) return res.status(400).json({ erro: "setupIntentId é obrigatório." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp.stripeCustomerId) return res.status(400).json({ erro: "Inicie o checkout antes de confirmar." });
+    await stripeBilling.ativarAssinaturaComSetup({
+      slug: emp.slug,
+      setupIntentId,
+      stripeCustomerId: emp.stripeCustomerId,
+      stripeSubscriptionId: emp.stripeSubscriptionId,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("confirmar assinatura:", e.message);
+    res.status(500).json({ erro: e.message || "Falha ao ativar a assinatura." });
+  }
+});
+
 // Estado atual da assinatura do tenant (consumido pelo painel).
 app.get("/api/assinatura", exigeAuth, async (req, res) => {
   try {
