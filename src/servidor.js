@@ -12,14 +12,34 @@ const store = require("./store");
 const pedidos = require("./pedidos");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin } = require("./supabase");
+const stripeBilling = require("./stripe");
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "..", "public")));
+// ---- Webhook do Stripe — raw body, ANTES do express.json ----
+// A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
+// esta rota usa express.raw e é registrada antes do parser JSON global.
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).end();
+  let event;
+  try {
+    event = stripeBilling.verificarEvento(req.body, req.headers["stripe-signature"]);
+  } catch (e) {
+    return res.status(400).send(`Assinatura do webhook inválida: ${e.message}`);
+  }
+  try {
+    await stripeBilling.tratarEvento(event);
+    res.json({ received: true });
+  } catch (e) {
+    console.error("Erro ao tratar evento Stripe:", e.message);
+    res.status(500).json({ erro: "Falha ao processar evento." }); // 500 → Stripe re-tenta
+  }
+});
 
-app.get("/", (_req, res) => res.redirect("/login.html"));
+app.use(express.json({ limit: "1mb" }));
+// A raiz "/" é servida pelo express.static → public/index.html (landing pública).
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 // ---- Autenticação de restaurante — Supabase Auth (JWT) ----
 // O token é o access_token (JWT) do Supabase. O middleware valida o JWT e
@@ -36,6 +56,21 @@ async function exigeAuth(req, res, next) {
   req.slug = emp.slug;
   req.tenantDir = empresas.tenantDir(emp.slug);
   next();
+}
+
+// Gate de assinatura: exige trial/assinatura em dia (além do exigeAuth).
+// Protege a ação que de fato presta o serviço (ligar o bot). Responde 402
+// (Payment Required) quando o acesso não está liberado.
+async function exigeAssinatura(req, res, next) {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!empresas.acessoLiberado(emp)) {
+      return res.status(402).json({ erro: "Assinatura inativa. Ative seu plano para usar o bot." });
+    }
+    next();
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao validar a assinatura." });
+  }
 }
 
 // ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
@@ -96,6 +131,57 @@ app.post("/api/login", async (req, res) => {
 // Logout: o JWT é descartado no cliente (sessionStorage). Sem estado no servidor.
 app.post("/api/logout", (_req, res) => res.json({ ok: true }));
 
+// ---- Assinatura (Stripe) — rotas do restaurante ----
+
+function baseUrlDe(req) {
+  return `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
+}
+
+// Inicia o trial de 7 dias: abre a Checkout Session (coleta cartão) e devolve a URL.
+app.post("/api/assinatura/checkout", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    const url = await stripeBilling.criarCheckout({
+      slug: emp.slug, nome: emp.nome, email: emp.email,
+      stripeCustomerId: emp.stripeCustomerId, baseUrl: baseUrlDe(req),
+    });
+    res.json({ url });
+  } catch (e) {
+    console.error("checkout:", e.message);
+    res.status(500).json({ erro: "Não foi possível iniciar o pagamento." });
+  }
+});
+
+// Abre o Customer Portal (trocar cartão / cancelar / ver faturas).
+app.post("/api/assinatura/portal", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp.stripeCustomerId) return res.status(400).json({ erro: "Você ainda não iniciou uma assinatura." });
+    const url = await stripeBilling.criarPortal({ stripeCustomerId: emp.stripeCustomerId, baseUrl: baseUrlDe(req) });
+    res.json({ url });
+  } catch (e) {
+    console.error("portal:", e.message);
+    res.status(500).json({ erro: "Não foi possível abrir o portal de assinatura." });
+  }
+});
+
+// Estado atual da assinatura do tenant (consumido pelo painel).
+app.get("/api/assinatura", exigeAuth, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    res.json({
+      status: emp.assinaturaStatus,
+      trialAte: emp.trialAte,
+      proximaCobranca: emp.proximaCobranca,
+      acessoLiberado: empresas.acessoLiberado(emp),
+    });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao carregar a assinatura." });
+  }
+});
+
 // ---- Super-admin: autenticação master ----
 
 app.post("/api/admin/login", (req, res) => {
@@ -139,6 +225,7 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
     const lista = await empresas.listar();
 
     let ativos = 0, suspensos = 0, conectados = 0, pedidosMes = 0;
+    const billing = { trial: 0, pagantes: 0, cortesia: 0, atraso: 0, cancelados: 0, semAssinatura: 0 };
     const porTenant = {};
 
     for (const t of lista) {
@@ -148,10 +235,23 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
       const n = await pedidos.contarNoMes(empresas.tenantDir(t.slug), inicioISO);
       pedidosMes += n;
       porTenant[t.slug] = { pedidosMes: n, conectado };
+
+      switch (t.assinaturaStatus) {
+        case "trialing": billing.trial++; break;
+        case "active":   billing.pagantes++; break;
+        case "cortesia": billing.cortesia++; break;
+        case "past_due": billing.atraso++; break;
+        case "canceled": billing.cancelados++; break;
+        default:         billing.semAssinatura++; break;
+      }
     }
 
     res.json({
-      totais: { restaurantes: lista.length, ativos, suspensos, conectados, pedidosMes },
+      totais: {
+        restaurantes: lista.length, ativos, suspensos, conectados, pedidosMes,
+        trial: billing.trial, pagantes: billing.pagantes, cortesia: billing.cortesia,
+        atraso: billing.atraso, cancelados: billing.cancelados, semAssinatura: billing.semAssinatura,
+      },
       porTenant,
     });
   } catch (e) {
@@ -205,13 +305,79 @@ app.delete("/api/admin/tenants/:slug", exigeSuperAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Super-admin: assinatura por tenant ----
+
+// Detalhe de billing + histórico de faturas (Stripe) de um tenant.
+app.get("/api/admin/tenants/:slug/assinatura", exigeSuperAdmin, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    let faturas = [];
+    if (stripeBilling.CONFIGURADO && emp.stripeCustomerId) {
+      faturas = await stripeBilling.listarFaturas(emp.stripeCustomerId).catch(() => []);
+    }
+    const estado = multiBot.getEstado(emp.slug);
+    res.json({
+      slug: emp.slug, nome: emp.nome, email: emp.email, criadoEm: emp.criado_em,
+      ativo: !!emp.ativo,
+      assinaturaStatus: emp.assinaturaStatus,
+      trialAte: emp.trialAte,
+      proximaCobranca: emp.proximaCobranca,
+      temAssinaturaStripe: !!emp.stripeSubscriptionId,
+      temCustomerStripe: !!emp.stripeCustomerId,
+      conectado: estado.status === "conectado",
+      stripeConfigurado: stripeBilling.CONFIGURADO,
+      faturas,
+    });
+  } catch (e) {
+    console.error("admin assinatura:", e.message);
+    res.status(500).json({ erro: "Falha ao carregar a assinatura." });
+  }
+});
+
+// Libera acesso manual (cortesia) — assinante sem Stripe.
+app.patch("/api/admin/tenants/:slug/assinatura/cortesia", exigeSuperAdmin, async (req, res) => {
+  const slug = req.params.slug;
+  if (!(await empresas.buscarPorSlug(slug))) return res.status(404).json({ erro: "Tenant não encontrado." });
+  await empresas.atualizarAssinatura(slug, { status: "cortesia", trialAte: null, proximaCobranca: null });
+  res.json({ ok: true, assinaturaStatus: "cortesia" });
+});
+
+// Revoga a cortesia (volta a "nenhuma" e derruba o bot).
+app.patch("/api/admin/tenants/:slug/assinatura/revogar", exigeSuperAdmin, async (req, res) => {
+  const slug = req.params.slug;
+  if (!(await empresas.buscarPorSlug(slug))) return res.status(404).json({ erro: "Tenant não encontrado." });
+  await empresas.atualizarAssinatura(slug, { status: "nenhuma" });
+  await multiBot.desconectar(slug).catch(() => {});
+  res.json({ ok: true, assinaturaStatus: "nenhuma" });
+});
+
+// Cancela a assinatura no Stripe (o webhook subscription.deleted confirma depois).
+app.patch("/api/admin/tenants/:slug/assinatura/cancelar", exigeSuperAdmin, async (req, res) => {
+  const slug = req.params.slug;
+  const emp = await empresas.buscarPorSlug(slug);
+  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  if (!emp.stripeSubscriptionId) return res.status(400).json({ erro: "Este restaurante não tem assinatura no Stripe." });
+  try {
+    await stripeBilling.cancelarAssinatura(emp.stripeSubscriptionId);
+    // Reflexo imediato (o webhook subscription.deleted confirma logo em seguida).
+    await empresas.atualizarAssinatura(slug, { status: "canceled" });
+    await multiBot.desconectar(slug).catch(() => {});
+    res.json({ ok: true, assinaturaStatus: "canceled" });
+  } catch (e) {
+    console.error("cancelar assinatura:", e.message);
+    res.status(500).json({ erro: "Falha ao cancelar no Stripe." });
+  }
+});
+
 app.get("/api/status", exigeAuth, (req, res) => {
   res.json(multiBot.getEstado(req.slug));
 });
 
 // ---- Bot ----
 
-app.post("/api/bot/conectar", exigeAuth, (req, res) => {
+app.post("/api/bot/conectar", exigeAuth, exigeAssinatura, (req, res) => {
   multiBot.iniciar(req.slug, req.tenantDir);
   res.json({ ok: true });
 });

@@ -149,21 +149,46 @@ async function resolverPorToken(token) {
     userId = data.user.id;
   }
   if (!userId) return null;
-  const r = await db.query("SELECT slug, ativo FROM empresas WHERE user_id = $1", [userId]);
+  const r = await db.query(
+    "SELECT slug, ativo, assinatura_status AS \"assinaturaStatus\", trial_ate AS \"trialAte\" FROM empresas WHERE user_id = $1",
+    [userId]
+  );
   return r.rows[0] || null;
 }
 
 async function buscarPorSlug(slug) {
   const r = await db.query(
-    "SELECT id, user_id, slug, nome, email, ativo, criado_em FROM empresas WHERE slug = $1",
+    `SELECT id, user_id, slug, nome, email, ativo, criado_em,
+            assinatura_status        AS "assinaturaStatus",
+            trial_ate                AS "trialAte",
+            proxima_cobranca         AS "proximaCobranca",
+            stripe_customer_id       AS "stripeCustomerId",
+            stripe_subscription_id   AS "stripeSubscriptionId"
+       FROM empresas WHERE slug = $1`,
     [slug]
+  );
+  return r.rows[0] || null;
+}
+
+// Resolve o tenant a partir do Stripe Customer ID (usado pelos webhooks).
+async function buscarPorStripeCustomer(stripeCustomerId) {
+  if (!stripeCustomerId) return null;
+  const r = await db.query(
+    `SELECT slug, nome, ativo, assinatura_status AS "assinaturaStatus",
+            stripe_subscription_id AS "stripeSubscriptionId"
+       FROM empresas WHERE stripe_customer_id = $1`,
+    [stripeCustomerId]
   );
   return r.rows[0] || null;
 }
 
 async function listar() {
   const r = await db.query(
-    "SELECT slug, nome, email, ativo, criado_em AS \"criadoEm\" FROM empresas ORDER BY criado_em"
+    `SELECT slug, nome, email, ativo, criado_em AS "criadoEm",
+            assinatura_status AS "assinaturaStatus",
+            trial_ate         AS "trialAte",
+            proxima_cobranca  AS "proximaCobranca"
+       FROM empresas ORDER BY criado_em`
   );
   return r.rows;
 }
@@ -171,6 +196,44 @@ async function listar() {
 async function setAtivo(slug, ativo) {
   const r = await db.query("UPDATE empresas SET ativo = $1 WHERE slug = $2", [!!ativo, slug]);
   return r.rowCount > 0;
+}
+
+// Atualiza os campos de billing de um tenant (chamado pelos webhooks do Stripe).
+// `dados` aceita um subconjunto de chaves camelCase; só as presentes são gravadas.
+async function atualizarAssinatura(slug, dados = {}) {
+  const COLS = {
+    status:               "assinatura_status",
+    trialAte:             "trial_ate",
+    proximaCobranca:      "proxima_cobranca",
+    stripeCustomerId:     "stripe_customer_id",
+    stripeSubscriptionId: "stripe_subscription_id",
+  };
+  const sets = [];
+  const vals = [];
+  let i = 1;
+  for (const [chave, col] of Object.entries(COLS)) {
+    if (chave in dados) { sets.push(`${col} = $${i++}`); vals.push(dados[chave]); }
+  }
+  if (!sets.length) return false;
+  sets.push("assinatura_atualizada_em = now()");
+  vals.push(slug);
+  const r = await db.query(`UPDATE empresas SET ${sets.join(", ")} WHERE slug = $${i}`, vals);
+  return r.rowCount > 0;
+}
+
+// ---- Regras de acesso ----
+// Dois eixos independentes: `ativo` (suspensão manual do admin) e o estado de
+// billing. `podeLogar` só depende de `ativo` (o inadimplente entra para pagar);
+// `acessoLiberado` controla bot + features (exige assinatura em dia ou trial).
+// `cortesia` = acesso liberado manualmente pelo super-admin (assinante sem Stripe).
+const STATUS_LIBERADOS = ["trialing", "active", "cortesia"];
+
+function podeLogar(emp) {
+  return !!emp && !!emp.ativo;
+}
+
+function acessoLiberado(emp) {
+  return !!emp && !!emp.ativo && STATUS_LIBERADOS.includes(emp.assinaturaStatus);
 }
 
 // Exclusão DESTRUTIVA: apaga a linha (cascateia pedidos), o usuário do Auth e
@@ -202,6 +265,7 @@ async function excluir(slug) {
 }
 
 module.exports = {
-  cadastrar, autenticar, resolverPorToken, buscarPorSlug, listar,
+  cadastrar, autenticar, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, hashSenha,
+  atualizarAssinatura, podeLogar, acessoLiberado,
 };
