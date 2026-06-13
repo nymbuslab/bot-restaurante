@@ -67,6 +67,17 @@
             <div class="lp-bubble bot">Quantos <b>X-Salada</b> você quer?</div>
             <div class="lp-bubble user">2</div>
             <div class="lp-bubble bot"><b>Pedido confirmado!</b> Nº <b>#042</b><br>Total: R$ 44,00 · Saindo em ~35 min</div>
+            <div class="lp-bubble bot lp-bubble-typing" aria-hidden="true"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <!-- Cartão flutuante: dá camada/profundidade ao mockup -->
+        <div class="lp-float-card" aria-hidden="true">
+          <span class="lp-float-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          <div class="lp-float-txt">
+            <span class="lp-float-tit">Pedido #042 confirmado</span>
+            <span class="lp-float-sub">R$ 44,00 · registrado no painel</span>
           </div>
         </div>
       </div>
@@ -75,7 +86,7 @@
 
   <!-- FAIXA DE NÚMEROS -->
   <section class="lp-stats">
-    <div class="lp-container lp-stats-grid">
+    <div class="lp-container lp-stats-grid lp-reveal">
       <div class="lp-stat">
         <span class="lp-stat-num">24/7</span>
         <span class="lp-stat-label">Sempre atendendo</span>
@@ -98,11 +109,12 @@
   <!-- VANTAGENS -->
   <section class="lp-secao" id="vantagens">
     <div class="lp-container">
-      <div class="lp-secao-cabeca">
+      <div class="lp-secao-cabeca lp-reveal">
+        <span class="lp-eyebrow">Vantagens</span>
         <h2>Por que colocar o bot pra atender</h2>
         <p class="lp-secao-sub">Mais pedidos, menos correria — e o lucro continua todo seu.</p>
       </div>
-      <div class="lp-cards">
+      <div class="lp-cards lp-reveal">
 
         <div class="lp-card">
           <div class="lp-card-icone">
@@ -159,11 +171,12 @@
   <!-- COMO FUNCIONA -->
   <section class="lp-secao lp-como" id="como">
     <div class="lp-container">
-      <div class="lp-secao-cabeca">
+      <div class="lp-secao-cabeca lp-reveal">
+        <span class="lp-eyebrow">Como funciona</span>
         <h2>Comece em 3 passos</h2>
         <p class="lp-secao-sub">Do cadastro ao primeiro pedido, em minutos.</p>
       </div>
-      <div class="lp-passos">
+      <div class="lp-passos lp-reveal">
         <div class="lp-passo">
           <span class="lp-passo-num">1</span>
           <h3>Crie sua conta</h3>
@@ -186,11 +199,12 @@
   <!-- PREÇO -->
   <section class="lp-secao" id="preco">
     <div class="lp-container lp-preco-wrap">
-      <div class="lp-secao-cabeca">
+      <div class="lp-secao-cabeca lp-reveal">
+        <span class="lp-eyebrow">Plano único</span>
         <h2>Um plano. Tudo incluído.</h2>
         <p class="lp-secao-sub">Sem pegadinha, sem taxa por pedido. Comece grátis.</p>
       </div>
-      <div class="lp-preco-card">
+      <div class="lp-preco-card lp-reveal">
         <div class="lp-preco-selo">7 dias grátis</div>
         <div class="lp-preco-valor">
           <span class="lp-preco-cifra">R$</span>
@@ -214,7 +228,7 @@
 
   <!-- CTA FINAL -->
   <section class="lp-cta-final">
-    <div class="lp-container">
+    <div class="lp-container lp-reveal">
       <h2>Pronto pra automatizar seu atendimento?</h2>
       <p>Crie sua conta agora e veja o bot trabalhando ainda hoje.</p>
       <a href="cadastro.html" class="lp-btn lp-btn-primary lp-btn-lg">Criar conta grátis</a>
@@ -236,5 +250,23 @@
     </div>
   </footer>
 
+  <script>
+    // Reveal ao rolar: adiciona .visivel quando o bloco entra na tela.
+    // Respeita prefers-reduced-motion (mostra tudo direto, sem animação).
+    (function () {
+      var reduz = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var alvos = document.querySelectorAll(".lp-reveal");
+      if (reduz || !("IntersectionObserver" in window)) {
+        alvos.forEach(function (el) { el.classList.add("visivel"); });
+        return;
+      }
+      var obs = new IntersectionObserver(function (entradas) {
+        entradas.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add("visivel"); obs.unobserve(e.target); }
+        });
+      }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+      alvos.forEach(function (el) { obs.observe(el); });
+    })();
+  </script>
 </body>
 </html>
