@@ -1115,6 +1115,77 @@ button:disabled {
   color: var(--text-secondary);
 }
 
+/* Sub-abas das Configurações (Empresa × Bot) */
+.cfg-subnav {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: fit-content;
+}
+.cfg-subnav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cfg-subnav button svg { flex-shrink: 0; }
+.cfg-subnav button:hover { color: var(--text-primary); }
+.cfg-subnav button.ativo { background: var(--accent); color: #fff; }
+.cfg-subnav button.ativo svg { color: #fff; }
+
+.cfg-sub { display: none; }
+.cfg-sub.ativa { display: block; }
+
+/* Conta de acesso (e-mail/senha) */
+.cfg-conta-card { display: flex; flex-direction: column; }
+.cfg-conta-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cfg-conta-info { display: flex; flex-direction: column; gap: 3px; }
+.cfg-conta-rotulo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.cfg-conta-valor { font-size: 15px; color: var(--text-primary); font-weight: 600; }
+.cfg-conta-valor-mascarado { letter-spacing: 2px; color: var(--text-secondary); }
+.cfg-conta-divisor { height: 1px; background: var(--border-subtle); margin: 18px 0; }
+.cfg-conta-form {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.cfg-conta-form .campo { margin-bottom: 12px; }
+.cfg-conta-form .linha { margin-bottom: 0; }
+.cfg-conta-acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.cfg-horario-texto { margin-top: 16px; }
+
 /* Seções com cabeçalho + ícone */
 .cfg-secao { margin-bottom: 26px; }
 .cfg-secao-cabeca {

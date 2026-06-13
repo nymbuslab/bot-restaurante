@@ -455,6 +455,38 @@ app.put("/api/config", exigeAuth, async (req, res) => {
   }
 });
 
+// ---- Conta de acesso (e-mail/senha de login) ----
+// E-mail/senha vivem no Supabase Auth, não no `config`. Rotas separadas.
+app.get("/api/conta", exigeAuth, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp) return res.status(404).json({ erro: "Conta não encontrada." });
+    res.json({ email: emp.email, nome: emp.nome });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao ler a conta." });
+  }
+});
+
+app.patch("/api/conta/senha", exigeAuth, async (req, res) => {
+  try {
+    const { senhaAtual, novaSenha } = req.body || {};
+    await empresas.trocarSenha(req.slug, senhaAtual, novaSenha);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
+  }
+});
+
+app.patch("/api/conta/email", exigeAuth, async (req, res) => {
+  try {
+    const { senhaAtual, novoEmail } = req.body || {};
+    const email = await empresas.trocarEmail(req.slug, senhaAtual, novoEmail);
+    res.json({ ok: true, email });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
+  }
+});
+
 app.get("/api/cardapio", exigeAuth, async (req, res) => {
   try {
     await store.ensure(req.tenantDir);
