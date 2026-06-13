@@ -151,7 +151,23 @@
             <div class="campo"><label>Nome do Estabelecimento</label><input id="cfgNome" /></div>
             <div class="campo"><label>Telefone de Contato</label><input id="cfgTelefone" /></div>
           </div>
-          <div class="campo"><label>Endereço Completo</label><input id="cfgEndereco" /></div>
+          <div class="campo">
+            <label for="cfgCep">CEP</label>
+            <input id="cfgCep" inputmode="numeric" maxlength="9" placeholder="00000-000" autocomplete="postal-code" />
+            <span class="cep-hint" id="cfgEnderecoHint">Digite o CEP para preencher o endereço automaticamente.</span>
+          </div>
+          <div class="linha">
+            <div class="campo"><label for="cfgLogradouro">Logradouro</label><input id="cfgLogradouro" placeholder="Rua, avenida..." autocomplete="address-line1" /></div>
+            <div class="campo campo-curto"><label for="cfgNumero">Número</label><input id="cfgNumero" placeholder="Nº" /></div>
+          </div>
+          <div class="linha">
+            <div class="campo"><label for="cfgBairro">Bairro</label><input id="cfgBairro" placeholder="Bairro" /></div>
+            <div class="campo"><label for="cfgComplemento">Complemento</label><input id="cfgComplemento" placeholder="Sala, bloco... (opcional)" /></div>
+          </div>
+          <div class="linha">
+            <div class="campo"><label for="cfgCidade">Cidade</label><input id="cfgCidade" placeholder="Cidade" /></div>
+            <div class="campo campo-curto"><label for="cfgUf">UF</label><input id="cfgUf" maxlength="2" placeholder="UF" /></div>
+          </div>
           <div class="campo">
             <label>Horário (texto exibido ao cliente)</label>
             <input id="cfgHorario" placeholder="Ex: Seg a Sex, 11h às 22h" />
@@ -479,6 +495,7 @@
     </div>
   </div>
 
+  <script src="endereco-cep.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

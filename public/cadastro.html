@@ -132,7 +132,7 @@
                 </span>
                 <input type="text" id="wizCep" inputmode="numeric" maxlength="9" placeholder="00000-000" autocomplete="postal-code" />
               </div>
-              <span class="wiz-cep-hint" id="wizCepHint">Digite o CEP para preencher o endereço automaticamente.</span>
+              <span class="cep-hint" id="wizCepHint">Digite o CEP para preencher o endereço automaticamente.</span>
             </div>
 
             <div class="wiz-linha">
@@ -230,6 +230,7 @@
 
   </div>
 
+  <script src="endereco-cep.js"></script>
   <script>
     // ====== Estado do wizard ======
     let token = null;   // token de sessão após o login da Etapa 1
@@ -339,50 +340,12 @@
 
     // ====== ETAPA 2 — Dados (obrigatória) ======
 
-    // Máscara de CEP + busca no ViaCEP (preenche logradouro/bairro/cidade/UF).
-    const cepHint = $("wizCepHint");
-    $("wizCep").addEventListener("input", (ev) => {
-      const v = ev.target.value.replace(/\D/g, "").slice(0, 8);
-      ev.target.value = v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v;
-      if (v.length === 8) buscarCep(v);
+    // Máscara/busca de CEP (ViaCEP) + composição vêm do util compartilhado.
+    EnderecoCep.ligarBuscaCep({
+      cep: "wizCep", hint: "wizCepHint",
+      logradouro: "wizLogradouro", numero: "wizNumero",
+      bairro: "wizBairro", cidade: "wizCidade", uf: "wizUf",
     });
-    $("wizUf").addEventListener("input", (ev) => { ev.target.value = ev.target.value.toUpperCase(); });
-
-    async function buscarCep(cep) {
-      cepHint.textContent = "Buscando endereço...";
-      cepHint.className = "wiz-cep-hint";
-      try {
-        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const d = await r.json();
-        if (d.erro) {
-          cepHint.textContent = "CEP não encontrado — preencha o endereço à mão.";
-          cepHint.className = "wiz-cep-hint erro-hint";
-          return;
-        }
-        if (d.logradouro) $("wizLogradouro").value = d.logradouro;
-        if (d.bairro)     $("wizBairro").value = d.bairro;
-        if (d.localidade) $("wizCidade").value = d.localidade;
-        if (d.uf)         $("wizUf").value = d.uf;
-        cepHint.textContent = "Endereço preenchido — confira e informe o número.";
-        cepHint.className = "wiz-cep-hint ok-hint";
-        $("wizNumero").focus();
-      } catch (e) {
-        cepHint.textContent = "Não foi possível buscar o CEP — preencha à mão.";
-        cepHint.className = "wiz-cep-hint erro-hint";
-      }
-    }
-
-    // Monta a string única de endereço (compatível com painel/pedido/bot).
-    function comporEndereco({ logradouro, numero, bairro, complemento, cidade, uf, cep }) {
-      let s = logradouro;
-      if (numero) s += `, ${numero}`;
-      const linha2 = [bairro, complemento].filter(Boolean).join(", ");
-      if (linha2) s += ` - ${linha2}`;
-      const cidUf = [cidade, uf].filter(Boolean).join("/");
-      if (cidUf) s += ` - ${cidUf}`;
-      if (cep) s += ` · CEP ${cep}`;
-      return s;
-    }
 
     $("btnDados").addEventListener("click", async (e) => {
       const tel         = $("wizTel").value.trim();
@@ -403,7 +366,7 @@
 
       // Campos estruturados + string composta (a que o resto do sistema usa).
       Object.assign(cfg.restaurante, { telefone: tel, cep, logradouro, numero, bairro, complemento, cidade, uf });
-      cfg.restaurante.endereco = comporEndereco({ logradouro, numero, bairro, complemento, cidade, uf, cep });
+      cfg.restaurante.endereco = EnderecoCep.comporEndereco({ logradouro, numero, bairro, complemento, cidade, uf, cep });
 
       const b = e.currentTarget;
       b.disabled = true; b.textContent = "Salvando...";
