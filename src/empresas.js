@@ -70,6 +70,9 @@ function configInicial(nomeRestaurante) {
       },
     },
     pagamentos: ["Pix", "Cartão (na entrega)", "Dinheiro"],
+    // Progresso do onboarding (wizard de 4 etapas). `concluido` libera o painel
+    // direto; enquanto false, login/cadastro retomam o wizard na `etapa` salva.
+    onboarding: { concluido: false, etapa: 2 },
   };
 }
 
@@ -84,11 +87,27 @@ async function cadastrar({ nome, email, senha }) {
     password: senha,
     email_confirm: true,
   });
+
+  let userId;
+  let criamosAgora = true;
   if (error) {
-    if (/already|exist|registered/i.test(error.message)) throw new Error("E-mail já cadastrado");
-    throw new Error(error.message);
+    if (/already|exist|registered/i.test(error.message)) {
+      // E-mail já existe no Auth. Se há linha em `empresas`, é conta completa.
+      const existente = await db.query("SELECT 1 FROM empresas WHERE email = $1", [email]);
+      if (existente.rows[0]) throw new Error("E-mail já cadastrado");
+      // Conta ÓRFÃ (Auth sem linha em `empresas`): cadastro interrompido no meio.
+      // Auto-reparo: loga com a senha para obter o user_id e recria a linha.
+      // Se a senha não confere, não dá para reparar → trata como já cadastrado.
+      const signin = await supabaseAnon.auth.signInWithPassword({ email, password: senha });
+      if (signin.error || !signin.data || !signin.data.user) throw new Error("E-mail já cadastrado");
+      userId = signin.data.user.id;
+      criamosAgora = false;
+    } else {
+      throw new Error(error.message);
+    }
+  } else {
+    userId = data.user.id;
   }
-  const userId = data.user.id;
 
   // 2) cria a linha de perfil (com slug único, config/cardápio iniciais).
   const slug = await slugUnico(slugBase(nome));
@@ -99,8 +118,8 @@ async function cadastrar({ nome, email, senha }) {
       [userId, slug, nome, email, JSON.stringify(configInicial(nome)), JSON.stringify({ categorias: [] })]
     );
   } catch (e) {
-    // rollback do usuário Auth se a inserção falhar (não deixa órfão)
-    await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+    // rollback do usuário Auth só se ACABAMOS de criá-lo (não em auto-reparo de órfã).
+    if (criamosAgora) await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
     throw e;
   }
 
@@ -111,10 +130,17 @@ async function cadastrar({ nome, email, senha }) {
 async function autenticar(email, senha) {
   const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password: senha });
   if (error || !data || !data.session) return null;
-  const r = await db.query("SELECT slug, nome, ativo FROM empresas WHERE user_id = $1", [data.user.id]);
+  const r = await db.query(
+    "SELECT slug, nome, ativo, config->'onboarding' AS onboarding FROM empresas WHERE user_id = $1",
+    [data.user.id]
+  );
   const emp = r.rows[0];
   if (!emp || !emp.ativo) return null;
-  return { slug: emp.slug, nome: emp.nome, token: data.session.access_token };
+  // Onboarding ausente = conta antiga (criada antes do wizard) → considerada concluída.
+  const onb = emp.onboarding;
+  const onboardingConcluido = onb ? onb.concluido === true : true;
+  const onboardingEtapa = (onb && onb.etapa) || 2;
+  return { slug: emp.slug, nome: emp.nome, token: data.session.access_token, onboardingConcluido, onboardingEtapa };
 }
 
 // Verificação LOCAL do JWT (sem ida à rede) via JWKS público do Supabase.

@@ -306,7 +306,19 @@
           body: JSON.stringify({ nome, email, senha }),
         });
         const data = await r.json();
-        if (!r.ok) { erro.textContent = data.erro || "Erro ao criar conta."; btn.disabled = false; btn.textContent = "Criar conta e começar →"; return; }
+        if (!r.ok) {
+          // Conta completa já existe → tenta logar com a senha e retomar de onde parou.
+          if (/j[áa] cadastrado/i.test(data.erro || "")) {
+            const reab = await tentarRetomarComLogin(email, senha);
+            if (reab) return; // retomou o wizard ou foi pro painel
+            erro.textContent = "E-mail já cadastrado. Entre com sua senha para continuar.";
+            btn.disabled = false; btn.textContent = "Criar conta e começar →";
+            return;
+          }
+          erro.textContent = data.erro || "Erro ao criar conta.";
+          btn.disabled = false; btn.textContent = "Criar conta e começar →";
+          return;
+        }
 
         // Login automático (idêntico ao fluxo atual)
         const lr = await fetch("/api/login", {
@@ -331,6 +343,36 @@
         erro.textContent = "Erro ao conectar ao servidor.";
         btn.disabled = false;
         btn.textContent = "Criar conta e começar →";
+      }
+    }
+
+    // Conta já existe: loga com a senha digitada e retoma o wizard (ou vai ao
+    // painel se o onboarding já terminou). Retorna true se conseguiu seguir.
+    async function tentarRetomarComLogin(email, senha) {
+      try {
+        const lr = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, senha }),
+        });
+        if (!lr.ok) return false; // senha não confere → deixa o chamador avisar
+        const ld = await lr.json();
+        token = ld.token;
+        sessionStorage.setItem("token", ld.token);
+        sessionStorage.setItem("slug", ld.slug);
+        sessionStorage.setItem("empresaNome", ld.nome);
+        if (ld.onboardingConcluido === false) {
+          const cr = await fetch("/api/config", { headers: authHeaders() });
+          cfg = await cr.json();
+          cfg.onboarding = cfg.onboarding || { concluido: false, etapa: 2 };
+          preencherDados();
+          irPara(cfg.onboarding.etapa || 2);
+        } else {
+          location.href = "admin.html";
+        }
+        return true;
+      } catch (e) {
+        return false;
       }
     }
 
@@ -366,6 +408,7 @@
       // Campos estruturados + string composta (a que o resto do sistema usa).
       Object.assign(cfg.restaurante, { telefone: tel, cep, logradouro, numero, bairro, complemento, cidade, uf });
       cfg.restaurante.endereco = EnderecoCep.comporEndereco({ logradouro, numero, bairro, complemento, cidade, uf, cep });
+      marcarEtapa(3);
 
       const b = e.currentTarget;
       b.disabled = true; b.textContent = "Salvando...";
@@ -414,9 +457,12 @@
     }
 
     $("btnVoltar3").addEventListener("click", () => irPara(2));
-    $("btnPularHorario").addEventListener("click", () => irPara(4));
+    $("btnPularHorario").addEventListener("click", async () => {
+      marcarEtapa(4); await salvarConfig(); irPara(4);
+    });
     $("btnHorario").addEventListener("click", async (e) => {
       cfg.horarios = lerHorariosWiz();
+      marcarEtapa(4);
       const b = e.currentTarget;
       b.disabled = true; b.textContent = "Salvando...";
       const ok = await salvarConfig();
@@ -476,19 +522,69 @@
     }
 
     $("btnVoltar4").addEventListener("click", () => irPara(3));
-    $("btnPularEntrega").addEventListener("click", () => { irParaPlano(); });
+    $("btnPularEntrega").addEventListener("click", async (e) => {
+      const b = e.currentTarget;
+      b.disabled = true;
+      await concluirOnboarding();
+      irParaPlano();
+    });
     $("btnEntrega").addEventListener("click", async (e) => {
       cfg.atendimento.taxaEntrega = parseBR($("wizTaxa").value);
       const b = e.currentTarget;
       b.disabled = true; b.textContent = "Salvando...";
+      concluirMarca();
       const ok = await salvarConfig();
       if (ok) { irParaPlano(); return; }
       b.disabled = false; b.textContent = "Concluir →";
       $("erro4").textContent = "Não foi possível salvar. Tente de novo.";
     });
 
-    // Inicializa na Etapa 1
-    irPara(1);
+    // ====== Onboarding: progresso e retomada ======
+    function marcarEtapa(n) {
+      cfg.onboarding = cfg.onboarding || { concluido: false, etapa: 2 };
+      cfg.onboarding.etapa = n;
+    }
+    function concluirMarca() {
+      cfg.onboarding = cfg.onboarding || { concluido: false, etapa: 4 };
+      cfg.onboarding.concluido = true;
+    }
+    async function concluirOnboarding() {
+      concluirMarca();
+      await salvarConfig();
+    }
+
+    // Preenche a Etapa 2 a partir do config salvo (usado ao retomar o cadastro).
+    function preencherDados() {
+      const r = (cfg && cfg.restaurante) || {};
+      $("wizTel").value = r.telefone || "";
+      $("wizCep").value = r.cep || "";
+      $("wizLogradouro").value = r.logradouro || "";
+      $("wizNumero").value = r.numero || "";
+      $("wizBairro").value = r.bairro || "";
+      $("wizComplemento").value = r.complemento || "";
+      $("wizCidade").value = r.cidade || "";
+      $("wizUf").value = r.uf || "";
+    }
+
+    // Boot: se já há sessão (veio do login ou recarregou), retoma o wizard de onde
+    // parou; se o onboarding já terminou, vai pro painel. Sem sessão → Etapa 1.
+    async function boot() {
+      const t = sessionStorage.getItem("token");
+      if (!t) { irPara(1); return; }
+      token = t;
+      try {
+        const cr = await fetch("/api/config", { headers: authHeaders() });
+        if (!cr.ok) { sessionStorage.removeItem("token"); irPara(1); return; }
+        cfg = await cr.json();
+        cfg.onboarding = cfg.onboarding || { concluido: false, etapa: 2 };
+        if (cfg.onboarding.concluido) { location.href = "admin.html"; return; }
+        preencherDados();
+        irPara(cfg.onboarding.etapa || 2);
+      } catch (e) {
+        irPara(1);
+      }
+    }
+    boot();
   </script>
 </body>
 </html>
