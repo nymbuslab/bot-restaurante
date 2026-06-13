@@ -199,6 +199,7 @@ function renderAssinatura(a) {
   const mapa = {
     trialing: ["Em teste grátis", "trial"],
     active:   ["Ativa", "ok"],
+    cortesia: ["Cortesia", "cortesia"],
     past_due: ["Pagamento pendente", "alerta"],
     canceled: ["Cancelada", "alerta"],
     nenhuma:  ["Sem assinatura", "neutro"],
@@ -212,6 +213,8 @@ function renderAssinatura(a) {
     info.innerHTML = `Seu teste grátis termina em <strong>${d} dia${d === 1 ? "" : "s"}</strong> (${fmtDataAssin(a.trialAte)}). Depois disso a cobrança de <strong>R$ 79,00/mês</strong> é automática no cartão cadastrado.`;
   } else if (a.status === "active") {
     info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · R$ 79,00/mês.`;
+  } else if (a.status === "cortesia") {
+    info.innerHTML = `Acesso liberado pela equipe <strong>Nymbus Lab</strong> (cortesia). Você usa o sistema <strong>sem cobrança</strong> — não é necessário cadastrar cartão.`;
   } else if (a.status === "past_due") {
     info.innerHTML = `Houve um problema com a cobrança. Atualize sua forma de pagamento para manter o bot ativo.`;
   } else if (a.status === "canceled") {
@@ -225,6 +228,8 @@ function renderAssinatura(a) {
     acoes.appendChild(botaoAssin("Iniciar teste grátis de 7 dias", iniciarCheckout));
   } else if (a.status === "past_due") {
     acoes.appendChild(botaoAssin("Atualizar pagamento", abrirPortal));
+  } else if (a.status === "cortesia") {
+    // Cortesia é gerenciada pela equipe Nymbus — sem ações de pagamento aqui.
   } else {
     acoes.appendChild(botaoAssin("Gerenciar assinatura", abrirPortal, "secundario"));
   }
