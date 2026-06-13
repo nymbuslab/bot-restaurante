@@ -999,7 +999,23 @@ function preencherConfig() {
   $("cfgNome").value = c.restaurante.nome || "";
   $("cfgTelefone").value = c.restaurante.telefone || "";
   $("cfgHorario").value = c.restaurante.horario || "";
-  $("cfgEndereco").value = c.restaurante.endereco || "";
+  // Endereço estruturado (CEP + autofill). Tenants antigos só têm a string `endereco`.
+  const r = c.restaurante;
+  $("cfgCep").value = r.cep || "";
+  $("cfgLogradouro").value = r.logradouro || "";
+  $("cfgNumero").value = r.numero || "";
+  $("cfgBairro").value = r.bairro || "";
+  $("cfgComplemento").value = r.complemento || "";
+  $("cfgCidade").value = r.cidade || "";
+  $("cfgUf").value = r.uf || "";
+  const temEstrut = !!(r.logradouro || r.cidade || r.cep);
+  const cepHint = $("cfgEnderecoHint");
+  if (cepHint) {
+    cepHint.className = "cep-hint";
+    cepHint.textContent = (!temEstrut && r.endereco)
+      ? `Endereço atual: ${r.endereco}. Preencha o CEP para atualizar.`
+      : "Digite o CEP para preencher o endereço automaticamente.";
+  }
   $("cfgAberto").checked = !!c.atendimento.aberto;
   $("cfgTempo").value = c.atendimento.tempoEstimado || "";
   $("cfgTaxaEntrega").value = moeda(c.atendimento.taxaEntrega || 0);
@@ -1098,6 +1114,15 @@ async function carregarConfig() {
   if (r) { configAtual = await r.json(); preencherConfig(); }
 }
 
+// Máscara/busca de CEP (ViaCEP) no campo de endereço das Configurações.
+if (window.EnderecoCep) {
+  EnderecoCep.ligarBuscaCep({
+    cep: "cfgCep", hint: "cfgEnderecoHint",
+    logradouro: "cfgLogradouro", numero: "cfgNumero",
+    bairro: "cfgBairro", cidade: "cfgCidade", uf: "cfgUf",
+  });
+}
+
 $("btnDescartarConfig").addEventListener("click", async () => {
   await carregarConfig();
   toast("Alterações descartadas.");
@@ -1107,7 +1132,21 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.restaurante.nome = $("cfgNome").value;
   configAtual.restaurante.telefone = $("cfgTelefone").value;
   configAtual.restaurante.horario = $("cfgHorario").value;
-  configAtual.restaurante.endereco = $("cfgEndereco").value;
+  // Endereço: recompõe a string a partir dos campos estruturados. Se nenhum
+  // estiver preenchido, preserva o endereço atual (não apaga legados).
+  const endStruct = {
+    cep:         $("cfgCep").value.trim(),
+    logradouro:  $("cfgLogradouro").value.trim(),
+    numero:      $("cfgNumero").value.trim(),
+    bairro:      $("cfgBairro").value.trim(),
+    complemento: $("cfgComplemento").value.trim(),
+    cidade:      $("cfgCidade").value.trim(),
+    uf:          $("cfgUf").value.trim().toUpperCase(),
+  };
+  if (endStruct.logradouro || endStruct.cidade || endStruct.cep) {
+    Object.assign(configAtual.restaurante, endStruct);
+    configAtual.restaurante.endereco = EnderecoCep.comporEndereco(endStruct);
+  }
   configAtual.atendimento.aberto = $("cfgAberto").checked;
   configAtual.atendimento.tempoEstimado = $("cfgTempo").value;
   configAtual.atendimento.taxaEntrega = parseFloat($("cfgTaxaEntrega").value) || 0;

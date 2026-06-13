@@ -2818,9 +2818,13 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .wiz-linha { display: flex; gap: 12px; }
 .wiz-linha > .auth-campo { flex: 1; min-width: 0; }
 .wiz-campo-sm { flex: 0 0 88px; }
-.wiz-cep-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
-.wiz-cep-hint.ok-hint { color: var(--success); }
-.wiz-cep-hint.erro-hint { color: var(--error); }
+
+/* Dica do campo de CEP (compartilhada: onboarding + painel) */
+.cep-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+.cep-hint.ok-hint { color: var(--success); }
+.cep-hint.erro-hint { color: var(--error); }
+/* Campo estreito (Número / UF) dentro de uma .linha no painel */
+.linha > .campo.campo-curto { flex: 0 0 110px; min-width: 0; }
 .wiz-tabela-wrap { overflow-x: auto; }
 
 .wiz-acoes {
