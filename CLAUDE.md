@@ -270,8 +270,18 @@ Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KE
   `multiBot.desconectar`). Não toca `ativo`.
 
 - **Gerenciar** (cliente): aba **Assinatura** no painel + **gate** que trava o painel sem acesso.
-  "Gerenciar assinatura" abre o **Customer Portal** hospedado (`/api/assinatura/portal` — faturas/
-  cancelamento). Reativar = passar pelo checkout próprio de novo.
+  Página de billing com **card largo do plano** (plano `Plano Nymbus Lab` · `R$ 79,00/mês` ·
+  próximo vencimento · badge de status), duas colunas (Pagamento + "Precisa de ajuda?" à esquerda,
+  **Histórico de Faturas** à direita) e, no mobile, tudo empilhado (faturas viram cards via
+  `data-label`). "Gerenciar assinatura" abre o **Customer Portal** hospedado
+  (`/api/assinatura/portal` — cancelamento). Reativar = passar pelo checkout próprio de novo.
+  - **Histórico de faturas (real):** `GET /api/assinatura` devolve `faturas` (via
+    `stripe.listarFaturas` quando há `stripeCustomerId`): data, valor, status (Pago/Em aberto/…) e
+    **link de PDF**. Sem Customer (cortesia/sem assinatura) → lista vazia → estado vazio honesto.
+  - **"Falar com Suporte" → WhatsApp:** `GET /api/plataforma` devolve `{ suporteWhatsapp }` lido da
+    env `SUPORTE_WHATSAPP` (só dígitos, formato `wa.me`). O card "Precisa de ajuda?" só aparece com
+    número configurado (nunca botão quebrado). **Futuro:** a aba "Nymbus" do painel master vai
+    gerenciar este e outros dados da plataforma, substituindo a env.
 
 - **Gestão de cartões NO PAINEL** (sem o portal hospedado) — seção "Forma de pagamento" na aba
   Assinatura. `admin.html` carrega `js.stripe.com/v3` e reusa o **Payment Element** (mesma
