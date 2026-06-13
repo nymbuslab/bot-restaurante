@@ -95,28 +95,47 @@
       btn.disabled = true;
       btn.textContent = "Entrando...";
 
+      function falhar(msg) {
+        erro.textContent = msg || "E-mail ou senha incorretos.";
+        btn.disabled = false;
+        btn.textContent = "Entrar";
+      }
+
       try {
+        // 1) Tenta login de restaurante (Supabase Auth).
         const r = await fetch("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, senha }),
         });
-        if (!r.ok) {
-          const d = await r.json();
-          erro.textContent = d.erro || "E-mail ou senha incorretos.";
-          btn.disabled = false;
-          btn.textContent = "Entrar";
+        if (r.ok) {
+          const { token, slug, nome } = await r.json();
+          sessionStorage.setItem("token", token);
+          sessionStorage.setItem("slug", slug);
+          sessionStorage.setItem("empresaNome", nome);
+          location.href = "admin.html";
           return;
         }
-        const { token, slug, nome } = await r.json();
-        sessionStorage.setItem("token", token);
-        sessionStorage.setItem("slug", slug);
-        sessionStorage.setItem("empresaNome", nome);
-        location.href = "admin.html";
+
+        // 2) Não é restaurante → tenta a conta master (mesma tela, auth isolada).
+        //    O token master vai para sessionStorage["tokenAdmin"] (chave própria,
+        //    diferente do "token" do restaurante) e cai direto no painel master.
+        const ra = await fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, senha }),
+        });
+        if (ra.ok) {
+          const { token } = await ra.json();
+          sessionStorage.setItem("tokenAdmin", token);
+          location.href = "admin-master.html";
+          return;
+        }
+
+        // 3) Ambos falharam.
+        falhar();
       } catch (e) {
-        erro.textContent = "Erro ao conectar ao servidor.";
-        btn.disabled = false;
-        btn.textContent = "Entrar";
+        falhar("Erro ao conectar ao servidor.");
       }
     }
 
