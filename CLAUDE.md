@@ -228,6 +228,19 @@ apenas** (a tela vem em passo posterior).
   área existe). Os dois fluxos de auth seguem **isolados** (endpoints/tokens/middlewares
   separados); só a tela de login decide o destino. CSS reusa a identidade Nymbus (classes `.am-*`
   em `style.css`); exclusão usa confirmação forte (digitar o slug habilita o botão).
+- **Menu (3 abas):** **Dashboard · Clientes · Configurações Master** (reusa o shell do painel do
+  cliente — sidebar/indicador/entrada em cascata se aplicam). **Dashboard:** header + **Exportar**
+  (CSV dos clientes, client-side), **4 cards hero** (Clientes ativos/Em teste/Assinantes/Cancelados
+  de `totais`), faixa secundária (Cortesia/Em atraso/Pedidos no mês/Conectados) e **"Últimos
+  Clientes Cadastrados"** (top 5 por `criadoEm`, avatar de iniciais, badge de status, olho →
+  Gerenciar). Sem setas de tendência (não há histórico → seria decorativo) e **avatar neutro**
+  (sem foto). **Clientes:** a tabela completa de tenants com filtro + Gerenciar (o que já existia).
+- **Configurações Master** (base da futura "aba Nymbus"): edita dados globais da plataforma que
+  aparecem ao cliente. Hoje: **WhatsApp de suporte** → tabela **singleton `plataforma_config`**
+  (migration `*_plataforma_config.sql`; módulo `src/plataforma.js` com `obter`/`salvar`,
+  normaliza p/ dígitos). Rotas: `GET/PUT /api/admin/plataforma` (master) e `GET /api/plataforma`
+  (cliente, lê DB→fallback env `SUPORTE_WHATSAPP`). Alimenta o "Falar com Suporte" do painel do
+  cliente. **Próximos campos da identidade da plataforma entram aqui.**
 
 ## Assinatura (Stripe)
 

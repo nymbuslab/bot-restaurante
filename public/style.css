@@ -2793,6 +2793,82 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .am-metrica-alerta .metrica-valor { color: var(--error); }
 .am-vazio-filtro { text-align: center; color: var(--text-secondary); padding: 24px; font-size: 14px; }
 
+/* ---- Dashboard do master (redesign) ---- */
+.am-dash-topo {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap; margin-bottom: 22px;
+}
+.am-dash-topo .am-titulo { font-size: 26px; }
+.am-dash-topo button.mini { width: auto; }
+
+/* 4 métricas hero (ícone + rótulo + número) */
+.am-hero-metricas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.am-hero-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  display: flex; flex-direction: column; gap: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+.am-hero-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.am-hero-ico {
+  width: 44px; height: 44px; border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-subtle); color: var(--accent-fg);
+}
+.am-hero-card.alerta .am-hero-ico { background: var(--error-subtle); color: var(--error); }
+.am-hero-label { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-secondary); }
+.am-hero-valor { font-size: 32px; font-weight: 800; letter-spacing: -1px; color: var(--text-primary); line-height: 1; }
+
+/* Faixa secundária de métricas */
+.am-metricas-sec { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.am-sec-card { padding: 16px 18px; gap: 6px; }
+.am-sec-card .metrica-valor { font-size: 24px; }
+
+/* Cabeçalho "Últimos Clientes" + link */
+.am-ultimos-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.am-secao-titulo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: var(--text-primary); }
+.am-link-ver { background: none; border: none; padding: 0; color: var(--accent-fg); font-size: 13px; font-weight: 700; cursor: pointer; }
+.am-link-ver:hover { color: var(--accent-hover); text-decoration: underline; transform: none; box-shadow: none; }
+
+/* Célula de cliente (avatar neutro + nome + e-mail) */
+.am-cliente { display: flex; align-items: center; gap: 12px; }
+.am-avatar {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: var(--accent-subtle); color: var(--accent-fg);
+  border: 1px solid var(--border);
+}
+.am-cliente-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.am-cliente-nome { font-weight: 600; color: var(--text-primary); }
+.am-cliente-email { font-size: 12px; color: var(--text-secondary); }
+
+/* Botão "olho" de ação */
+.am-olho {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--accent-fg);
+}
+.am-olho:hover { background: var(--bg-elevated); transform: none; box-shadow: none; }
+.am-ultimos-tabela td { vertical-align: middle; }
+
+/* Card de Configurações Master */
+.am-config-card { max-width: 560px; }
+.am-config-acoes { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.am-config-acoes button { width: auto; }
+
+@media (max-width: 1024px) {
+  .am-hero-metricas, .am-metricas-sec { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .am-hero-metricas, .am-metricas-sec { grid-template-columns: 1fr; }
+  .am-dash-topo .am-titulo { font-size: 22px; }
+}
+
 /* ---- Modal de gestão de um restaurante (assinatura + ações + faturas) ---- */
 .am-tenant-caixa { max-width: 600px; width: 92%; max-height: 88vh; overflow-y: auto; padding: 0; }
 .am-tenant-header {
