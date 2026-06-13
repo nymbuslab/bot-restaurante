@@ -2844,6 +2844,54 @@ tbody tr:hover td { background: var(--bg-elevated); }
 .assin-badge.alerta { background: var(--error-subtle); color: var(--error); }
 .assin-badge.neutro { background: var(--bg-elevated); color: var(--text-secondary); }
 .assin-badge.cortesia { background: var(--accent-subtle); color: var(--accent-fg); }
+
+/* ============================================================
+   CHECKOUT PRÓPRIO (checkout.html — Stripe Elements / identidade Nymbus)
+   ============================================================ */
+.co-wrap { width: 100%; max-width: 440px; }
+.co-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 32px 30px 26px;
+}
+.co-marca { display: flex; align-items: center; gap: 9px; margin-bottom: 22px; }
+.co-marca svg { color: var(--accent-fg); }
+.co-marca-nome { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; color: var(--text-primary); }
+.co-titulo { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; color: var(--text-primary); margin: 0 0 4px; }
+.co-sub { margin: 0 0 20px; }
+
+.co-plano {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 22px;
+}
+.co-plano-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.co-plano-linha + .co-plano-linha { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); }
+.co-plano-nome { font-weight: 600; color: var(--text-primary); }
+.co-plano-preco { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.co-plano-ciclo { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.co-plano-trial { font-size: 13px; color: var(--text-secondary); }
+.co-plano-hoje { color: var(--success); font-weight: 700; }
+
+.co-payment { margin-bottom: 14px; min-height: 44px; }
+.co-erro { margin: 0 0 10px; }
+.co-card .auth-btn { margin-top: 4px; }
+
+.co-seguro {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--text-secondary);
+  margin: 16px 0 0; line-height: 1.4;
+}
+.co-seguro svg { color: var(--accent-fg); flex-shrink: 0; }
+.co-voltar {
+  display: block; text-align: center; margin-top: 16px;
+  font-size: 13px; color: var(--text-secondary); text-decoration: none;
+}
+.co-voltar:hover { color: var(--text-primary); }
 .assin-info { padding: 16px 0; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
 .assin-info strong { color: var(--text-primary); }
 .assin-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
