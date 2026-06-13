@@ -148,6 +148,13 @@ document.querySelectorAll("nav button").forEach((btn) => {
   });
 });
 
+// Chip de teste grátis no header → abre a aba Assinatura.
+const _headerTrial = $("headerTrial");
+if (_headerTrial) _headerTrial.addEventListener("click", () => {
+  const btn = document.querySelector("nav button[data-aba='assinatura']");
+  if (btn) btn.click();
+});
+
 // Um único handler de logout, reaproveitado pelos botões Sair (sidebar + header mobile).
 async function sair() {
   try { await api("POST", "/api/logout"); } catch (e) { /* ignora */ }
@@ -208,6 +215,18 @@ function renderAssinatura(a) {
   const [texto, cls] = mapa[a.status] || mapa.nenhuma;
   badge.textContent = texto;
   badge.className = "assin-badge " + cls;
+
+  // Chip de teste grátis no header (só durante o trial).
+  const chip = $("headerTrial");
+  if (chip) {
+    if (a.status === "trialing") {
+      const d = diasRestantes(a.trialAte);
+      chip.textContent = `${d} dia${d === 1 ? "" : "s"} de teste`;
+      chip.style.display = "";
+    } else {
+      chip.style.display = "none";
+    }
+  }
 
   if (a.status === "trialing") {
     const d = diasRestantes(a.trialAte);
