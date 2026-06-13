@@ -122,7 +122,10 @@ app.post("/api/login", async (req, res) => {
     const { email, senha } = req.body || {};
     const r = await empresas.autenticar(email, senha);
     if (!r) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
-    res.json({ token: r.token, slug: r.slug, nome: r.nome });
+    res.json({
+      token: r.token, slug: r.slug, nome: r.nome,
+      onboardingConcluido: r.onboardingConcluido, onboardingEtapa: r.onboardingEtapa,
+    });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao entrar. Tente de novo." });
   }

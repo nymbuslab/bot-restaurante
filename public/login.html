@@ -109,11 +109,12 @@
           body: JSON.stringify({ email, senha }),
         });
         if (r.ok) {
-          const { token, slug, nome } = await r.json();
+          const { token, slug, nome, onboardingConcluido } = await r.json();
           sessionStorage.setItem("token", token);
           sessionStorage.setItem("slug", slug);
           sessionStorage.setItem("empresaNome", nome);
-          location.href = "admin.html";
+          // Onboarding incompleto → retoma o cadastro de onde parou. Senão, painel.
+          location.href = onboardingConcluido === false ? "cadastro.html" : "admin.html";
           return;
         }
 
