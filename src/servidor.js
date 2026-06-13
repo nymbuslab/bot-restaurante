@@ -85,6 +85,11 @@ const SUPERADMIN_EMAIL      = process.env.SUPERADMIN_EMAIL || "";
 const SUPERADMIN_SENHA_HASH = process.env.SUPERADMIN_SENHA_HASH || "";
 const SUPERADMIN_CONFIGURADO = Boolean(SUPERADMIN_EMAIL && SUPERADMIN_SENHA_HASH);
 
+// Informações da plataforma (Nymbus) expostas ao painel do cliente.
+// Por ora vêm de env; no futuro, a aba "Nymbus" do painel master alimenta isto.
+// Só dígitos (formato wa.me): ex. SUPORTE_WHATSAPP=5511999999999
+const SUPORTE_WHATSAPP = (process.env.SUPORTE_WHATSAPP || "").replace(/\D/g, "");
+
 if (!SUPERADMIN_CONFIGURADO) {
   console.warn("⚠️  Super-admin não configurado (defina SUPERADMIN_EMAIL e SUPERADMIN_SENHA_HASH). Rotas /api/admin/* desativadas até configurar.");
 }
@@ -206,19 +211,30 @@ app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
   }
 });
 
-// Estado atual da assinatura do tenant (consumido pelo painel).
+// Estado atual da assinatura do tenant (consumido pelo painel) + faturas reais.
 app.get("/api/assinatura", exigeAuth, async (req, res) => {
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
+    let faturas = [];
+    if (emp.stripeCustomerId && stripeBilling.CONFIGURADO) {
+      faturas = await stripeBilling.listarFaturas(emp.stripeCustomerId).catch(() => []);
+    }
     res.json({
       status: emp.assinaturaStatus,
       trialAte: emp.trialAte,
       proximaCobranca: emp.proximaCobranca,
       acessoLiberado: empresas.acessoLiberado(emp),
+      faturas,
     });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao carregar a assinatura." });
   }
+});
+
+// Informações da plataforma (Nymbus) para o painel do cliente.
+// Hoje só o WhatsApp de suporte (via env); futuramente vem da aba master "Nymbus".
+app.get("/api/plataforma", exigeAuth, (req, res) => {
+  res.json({ suporteWhatsapp: SUPORTE_WHATSAPP || null });
 });
 
 // ---- Gestão de cartões no painel (Stripe) ----

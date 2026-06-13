@@ -196,6 +196,7 @@ async function carregarAssinatura() {
   renderAssinatura(assinaturaAtual);
   aplicarGate(assinaturaAtual);
   carregarCartoes();
+  carregarPlataforma();
 }
 
 function renderAssinatura(a) {
@@ -215,6 +216,16 @@ function renderAssinatura(a) {
   const [texto, cls] = mapa[a.status] || mapa.nenhuma;
   badge.textContent = texto;
   badge.className = "assin-badge " + cls;
+
+  // Próximo vencimento no card do plano (trial → fim do teste; ativa → próxima cobrança).
+  const venc = $("assinVencimento");
+  if (venc) {
+    const iso = a.status === "trialing" ? a.trialAte : a.proximaCobranca;
+    venc.textContent = iso ? fmtDataAssin(iso) : "—";
+  }
+
+  // Histórico de faturas (dados reais do Stripe).
+  renderFaturas(a.faturas || []);
 
   // Chip de teste grátis no header (só durante o trial).
   const chip = $("headerTrial");
@@ -252,6 +263,62 @@ function renderAssinatura(a) {
     // Cortesia é gerenciada pela equipe Nymbus — sem ações de pagamento aqui.
   } else {
     acoes.appendChild(botaoAssin("Gerenciar assinatura", abrirPortal, "secundario"));
+  }
+}
+
+// Histórico de faturas: tabela no desktop, cards no mobile (via CSS).
+const STATUS_FATURA = {
+  paid:          ["Pago", "ok"],
+  open:          ["Em aberto", "alerta"],
+  void:          ["Cancelada", "neutro"],
+  uncollectible: ["Não paga", "alerta"],
+  draft:         ["Rascunho", "neutro"],
+};
+function renderFaturas(faturas) {
+  const lista = $("assinFaturasLista");
+  if (!lista) return;
+  if (!faturas.length) {
+    lista.innerHTML = `<div class="estado-vazio assin-faturas-vazio">
+      <p>Nenhuma fatura ainda</p>
+      <span class="sub">Suas faturas aparecem aqui após a primeira cobrança.</span>
+    </div>`;
+    return;
+  }
+  const cab = `<div class="fatura-item fatura-cab">
+    <span>Fatura</span><span>Data</span><span>Valor</span><span>Status</span><span class="fatura-acao-col">PDF</span>
+  </div>`;
+  const linhas = faturas.map((f) => {
+    const [st, scls] = STATUS_FATURA[f.status] || [f.status, "neutro"];
+    const numero = f.numero ? `#${escapar(f.numero)}` : `#${escapar(String(f.id).slice(-8))}`;
+    const link = f.pdf || f.url;
+    const acao = link
+      ? `<a class="fatura-baixar" href="${escapar(link)}" target="_blank" rel="noopener" aria-label="Baixar fatura" title="Baixar fatura"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>`
+      : `<span class="sub">—</span>`;
+    return `<div class="fatura-item">
+      <span class="fatura-id" data-label="Fatura">${numero}</span>
+      <span class="fatura-data" data-label="Data">${fmtDataAssin(f.data)}</span>
+      <span class="fatura-valor" data-label="Valor">${Dinheiro.comPrefixo(f.valor)}</span>
+      <span data-label="Status"><span class="fatura-status ${scls}">${escapar(st)}</span></span>
+      <span class="fatura-acao-col" data-label="PDF">${acao}</span>
+    </div>`;
+  }).join("");
+  lista.innerHTML = cab + linhas;
+}
+
+// Info da plataforma (Nymbus): por ora só o WhatsApp de suporte. Mostra o card
+// "Precisa de ajuda?" apenas quando há número configurado (nunca botão quebrado).
+async function carregarPlataforma() {
+  const card = $("assinAjudaCard");
+  if (!card) return;
+  const r = await api("GET", "/api/plataforma");
+  const d = r && r.ok ? await r.json().catch(() => ({})) : {};
+  const num = d && d.suporteWhatsapp;
+  if (num) {
+    const link = `https://wa.me/${String(num).replace(/\D/g, "")}`;
+    $("btnSuporte").setAttribute("href", link);
+    card.style.display = "";
+  } else {
+    card.style.display = "none";
   }
 }
 
