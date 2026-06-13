@@ -206,7 +206,7 @@
               <label for="wizTaxa">Taxa de entrega fixa</label>
               <div class="input-wrap">
                 <span class="input-icon input-icon-rs">R$</span>
-                <input type="text" id="wizTaxa" inputmode="decimal" placeholder="0,00 (grátis)" />
+                <input type="text" id="wizTaxa" inputmode="numeric" placeholder="0,00 (grátis)" />
               </div>
             </div>
 
@@ -230,6 +230,7 @@
   </div>
 
   <script src="endereco-cep.js"></script>
+  <script src="dinheiro.js"></script>
   <script>
     // ====== Estado do wizard ======
     let token = null;   // token de sessão após o login da Etapa 1
@@ -243,9 +244,7 @@
     const NOMES = ["Conta", "Dados", "Horário", "Entrega"];
     const $ = (id) => document.getElementById(id);
     const authHeaders = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + token });
-    // Moeda pt-BR: exibe "0,00"; lê de volta para número (aceita vírgula ou ponto).
-    const fmtBR = (v) => Number(v || 0).toFixed(2).replace(".", ",");
-    const parseBR = (s) => parseFloat(String(s).replace(/\./g, "").replace(",", ".")) || 0;
+    // Moeda: máscara/leitura via util compartilhado (window.Dinheiro — dinheiro.js).
 
     function toggleSenha(inputId, btnId) {
       const inp = $(inputId);
@@ -473,11 +472,10 @@
 
     // ====== ETAPA 4 — Entrega (pulável) ======
     function renderEntregaWiz() {
-      $("wizTaxa").value = fmtBR(cfg.atendimento.taxaEntrega || 0);
+      Dinheiro.setValor("wizTaxa", cfg.atendimento.taxaEntrega || 0);
+      Dinheiro.mascarar("wizTaxa");
       renderPagsWiz();
     }
-    // Reformata a taxa para "0,00" ao sair do campo.
-    $("wizTaxa").addEventListener("blur", (e) => { e.target.value = fmtBR(parseBR(e.target.value)); });
     function renderPagsWiz() {
       const cont = $("wizPagamentos");
       cont.innerHTML = "";
@@ -529,7 +527,7 @@
       irParaPlano();
     });
     $("btnEntrega").addEventListener("click", async (e) => {
-      cfg.atendimento.taxaEntrega = parseBR($("wizTaxa").value);
+      cfg.atendimento.taxaEntrega = Dinheiro.valor("wizTaxa");
       const b = e.currentTarget;
       b.disabled = true; b.textContent = "Salvando...";
       concluirMarca();
