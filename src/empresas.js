@@ -262,6 +262,46 @@ function acessoLiberado(emp) {
   return !!emp && !!emp.ativo && STATUS_LIBERADOS.includes(emp.assinaturaStatus);
 }
 
+// ---- Conta de acesso (e-mail/senha no Supabase Auth) ----
+// Toda troca exige a SENHA ATUAL: validamos via signInWithPassword antes de
+// aplicar a mudança (admin.updateUserById com a service_role). Assim ninguém
+// troca credenciais só com o JWT em mãos.
+
+// Confere a senha atual do tenant. Retorna { user_id, email } ou null.
+async function _validarSenhaAtual(slug, senhaAtual) {
+  const emp = await buscarPorSlug(slug);
+  if (!emp) return null;
+  const signin = await supabaseAnon.auth.signInWithPassword({ email: emp.email, password: senhaAtual });
+  if (signin.error || !signin.data || !signin.data.user) return null;
+  return { user_id: emp.user_id, email: emp.email };
+}
+
+async function trocarSenha(slug, senhaAtual, novaSenha) {
+  if (!novaSenha || novaSenha.length < 6) throw new Error("A nova senha deve ter ao menos 6 caracteres.");
+  const conta = await _validarSenhaAtual(slug, senhaAtual);
+  if (!conta) throw new Error("Senha atual incorreta.");
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(conta.user_id, { password: novaSenha });
+  if (error) throw new Error("Não foi possível alterar a senha.");
+  return true;
+}
+
+async function trocarEmail(slug, senhaAtual, novoEmail) {
+  const email = String(novoEmail || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("E-mail inválido.");
+  const conta = await _validarSenhaAtual(slug, senhaAtual);
+  if (!conta) throw new Error("Senha atual incorreta.");
+  if (email === conta.email) throw new Error("O novo e-mail é igual ao atual.");
+  // email_confirm: true → já fica válido para login sem etapa de confirmação.
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(conta.user_id, { email, email_confirm: true });
+  if (error) {
+    // Mensagem amigável para o caso mais comum (e-mail já usado por outra conta).
+    throw new Error(/already|exist/i.test(error.message) ? "Este e-mail já está em uso." : "Não foi possível alterar o e-mail.");
+  }
+  // Mantém a coluna `email` da empresa em sincronia com o Auth.
+  await db.query("UPDATE empresas SET email = $1 WHERE slug = $2", [email, slug]);
+  return email;
+}
+
 // Exclusão DESTRUTIVA: apaga a linha (cascateia pedidos), o usuário do Auth e
 // a pasta do tenant em disco (sessões/imagens).
 async function excluir(slug) {
@@ -294,4 +334,5 @@ module.exports = {
   cadastrar, autenticar, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, hashSenha,
   atualizarAssinatura, podeLogar, acessoLiberado,
+  trocarSenha, trocarEmail,
 };

@@ -1205,6 +1205,99 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (r && r.ok) toast("✓ Configurações salvas!");
 });
 
+// ---- Sub-abas das Configurações (Empresa × Bot) ----
+document.querySelectorAll(".cfg-subnav button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".cfg-subnav button").forEach((b) => b.classList.remove("ativo"));
+    document.querySelectorAll(".cfg-sub").forEach((s) => s.classList.remove("ativa"));
+    btn.classList.add("ativo");
+    $("cfg-sub-" + btn.dataset.sub).classList.add("ativa");
+  });
+});
+
+// ============================================================
+// CONTA DE ACESSO (e-mail/senha de login)
+// ============================================================
+async function carregarConta() {
+  const r = await api("GET", "/api/conta");
+  if (r && r.ok) {
+    const c = await r.json();
+    $("contaEmail").textContent = c.email || "—";
+  }
+}
+
+// Mostra/esconde um form de conta, limpando campos e aviso ao abrir.
+function alternarFormConta(formId, mostrar) {
+  const form = $(formId);
+  if (!form) return;
+  form.hidden = !mostrar;
+  if (mostrar) {
+    form.querySelectorAll("input").forEach((i) => (i.value = ""));
+    const aviso = form.querySelector(".aviso");
+    if (aviso) { aviso.textContent = ""; aviso.className = "aviso"; }
+    const primeiro = form.querySelector("input");
+    if (primeiro) primeiro.focus();
+  }
+}
+
+$("btnTrocarEmail").addEventListener("click", () => {
+  alternarFormConta("formSenha", false);
+  alternarFormConta("formEmail", $("formEmail").hidden);
+});
+$("btnTrocarSenha").addEventListener("click", () => {
+  alternarFormConta("formEmail", false);
+  alternarFormConta("formSenha", $("formSenha").hidden);
+});
+document.querySelectorAll("[data-cancelar]").forEach((b) =>
+  b.addEventListener("click", () => alternarFormConta(b.dataset.cancelar, false))
+);
+
+function avisoConta(id, texto, ok) {
+  const el = $(id);
+  el.textContent = texto;
+  el.className = "aviso " + (ok ? "" : "erro");
+}
+
+$("formEmail").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const novoEmail = $("emailNovo").value.trim();
+  const senhaAtual = $("emailSenha").value;
+  if (!novoEmail || !senhaAtual) return avisoConta("avisoEmail", "Preencha o novo e-mail e a senha atual.");
+  const btn = $("btnSalvarEmail");
+  btn.disabled = true; btn.textContent = "Salvando...";
+  const r = await api("PATCH", "/api/conta/email", { novoEmail, senhaAtual });
+  btn.disabled = false; btn.textContent = "Salvar e-mail";
+  const data = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.ok) {
+    $("contaEmail").textContent = data.email || novoEmail;
+    alternarFormConta("formEmail", false);
+    toast("✓ E-mail alterado!");
+  } else {
+    avisoConta("avisoEmail", (data && data.erro) || "Não foi possível alterar o e-mail.");
+  }
+});
+
+$("formSenha").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const senhaAtual = $("senhaAtual").value;
+  const novaSenha = $("senhaNova").value;
+  const novaSenha2 = $("senhaNova2").value;
+  if (!senhaAtual || !novaSenha) return avisoConta("avisoSenha", "Preencha todos os campos.");
+  if (novaSenha.length < 6) return avisoConta("avisoSenha", "A nova senha deve ter ao menos 6 caracteres.");
+  if (novaSenha !== novaSenha2) return avisoConta("avisoSenha", "As senhas não conferem.");
+  const btn = $("btnSalvarSenha");
+  btn.disabled = true; btn.textContent = "Salvando...";
+  const r = await api("PATCH", "/api/conta/senha", { senhaAtual, novaSenha });
+  btn.disabled = false; btn.textContent = "Salvar senha";
+  const data = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.ok) {
+    alternarFormConta("formSenha", false);
+    toast("✓ Senha alterada!");
+  } else {
+    avisoConta("avisoSenha", (data && data.erro) || "Não foi possível alterar a senha.");
+  }
+});
+
 // ============================================================
 // PEDIDOS
 // ============================================================
@@ -1849,6 +1942,7 @@ async function inicial() {
   const rc = await api("GET", "/api/cardapio");
   if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }
   await carregarConfig();
+  await carregarConta();        // e-mail de acesso (aba Empresa)
   await carregarAssinatura();   // aplica o gate de billing
 
   // Volta do Stripe Checkout: avisa e, se o webhook ainda não chegou, re-tenta

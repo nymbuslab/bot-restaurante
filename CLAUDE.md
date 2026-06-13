@@ -169,6 +169,15 @@ público; fallback para `getUser` em erro), checa
 Não há mais mapa de tokens em memória para restaurante (JWT é stateless); logout é só
 descartar o token no cliente.
 
+**Conta de acesso (trocar e-mail/senha):** e-mail e senha vivem no Supabase Auth, não no
+`config`. Rotas próprias (sob `exigeAuth`): `GET /api/conta` → `{ email, nome }` (exibe o
+e-mail de login); `PATCH /api/conta/senha { senhaAtual, novaSenha }`; `PATCH /api/conta/email
+{ senhaAtual, novoEmail }`. **Toda troca exige a senha atual** — `empresas.trocarSenha`/
+`trocarEmail` validam via `signInWithPassword` e só então aplicam com `admin.updateUserById`
+(service_role). Ao trocar o e-mail, a coluna `empresas.email` é sincronizada com o Auth
+(`email_confirm: true`, sem etapa de confirmação). No painel ficam na sub-aba **Empresa** das
+Configurações (seção "Conta de acesso").
+
 ## Super-admin (conta master)
 
 Área de gestão de **todos** os tenants, separada do painel de restaurante. **Backend
