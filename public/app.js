@@ -381,8 +381,8 @@ setInterval(() => {
 // ============================================================
 // CARDÁPIO
 // ============================================================
-function moeda(v) { return Number(v || 0).toFixed(2); } // ponto — para value de inputs (parseFloat)
-function moedaBR(v) { return Number(v || 0).toFixed(2).replace(".", ","); } // vírgula — para exibição pt-BR
+// Exibição monetária pt-BR unificada (ver public/dinheiro.js) — "1.234,56".
+function moedaBR(v) { return Dinheiro.formatar(v); }
 
 function renderCardapioMetricas() {
   const el = $("cardapioMetricas");
@@ -563,7 +563,7 @@ function abrirEditorItem(ci, ii) {
   } else {
     const it = cardapioAtual.categorias[ci].itens[ii];
     $("editor-nome").value = it.nome || "";
-    $("editor-preco").value = moeda(it.preco);
+    Dinheiro.setValor("editor-preco", it.preco);
     $("editor-desc").value = it.desc || "";
     $("editor-disponivel").checked = it.disponivel !== false;
     editorFotoUrl = it.imagem || "";
@@ -613,7 +613,7 @@ function atualizarPreviewFoto() {
 
 async function salvarEditorItem() {
   const nome  = $("editor-nome").value.trim();
-  const preco = parseFloat($("editor-preco").value);
+  const preco = Dinheiro.valor("editor-preco");
 
   if (!nome) {
     $("editor-erro").textContent = "Informe o nome do item.";
@@ -865,7 +865,7 @@ function renderEditorOpcionais() {
       <input class="opc-nome" placeholder="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
       <div class="opc-preco-wrap">
         <span class="opc-rs">R$</span>
-        <input type="number" class="opc-preco" step="0.01" min="0" placeholder="0,00" value="${Number(op.preco || 0).toFixed(2)}" data-oi="${oi}" />
+        <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
       </div>
       <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">×</button>
     `;
@@ -876,9 +876,10 @@ function renderEditorOpcionais() {
     el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; })
   );
 
-  container.querySelectorAll(".opc-preco").forEach((el) =>
-    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].preco = parseFloat(e.target.value) || 0; })
-  );
+  container.querySelectorAll(".opc-preco").forEach((el) => {
+    Dinheiro.mascarar(el);
+    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
+  });
 
   container.querySelectorAll(".opc-del").forEach((el) =>
     el.addEventListener("click", (e) => {
@@ -1018,7 +1019,7 @@ function preencherConfig() {
   }
   $("cfgAberto").checked = !!c.atendimento.aberto;
   $("cfgTempo").value = c.atendimento.tempoEstimado || "";
-  $("cfgTaxaEntrega").value = moeda(c.atendimento.taxaEntrega || 0);
+  Dinheiro.setValor("cfgTaxaEntrega", c.atendimento.taxaEntrega || 0);
   // Flags de comportamento do bot — default LIGADO quando ausente (retrocompatível)
   $("cfgPerguntarBebida").checked = c.atendimento.perguntarBebida !== false;
   $("cfgPerguntarObservacao").checked = c.atendimento.perguntarObservacao !== false;
@@ -1123,6 +1124,12 @@ if (window.EnderecoCep) {
   });
 }
 
+// Máscara monetária (centavos primeiro) nos campos de dinheiro estáticos.
+if (window.Dinheiro) {
+  Dinheiro.mascarar("cfgTaxaEntrega");
+  Dinheiro.mascarar("editor-preco");
+}
+
 $("btnDescartarConfig").addEventListener("click", async () => {
   await carregarConfig();
   toast("Alterações descartadas.");
@@ -1149,7 +1156,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   }
   configAtual.atendimento.aberto = $("cfgAberto").checked;
   configAtual.atendimento.tempoEstimado = $("cfgTempo").value;
-  configAtual.atendimento.taxaEntrega = parseFloat($("cfgTaxaEntrega").value) || 0;
+  configAtual.atendimento.taxaEntrega = Dinheiro.valor("cfgTaxaEntrega");
   configAtual.atendimento.perguntarBebida = $("cfgPerguntarBebida").checked;
   configAtual.atendimento.perguntarObservacao = $("cfgPerguntarObservacao").checked;
   configAtual.horarios = lerHorariosDoDOM();
