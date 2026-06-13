@@ -205,10 +205,14 @@ apenas** (a tela vem em passo posterior).
   painel de restaurante (não usar `admin.html`/`app.js`). Login master + dashboard de tenants
   na mesma página (gate por token). Token guardado em `sessionStorage["tokenAdmin"]` — chave
   **própria** (≠ `"token"` do restaurante) e **`sessionStorage` por escolha de segurança**: a
-  sessão master expira ao fechar a aba, exigindo novo login a cada sessão do navegador. Acesso
-  só por URL direta (`/admin-master.html`), não linkado do login do restaurante. CSS reusa a
-  identidade Nymbus (classes `.am-*` em `style.css`); exclusão usa confirmação forte (digitar
-  o slug habilita o botão).
+  sessão master expira ao fechar a aba, exigindo novo login a cada sessão do navegador.
+  **Acesso pelo login único:** o formulário de `login.html` tenta primeiro o login de restaurante
+  (`/api/login`); se falhar, tenta o master (`/api/admin/login`) com as mesmas credenciais e,
+  dando certo, grava `tokenAdmin` e redireciona para `/admin-master.html`. Não há **link visível**
+  para a área master (o redirecionamento só ocorre com a senha master correta — sem vazar que a
+  área existe). Os dois fluxos de auth seguem **isolados** (endpoints/tokens/middlewares
+  separados); só a tela de login decide o destino. CSS reusa a identidade Nymbus (classes `.am-*`
+  em `style.css`); exclusão usa confirmação forte (digitar o slug habilita o botão).
 
 ## Horário de funcionamento
 
