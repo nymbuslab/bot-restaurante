@@ -3466,6 +3466,53 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 #lp-footer-social { display: inline-flex; align-items: center; gap: 28px; }
 .lp-footer-copy { display: block; margin-top: 22px; text-align: center; font-size: 13px; color: var(--text-disabled); }
 
+/* ---- Página de Termos de Uso ---- */
+.lp-termos { padding: 48px 0 64px; }
+.lp-termos-inner { max-width: 820px; }
+.lp-termos-cabeca { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border-subtle); }
+.lp-termos-voltar { display: inline-block; margin-bottom: 18px; font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+.lp-termos-voltar:hover { color: var(--accent-fg); }
+.lp-termos h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; color: var(--text-primary); }
+.lp-termos-data { margin-top: 8px; font-size: 13px; color: var(--text-disabled); }
+.lp-termos p { font-size: 14.5px; line-height: 1.75; color: var(--text-secondary); margin: 0 0 14px; }
+.lp-termos-inner > p { max-width: 760px; }
+.lp-termos p strong { color: var(--text-primary); font-weight: 600; }
+.lp-termos-destaque {
+  padding: 14px 16px; border-radius: var(--radius);
+  background: var(--accent-subtle); border: 1px solid rgba(99,68,188,0.3);
+  color: var(--text-primary) !important; font-weight: 500;
+}
+.lp-termos-secao { margin-top: 36px; }
+.lp-termos-secao h2 {
+  font-size: 19px; font-weight: 700; letter-spacing: -0.2px;
+  color: var(--text-primary); margin-bottom: 14px;
+  text-transform: none; border: 0; padding: 0;
+}
+.lp-termos ul { margin: 0 0 14px; padding-left: 20px; }
+.lp-termos li { font-size: 14.5px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 8px; }
+.lp-termos li strong { color: var(--text-primary); font-weight: 600; }
+.lp-termos-aviso {
+  margin: 20px 0; padding: 18px 20px; border-radius: var(--radius-lg);
+  background: var(--error-subtle, rgba(239,68,68,0.12)); border: 1px solid rgba(239,68,68,0.35);
+}
+.lp-termos-aviso h3 {
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 10px; text-transform: none; letter-spacing: 0; border: 0; padding: 0;
+}
+.lp-termos-aviso p, .lp-termos-aviso li { color: var(--text-secondary); }
+.lp-termos-aviso p:last-child, .lp-termos-aviso ul:last-child { margin-bottom: 0; }
+.lp-termos-contato p { margin-bottom: 6px; }
+.lp-termos-final {
+  margin-top: 40px; padding: 24px; border-radius: var(--radius-lg);
+  background: var(--bg-surface); border: 1px solid var(--border);
+}
+.lp-termos-final p:last-child { margin-bottom: 0; }
+.lp-termos-assinatura { margin-top: 16px; color: var(--text-primary) !important; line-height: 1.6; }
+@media (max-width: 560px) {
+  .lp-termos { padding: 32px 0 48px; }
+  .lp-termos h1 { font-size: 25px; }
+}
+
 /* ---- Polimento (T5a): reveal, eyebrow, moldura, cartão flutuante ---- */
 
 /* Reveal ao rolar */
