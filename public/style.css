@@ -2764,6 +2764,11 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .am-acoes button.mini { width: auto; }
 .am-tabela td.am-acoes { display: flex; gap: 8px; }
 
+/* As tabelas do master têm muitas colunas: na faixa de tablet (641–1024px),
+   onde ainda não viram cards (≤640), rolam na horizontal DENTRO da caixa em vez
+   de estourar a largura da página. No desktop largo cabem sem rolagem. */
+#am-lista, #am-ultimos { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
 /* Modais maiores que o de confirmação padrão */
 .am-del-caixa, .am-criar-caixa { max-width: 440px; }
 .am-del-aviso {
