@@ -4,12 +4,28 @@
 
 ## 🔄 Em Andamento
 
-_(nada no momento)_
+**Checkpoint salvo em 2026-06-14 21:47**
+
+### Feito nesta sessão
+
+- **Pacote T1–T6 fechado** (todos commitados/pushados, working tree limpo): T3 (Configurações em sub-abas Empresa×Bot + trocar senha/e-mail), T4 (gestão de cartões no painel), T5a/b/c (polimento da landing, do painel do cliente e do master), T6 (auditoria de responsividade → 0 overflow; fix das tabelas do master no tablet).
+- **Redesenho da aba Assinatura** (visual do protótipo) com **faturas reais do Stripe** (`listarFaturas` no `GET /api/assinatura`) + download de PDF + estado vazio honesto.
+- **Aba "Configurações Master"** no painel master (base da futura aba Nymbus): edita o **WhatsApp de suporte** numa tabela singleton `plataforma_config` (migration aplicada via `db push`; `src/plataforma.js`; `GET/PUT /api/admin/plataforma`; `GET /api/plataforma` lê DB→env). Alimenta o "Falar com Suporte" do cliente.
+- Skill `frontend-design` usada como guia do polimento (ancorada no design system Nymbus); validações com Playwright.
+
+### Feito também (continuação)
+
+- **Aba "Configurações Master" expandida (dados da plataforma Nymbus)** — migration estendeu `plataforma_config` (razao_social, nome_fantasia, cnpj, endereco, telefone, facebook, instagram, master_email, master_senha_hash; `db push` aplicado). UI com 3 cards: **Dados da empresa** (Razão Social, Nome Fantasia, CNPJ opcional c/ máscara, Endereço, Telefone), **Contato e redes** (WhatsApp suporte, Facebook, Instagram) e **Dados de acesso (master)** (e-mail + nova senha, exige senha atual). **Credenciais do master migraram pro banco** (editáveis): login lê DB→env bootstrap (`credenciaisMaster()`); `PATCH /api/admin/conta`. **Footer da landing** passou a exibir Nome Fantasia/Razão Social/CNPJ/Endereço/Telefone + ícones FB/IG via `GET /api/plataforma/publico` (vazio = footer padrão). `src/plataforma.js` (obter/salvar + obterMaster/salvarMaster). Validado: módulo no banco real (todos os campos + hash do master) + Playwright (Config Master + footer).
+
+### Próximo passo
+
+- Confirmar com o usuário se há mais campos/telas a alimentar com os dados da plataforma; senão, próxima prioridade do backlog.
 
 ### Decisões pendentes
 
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(operacional) Limpeza `session-*` no Fly:** bloqueada — o trial do Fly expirou (produção offline até adicionar cartão ou migrar de host).
+- **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.
 
 ## 📋 Próximos Passos
 

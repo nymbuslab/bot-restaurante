@@ -766,38 +766,88 @@ function exportarCSV() {
 }
 
 // ============================================================
-// CONFIGURAÇÕES MASTER (plataforma — base da futura aba Nymbus)
+// CONFIGURAÇÕES MASTER (aba Nymbus — dados da plataforma)
 // ============================================================
 let plataformaCarregada = false;
+
+// Máscara de CNPJ (00.000.000/0000-00) — só visual, opcional.
+function mascararCNPJ(v) {
+  const d = String(v || "").replace(/\D/g, "").slice(0, 14);
+  return d
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+}
+
 async function carregarPlataforma() {
   try {
     const r = await apiAdmin("GET", "/api/admin/plataforma");
     if (!r.ok) return;
     const d = await r.json();
-    const inp = $("cfg-suporte-wa");
-    inp.value = d.suporteWhatsapp || "";
-    inp.placeholder = d.envFallback
-      ? `Herdado do servidor: ${d.envFallback}`
-      : "Ex.: 5511999999999 (com DDI e DDD)";
+    $("cfg-razao").value = d.razaoSocial || "";
+    $("cfg-fantasia").value = d.nomeFantasia || "";
+    $("cfg-cnpj").value = d.cnpj ? mascararCNPJ(d.cnpj) : "";
+    $("cfg-endereco").value = d.endereco || "";
+    $("cfg-telefone").value = d.telefone || "";
+    $("cfg-facebook").value = d.facebook || "";
+    $("cfg-instagram").value = d.instagram || "";
+    const wa = $("cfg-suporte-wa");
+    wa.value = d.suporteWhatsapp || "";
+    wa.placeholder = d.envFallback ? `Herdado do servidor: ${d.envFallback}` : "Ex.: 5511999999999 (com DDI e DDD)";
+    $("acc-email").value = d.masterEmail || "";
     plataformaCarregada = true;
   } catch (e) { /* sessão expirada já tratada */ }
 }
 
 async function salvarPlataforma() {
   const btn = $("btnSalvarPlataforma");
-  const aviso = $("cfg-suporte-aviso");
+  const aviso = $("cfg-plat-aviso");
   aviso.textContent = ""; aviso.className = "aviso";
   btn.disabled = true; btn.textContent = "Salvando...";
   try {
-    const wa = $("cfg-suporte-wa").value.replace(/\D/g, "");
-    const r = await apiAdmin("PUT", "/api/admin/plataforma", { suporteWhatsapp: wa });
+    const r = await apiAdmin("PUT", "/api/admin/plataforma", {
+      razaoSocial: $("cfg-razao").value,
+      nomeFantasia: $("cfg-fantasia").value,
+      cnpj: $("cfg-cnpj").value,
+      endereco: $("cfg-endereco").value,
+      telefone: $("cfg-telefone").value,
+      facebook: $("cfg-facebook").value,
+      instagram: $("cfg-instagram").value,
+      suporteWhatsapp: $("cfg-suporte-wa").value,
+    });
     const d = await r.json().catch(() => ({}));
-    if (r.ok) { $("cfg-suporte-wa").value = d.suporteWhatsapp || ""; toast("✓ Configurações salvas!"); }
+    if (r.ok) { toast("✓ Dados da plataforma salvos!"); }
     else { aviso.textContent = d.erro || "Não foi possível salvar."; aviso.className = "aviso erro"; }
   } catch (e) {
     if (e.message !== "Sessão expirada") { aviso.textContent = "Erro ao conectar."; aviso.className = "aviso erro"; }
   } finally {
-    btn.disabled = false; btn.textContent = "Salvar";
+    btn.disabled = false; btn.textContent = "Salvar dados da plataforma";
+  }
+}
+
+async function salvarAcessoMaster() {
+  const btn = $("btnSalvarAcesso");
+  const aviso = $("acc-aviso");
+  aviso.textContent = ""; aviso.className = "aviso";
+  const email = $("acc-email").value.trim();
+  const novaSenha = $("acc-nova").value;
+  const senhaAtual = $("acc-atual").value;
+  if (!senhaAtual) { aviso.textContent = "Informe a senha atual."; aviso.className = "aviso erro"; return; }
+  if (!email && !novaSenha) { aviso.textContent = "Nada para alterar."; aviso.className = "aviso erro"; return; }
+  btn.disabled = true; btn.textContent = "Salvando...";
+  try {
+    const r = await apiAdmin("PATCH", "/api/admin/conta", { email, novaSenha, senhaAtual });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      $("acc-nova").value = ""; $("acc-atual").value = "";
+      if (d.email) $("acc-email").value = d.email;
+      toast("✓ Acesso atualizado!");
+    } else { aviso.textContent = d.erro || "Não foi possível alterar."; aviso.className = "aviso erro"; }
+  } catch (e) {
+    if (e.message !== "Sessão expirada") { aviso.textContent = "Erro ao conectar."; aviso.className = "aviso erro"; }
+  } finally {
+    btn.disabled = false; btn.textContent = "Salvar acesso";
   }
 }
 
@@ -813,6 +863,8 @@ $("am-filtro-status").addEventListener("change", (e) => { filtroStatus = e.targe
 $("btnExportar").addEventListener("click", exportarCSV);
 $("btnVerTodos").addEventListener("click", () => trocarAba("restaurantes"));
 $("btnSalvarPlataforma").addEventListener("click", salvarPlataforma);
+$("formAcessoMaster").addEventListener("submit", salvarAcessoMaster);
+$("cfg-cnpj").addEventListener("input", (e) => { e.target.value = mascararCNPJ(e.target.value); });
 
 // Navegação por abas (sidebar)
 document.querySelectorAll("#view-dash nav button[data-aba]").forEach((b) => {

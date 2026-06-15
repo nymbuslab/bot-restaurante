@@ -244,6 +244,25 @@ app.get("/api/plataforma", exigeAuth, async (req, res) => {
   }
 });
 
+// Dados PÚBLICOS da empresa (footer da landing). Sem auth, sem nada sensível
+// (nunca expõe e-mail/hash do master). Campos vazios saem como null.
+app.get("/api/plataforma/publico", async (_req, res) => {
+  try {
+    const c = await plataforma.obter();
+    res.json({
+      razaoSocial: c.razaoSocial || null,
+      nomeFantasia: c.nomeFantasia || null,
+      cnpj: c.cnpj || null,
+      endereco: c.endereco || null,
+      telefone: c.telefone || null,
+      facebook: c.facebook || null,
+      instagram: c.instagram || null,
+    });
+  } catch (e) {
+    res.json({});
+  }
+});
+
 // ---- Gestão de cartões no painel (Stripe) ----
 app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
@@ -304,13 +323,26 @@ app.delete("/api/assinatura/cartoes/:id", exigeAuth, async (req, res) => {
 
 // ---- Super-admin: autenticação master ----
 
-app.post("/api/admin/login", (req, res) => {
+// Credenciais efetivas do master: o banco (editável no painel) tem prioridade;
+// a env (SUPERADMIN_*) é o BOOTSTRAP inicial (e o gate "feature habilitada").
+async function credenciaisMaster() {
+  let email = SUPERADMIN_EMAIL, hash = SUPERADMIN_SENHA_HASH;
+  try {
+    const m = await plataforma.obterMaster();
+    if (m && m.email) email = m.email;
+    if (m && m.senhaHash) hash = m.senhaHash;
+  } catch (e) { /* sem banco → usa env */ }
+  return { email, hash };
+}
+
+app.post("/api/admin/login", async (req, res) => {
   if (!SUPERADMIN_CONFIGURADO) return res.status(503).json({ erro: "Super-admin não configurado no servidor." });
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ erro: "Preencha e-mail e senha." });
 
-  const emailOk = email === SUPERADMIN_EMAIL;
-  const senhaOk = hashConfere(empresas.hashSenha(senha), SUPERADMIN_SENHA_HASH);
+  const cred = await credenciaisMaster();
+  const emailOk = email === cred.email;
+  const senhaOk = hashConfere(empresas.hashSenha(senha), cred.hash);
   if (!emailOk || !senhaOk) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
 
   const token = gerarToken();
@@ -380,14 +412,22 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
 });
 
 // ---- Configurações da plataforma (aba "Configurações Master") ----
-// Lê/grava a config global (hoje: WhatsApp de suporte). Reflete na env como
-// fallback (mostra o valor herdado quando ainda não foi salvo no banco).
+// Dados da empresa Nymbus + contato/redes + e-mail do master (nunca o hash).
 app.get("/api/admin/plataforma", exigeSuperAdmin, async (_req, res) => {
   try {
     const cfg = await plataforma.obter();
+    const cred = await credenciaisMaster();
     res.json({
+      razaoSocial: cfg.razaoSocial || "",
+      nomeFantasia: cfg.nomeFantasia || "",
+      cnpj: cfg.cnpj || "",
+      endereco: cfg.endereco || "",
+      telefone: cfg.telefone || "",
+      facebook: cfg.facebook || "",
+      instagram: cfg.instagram || "",
       suporteWhatsapp: cfg.suporteWhatsapp || "",
       envFallback: SUPORTE_WHATSAPP || "",
+      masterEmail: cred.email || "",
       atualizadoEm: cfg.atualizadoEm || null,
     });
   } catch (e) {
@@ -395,10 +435,41 @@ app.get("/api/admin/plataforma", exigeSuperAdmin, async (_req, res) => {
   }
 });
 
+// Salva os dados da empresa/contato/redes (não mexe nas credenciais).
 app.put("/api/admin/plataforma", exigeSuperAdmin, async (req, res) => {
   try {
-    const wa = await plataforma.salvar({ suporteWhatsapp: (req.body || {}).suporteWhatsapp });
-    res.json({ ok: true, suporteWhatsapp: wa || "" });
+    const b = req.body || {};
+    const cfg = await plataforma.salvar({
+      razaoSocial: b.razaoSocial, nomeFantasia: b.nomeFantasia, cnpj: b.cnpj,
+      endereco: b.endereco, telefone: b.telefone,
+      facebook: b.facebook, instagram: b.instagram, suporteWhatsapp: b.suporteWhatsapp,
+    });
+    res.json({ ok: true, ...cfg });
+  } catch (e) {
+    res.status(400).json({ erro: e.message });
+  }
+});
+
+// Altera as credenciais do master (e-mail e/ou senha). Exige a SENHA ATUAL.
+app.patch("/api/admin/conta", exigeSuperAdmin, async (req, res) => {
+  try {
+    const { senhaAtual, email, novaSenha } = req.body || {};
+    const cred = await credenciaisMaster();
+    if (!senhaAtual || !hashConfere(empresas.hashSenha(senhaAtual), cred.hash)) {
+      return res.status(400).json({ erro: "Senha atual incorreta." });
+    }
+    const dados = {};
+    if (email && email.trim()) {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return res.status(400).json({ erro: "E-mail inválido." });
+      dados.email = email.trim();
+    }
+    if (novaSenha) {
+      if (String(novaSenha).length < 6) return res.status(400).json({ erro: "A nova senha deve ter ao menos 6 caracteres." });
+      dados.senhaHash = empresas.hashSenha(novaSenha);
+    }
+    if (!dados.email && !dados.senhaHash) return res.status(400).json({ erro: "Nada para alterar." });
+    await plataforma.salvarMaster(dados);
+    res.json({ ok: true, email: dados.email || cred.email });
   } catch (e) {
     res.status(400).json({ erro: e.message });
   }

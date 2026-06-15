@@ -2866,6 +2866,15 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .am-config-acoes { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .am-config-acoes button { width: auto; }
 
+/* Aba Configurações Master: 2 cards lado a lado + salvar + card de acesso */
+.am-config-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; max-width: 940px; align-items: start; }
+.am-config-grid .am-config-card { max-width: none; margin: 0; }
+.am-config-salvar { max-width: 940px; margin-top: 16px; justify-content: flex-start; }
+.am-config-salvar button { width: auto; }
+.am-config-acesso { max-width: 940px; margin-top: 26px; }
+.am-opcional { font-weight: 400; color: var(--text-secondary); font-size: 11px; text-transform: none; letter-spacing: 0; }
+@media (max-width: 760px) { .am-config-grid { grid-template-columns: 1fr; } }
+
 @media (max-width: 1024px) {
   .am-hero-metricas, .am-metricas-sec { grid-template-columns: repeat(2, 1fr); }
 }
@@ -3443,12 +3452,24 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-cta-final p { font-size: 16px; color: var(--text-secondary); margin: 0 0 26px; }
 
 /* Footer */
-.lp-footer { border-top: 1px solid var(--border-subtle); padding: 28px 0; }
-.lp-footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.lp-footer { border-top: 1px solid var(--border-subtle); padding: 32px 0 24px; }
+.lp-footer-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.lp-footer-marca { display: flex; flex-direction: column; gap: 10px; }
+.lp-footer-empresa { display: flex; flex-direction: column; gap: 3px; }
+.lp-footer-empresa span { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+.lp-footer-dir { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .lp-footer-links { display: flex; gap: 22px; }
 .lp-footer-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; }
 .lp-footer-links a:hover { color: var(--text-primary); }
-.lp-footer-copy { font-size: 13px; color: var(--text-disabled); }
+.lp-footer-social { display: flex; gap: 12px; }
+.lp-footer-social a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-secondary);
+  transition: color .15s ease, border-color .15s ease;
+}
+.lp-footer-social a:hover { color: var(--accent-fg); border-color: var(--accent-fg); }
+.lp-footer-copy { display: block; margin-top: 20px; font-size: 13px; color: var(--text-disabled); }
 
 /* ---- Polimento (T5a): reveal, eyebrow, moldura, cartão flutuante ---- */
 
@@ -3557,7 +3578,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   .lp-cards { grid-template-columns: 1fr; }
   .lp-passos { grid-template-columns: 1fr; gap: 28px; }
   .lp-nav-acoes .lp-btn-ghost { display: none; }
-  .lp-footer-inner { flex-direction: column; text-align: center; }
+  .lp-footer-inner { flex-direction: column; align-items: center; text-align: center; gap: 18px; }
+  .lp-footer-dir { align-items: center; }
+  .lp-footer-empresa { align-items: center; }
   .lp-float-card { left: 8px; bottom: 12px; padding: 9px 12px; }
   .lp-stat + .lp-stat::before { display: none; }
 }

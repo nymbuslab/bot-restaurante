@@ -237,18 +237,54 @@
 
   <!-- FOOTER -->
   <footer class="lp-footer">
-    <div class="lp-container lp-footer-inner">
-      <a class="lp-logo" href="/">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h1"/><path d="M21 15v7"/></svg>
-        <span>Nymbus Lab</span>
-      </a>
-      <div class="lp-footer-links">
-        <a href="login.html">Entrar</a>
-        <a href="cadastro.html">Criar conta</a>
+    <div class="lp-container">
+      <div class="lp-footer-inner">
+        <div class="lp-footer-marca">
+          <a class="lp-logo" href="/">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h1"/><path d="M21 15v7"/></svg>
+            <span id="lp-footer-nome">Nymbus Lab</span>
+          </a>
+          <div class="lp-footer-empresa" id="lp-footer-empresa"><!-- dados da empresa (se preenchidos) --></div>
+        </div>
+        <div class="lp-footer-dir">
+          <div class="lp-footer-links">
+            <a href="login.html">Entrar</a>
+            <a href="cadastro.html">Criar conta</a>
+          </div>
+          <div class="lp-footer-social" id="lp-footer-social"><!-- redes (se preenchidas) --></div>
+        </div>
       </div>
       <span class="lp-footer-copy">© 2026 Nymbus Lab</span>
     </div>
   </footer>
+
+  <script>
+    // Footer institucional: puxa dados públicos da plataforma (se preenchidos no
+    // painel master). Campos vazios não aparecem — sem placeholder falso.
+    (function () {
+      fetch("/api/plataforma/publico").then(function (r) { return r.ok ? r.json() : {}; }).then(function (d) {
+        if (!d) return;
+        if (d.nomeFantasia) document.getElementById("lp-footer-nome").textContent = d.nomeFantasia;
+        var linhas = [];
+        if (d.razaoSocial) linhas.push(d.razaoSocial);
+        if (d.cnpj) linhas.push("CNPJ: " + d.cnpj);
+        if (d.endereco) linhas.push(d.endereco);
+        if (d.telefone) linhas.push("Tel: " + d.telefone);
+        var box = document.getElementById("lp-footer-empresa");
+        box.innerHTML = linhas.map(function (l) { return "<span>" + l.replace(/[<>]/g, "") + "</span>"; }).join("");
+        var social = document.getElementById("lp-footer-social");
+        function link(url, prefixo) {
+          var u = String(url).trim();
+          if (!/^https?:\/\//i.test(u)) u = prefixo + u.replace(/^@/, "");
+          return u;
+        }
+        var html = "";
+        if (d.facebook) html += '<a href="' + link(d.facebook, "https://facebook.com/") + '" target="_blank" rel="noopener" aria-label="Facebook"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>';
+        if (d.instagram) html += '<a href="' + link(d.instagram, "https://instagram.com/") + '" target="_blank" rel="noopener" aria-label="Instagram"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>';
+        social.innerHTML = html;
+      }).catch(function () { /* footer fica como está */ });
+    })();
+  </script>
 
   <script>
     // Reveal ao rolar: adiciona .visivel quando o bloco entra na tela.

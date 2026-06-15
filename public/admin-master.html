@@ -177,27 +177,66 @@
             <div id="am-lista"><!-- tabela ou estado vazio injetado aqui --></div>
           </section>
 
-          <!-- Aba: Configurações Master (base da futura aba Nymbus) -->
+          <!-- Aba: Configurações Master (aba Nymbus — dados da plataforma) -->
           <section id="aba-config" class="aba">
             <div class="am-cabeca">
               <h1 class="am-titulo">Configurações Master</h1>
-              <p class="sub">Dados da plataforma Nymbus que aparecem para os clientes.</p>
+              <p class="sub">Dados da Nymbus que alimentam a plataforma (footer, contato, suporte).</p>
             </div>
 
-            <div class="card am-config-card">
-              <div class="cfg-secao-cabeca" style="margin-bottom:14px">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>
-                <h3>Suporte</h3>
+            <div class="am-config-grid">
+              <!-- Card 1: Dados da empresa -->
+              <div class="card am-config-card">
+                <div class="cfg-secao-cabeca" style="margin-bottom:14px">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M3 9h18"/><path d="M9 20v-6h6v6"/></svg>
+                  <h3>Dados da empresa</h3>
+                </div>
+                <div class="auth-campo"><label for="cfg-razao">Razão Social</label><input type="text" id="cfg-razao" autocomplete="off" placeholder="Ex.: Nymbus Tecnologia LTDA" /></div>
+                <div class="auth-campo"><label for="cfg-fantasia">Nome Fantasia</label><input type="text" id="cfg-fantasia" autocomplete="off" placeholder="Ex.: Nymbus Lab" /></div>
+                <div class="auth-campo"><label for="cfg-cnpj">CNPJ <span class="am-opcional">(opcional)</span></label><input type="text" id="cfg-cnpj" inputmode="numeric" maxlength="18" autocomplete="off" placeholder="00.000.000/0000-00" /></div>
+                <div class="auth-campo"><label for="cfg-endereco">Endereço</label><input type="text" id="cfg-endereco" autocomplete="off" placeholder="Rua, nº, cidade/UF" /></div>
+                <div class="auth-campo"><label for="cfg-telefone">Telefone</label><input type="text" id="cfg-telefone" inputmode="numeric" autocomplete="off" placeholder="Ex.: 11999999999" /></div>
               </div>
-              <div class="auth-campo">
-                <label for="cfg-suporte-wa">WhatsApp de suporte</label>
-                <input type="text" id="cfg-suporte-wa" inputmode="numeric" placeholder="Ex.: 5511999999999 (com DDI e DDD)" autocomplete="off" />
-                <span class="cfg-horario-hint" id="cfg-suporte-hint">Aparece no botão "Falar com Suporte" do painel do cliente. Só dígitos, com DDI (55). Vazio = o card de ajuda fica oculto para os clientes.</span>
+
+              <!-- Card 2: Contato e redes -->
+              <div class="card am-config-card">
+                <div class="cfg-secao-cabeca" style="margin-bottom:14px">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>
+                  <h3>Contato e redes</h3>
+                </div>
+                <div class="auth-campo">
+                  <label for="cfg-suporte-wa">WhatsApp de suporte</label>
+                  <input type="text" id="cfg-suporte-wa" inputmode="numeric" placeholder="Ex.: 5511999999999 (com DDI e DDD)" autocomplete="off" />
+                  <span class="cfg-horario-hint">Aparece no "Falar com Suporte" do painel do cliente. Só dígitos, com DDI (55). Vazio = o card de ajuda fica oculto.</span>
+                </div>
+                <div class="auth-campo"><label for="cfg-facebook">Facebook</label><input type="text" id="cfg-facebook" autocomplete="off" placeholder="Link ou @ do perfil" /></div>
+                <div class="auth-campo"><label for="cfg-instagram">Instagram</label><input type="text" id="cfg-instagram" autocomplete="off" placeholder="Link ou @ do perfil" /></div>
               </div>
-              <div class="am-config-acoes">
-                <button id="btnSalvarPlataforma">Salvar</button>
-                <span class="aviso" id="cfg-suporte-aviso"></span>
+            </div>
+
+            <div class="am-config-acoes am-config-salvar">
+              <button id="btnSalvarPlataforma">Salvar dados da plataforma</button>
+              <span class="aviso" id="cfg-plat-aviso"></span>
+            </div>
+
+            <!-- Card 3: Dados de acesso (master) -->
+            <div class="card am-config-card am-config-acesso">
+              <div class="cfg-secao-cabeca" style="margin-bottom:4px">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <h3>Dados de acesso (master)</h3>
               </div>
+              <p class="sub cfg-secao-sub">Alterar e-mail e/ou senha do login master. Exige a senha atual.</p>
+              <form id="formAcessoMaster" class="auth-card-form" onsubmit="return false">
+                <div class="auth-campo"><label for="acc-email">E-mail de acesso</label><input type="email" id="acc-email" autocomplete="off" placeholder="master@nymbus.com" /></div>
+                <div class="linha">
+                  <div class="auth-campo"><label for="acc-nova">Nova senha <span class="am-opcional">(deixe em branco p/ manter)</span></label><input type="password" id="acc-nova" autocomplete="new-password" placeholder="Mín. 6 caracteres" /></div>
+                  <div class="auth-campo"><label for="acc-atual">Senha atual</label><input type="password" id="acc-atual" autocomplete="current-password" placeholder="Confirme com a senha atual" /></div>
+                </div>
+                <div class="am-config-acoes">
+                  <button type="submit" id="btnSalvarAcesso">Salvar acesso</button>
+                  <span class="aviso" id="acc-aviso"></span>
+                </div>
+              </form>
             </div>
           </section>
 
