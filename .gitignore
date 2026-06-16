@@ -4,8 +4,10 @@ node_modules/
 # Dados de runtime (banco, sessões WhatsApp, tenants)
 data/*.db
 data/tenants/
+baileys-*/
 
 # Ambiente / temporários
 .env
+.env.*
 .mcp.json
 *.tmp

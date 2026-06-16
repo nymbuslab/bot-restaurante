@@ -53,7 +53,8 @@ process.on("uncaughtException", (err) => {
 });
 
 process.on("unhandledRejection", (reason) => {
-  console.error("❌ Promise sem tratamento (servidor continua):", reason);
+  // Loga só a mensagem (não o objeto inteiro) — evita despejar payload/PII no log.
+  console.error("❌ Promise sem tratamento (servidor continua):", reason?.message || reason);
 });
 
 servidor.iniciar(PORTA);

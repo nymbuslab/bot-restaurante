@@ -2062,7 +2062,7 @@ setInterval(() => {
 // Utilidades + carga inicial
 // ============================================================
 function escapar(s) {
-  return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 function altEnterInsere(e, insercao) {
