@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 # Baileys é WebSocket puro (sem browser) → não precisa de Chromium nem libs X11.
 # - git: a dependência `libsignal` do Baileys vem de um repositório GitHub.
