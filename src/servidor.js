@@ -129,10 +129,11 @@ async function exigeAssinatura(req, res, next) {
 
 // ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
 // Token próprio em memória, separado do JWT de restaurante.
-const tokensAdmin = new Map(); // token → true
+const tokensAdmin = new Map(); // token → expira_em (epoch ms)
+const TOKEN_ADMIN_TTL_MS = 12 * 60 * 60 * 1000; // 12h de validade
 
 function gerarToken() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+  return crypto.randomBytes(32).toString("hex"); // CSPRNG (256 bits)
 }
 
 const SUPERADMIN_EMAIL      = process.env.SUPERADMIN_EMAIL || "";
@@ -148,17 +149,13 @@ if (!SUPERADMIN_CONFIGURADO) {
   console.warn("⚠️  Super-admin não configurado (defina SUPERADMIN_EMAIL e SUPERADMIN_SENHA_HASH). Rotas /api/admin/* desativadas até configurar.");
 }
 
-// Comparação de hash resistente a timing attack.
-function hashConfere(hashInformado, hashEsperado) {
-  const a = Buffer.from(hashInformado);
-  const b = Buffer.from(hashEsperado);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
-}
-
 function exigeSuperAdmin(req, res, next) {
   const token = (req.headers["authorization"] || "").replace("Bearer ", "");
-  if (!tokensAdmin.has(token)) return res.status(401).json({ erro: "Não autorizado" });
+  const expira = tokensAdmin.get(token);
+  if (!expira || expira < Date.now()) {
+    if (expira) tokensAdmin.delete(token); // token expirado → descarta
+    return res.status(401).json({ erro: "Não autorizado" });
+  }
   next();
 }
 
@@ -395,11 +392,11 @@ app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
 
   const cred = await credenciaisMaster();
   const emailOk = email === cred.email;
-  const senhaOk = hashConfere(empresas.hashSenha(senha), cred.hash);
+  const senhaOk = empresas.verificarSenhaMaster(senha, cred.hash);
   if (!emailOk || !senhaOk) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
 
   const token = gerarToken();
-  tokensAdmin.set(token, true);
+  tokensAdmin.set(token, Date.now() + TOKEN_ADMIN_TTL_MS);
   res.json({ token });
 });
 
@@ -508,7 +505,7 @@ app.patch("/api/admin/conta", exigeSuperAdmin, async (req, res) => {
   try {
     const { senhaAtual, email, novaSenha } = req.body || {};
     const cred = await credenciaisMaster();
-    if (!senhaAtual || !hashConfere(empresas.hashSenha(senhaAtual), cred.hash)) {
+    if (!senhaAtual || !empresas.verificarSenhaMaster(senhaAtual, cred.hash)) {
       return res.status(400).json({ erro: "Senha atual incorreta." });
     }
     const dados = {};
@@ -885,6 +882,17 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 });
 
+// Detecta o tipo REAL da imagem pelos magic bytes (não confia no MIME do header,
+// que é falsificável). Retorna { ext, mime } ou null se não for imagem suportada.
+function tipoImagemPorAssinatura(buf) {
+  if (!buf || buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return { ext: "jpg", mime: "image/jpeg" };
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+      buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a) return { ext: "png", mime: "image/png" };
+  if (buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return { ext: "webp", mime: "image/webp" };
+  return null;
+}
+
 // Upload da imagem direto para o Storage; o item guarda a URL pública retornada.
 // (Não há mais rota /imagens nem arquivos em disco — o Storage serve a URL.)
 app.post("/api/imagem", exigeAuth, (req, res) => {
@@ -894,15 +902,19 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
     if (err) return res.status(400).json({ erro: "Erro no envio do arquivo." });
     if (!req.file) return res.status(400).json({ erro: "Nenhum arquivo enviado." });
 
-    const ext = MIME_TO_EXT[req.file.mimetype];
-    if (!ext) return res.status(400).json({ erro: "Tipo inválido. Use JPEG, PNG ou WebP." });
+    if (!MIME_TO_EXT[req.file.mimetype]) return res.status(400).json({ erro: "Tipo inválido. Use JPEG, PNG ou WebP." });
+
+    // Confere a assinatura REAL dos bytes e usa o tipo detectado como fonte de
+    // verdade para extensão/contentType (o MIME do header é falsificável).
+    const tipo = tipoImagemPorAssinatura(req.file.buffer);
+    if (!tipo) return res.status(400).json({ erro: "O arquivo não é uma imagem JPEG, PNG ou WebP válida." });
 
     try {
-      const filename = `${crypto.randomBytes(16).toString("hex")}-${Date.now()}.${ext}`;
+      const filename = `${crypto.randomBytes(16).toString("hex")}-${Date.now()}.${tipo.ext}`;
       const caminho  = `${req.slug}/${filename}`; // isolamento por tenant na pasta do bucket
       const { error } = await supabaseAdmin.storage
         .from(BUCKET_IMAGENS)
-        .upload(caminho, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+        .upload(caminho, req.file.buffer, { contentType: tipo.mime, upsert: false });
       if (error) return res.status(500).json({ erro: "Falha ao enviar a imagem." });
 
       const { data } = supabaseAdmin.storage.from(BUCKET_IMAGENS).getPublicUrl(caminho);

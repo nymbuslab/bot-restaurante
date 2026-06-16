@@ -8,6 +8,7 @@
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const db = require("./db");
 const store = require("./store");
 const pedidos = require("./pedidos");
@@ -18,11 +19,24 @@ const TENANTS_DIR = path.join(DATA_DIR, "tenants");
 // App stateless: nada é gravado em disco (sessões → Postgres, imagens → Storage).
 // `tenantDir(slug)` ainda existe só como CHAVE do tenant (seu basename é o slug).
 
-// Hash SHA-256+salt — usado SOMENTE pela conta super-admin (env-based).
-// O login de restaurante usa o Supabase Auth (bcrypt), não esta função.
+// Senha da conta super-admin (env/DB-based). NOVOS hashes são bcrypt;
+// a verificação aceita o formato legado (SHA-256+salt) durante a migração.
+// O login de restaurante usa o Supabase Auth, não estas funções.
 const SALT = "nymbus-lab-bot-v2";
+const BCRYPT_COST = 12;
 function hashSenha(senha) {
-  return crypto.createHash("sha256").update(senha + SALT).digest("hex");
+  return bcrypt.hashSync(String(senha), BCRYPT_COST);
+}
+// Verifica `senha` contra `hashArmazenado`, detectando o formato: bcrypt
+// ($2…) → bcrypt.compare; senão → SHA-256+salt legado (timing-safe). Assim
+// o hash antigo (env/DB) segue válido até a senha master ser trocada (→ bcrypt).
+function verificarSenhaMaster(senha, hashArmazenado) {
+  if (typeof hashArmazenado !== "string" || !hashArmazenado) return false;
+  if (hashArmazenado.startsWith("$2")) return bcrypt.compareSync(String(senha), hashArmazenado);
+  const legado = crypto.createHash("sha256").update(senha + SALT).digest("hex");
+  const a = Buffer.from(legado);
+  const b = Buffer.from(hashArmazenado);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 function slugBase(nome) {
@@ -345,7 +359,7 @@ async function excluir(slug) {
 
 module.exports = {
   cadastrar, autenticar, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
-  tenantDir, setAtivo, excluir, hashSenha,
+  tenantDir, setAtivo, excluir, hashSenha, verificarSenhaMaster,
   atualizarAssinatura, podeLogar, acessoLiberado,
   trocarSenha, trocarEmail, conferirSenha,
 };
