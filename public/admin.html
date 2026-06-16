@@ -224,6 +224,47 @@
             </form>
           </div>
         </div>
+
+        <!-- Privacidade e dados (LGPD) -->
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <h3>Privacidade e dados</h3>
+          </div>
+          <p class="sub cfg-secao-sub">Seus direitos sobre os dados da conta (LGPD). Veja a <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+          <div class="card cfg-conta-card">
+            <div class="cfg-conta-linha">
+              <div class="cfg-conta-info">
+                <span class="cfg-conta-rotulo">Exportar meus dados</span>
+                <span class="sub">Baixe um arquivo com a conta, o cardápio e todos os pedidos.</span>
+              </div>
+              <button type="button" class="secundario mini" id="btnExportarDados">Exportar JSON</button>
+            </div>
+          </div>
+
+          <!-- Zona de perigo -->
+          <div class="card cfg-perigo-card">
+            <div class="cfg-conta-linha">
+              <div class="cfg-conta-info">
+                <span class="cfg-conta-rotulo cfg-perigo-titulo">Excluir minha conta</span>
+                <span class="sub">Apaga permanentemente a empresa, o cardápio, os pedidos e a conexão do WhatsApp. Esta ação não pode ser desfeita.</span>
+              </div>
+              <button type="button" class="perigo mini" id="btnAbrirExcluir">Excluir conta</button>
+            </div>
+
+            <!-- Form de exclusão (oculto até clicar) -->
+            <form class="cfg-conta-form" id="formExcluir" hidden autocomplete="off">
+              <div class="cfg-perigo-divisor"></div>
+              <div class="campo"><label for="excluirSenha">Senha atual</label><input id="excluirSenha" type="password" autocomplete="current-password" placeholder="Confirme sua senha" /></div>
+              <div class="campo"><label for="excluirConfirma">Digite <b>EXCLUIR</b> para confirmar</label><input id="excluirConfirma" type="text" autocomplete="off" placeholder="EXCLUIR" /></div>
+              <div class="cfg-conta-acoes">
+                <button type="button" class="secundario mini" data-cancelar="formExcluir">Cancelar</button>
+                <button type="submit" class="perigo mini" id="btnConfirmarExcluir" disabled>Excluir permanentemente</button>
+                <span class="aviso" id="avisoExcluir"></span>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
 
       <!-- ============ SUB-ABA: BOT ============ -->

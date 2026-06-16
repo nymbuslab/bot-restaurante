@@ -105,6 +105,25 @@ async function contarNoMes(dir, inicioISO) {
   return r.rows[0].n;
 }
 
+// Retenção (LGPD): anonimiza pedidos mais antigos que `meses`, apagando só os
+// dados pessoais (nome, telefone, endereço, chat_id) e preservando número,
+// itens, total e datas (valor estatístico/financeiro para o lojista). Roda
+// GLOBAL (todos os tenants) como job de manutenção. Idempotente: a cláusula
+// WHERE ignora linhas já anonimizadas, então rodar de novo retorna 0.
+async function anonimizarAntigos(meses = 12) {
+  const r = await db.query(
+    `UPDATE pedidos
+        SET cliente = 'anonimizado', telefone = '', endereco = '', chat_id = ''
+      WHERE criado_em < now() - make_interval(months => $1)
+        AND (cliente IS DISTINCT FROM 'anonimizado'
+             OR COALESCE(telefone,'') <> ''
+             OR COALESCE(endereco,'') <> ''
+             OR COALESCE(chat_id,'')  <> '')`,
+    [meses]
+  );
+  return r.rowCount;
+}
+
 // Antes (SQLite) liberava o handle do arquivo antes de apagar a pasta.
 // No Postgres não há handle local — no-op mantido por compatibilidade.
 function fecharConexao(_dir) {}
@@ -114,4 +133,4 @@ function esquecer(slug) {
   delete idCache[slug];
 }
 
-module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, contarNoMes, fecharConexao, esquecer };
+module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, contarNoMes, anonimizarAntigos, fecharConexao, esquecer };

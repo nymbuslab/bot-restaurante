@@ -14,6 +14,7 @@ require("dotenv").config();
 
 const servidor = require("./src/servidor");
 const { limparSessoesAntigas } = require("./src/wa-auth");
+const pedidos = require("./src/pedidos");
 const PORTA = process.env.PORT || 3000;
 
 // Higiene diária: remove sessões de clientes (`session:*`) inativas há +90 dias.
@@ -30,6 +31,20 @@ async function limparSessoes() {
 }
 setTimeout(limparSessoes, 30_000);                  // 30s após o boot
 setInterval(limparSessoes, 24 * 60 * 60 * 1000);    // a cada 24h
+
+// Retenção (LGPD): anonimiza dados pessoais de pedidos com mais de 12 meses
+// (mantém número/itens/total/datas). Job global, idempotente. Boot + 24h.
+const MESES_RETENCAO_PEDIDOS = 12;
+async function anonimizarPedidos() {
+  try {
+    const n = await pedidos.anonimizarAntigos(MESES_RETENCAO_PEDIDOS);
+    if (n > 0) console.log(`🔒 Retenção: ${n} pedido(s) > ${MESES_RETENCAO_PEDIDOS} meses anonimizado(s).`);
+  } catch (e) {
+    console.error("Retenção de pedidos falhou (ignorado):", e.message);
+  }
+}
+setTimeout(anonimizarPedidos, 45_000);              // 45s após o boot
+setInterval(anonimizarPedidos, 24 * 60 * 60 * 1000); // a cada 24h
 
 // Impede que erros do bot/WhatsApp derrubem o servidor.
 // O bot pode travar ou cair; o painel continua no ar.

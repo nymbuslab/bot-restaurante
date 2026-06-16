@@ -1518,6 +1518,58 @@ $("formSenha").addEventListener("submit", async (e) => {
 });
 
 // ============================================================
+// PRIVACIDADE E DADOS (LGPD) — exportar / excluir conta
+// ============================================================
+$("btnExportarDados").addEventListener("click", async () => {
+  const btn = $("btnExportarDados");
+  const txt = btn.textContent;
+  btn.disabled = true; btn.textContent = "Exportando...";
+  try {
+    const r = await api("GET", "/api/conta/exportar");
+    if (!r || !r.ok) throw new Error();
+    const dados = await r.json();
+    const blob = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const slug = (dados.empresa && dados.empresa.slug) || "conta";
+    const a = document.createElement("a");
+    a.href = url; a.download = "nymbus-dados-" + slug + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast("✓ Dados exportados!");
+  } catch (e) {
+    toast("Não foi possível exportar os dados.", "erro");
+  } finally {
+    btn.disabled = false; btn.textContent = txt;
+  }
+});
+
+$("btnAbrirExcluir").addEventListener("click", () => {
+  alternarFormConta("formExcluir", $("formExcluir").hidden);
+  $("btnConfirmarExcluir").disabled = true;
+});
+$("excluirConfirma").addEventListener("input", () => {
+  $("btnConfirmarExcluir").disabled = $("excluirConfirma").value.trim() !== "EXCLUIR";
+});
+$("formExcluir").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const senhaAtual = $("excluirSenha").value;
+  const confirmacao = $("excluirConfirma").value.trim();
+  if (confirmacao !== "EXCLUIR") return avisoConta("avisoExcluir", 'Digite "EXCLUIR" para confirmar.');
+  if (!senhaAtual) return avisoConta("avisoExcluir", "Informe sua senha atual.");
+  const btn = $("btnConfirmarExcluir");
+  btn.disabled = true; btn.textContent = "Excluindo...";
+  const r = await api("DELETE", "/api/conta", { senhaAtual, confirmacao });
+  const data = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.ok) {
+    sessionStorage.removeItem("token");
+    location.href = "/";
+  } else {
+    btn.disabled = false; btn.textContent = "Excluir permanentemente";
+    avisoConta("avisoExcluir", (data && data.erro) || "Não foi possível excluir a conta.");
+  }
+});
+
+// ============================================================
 // PEDIDOS
 // ============================================================
 let pedidosCache = [];

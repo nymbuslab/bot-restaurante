@@ -276,6 +276,13 @@ async function _validarSenhaAtual(slug, senhaAtual) {
   return { user_id: emp.user_id, email: emp.email };
 }
 
+// Confere a senha atual do tenant (sem alterar nada). Usado por ações
+// sensíveis de autoatendimento, como a exclusão da própria conta.
+async function conferirSenha(slug, senhaAtual) {
+  const conta = await _validarSenhaAtual(slug, senhaAtual);
+  return !!conta;
+}
+
 async function trocarSenha(slug, senhaAtual, novaSenha) {
   if (!novaSenha || novaSenha.length < 6) throw new Error("A nova senha deve ter ao menos 6 caracteres.");
   const conta = await _validarSenhaAtual(slug, senhaAtual);
@@ -334,5 +341,5 @@ module.exports = {
   cadastrar, autenticar, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, hashSenha,
   atualizarAssinatura, podeLogar, acessoLiberado,
-  trocarSenha, trocarEmail,
+  trocarSenha, trocarEmail, conferirSenha,
 };

@@ -1256,6 +1256,16 @@ button:disabled {
 }
 .cfg-horario-texto { margin-top: 16px; }
 
+/* Zona de perigo (excluir conta) */
+.cfg-perigo-card {
+  display: flex; flex-direction: column;
+  margin-top: 14px;
+  border-color: rgba(239,68,68,0.35);
+  background: var(--error-subtle, rgba(239,68,68,0.06));
+}
+.cfg-perigo-titulo { color: var(--error); }
+.cfg-perigo-divisor { height: 1px; background: rgba(239,68,68,0.25); margin: 4px 0 16px; }
+
 /* Seções com cabeçalho + ícone */
 .cfg-secao { margin-bottom: 26px; }
 .cfg-secao-cabeca {

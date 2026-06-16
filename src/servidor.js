@@ -664,6 +664,55 @@ app.patch("/api/conta/email", exigeAuth, async (req, res) => {
   }
 });
 
+// LGPD — Exportar meus dados: devolve TODO o conteúdo do tenant (acesso +
+// portabilidade). O cliente baixa como arquivo JSON.
+app.get("/api/conta/exportar", exigeAuth, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp) return res.status(404).json({ erro: "Conta não encontrada." });
+    await store.ensure(req.tenantDir);
+    const dados = {
+      exportadoEm: new Date().toISOString(),
+      empresa: {
+        nome: emp.nome,
+        email: emp.email,
+        slug: emp.slug,
+        criadoEm: emp.criado_em,
+      },
+      assinatura: {
+        status: emp.assinaturaStatus,
+        trialAte: emp.trialAte,
+        proximaCobranca: emp.proximaCobranca,
+      },
+      config: store.getConfig(req.tenantDir),
+      cardapio: store.getCardapio(req.tenantDir),
+      pedidos: await pedidos.lerTodos(req.tenantDir),
+    };
+    res.json(dados);
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao exportar os dados." });
+  }
+});
+
+// LGPD — Excluir minha conta (autoatendimento, DESTRUTIVO). Exige a senha
+// atual + confirmação textual. Apaga tudo (empresa, pedidos em cascata,
+// sessão do WhatsApp, usuário do Auth e imagens). Desconecta o bot antes.
+app.delete("/api/conta", exigeAuth, async (req, res) => {
+  try {
+    const { senhaAtual, confirmacao } = req.body || {};
+    if (confirmacao !== "EXCLUIR") {
+      return res.status(400).json({ erro: 'Digite "EXCLUIR" para confirmar.' });
+    }
+    const ok = await empresas.conferirSenha(req.slug, senhaAtual);
+    if (!ok) return res.status(400).json({ erro: "Senha atual incorreta." });
+    await multiBot.desconectar(req.slug).catch(() => {});
+    await empresas.excluir(req.slug);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao excluir a conta." });
+  }
+});
+
 app.get("/api/cardapio", exigeAuth, async (req, res) => {
   try {
     await store.ensure(req.tenantDir);

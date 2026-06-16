@@ -178,6 +178,25 @@ e-mail de login); `PATCH /api/conta/senha { senhaAtual, novaSenha }`; `PATCH /ap
 (`email_confirm: true`, sem etapa de confirmação). No painel ficam na sub-aba **Empresa** das
 Configurações (seção "Conta de acesso").
 
+**Privacidade e dados (LGPD) — autoatendimento do dono.** Na mesma sub-aba **Empresa**, seção
+"Privacidade e dados" (sob `exigeAuth`):
+
+- **Exportar meus dados:** `GET /api/conta/exportar` → JSON com `empresa`, `assinatura`, `config`,
+  `cardapio` e **todos os `pedidos`** (`pedidos.lerTodos`). O front baixa como `nymbus-dados-{slug}.json`
+  (blob client-side). Atende acesso + portabilidade.
+- **Excluir minha conta:** `DELETE /api/conta { senhaAtual, confirmacao }`. **Duas travas:** exige a
+  **senha atual** (`empresas.conferirSenha` → `_validarSenhaAtual` via `signInWithPassword`) e
+  `confirmacao === "EXCLUIR"`. Desconecta o bot e chama `empresas.excluir` (mesma exclusão destrutiva
+  do super-admin: empresa → pedidos em cascata → `wa_auth` → usuário do Auth → imagens). No sucesso o
+  painel descarta o token e volta pra landing. UI numa **zona de perigo** (card vermelho).
+- **Retenção de pedidos:** `pedidos.anonimizarAntigos(meses=12)` — job **global** agendado no `index.js`
+  (boot + 24h, junto da higiene de sessões). Anonimiza PII de pedidos com +12 meses (`cliente='anonimizado'`,
+  `telefone/endereco/chat_id=''`) **mantendo** número, itens, total e datas. Idempotente (WHERE ignora
+  já anonimizados).
+- **Páginas públicas:** `/termos.html` e `/privacidade.html` (Política de Privacidade LGPD), com a
+  identidade da empresa injetada de `GET /api/plataforma/publico` (mesma fonte do footer, via `footer.js`
+  com o gancho `window.onPlataformaData`); o cadastro exige **aceite** dos dois (checkbox que trava a criação).
+
 ## Super-admin (conta master)
 
 Área de gestão de **todos** os tenants, separada do painel de restaurante. **Backend

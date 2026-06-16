@@ -4,22 +4,18 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-14 21:47**
+**Checkpoint salvo em 2026-06-16**
 
-### Feito nesta sessão
+### Feito nesta sessão (LGPD + páginas institucionais)
 
-- **Pacote T1–T6 fechado** (todos commitados/pushados, working tree limpo): T3 (Configurações em sub-abas Empresa×Bot + trocar senha/e-mail), T4 (gestão de cartões no painel), T5a/b/c (polimento da landing, do painel do cliente e do master), T6 (auditoria de responsividade → 0 overflow; fix das tabelas do master no tablet).
-- **Redesenho da aba Assinatura** (visual do protótipo) com **faturas reais do Stripe** (`listarFaturas` no `GET /api/assinatura`) + download de PDF + estado vazio honesto.
-- **Aba "Configurações Master"** no painel master (base da futura aba Nymbus): edita o **WhatsApp de suporte** numa tabela singleton `plataforma_config` (migration aplicada via `db push`; `src/plataforma.js`; `GET/PUT /api/admin/plataforma`; `GET /api/plataforma` lê DB→env). Alimenta o "Falar com Suporte" do cliente.
-- Skill `frontend-design` usada como guia do polimento (ancorada no design system Nymbus); validações com Playwright.
-
-### Feito também (continuação)
-
-- **Aba "Configurações Master" expandida (dados da plataforma Nymbus)** — migration estendeu `plataforma_config` (razao_social, nome_fantasia, cnpj, endereco, telefone, facebook, instagram, master_email, master_senha_hash; `db push` aplicado). UI com 3 cards: **Dados da empresa** (Razão Social, Nome Fantasia, CNPJ opcional c/ máscara, Endereço, Telefone), **Contato e redes** (WhatsApp suporte, Facebook, Instagram) e **Dados de acesso (master)** (e-mail + nova senha, exige senha atual). **Credenciais do master migraram pro banco** (editáveis): login lê DB→env bootstrap (`credenciaisMaster()`); `PATCH /api/admin/conta`. **Footer da landing** passou a exibir Nome Fantasia/Razão Social/CNPJ/Endereço/Telefone + ícones FB/IG via `GET /api/plataforma/publico` (vazio = footer padrão). `src/plataforma.js` (obter/salvar + obterMaster/salvarMaster). Validado: módulo no banco real (todos os campos + hash do master) + Playwright (Config Master + footer).
+- **Footer redesenhado** (estilo Dionísio → depois **vertical em colunas**): de horizontal para multi-coluna (Plataforma · Conta · Legal · Contato), pronto pra crescer; colunas dinâmicas (redes/endereço/telefone) somem se vazias. Centralizado em `public/footer.js` (1 fetch, gancho `window.onPlataformaData`).
+- **Página de Termos de Uso** (`public/termos.html`) — adaptada do exemplo da Dionísio à realidade Nymbus (atendimento no WhatsApp, cardápio, painel; Stripe R$79/7d; **risco de banimento do WhatsApp** em destaque; removidos serviços/IA que a Nymbus não tem). Identidade da empresa injetada de `/api/plataforma/publico`. Fix: o bloco do título era `<header>` e herdava `sticky/z-90` do header global (subia por cima do nav) → virou `<div>`.
+- **LGPD Onda 1:** `public/privacidade.html` (Política de Privacidade própria — dados/finalidade/base legal, sub-operadores Supabase/Stripe, retenção honesta, direitos do titular, DPO dinâmico, sem cookies de rastreamento); **checkbox de aceite** dos Termos + Privacidade na Etapa 1 do cadastro (trava a criação).
+- **LGPD Onda 2 (autoatendimento + retenção):** `GET /api/conta/exportar` (baixa JSON com empresa+config+cardápio+pedidos); `DELETE /api/conta` (excluir a própria conta — exige senha atual + digitar "EXCLUIR"; reusa `empresas.excluir`); `pedidos.anonimizarAntigos(12)` agendado no `index.js` (boot+24h) anonimiza PII de pedidos >12 meses. UI na sub-aba **Empresa** → seção "Privacidade e dados" (+ zona de perigo). Texto de retenção/direitos atualizado em `privacidade.html`. **Validado E2E** (tenant descartável: cadastro→login→export→travas→exclusão→login 401; SQL de anonimização read-only; rotas 401 sem auth; Playwright da UI).
 
 ### Próximo passo
 
-- Confirmar com o usuário se há mais campos/telas a alimentar com os dados da plataforma; senão, próxima prioridade do backlog.
+- Backlog aberto: pesquisa anterior sobre LGPD (Onda 2 concluída). Aguardando próxima prioridade do usuário. Lembrete: textos de Termos/Privacidade merecem revisão jurídica antes de oficializar.
 
 ### Decisões pendentes
 
