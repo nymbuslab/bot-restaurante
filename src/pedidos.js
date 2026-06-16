@@ -106,19 +106,34 @@ async function contarNoMes(dir, inicioISO) {
 }
 
 // Retenção (LGPD): anonimiza pedidos mais antigos que `meses`, apagando só os
-// dados pessoais (nome, telefone, endereço, chat_id) e preservando número,
+// dados pessoais (nome, telefone, endereço, chat_id E a `observacao` de cada
+// item — texto livre do cliente que pode conter PII) e preservando número,
 // itens, total e datas (valor estatístico/financeiro para o lojista). Roda
 // GLOBAL (todos os tenants) como job de manutenção. Idempotente: a cláusula
 // WHERE ignora linhas já anonimizadas, então rodar de novo retorna 0.
 async function anonimizarAntigos(meses = 12) {
   const r = await db.query(
     `UPDATE pedidos
-        SET cliente = 'anonimizado', telefone = '', endereco = '', chat_id = ''
+        SET cliente = 'anonimizado', telefone = '', endereco = '', chat_id = '',
+            itens = CASE
+              WHEN jsonb_typeof(itens) = 'array' THEN COALESCE((
+                SELECT jsonb_agg(
+                  CASE WHEN COALESCE(elem->>'observacao','') <> ''
+                       THEN jsonb_set(elem, '{observacao}', '""'::jsonb)
+                       ELSE elem END
+                )
+                FROM jsonb_array_elements(itens) AS elem
+              ), itens)
+              ELSE itens
+            END
       WHERE criado_em < now() - make_interval(months => $1)
         AND (cliente IS DISTINCT FROM 'anonimizado'
              OR COALESCE(telefone,'') <> ''
              OR COALESCE(endereco,'') <> ''
-             OR COALESCE(chat_id,'')  <> '')`,
+             OR COALESCE(chat_id,'')  <> ''
+             OR (jsonb_typeof(itens) = 'array' AND EXISTS (
+                   SELECT 1 FROM jsonb_array_elements(itens) AS e
+                   WHERE COALESCE(e->>'observacao','') <> '')))`,
     [meses]
   );
   return r.rowCount;
