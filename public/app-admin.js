@@ -861,7 +861,9 @@ async function salvarAcessoMaster() {
 // BIND DE EVENTOS
 // ============================================================
 $("btnEntrar").addEventListener("click", entrar);
-$("formLogin").addEventListener("submit", entrar);
+// Form/olho sem handlers inline (CSP): previne reload e liga o toggle de senha aqui.
+$("formLogin").addEventListener("submit", (e) => { e.preventDefault(); entrar(); });
+$("olhoSenha").addEventListener("click", () => toggleSenha("senha", "olhoSenha"));
 $("btnSair").addEventListener("click", sair);
 $("btnSairTopo").addEventListener("click", sair);
 $("btnNovo").addEventListener("click", abrirCriar);
@@ -869,7 +871,7 @@ $("am-filtro-status").addEventListener("change", (e) => { filtroStatus = e.targe
 $("btnExportar").addEventListener("click", exportarCSV);
 $("btnVerTodos").addEventListener("click", () => trocarAba("restaurantes"));
 $("btnSalvarPlataforma").addEventListener("click", salvarPlataforma);
-$("formAcessoMaster").addEventListener("submit", salvarAcessoMaster);
+$("formAcessoMaster").addEventListener("submit", (e) => { e.preventDefault(); salvarAcessoMaster(); });
 $("cfg-cnpj").addEventListener("input", (e) => { e.target.value = mascararCNPJ(e.target.value); });
 
 // Navegação por abas (sidebar)
@@ -891,7 +893,7 @@ $("del-input").addEventListener("input", () => {
 
 $("criar-cancelar").addEventListener("click", fecharCriar);
 $("criar-confirmar").addEventListener("click", confirmarCriar);
-$("formCriar").addEventListener("submit", confirmarCriar);
+$("formCriar").addEventListener("submit", (e) => { e.preventDefault(); confirmarCriar(); });
 
 // ============================================================
 // BOOT: tem token master? → dashboard. Senão → login.
