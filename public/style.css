@@ -3565,6 +3565,55 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   .lp-termos h1 { font-size: 25px; }
 }
 
+/* Modo embed (Termos/Privacidade dentro de um iframe/modal): sem chrome */
+html.embed, html.embed body { background: var(--bg-primary); }
+.embed .lp-nav,
+.embed .lp-footer,
+.embed .lp-termos-cabeca { display: none !important; }
+.embed .lp-termos { padding: 24px 0 36px; background: none; }
+
+/* Modal de documento (Termos/Privacidade) na tela de cadastro — via iframe */
+.doc-modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(8,9,13,0.66); backdrop-filter: blur(3px);
+  opacity: 0; pointer-events: none; transition: opacity .18s ease;
+}
+.doc-modal-overlay.aberto { opacity: 1; pointer-events: auto; }
+.doc-modal {
+  width: min(800px, 100%); height: min(82vh, 780px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  transform: translateY(10px) scale(.99); transition: transform .18s ease;
+}
+.doc-modal-overlay.aberto .doc-modal { transform: none; }
+.doc-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0;
+}
+.doc-modal-head h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.doc-modal-fechar {
+  background: none; border: 0; color: var(--text-secondary); cursor: pointer;
+  font-size: 24px; line-height: 1; padding: 2px 6px; border-radius: var(--radius-sm);
+  transition: color .15s ease, background .15s ease;
+}
+.doc-modal-fechar:hover { color: var(--text-primary); background: var(--bg-elevated); }
+.doc-modal-body { flex: 1; min-height: 0; background: var(--bg-primary); }
+.doc-modal-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+.doc-modal-loading {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  color: var(--text-secondary); font-size: 13px;
+}
+.doc-modal-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 12px 18px; border-top: 1px solid var(--border-subtle); flex-shrink: 0;
+}
+@media (max-width: 560px) {
+  .doc-modal-overlay { padding: 0; }
+  .doc-modal { width: 100%; height: 100%; max-height: none; border-radius: 0; border: 0; }
+}
+
 /* ---- Polimento (T5a): reveal, eyebrow, moldura, cartão flutuante ---- */
 
 /* Reveal ao rolar */

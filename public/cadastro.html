@@ -99,7 +99,7 @@
 
             <label class="auth-aceite">
               <input type="checkbox" id="aceiteTermos" />
-              <span>Li e concordo com os <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span>
+              <span>Li e concordo com os <a href="termos.html" target="_blank" rel="noopener" data-doc="termos">Termos de Uso</a> e a <a href="privacidade.html" target="_blank" rel="noopener" data-doc="privacidade">Política de Privacidade</a>.</span>
             </label>
 
             <button id="btnCadastrar" class="auth-btn" type="submit">Criar conta e começar →</button>
@@ -589,6 +589,83 @@
       }
     }
     boot();
+  </script>
+
+  <!-- Modal de documentos (Termos / Privacidade) — mantém o usuário no cadastro -->
+  <div class="doc-modal-overlay" id="docModal" aria-hidden="true">
+    <div class="doc-modal" role="dialog" aria-modal="true" aria-labelledby="docModalTitulo">
+      <div class="doc-modal-head">
+        <h3 id="docModalTitulo">Termos de Uso</h3>
+        <button type="button" class="doc-modal-fechar" id="docModalX" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="doc-modal-body">
+        <div class="doc-modal-loading" id="docModalLoading">Carregando…</div>
+        <iframe id="docModalFrame" title="Documento" referrerpolicy="no-referrer"></iframe>
+      </div>
+      <div class="doc-modal-foot">
+        <button type="button" class="secundario mini" id="docModalFechar">Fechar</button>
+        <button type="button" class="mini" id="docModalAceitar">Li e aceito</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Abre Termos/Privacidade em modal (iframe) sem tirar o usuário do cadastro.
+    // Fonte única de verdade: carrega a própria página em modo ?embed (sem nav/footer).
+    (function () {
+      const modal = document.getElementById("docModal");
+      const frame = document.getElementById("docModalFrame");
+      const loading = document.getElementById("docModalLoading");
+      const titulo = document.getElementById("docModalTitulo");
+      let ultimoFoco = null;
+      let carregado = "";
+
+      function abrir(doc) {
+        const src = (doc === "privacidade" ? "privacidade.html" : "termos.html") + "?embed=1";
+        titulo.textContent = doc === "privacidade" ? "Política de Privacidade" : "Termos de Uso";
+        if (carregado !== src) {
+          loading.style.display = "flex";
+          frame.style.visibility = "hidden";
+          frame.src = src;
+          carregado = src;
+        }
+        ultimoFoco = document.activeElement;
+        modal.classList.add("aberto");
+        modal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        document.getElementById("docModalX").focus();
+      }
+      function fechar() {
+        modal.classList.remove("aberto");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        if (ultimoFoco && ultimoFoco.focus) ultimoFoco.focus();
+      }
+
+      frame.addEventListener("load", function () {
+        if (!frame.src || frame.src === "about:blank") return;
+        loading.style.display = "none";
+        frame.style.visibility = "visible";
+      });
+
+      document.querySelectorAll("[data-doc]").forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          abrir(a.getAttribute("data-doc"));
+        });
+      });
+      document.getElementById("docModalX").addEventListener("click", fechar);
+      document.getElementById("docModalFechar").addEventListener("click", fechar);
+      document.getElementById("docModalAceitar").addEventListener("click", function () {
+        const cb = document.getElementById("aceiteTermos");
+        if (cb) cb.checked = true;
+        fechar();
+      });
+      modal.addEventListener("click", function (e) { if (e.target === modal) fechar(); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && modal.classList.contains("aberto")) fechar();
+      });
+    })();
   </script>
 </body>
 </html>

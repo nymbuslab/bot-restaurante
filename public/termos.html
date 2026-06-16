@@ -9,6 +9,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <!-- Modo embed (quando aberto em iframe/modal): esconde nav, footer e "voltar". -->
+  <script>
+    (function () {
+      if (!/[?&#]embed/.test(location.search + location.hash)) return;
+      document.documentElement.classList.add("embed");
+      document.addEventListener("DOMContentLoaded", function () {
+        // Mantém a navegação entre documentos dentro do embed (sem chrome).
+        document.querySelectorAll('a[href$="termos.html"], a[href$="privacidade.html"]').forEach(function (a) {
+          a.href += (a.href.indexOf("?") < 0 ? "?embed=1" : "&embed=1");
+        });
+      });
+    })();
+  </script>
 </head>
 <body class="lp-body">
 
