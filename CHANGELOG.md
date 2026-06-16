@@ -211,3 +211,29 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **O que foi removido:** `scripts/backup.js`, as 3 rotas `/api/admin/backup/{gerar,listar,baixar}` (`servidor.js`), a aba **Configurações** inteira do `/admin-master` (HTML + JS + CSS — era exclusiva do backup), o script `npm run backup` e a dependência `tar` do `package.json`. A gestão de tenants (aba **Restaurantes**) e as métricas seguem intactas
 - **Backup agora é 100% gerenciado pelo Supabase** (point-in-time recovery do Postgres + Storage). Docs atualizadas (CLAUDE.md, ROADMAP.md, DEPLOY.md, PRD.md, `.gitignore`)
 - O `/admin-master` abre direto em **Restaurantes**, sem barra de abas
+
+## [0.19.0] — Monetização: assinatura paga (Stripe)
+
+- **Plano único pago (R$ 79/mês) com 7 dias grátis exigindo cartão** no início, via Stripe (pacote `stripe`, lógica em `src/stripe.js`). Sem `STRIPE_SECRET_KEY`+`STRIPE_PRICE_ID`, as rotas `/api/assinatura/*` respondem 503
+- **Checkout próprio com a identidade Nymbus** (Stripe Elements / Payment Element, tema escuro) — coleta o cartão via **SetupIntent** ANTES de criar a assinatura (`/api/assinatura/setup-intent` → `/api/assinatura/confirmar`, idempotente, `trial_period_days: 7`). Não usa a tela hospedada do Stripe
+- **Webhook** (`/api/stripe/webhook`, raw body + verificação de assinatura) sincroniza o estado e liga/desliga o bot; **Customer Portal** para cancelar; **gestão de cartões no painel** (listar / adicionar / tornar padrão / remover, com travas no padrão e no último)
+- **Dois eixos de acesso:** `ativo` (suspensão manual do admin) + `assinatura_status` (`nenhuma | trialing | active | cortesia | past_due | canceled`). `exigeAssinatura` (402) protege o bot; **gate** trava o painel sem acesso; aba **Assinatura** com **faturas reais** do Stripe (download de PDF)
+- **Painel master:** liberar/revogar **cortesia**, cancelar no Stripe e **métricas de billing** (em teste / pagantes / cortesia / em atraso / cancelados)
+
+## [0.20.0] — Identidade da plataforma + páginas institucionais
+
+- **Aba "Configurações Master"** (tabela singleton `plataforma_config`, `src/plataforma.js`): razão social, nome fantasia, CNPJ, endereço, telefone, Facebook, Instagram + **credenciais do master editáveis** (migraram pro banco; a env `SUPERADMIN_*` vira só bootstrap). Alimenta o footer e as páginas legais via `GET /api/plataforma/publico`
+- **Footer institucional vertical** na landing (colunas Plataforma · Conta · Legal · Contato; colunas dinâmicas somem se vazias), centralizado em `public/footer.js`
+- **Páginas `termos.html` e `privacidade.html`** (Termos de Uso + Política de Privacidade) adaptadas à realidade Nymbus, com a identidade da empresa injetada dinamicamente; destaque para o **risco de banimento do WhatsApp** (conexão não-oficial via Baileys)
+
+## [0.21.0] — LGPD: direitos do titular, retenção e aceite
+
+- **Exportar meus dados** (`GET /api/conta/exportar` → JSON com empresa + config + cardápio + todos os pedidos) e **excluir a própria conta** (`DELETE /api/conta`, exige senha atual + digitar "EXCLUIR") na sub-aba **Empresa → "Privacidade e dados"** (zona de perigo)
+- **Retenção:** `pedidos.anonimizarAntigos(12)` (job no `index.js`, boot + 24h) anonimiza a PII de pedidos com mais de 12 meses, mantendo número/itens/total/datas
+- **Aceite** dos Termos + Política de Privacidade no cadastro (checkbox que trava a criação). Os documentos abrem em **modal (iframe em modo `?embed`)** sobre o cadastro, sem tirar o usuário da página (fonte única de verdade, acessível, tela cheia no mobile)
+
+## [0.21.1] — Cancelar/pausar a assinatura no Stripe ao excluir/suspender
+
+- **Excluir** (autoatendimento e master) **cancela** a assinatura no Stripe **antes** de apagar; se falhar, **aborta (502)** e orienta a contatar o suporte — evita assinatura órfã cobrando o cartão
+- **Suspender** (master) **pausa** a cobrança (`pause_collection`, reversível) e **Reativar** **retoma**; se o Stripe falhar, o bloqueio de acesso acontece e o admin é avisado (toast) a verificar/contatar o suporte
+- `cancelarAssinatura` ficou **idempotente** + novos `pausarAssinatura`/`retomarAssinatura`; alerta de "assinatura ativa será cancelada" ao abrir Excluir conta. Validado contra o **Stripe de teste real** (pausar→void, retomar→null, cancelar→canceled, idempotência; E2E self e master)
