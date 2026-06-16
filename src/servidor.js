@@ -261,7 +261,7 @@ app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error("confirmar assinatura:", e.message);
-    res.status(500).json({ erro: e.message || "Falha ao ativar a assinatura." });
+    res.status(500).json({ erro: "Falha ao ativar a assinatura. Tente novamente." });
   }
 });
 
@@ -699,7 +699,8 @@ app.post("/api/bot/resetar", exigeAuth, async (req, res) => {
     await multiBot.resetarSessao(req.slug, req.tenantDir);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ erro: e.message });
+    console.error("bot/resetar:", e.message);
+    res.status(500).json({ erro: "Não foi possível resetar a sessão. Tente novamente." });
   }
 });
 
@@ -714,9 +715,44 @@ app.get("/api/config", exigeAuth, async (req, res) => {
   }
 });
 
+// ---- Validação defensiva de payload (config/cardápio jsonb) ----
+// O jsonb é flexível por design (não impomos schema rígido), mas barramos
+// payload não-objeto ou exagerado, que inflaria a linha ou quebraria o bot/painel.
+const LIMITE_CONFIG_BYTES   = 256 * 1024; // ~256 KB
+const LIMITE_CARDAPIO_BYTES = 512 * 1024; // ~512 KB
+const MAX_CATEGORIAS = 200;
+const MAX_ITENS_POR_CATEGORIA = 500;
+const ehObjetoSimples = (v) => v != null && typeof v === "object" && !Array.isArray(v);
+const tamanhoBytes = (v) => Buffer.byteLength(JSON.stringify(v), "utf8");
+
+function validarConfig(body) {
+  if (!ehObjetoSimples(body)) return "Configuração inválida.";
+  if (tamanhoBytes(body) > LIMITE_CONFIG_BYTES) return "Configuração grande demais.";
+  return null;
+}
+function validarCardapio(body) {
+  if (!ehObjetoSimples(body)) return "Cardápio inválido.";
+  if (tamanhoBytes(body) > LIMITE_CARDAPIO_BYTES) return "Cardápio grande demais.";
+  const cats = body.categorias;
+  if (cats !== undefined) {
+    if (!Array.isArray(cats)) return "Cardápio inválido (categorias).";
+    if (cats.length > MAX_CATEGORIAS) return "Categorias demais.";
+    for (const cat of cats) {
+      if (!ehObjetoSimples(cat)) return "Categoria inválida.";
+      if (cat.itens !== undefined) {
+        if (!Array.isArray(cat.itens)) return "Categoria inválida (itens).";
+        if (cat.itens.length > MAX_ITENS_POR_CATEGORIA) return "Itens demais em uma categoria.";
+      }
+    }
+  }
+  return null;
+}
+
 app.put("/api/config", exigeAuth, async (req, res) => {
+  const invalido = validarConfig(req.body);
+  if (invalido) return res.status(400).json({ erro: invalido });
   try {
-    await store.setConfig(req.tenantDir, req.body || {});
+    await store.setConfig(req.tenantDir, req.body);
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });
@@ -829,8 +865,10 @@ app.get("/api/cardapio", exigeAuth, async (req, res) => {
 });
 
 app.put("/api/cardapio", exigeAuth, async (req, res) => {
+  const invalido = validarCardapio(req.body);
+  if (invalido) return res.status(400).json({ erro: invalido });
   try {
-    await store.setCardapio(req.tenantDir, req.body || { categorias: [] });
+    await store.setCardapio(req.tenantDir, req.body);
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });
@@ -922,7 +960,8 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
     res.json({ ok: true, avisadoEm });
   } catch (e) {
     const status = e.message === "WhatsApp não conectado" ? 400 : 500;
-    res.status(status).json({ erro: e.message });
+    if (status === 500) console.error("pedido/avisar:", e.message);
+    res.status(status).json({ erro: status === 400 ? e.message : "Não foi possível enviar o aviso ao cliente." });
   }
 });
 
