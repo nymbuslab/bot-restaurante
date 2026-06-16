@@ -237,3 +237,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Excluir** (autoatendimento e master) **cancela** a assinatura no Stripe **antes** de apagar; se falhar, **aborta (502)** e orienta a contatar o suporte — evita assinatura órfã cobrando o cartão
 - **Suspender** (master) **pausa** a cobrança (`pause_collection`, reversível) e **Reativar** **retoma**; se o Stripe falhar, o bloqueio de acesso acontece e o admin é avisado (toast) a verificar/contatar o suporte
 - `cancelarAssinatura` ficou **idempotente** + novos `pausarAssinatura`/`retomarAssinatura`; alerta de "assinatura ativa será cancelada" ao abrir Excluir conta. Validado contra o **Stripe de teste real** (pausar→void, retomar→null, cancelar→canceled, idempotência; E2E self e master)
+
+## [0.22.0] — Segurança: blindagem de borda (Onda 1 da auditoria)
+
+- **Cabeçalhos de segurança (helmet) + CSP estrita** em `src/servidor.js`: `script-src` sem `'unsafe-inline'` (libera só `js.stripe.com`), `frame-src` só Stripe, `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN` (anti-clickjacking), HSTS, `nosniff`, `Referrer-Policy`. Origem do Supabase lida de `SUPABASE_URL` (sem hardcode)
+- **Pré-requisito da CSP:** todo JS do front virou **arquivo externo** — extraídos os 9 blocos `<script>` inline (novos `login.js`, `checkout.js`, `cadastro.js`, `landing.js`, `legal-embed.js`, `termos.js`, `privacidade.js`) e convertidos os 9 handlers inline (`onclick`/`onsubmit`) para `addEventListener`. **Não adicionar `<script>` inline nem `on*=` no HTML** (quebraria a CSP)
+- **Rate limiting** (`express-rate-limit`) + `trust proxy` (Fly): login master **5/15min**, login restaurante 10/15min, cadastro 5/h, setup-intent/checkout 20/15min — mitiga brute force (em especial a conta master) e criação em massa de tenants
+- **Dependência vulnerável corrigida:** `form-data` (GHSA alta, via Baileys→axios) atualizado por `npm audit fix` (`npm audit` zerado)
+- Validado no navegador (Playwright): CSP sem violações no console, toggles de senha, modal de Termos e iframe `?embed` funcionando
