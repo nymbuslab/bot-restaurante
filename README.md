@@ -1,11 +1,16 @@
-# 🍴 Bot de Pedidos para Restaurante (WhatsApp) + Painel
+# 🍴 Nymbus Lab — Bot de Pedidos no WhatsApp + Painel
 
-Plataforma **SaaS multi-tenant**: qualquer restaurante se cadastra, configura o cardápio
-e começa a receber pedidos pelo WhatsApp de forma automatizada. Cada empresa tem seu
+Plataforma **SaaS multi-tenant** da **Nymbus Lab**: qualquer restaurante se cadastra, configura
+o cardápio e começa a receber pedidos pelo WhatsApp de forma automatizada. Cada empresa tem seu
 próprio ambiente isolado — cardápio, configurações, pedidos e conexão WhatsApp separados.
 
+**Modelo de negócio (pago):** cadastro grátis → **teste grátis de 7 dias com cartão** →
+**R$ 79/mês** via **Stripe**. Sem pagar / em atraso, o painel trava na aba **Assinatura** e o bot
+desconecta (o login segue funcionando para reativar). A gestão de todos os tenants é feita pelo
+super-admin (`/admin-master`).
+
 > Documentos do projeto: **PRD.md** (requisitos), **CLAUDE.md** (guia técnico),
-> **DEPLOY.md** (como colocar em produção).
+> **DEPLOY.md** (produção) e **ROADMAP.md** (direção).
 
 ## ✨ O que ele faz
 
@@ -19,26 +24,48 @@ próprio ambiente isolado — cardápio, configurações, pedidos e conexão Wha
   automaticamente "fechado" fora do horário.
 - **Só responde a mensagens recebidas após a conexão** (não dispara em massa).
 
-**Painel:**
+**Painel do restaurante:**
 
 - **Conexão**: conectar/desconectar o WhatsApp; gerar novo QR se travar.
 - **Cardápio**: itens, preços, ativar/desativar, composição e opcionais — valem na hora.
-- **Configurações**: dados do restaurante, mensagens, horário por dia, taxa de entrega,
-  formas de pagamento, abrir/fechar manualmente.
-- **Pedidos**: lista com itens, opcionais, observação, total, entrega e telefone.
+- **Pedidos**: métricas por período + lista com itens, opcionais, observação, total, entrega e
+  telefone; **exportar CSV** dos pedidos filtrados.
+- **Configurações** (sub-abas **Empresa** e **Bot**): dados do restaurante, **conta de acesso**
+  (trocar e-mail/senha), mensagens, horário por dia, taxa de entrega, formas de pagamento,
+  abrir/fechar manualmente; **Privacidade e dados** (exportar/excluir conta — LGPD).
+- **Assinatura**: status do plano, dias de trial, próxima cobrança, faturas (Stripe) e cartões.
 - **Simulador**: testa o fluxo completo do bot direto no navegador, sem WhatsApp.
+
+**Painel master (super-admin):** dashboard com métricas de billing, gestão de tenants
+(criar / suspender / reativar / excluir, cortesia) e **Configurações Master** (dados da plataforma).
 
 ## 📦 Como rodar
 
-Pré-requisito: **Node.js 20+** e um projeto **Supabase** (Postgres + Auth).
+Pré-requisito: **Node.js 22+** (o `supabase-js` exige WebSocket nativo — no Node 20 o app **não
+sobe**) e um projeto **Supabase** (Postgres + Auth).
 
-Crie um `.env` (ver `.env.example`) com as credenciais do Supabase:
+Crie um `.env` a partir do **`.env.example`** (lista completa e comentada). O mínimo para subir é
+o bloco do Supabase; o super-admin e a assinatura exigem os demais:
 
-```
+```bash
+# Supabase (obrigatório)
 DATABASE_URL=...                 # Settings → Database (prefira Session pooler, porta 5432)
 SUPABASE_URL=...                 # Settings → API
 SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...    # secreto, só backend
+
+# Super-admin (/admin-master) — sem isto as rotas /api/admin/* ficam off (503)
+SUPERADMIN_EMAIL=...
+SUPERADMIN_SENHA_HASH=...        # gere com: npm run gerar-hash-admin -- "suaSenha"  (bcrypt)
+
+# Stripe (assinatura paga)
+STRIPE_SECRET_KEY=...
+STRIPE_PUBLISHABLE_KEY=...
+STRIPE_PRICE_ID=...
+STRIPE_WEBHOOK_SECRET=...
+
+# Plataforma (opcional)
+SUPORTE_WHATSAPP=...             # WhatsApp de suporte (só dígitos, ex.: 5511999999999)
 ```
 
 ```bash
@@ -99,8 +126,10 @@ fly launch --no-deploy
 
 # 3. Editar fly.toml: troque app = "bot-restaurante" pelo nome escolhido
 
-# 4. Configurar os secrets do Supabase (banco + auth + storage)
-fly secrets set DATABASE_URL="..." SUPABASE_URL="..." SUPABASE_ANON_KEY="..." SUPABASE_SERVICE_ROLE_KEY="..."
+# 4. Configurar os secrets (os mesmos do .env: Supabase + super-admin + Stripe)
+fly secrets set DATABASE_URL="..." SUPABASE_URL="..." SUPABASE_ANON_KEY="..." \
+  SUPABASE_SERVICE_ROLE_KEY="..." SUPERADMIN_EMAIL="..." SUPERADMIN_SENHA_HASH="..." \
+  STRIPE_SECRET_KEY="..." STRIPE_PUBLISHABLE_KEY="..." STRIPE_PRICE_ID="..." STRIPE_WEBHOOK_SECRET="..."
 
 # 5. Deploy (app stateless — NÃO precisa de volume persistente)
 fly deploy
@@ -155,7 +184,18 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 
 ---
 
-## 🧪 Testando o bot sem WhatsApp
+## 🧪 Testes
+
+**Testes automatizados** — runner nativo `node:test` (sem dependência nova), cobrindo a lógica
+pura crítica (validação de payload, magic bytes do upload, hash master bcrypt + legado, slug).
+Usam env dummy → rodam **sem segredos** (e no CI a cada push, via `.github/workflows/test.yml`):
+
+```bash
+npm test        # suíte de testes
+npm run check   # varredura de sintaxe (node --check) em src/, scripts/ e index.js
+```
+
+**Simulador de conversa** — testa o fluxo completo do bot no terminal, sem WhatsApp:
 
 ```bash
 node testar-bot.js
@@ -194,24 +234,35 @@ O pedido é gravado na tabela `pedidos` (Supabase) e aparece no painel na aba **
 
 ```text
 bot-restaurante/
-├── index.js                  → sobe o painel (não conecta o bot sozinho)
-├── package.json
+├── index.js                  → sobe o painel + jobs (higiene de sessão, retenção LGPD)
+├── package.json              → scripts: start, test, check, setup-storage, gerar-hash-admin
 ├── testar-bot.js             → simulador de conversa no terminal
-├── Dockerfile, fly.toml      → configuração para deploy no Fly.io
+├── Dockerfile, fly.toml      → deploy no Fly.io (Node 22, stateless, sem volume)
+├── .github/workflows/        → CI: test.yml (npm run check + npm test a cada push)
+├── test/                     → testes (node:test): validacao + seguranca
 ├── supabase/
 │   ├── config.toml
 │   └── migrations/           → schema do banco (npx supabase db push)
 ├── scripts/
-│   └── setup-storage.js      → cria o bucket de imagens (npm run setup-storage)
-├── public/                   → painel web
-│   ├── login.html            → login por e-mail + senha (Supabase Auth)
-│   ├── cadastro.html         → wizard de onboarding (4 etapas)
-│   ├── admin.html, app.js, style.css
+│   ├── setup-storage.js      → cria o bucket de imagens (npm run setup-storage)
+│   ├── gerar-hash.js         → gera o hash bcrypt da senha master
+│   └── check-syntax.js       → varredura de sintaxe (npm run check)
+├── public/                   → painel web (HTML/CSS/JS puro, sem framework)
+│   ├── index.html            → landing pública (apresentação + preço)
+│   ├── login.html / cadastro.html → login e wizard de onboarding (4 etapas)
+│   ├── checkout.html         → checkout próprio (Stripe Elements) do trial
+│   ├── admin.html / app.js   → painel do restaurante (inclui aba Assinatura)
+│   ├── admin-master.html / app-admin.js → painel super-admin
+│   ├── termos.html / privacidade.html   → páginas legais (LGPD)
+│   └── footer.js, style.css, dinheiro.js, endereco-cep.js (+ js por página)
 └── src/
     ├── db.js                 → pool Postgres (pg)
     ├── supabase.js           → clients do Supabase (Auth + Storage)
-    ├── servidor.js           → API REST multi-tenant (Express)
+    ├── servidor.js           → API REST multi-tenant (Express) + helmet/CSP + rate limit
     ├── empresas.js           → tenants na tabela `empresas` + Supabase Auth
+    ├── plataforma.js         → dados globais da plataforma + credenciais master
+    ├── stripe.js             → assinatura (Stripe): checkout, webhook, faturas, cartões
+    ├── validacao.js          → validações puras (payload jsonb, magic bytes) — testável
     ├── wa-auth.js            → sessão Baileys no Postgres (stateless)
     ├── multi-bot.js          → gerencia um socket WhatsApp (Baileys) por tenant
     ├── fluxo.js              → máquina de estados do atendimento
@@ -242,10 +293,13 @@ Clique em **Editar** (ou **+ Adicionar item**) para abrir o **editor**, onde voc
 - Biblioteca **não-oficial** (Baileys, conexão via WebSocket): leve e estável para começar.
   Para produção séria / alto volume, considere a **API Oficial (WhatsApp Cloud API)** —
   ver `ROADMAP.md`.
-- Sem Chromium: cada tenant é só uma conexão WebSocket, consumo de RAM baixo (a máquina de
-  1 GB no Fly.io suporta bem mais que os ~3–4 tenants da versão antiga com Chromium).
-- **Segurança**: login via **Supabase Auth** (senha em bcrypt, sessão JWT). HTTPS depende do
-  host — no Fly era automático (`.fly.dev` + `force_https`); em **VPS/local** use um proxy com
-  TLS (Nginx + Let's Encrypt). O `SUPABASE_SERVICE_ROLE_KEY` é admin total do banco: só backend,
-  nunca no front ou no git.
-- Não versionar `data/tenants/` (sessões WhatsApp e imagens) nem o `.env`.
+- Sem Chromium: cada tenant é só uma conexão WebSocket, consumo de RAM baixo (a produção roda
+  numa máquina de **512 MB** no Fly.io e ainda sobra; a versão antiga com Chromium mal segurava
+  ~3–4 tenants).
+- **Segurança**: login via **Supabase Auth** (senha em bcrypt, sessão JWT); painel com **CSP +
+  cabeçalhos (helmet)** e **rate limit** nas rotas de login/cadastro. HTTPS depende do host — no
+  Fly **é automático** (`.fly.dev` + `force_https`); em **VPS/local** use um proxy com TLS (Nginx +
+  Let's Encrypt). O `SUPABASE_SERVICE_ROLE_KEY` é admin total do banco: só backend, nunca no front
+  ou no git.
+- App **stateless**: nada relevante em disco (sessões no Postgres, imagens no Storage). Não
+  versionar o `.env` (já está no `.gitignore`).
