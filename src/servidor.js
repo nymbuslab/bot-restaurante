@@ -170,7 +170,11 @@ app.post("/api/cadastro", cadastroLimiter, async (req, res) => {
     const empresa = await empresas.cadastrar({ nome, email, senha });
     res.json({ ok: true, slug: empresa.slug, nome: empresa.nome });
   } catch (e) {
-    res.status(400).json({ erro: e.message });
+    // Mensagem genérica e uniforme: NÃO confirma se o e-mail já existe (anti-enumeração).
+    // A dica "faça login" aparece em qualquer erro, então não vaza existência de conta.
+    // O detalhe real (ex.: "E-mail já cadastrado") fica só no log do servidor.
+    console.error("cadastro:", e.message);
+    res.status(400).json({ erro: "Não foi possível concluir o cadastro. Verifique os dados ou, se já tiver conta, faça login." });
   }
 });
 
