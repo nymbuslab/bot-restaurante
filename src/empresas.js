@@ -318,18 +318,24 @@ async function excluir(slug) {
 
   await db.query("DELETE FROM empresas WHERE slug = $1", [slug]); // cascade → pedidos
   await db.query("DELETE FROM wa_auth WHERE slug = $1", [slug]);  // sessão WhatsApp
-  await supabaseAdmin.auth.admin.deleteUser(row.user_id).catch(() => {});
+  // Auth: best-effort, mas a falha é LOGADA (a linha já foi apagada — não há de
+  // onde re-tentar; o registro permite reconciliação manual do usuário órfão).
+  await supabaseAdmin.auth.admin.deleteUser(row.user_id).catch((e) =>
+    console.error(`excluir: falha ao apagar usuario do Auth (slug=${slug}, user=${row.user_id}):`, e.message)
+  );
 
   store.esquecer(slug);
   pedidos.esquecer(slug);
 
-  // Limpa imagens do tenant no Storage (best-effort).
+  // Limpa imagens do tenant no Storage (best-effort; falha logada p/ reconciliação).
   try {
     const { data: arquivos } = await supabaseAdmin.storage.from("cardapio").list(slug);
     if (arquivos && arquivos.length) {
       await supabaseAdmin.storage.from("cardapio").remove(arquivos.map((a) => `${slug}/${a.name}`));
     }
-  } catch (_) { /* best-effort */ }
+  } catch (e) {
+    console.error(`excluir: falha ao limpar imagens do Storage (slug=${slug}):`, e.message);
+  }
 
   // Pasta legada em disco, se existir (instalações pré-stateless).
   const dir = tenantDir(slug);
