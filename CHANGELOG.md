@@ -245,3 +245,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Rate limiting** (`express-rate-limit`) + `trust proxy` (Fly): login master **5/15min**, login restaurante 10/15min, cadastro 5/h, setup-intent/checkout 20/15min — mitiga brute force (em especial a conta master) e criação em massa de tenants
 - **Dependência vulnerável corrigida:** `form-data` (GHSA alta, via Baileys→axios) atualizado por `npm audit fix` (`npm audit` zerado)
 - Validado no navegador (Playwright): CSP sem violações no console, toggles de senha, modal de Termos e iframe `?embed` funcionando
+
+## [0.22.1] — Segurança: Onda 2 (dados e respostas de erro)
+
+- **Anonimização cobre a observação do pedido (M4):** `pedidos.anonimizarAntigos` passa a limpar também a `observacao` dentro do jsonb `itens` (texto livre do cliente, podia conter PII e escapava da retenção). Idempotente, com guard de tipo array. Validado contra o banco (transform limpa onde havia PII, preserva item sem observação)
+- **Respostas de erro 500 genéricas (M5):** 3 rotas que devolviam `e.message` cru no erro 500 (`confirmar assinatura`, `bot/resetar`, `pedido/avisar`) passam a responder texto fixo e logar o detalhe só no servidor — sem vazar mensagem interna/driver ao cliente. Os erros 400 controlados (amigáveis) seguem iguais
+- **Validação de payload jsonb (M1):** `PUT /api/config` e `PUT /api/cardapio` rejeitam (400) payload não-objeto ou exagerado (config >256 KB, cardápio >512 KB, >200 categorias, >500 itens/categoria) — evita inflar a linha ou quebrar o bot/painel. Sem schema rígido (o jsonb segue flexível)
+- **Falhas de exclusão logadas (M6):** na exclusão de conta, as etapas best-effort (apagar usuário no Auth, limpar imagens no Storage) deixam de falhar em silêncio — agora logam para reconciliação manual de órfãos
