@@ -268,3 +268,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **`npm run check`** — varredura de sintaxe (`node --check`) em todo `src/`, `scripts/` e `index.js` (o "build" honesto de um app CommonJS)
 - **CI no GitHub Actions** (`.github/workflows/test.yml`): roda `npm run check` + `npm test` a cada push/PR
 - Refactor de apoio: validadores e detecção de magic bytes extraídos do `servidor.js` para `src/validacao.js` (puro e testável; sem mudança de comportamento)
+
+## [0.22.4] — Export CSV de pedidos
+
+- **Botão "Exportar"** na aba **Pedidos** (painel do restaurante) baixa um **CSV** dos pedidos atualmente filtrados (período + tipo + busca): número, data, cliente, telefone, tipo, endereço, pagamento, itens (com observação), total e se o cliente já foi avisado. Formato Excel-BR (separador `;` + BOM UTF-8); arquivo `pedidos-AAAA-MM-DD.csv`

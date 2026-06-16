@@ -65,7 +65,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   conversa**, exige **Meta Business + templates aprovados** e muda o onboarding (cada número
   habilitado na API). **Migrar quando houver tração** (clientes pagando) — é reescrita +
   burocracia, prematuro antes disso.
-- Relatórios de pedidos por período no painel — ✅ **concluído** (no redesign de Pedidos): seletor de período (Hoje / 7 dias / Personalizado) + métricas reais (total de pedidos, média diária, ticket médio e comparativo vs período anterior). Resta só export/CSV, se necessário — seria item novo e menor
+- Relatórios de pedidos por período no painel — ✅ **concluído** (no redesign de Pedidos): seletor de período (Hoje / 7 dias / Personalizado) + métricas reais (total de pedidos, média diária, ticket médio e comparativo vs período anterior) + **export CSV** dos pedidos filtrados (botão Exportar; ver `CHANGELOG.md` v0.22.4)
 - Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
 - Redesign visual completo (Nymbus Lab) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
 - Integração com sistemas de PDV / impressora de cupom
