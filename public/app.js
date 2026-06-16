@@ -1596,6 +1596,37 @@ async function carregarPedidos() {
   renderPedidos();
 }
 
+// Exporta os pedidos atualmente filtrados (período + tipo + busca) em CSV (Excel BR: ; + BOM).
+function exportarPedidosCSV() {
+  const lista = listaPedidosAtual || [];
+  if (!lista.length) { toast("Nenhum pedido para exportar.", "erro"); return; }
+  const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+  const resumoItens = (p) => (p.itens || [])
+    .map((i) => `${i.qtd || 1}x ${i.nome}${i.observacao ? ` (${i.observacao})` : ""}`)
+    .join(" | ");
+  const cab = ["Numero", "Data", "Cliente", "Telefone", "Tipo", "Endereco", "Pagamento", "Itens", "Total", "Avisado"];
+  const linhas = lista.map((p) => [
+    p.numero,
+    new Date(p.criadoEm).toLocaleString("pt-BR"),
+    p.cliente || "",
+    telefoneFmt(p),
+    p.tipoEntrega || "",
+    p.endereco || "",
+    p.pagamento || "",
+    resumoItens(p),
+    "R$ " + moedaBR(p.total || 0),
+    p.avisadoEm ? "Sim" : "Nao",
+  ].map(esc).join(";"));
+  const csv = "﻿" + [cab.map(esc).join(";"), ...linhas].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`${lista.length} pedido(s) exportado(s).`, "sucesso");
+}
+
 // Intervalo do período selecionado + nº de dias (para a média diária).
 function periodoRange() {
   const agora = new Date();
@@ -2052,6 +2083,7 @@ $("pedido-overlay").addEventListener("click", (e) => {
 });
 
 $("btnAtualizarPedidos").addEventListener("click", carregarPedidos);
+$("btnExportarPedidos").addEventListener("click", exportarPedidosCSV);
 
 // Auto-refresh de pedidos enquanto a aba estiver ativa
 setInterval(() => {

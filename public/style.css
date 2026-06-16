@@ -1417,10 +1417,13 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 .pedidos-topo .sub { margin-bottom: 0; }
+.pedidos-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- Pedidos: métricas + filtros ---------- */
 .metricas-cards {
