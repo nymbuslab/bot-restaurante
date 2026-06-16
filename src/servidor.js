@@ -6,6 +6,8 @@ const express = require("express");
 const path    = require("path");
 const crypto  = require("crypto");
 const multer  = require("multer");
+const helmet  = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const empresas = require("./empresas");
 const plataforma = require("./plataforma");
@@ -18,6 +20,57 @@ const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
 const app = express();
+
+// Atrás do proxy do Fly.io (1 hop): confia no X-Forwarded-* para obter o IP real
+// do cliente (req.ip). Sem isso, o rate limit por IP agruparia todos no IP do proxy.
+app.set("trust proxy", 1);
+
+// ---- Cabeçalhos de segurança (helmet) + CSP ----
+// A CSP libera só o necessário: Stripe (Payment Element), Google Fonts, Supabase
+// (Auth/Storage) e ViaCEP (CEP). script-src SEM 'unsafe-inline' — todo JS é externo.
+let SUPABASE_ORIGIN = "";
+try { SUPABASE_ORIGIN = new URL(process.env.SUPABASE_URL || "").origin; } catch (_) { /* sem origem */ }
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://js.stripe.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", SUPABASE_ORIGIN].filter(Boolean),
+      connectSrc: ["'self'", "https://api.stripe.com", "https://viacep.com.br", SUPABASE_ORIGIN].filter(Boolean),
+      frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+      frameAncestors: ["'self'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
+    },
+  },
+  // HSTS: o Fly já força HTTPS; reforça no navegador por 1 ano.
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  // COEP off: não bloquear recursos cross-origin legítimos (Stripe/Fonts/Supabase).
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ---- Rate limiting (anti brute force / abuso) ----
+// trust proxy acima garante req.ip correto atrás do Fly. Mensagens genéricas.
+function limitador(windowMin, max, msg) {
+  return rateLimit({
+    windowMs: windowMin * 60 * 1000,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { erro: msg },
+  });
+}
+const TENTE_DEPOIS = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+const loginLimiter      = limitador(15, 10, TENTE_DEPOIS); // login de restaurante
+const adminLoginLimiter = limitador(15, 5,  TENTE_DEPOIS); // login master (mais rígido)
+const cadastroLimiter   = limitador(60, 5,  "Muitos cadastros a partir deste IP. Tente novamente mais tarde.");
+const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / checkout
+
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
 // A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
 // esta rota usa express.raw e é registrada antes do parser JSON global.
@@ -111,7 +164,7 @@ function exigeSuperAdmin(req, res, next) {
 
 // ---- Rotas públicas ----
 
-app.post("/api/cadastro", async (req, res) => {
+app.post("/api/cadastro", cadastroLimiter, async (req, res) => {
   try {
     const { nome, email, senha } = req.body || {};
     if (!nome || !email || !senha) return res.status(400).json({ erro: "Preencha todos os campos." });
@@ -123,7 +176,7 @@ app.post("/api/cadastro", async (req, res) => {
   }
 });
 
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", loginLimiter, async (req, res) => {
   try {
     const { email, senha } = req.body || {};
     const r = await empresas.autenticar(email, senha);
@@ -147,7 +200,7 @@ function baseUrlDe(req) {
 }
 
 // Inicia o trial de 7 dias: abre a Checkout Session (coleta cartão) e devolve a URL.
-app.post("/api/assinatura/checkout", exigeAuth, async (req, res) => {
+app.post("/api/assinatura/checkout", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -177,7 +230,7 @@ app.post("/api/assinatura/portal", exigeAuth, async (req, res) => {
 });
 
 // Checkout PRÓPRIO (Stripe Elements) — passo 1: cria o SetupIntent (coleta o cartão).
-app.post("/api/assinatura/setup-intent", exigeAuth, async (req, res) => {
+app.post("/api/assinatura/setup-intent", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -335,7 +388,7 @@ async function credenciaisMaster() {
   return { email, hash };
 }
 
-app.post("/api/admin/login", async (req, res) => {
+app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
   if (!SUPERADMIN_CONFIGURADO) return res.status(503).json({ erro: "Super-admin não configurado no servidor." });
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ erro: "Preencha e-mail e senha." });
