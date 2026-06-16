@@ -359,7 +359,7 @@ async function excluir(slug) {
 
 module.exports = {
   cadastrar, autenticar, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
-  tenantDir, setAtivo, excluir, hashSenha, verificarSenhaMaster,
+  tenantDir, setAtivo, excluir, hashSenha, verificarSenhaMaster, slugBase,
   atualizarAssinatura, podeLogar, acessoLiberado,
   trocarSenha, trocarEmail, conferirSenha,
 };

@@ -6,6 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node index.js",
+    "test": "node --test",
+    "check": "node scripts/check-syntax.js",
     "setup-storage": "node scripts/setup-storage.js",
     "gerar-hash-admin": "node scripts/gerar-hash.js"
   },
