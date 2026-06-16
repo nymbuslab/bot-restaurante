@@ -36,8 +36,9 @@
   `{numero}`). Envio **MANUAL**, 1 cliente por clique — nunca automático/massa. Exige WhatsApp
   conectado; normaliza o telefone para `<digitos>@s.whatsapp.net`; grava `avisadoEm` no sucesso.
 - **Segurança**: login de restaurante via **Supabase Auth** (senha em bcrypt; sessão é JWT
-  stateless, sobrevive a reinício do app). Super-admin segue SHA-256+salt env-based (conta
-  única e isolada). HTTPS é responsabilidade do host (no Fly era automático; em VPS depende
+  stateless, sobrevive a reinício do app). Super-admin usa **bcrypt** (`bcryptjs`) env-based,
+  com migração graciosa do SHA-256+salt legado (conta única e isolada); token master via
+  `crypto.randomBytes` com TTL de 12h. HTTPS é responsabilidade do host (no Fly era automático; em VPS depende
   de Nginx + TLS).
 - **Primeiro acesso**: a primeira empresa é criada pelo wizard público (`/cadastro.html`) ou
   pelo super-admin (`/admin-master`). Tenant novo nasce limpo (ver `empresas.configInicial`,

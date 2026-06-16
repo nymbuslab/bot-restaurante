@@ -4,16 +4,19 @@
 
 - **Conta master fixa**, via variáveis de ambiente (nunca hardcoded/commitada):
   `SUPERADMIN_EMAIL` e `SUPERADMIN_SENHA_HASH`. O hash usa a **mesma** `hashSenha`
-  (`sha256(senha + SALT)`) do `empresas.js` — gere com `npm run gerar-hash-admin -- "senha"`
-  (script `scripts/gerar-hash.js` importa a função real, então o salt nunca diverge).
+  (**bcrypt**, `bcryptjs`) do `empresas.js` — gere com `npm run gerar-hash-admin -- "senha"`
+  (script `scripts/gerar-hash.js` importa a função real). **Migração graciosa:** hashes
+  **SHA-256+salt legados ainda verificam** (via `verificarSenhaMaster`, que detecta o formato)
+  até a senha master ser trocada pelo painel → aí passa a bcrypt.
   Sem as duas envs, as rotas `/api/admin/*` ficam desativadas (login responde **503**;
   nunca há credencial default). Carregamento de `.env` via `dotenv` (ver `.env.example`).
   Em produção (Fly.io): `fly secrets set SUPERADMIN_EMAIL=... SUPERADMIN_SENHA_HASH=...`.
 - **Isolamento total de auth:** o super-admin usa um Map `tokensAdmin` próprio (token opaco
-  em memória, SHA-256+salt) — **separado e diferente** do JWT do Supabase usado pelo
-  restaurante. `exigeSuperAdmin` valida só o token master; `exigeAuth` só o JWT de restaurante.
-  Um token nunca cruza para o outro lado. Login master: `POST /api/admin/login { email, senha }`
-  → `{ token }`. Comparação de hash com `crypto.timingSafeEqual`. (O super-admin **não** migrou
+  via `crypto.randomBytes`, em memória, com **TTL de 12h**) — **separado e diferente** do JWT
+  do Supabase usado pelo restaurante. `exigeSuperAdmin` valida só o token master (e rejeita
+  expirado); `exigeAuth` só o JWT de restaurante. Um token nunca cruza para o outro lado.
+  Login master: `POST /api/admin/login { email, senha }` → `{ token }`. Verificação de senha
+  via `empresas.verificarSenhaMaster` (bcrypt; SHA-256 legado timing-safe). (O super-admin **não** migrou
   para o Supabase Auth — segue env-based, por ser conta única e isolada.)
 - **Rotas** (todas sob `exigeSuperAdmin`):
   `GET /api/admin/tenants` (lista) · `POST /api/admin/tenants` (cria, reusa `empresas.cadastrar`) ·
@@ -75,7 +78,7 @@
 - **Credenciais do master migraram pro banco (editáveis):** o login master agora lê
   `master_email`/`master_senha_hash` de `plataforma_config` (`credenciaisMaster()` em `servidor.js`),
   caindo na env `SUPERADMIN_EMAIL`/`SUPERADMIN_SENHA_HASH` só como **bootstrap** (a env ainda é o
-  gate que habilita `/api/admin/*`). Senha em hash (mesma `hashSenha` sha256+salt); troca exige a
+  gate que habilita `/api/admin/*`). Senha em hash (mesma `hashSenha` bcrypt); troca exige a
   senha atual. `exigeSuperAdmin` (token opaco) inalterado.
 - **Footer da landing** (`index.html`) consome `GET /api/plataforma/publico` e exibe Nome Fantasia,
   Razão Social, CNPJ, Endereço, Telefone e ícones Facebook/Instagram **quando preenchidos** (vazio =
