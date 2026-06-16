@@ -97,6 +97,11 @@
               </div>
             </div>
 
+            <label class="auth-aceite">
+              <input type="checkbox" id="aceiteTermos" />
+              <span>Li e concordo com os <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span>
+            </label>
+
             <button id="btnCadastrar" class="auth-btn" type="submit">Criar conta e começar →</button>
             <p id="erro" class="erro"></p>
           </form>
@@ -294,6 +299,7 @@
       if (!nome || !email || !senha || !senha2) { erro.textContent = "Preencha todos os campos."; return; }
       if (senha !== senha2) { erro.textContent = "As senhas não coincidem."; return; }
       if (senha.length < 6) { erro.textContent = "A senha deve ter pelo menos 6 caracteres."; return; }
+      if (!$("aceiteTermos").checked) { erro.textContent = "Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar."; return; }
 
       btn.disabled = true;
       btn.textContent = "Criando conta...";

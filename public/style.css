@@ -211,6 +211,27 @@ h3 {
   margin-top: 4px;
 }
 
+.auth-aceite {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 16px 0 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.auth-aceite input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.auth-aceite a { color: var(--accent-fg); text-decoration: none; }
+.auth-aceite a:hover { text-decoration: underline; }
+
 .auth-footer {
   margin-top: 24px;
   text-align: center;
@@ -3452,19 +3473,31 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-cta-final p { font-size: 16px; color: var(--text-secondary); margin: 0 0 26px; }
 
 /* Footer */
-.lp-footer { border-top: 1px solid var(--border-subtle); padding: 32px 0 24px; }
-.lp-footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px 32px; flex-wrap: wrap; }
-.lp-footer-marca { gap: 8px; }
-.lp-footer-links { display: flex; flex-direction: row; align-items: center; gap: 28px; flex-wrap: wrap; }
-.lp-footer-links a {
-  display: inline-flex; align-items: center; gap: 7px;
-  color: var(--text-secondary); text-decoration: none; font-size: 14px;
-  transition: color .15s ease;
+.lp-footer { border-top: 1px solid var(--border-subtle); padding: 52px 0 28px; }
+.lp-footer-grid { display: flex; flex-wrap: wrap; gap: 36px 56px; }
+.lp-footer-brand { flex: 1 1 230px; min-width: 200px; max-width: 300px; }
+.lp-footer-marca { margin-bottom: 12px; }
+.lp-footer-tag { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; max-width: 240px; margin: 0; }
+.lp-footer-col { display: flex; flex-direction: column; gap: 11px; min-width: 130px; }
+.lp-footer-col h4 {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-disabled); margin: 0 0 3px; padding: 0; border: 0;
 }
-.lp-footer-links a:hover { color: var(--text-primary); }
-.lp-footer-links a svg { flex-shrink: 0; }
-#lp-footer-social { display: inline-flex; align-items: center; gap: 28px; }
-.lp-footer-copy { display: block; margin-top: 22px; text-align: center; font-size: 13px; color: var(--text-disabled); }
+.lp-footer-col a { color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: color .15s ease; }
+.lp-footer-col a:hover { color: var(--text-primary); }
+.lp-footer-social { display: flex; flex-direction: column; gap: 11px; }
+.lp-footer-social a { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: color .15s ease; }
+.lp-footer-social a:hover { color: var(--text-primary); }
+.lp-footer-social a svg { flex-shrink: 0; }
+.lp-footer-bloco { margin-bottom: 16px; }
+.lp-footer-bloco:last-child { margin-bottom: 0; }
+.lp-footer-bloco h4 {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-disabled); margin: 0 0 6px; padding: 0; border: 0;
+}
+.lp-footer-bloco p { font-size: 14px; color: var(--text-secondary); line-height: 1.55; margin: 0; max-width: 230px; }
+.lp-footer-base { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--border-subtle); }
+.lp-footer-copy { display: block; font-size: 13px; color: var(--text-disabled); }
 
 /* ---- Página de Termos de Uso ---- */
 .lp-termos {
@@ -3629,8 +3662,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   .lp-cards { grid-template-columns: 1fr; }
   .lp-passos { grid-template-columns: 1fr; gap: 28px; }
   .lp-nav-acoes .lp-btn-ghost { display: none; }
-  .lp-footer-inner { flex-direction: column; align-items: center; text-align: center; gap: 18px; }
-  .lp-footer-links { justify-content: center; }
+  .lp-footer-grid { gap: 30px 40px; }
+  .lp-footer-brand { flex-basis: 100%; max-width: none; }
+  .lp-footer-col { flex: 1 1 40%; min-width: 0; }
   .lp-float-card { left: 8px; bottom: 12px; padding: 9px 12px; }
   .lp-stat + .lp-stat::before { display: none; }
 }
