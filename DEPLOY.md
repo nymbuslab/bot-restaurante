@@ -179,6 +179,56 @@ fly deploy
 
 Os dados e sessões são preservados no volume — não precisa re-escanear o QR.
 
+### Deploy automático pelo GitHub (CI) — opcional
+
+Por padrão o deploy é **manual** (`fly deploy` acima). Se quiser que **todo push para a
+branch `main` publique sozinho** (sem rodar `fly deploy` na mão), faça os 3 passos abaixo.
+
+> ⚠️ **Trade-off:** *qualquer* push para `main` vira um deploy — inclusive commits só de
+> documentação. Se preferir controlar quando publica, fique no deploy manual.
+
+**1) Gerar um token de deploy do Fly** (na sua máquina, já logado no Fly):
+
+```bash
+fly tokens create deploy
+```
+
+Copie a saída inteira (começa com `FlyV1 ...`). É um **segredo** — não comite em lugar nenhum.
+
+**2) Salvar o token no GitHub** como segredo do repositório:
+
+- No GitHub: **Settings → Secrets and variables → Actions → New repository secret**
+- **Name:** `FLY_API_TOKEN`
+- **Secret:** cole o token do passo 1 → **Add secret**
+
+**3) Criar o workflow** `.github/workflows/fly-deploy.yml` com este conteúdo:
+
+```yaml
+name: Fly Deploy
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+    concurrency: deploy-group
+    steps:
+      - uses: actions/checkout@v5
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+```
+
+Pronto: o próximo push para `main` deploya sozinho. Acompanhe em **Actions** no GitHub (o job
+"Deploy app" fica verde quando publica). **Sem o segredo do passo 2 ele falha** — foi por isso
+que esse workflow foi removido antes (o `FLY_API_TOKEN` nunca tinha sido configurado).
+
+**Para desligar de novo:** apague o arquivo `.github/workflows/fly-deploy.yml` (e, se quiser,
+remova o segredo `FLY_API_TOKEN` no GitHub).
+
 ### Comandos úteis do dia a dia
 
 ```bash
