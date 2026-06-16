@@ -489,17 +489,42 @@ app.post("/api/admin/tenants", exigeSuperAdmin, async (req, res) => {
 
 app.patch("/api/admin/tenants/:slug/suspender", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
-  if (!(await empresas.setAtivo(slug, 0))) return res.status(404).json({ erro: "Tenant não encontrado." });
+  const emp = await empresas.buscarPorSlug(slug);
+  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
   // Efeito real: login recusado (autenticar filtra ativo) + exigeAuth checa ativo
   // a cada request (sessão aberta cai no próximo request); e o bot é derrubado.
+  await empresas.setAtivo(slug, 0);
   await multiBot.desconectar(slug);
-  res.json({ ok: true, ativo: false });
+  // Pausa a cobrança no Stripe (reversível) para não cobrar enquanto suspenso.
+  // O bloqueio de acesso já aconteceu; se o Stripe falhar, avisamos o admin.
+  let avisoStripe = null;
+  if (emp.stripeSubscriptionId) {
+    try {
+      await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId);
+    } catch (e) {
+      console.error("pausar assinatura ao suspender:", e.message);
+      avisoStripe = "Tenant suspenso, mas NÃO consegui pausar a cobrança no Stripe. Verifique no painel do Stripe ou contate o suporte para evitar cobrança indevida.";
+    }
+  }
+  res.json({ ok: true, ativo: false, avisoStripe });
 });
 
 app.patch("/api/admin/tenants/:slug/reativar", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
-  if (!(await empresas.setAtivo(slug, 1))) return res.status(404).json({ erro: "Tenant não encontrado." });
-  res.json({ ok: true, ativo: true });
+  const emp = await empresas.buscarPorSlug(slug);
+  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+  await empresas.setAtivo(slug, 1);
+  // Retoma a cobrança pausada na suspensão. Falhou? Reativa mesmo assim e avisa.
+  let avisoStripe = null;
+  if (emp.stripeSubscriptionId) {
+    try {
+      await stripeBilling.retomarAssinatura(emp.stripeSubscriptionId);
+    } catch (e) {
+      console.error("retomar assinatura ao reativar:", e.message);
+      avisoStripe = "Tenant reativado, mas NÃO consegui retomar a cobrança no Stripe. Verifique no painel do Stripe ou contate o suporte.";
+    }
+  }
+  res.json({ ok: true, ativo: true, avisoStripe });
 });
 
 app.delete("/api/admin/tenants/:slug", exigeSuperAdmin, async (req, res) => {
@@ -512,6 +537,19 @@ app.delete("/api/admin/tenants/:slug", exigeSuperAdmin, async (req, res) => {
 
   const empresa = await empresas.buscarPorSlug(slug);
   if (!empresa) return res.status(404).json({ erro: "Tenant não encontrado." });
+
+  // Se houver assinatura no Stripe, CANCELA antes de apagar — senão ficaria órfã
+  // cobrando o cartão. Falhou? Aborta a exclusão (não deixa cobrança viva).
+  if (empresa.stripeSubscriptionId) {
+    try {
+      await stripeBilling.cancelarAssinatura(empresa.stripeSubscriptionId);
+    } catch (e) {
+      console.error("cancelar assinatura na exclusão (master):", e.message);
+      return res.status(502).json({
+        erro: "Não foi possível cancelar a assinatura no Stripe, então o tenant NÃO foi excluído (evita cobrança órfã). Verifique no painel do Stripe e tente de novo; se persistir, contate o suporte.",
+      });
+    }
+  }
 
   // Ordem: parar o bot (libera a sessão em disco) → excluir (linha + cascade de
   // pedidos + usuário do Auth + pasta do tenant).
@@ -705,6 +743,21 @@ app.delete("/api/conta", exigeAuth, async (req, res) => {
     }
     const ok = await empresas.conferirSenha(req.slug, senhaAtual);
     if (!ok) return res.status(400).json({ erro: "Senha atual incorreta." });
+
+    // Se houver assinatura ativa no Stripe, CANCELA antes de apagar — senão a
+    // assinatura ficaria órfã cobrando o cartão. Falhou? Aborta a exclusão.
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (emp && emp.stripeSubscriptionId) {
+      try {
+        await stripeBilling.cancelarAssinatura(emp.stripeSubscriptionId);
+      } catch (e) {
+        console.error("cancelar assinatura na exclusão (self):", e.message);
+        return res.status(502).json({
+          erro: "Não foi possível cancelar sua assinatura agora, então não excluímos a conta para evitar cobranças. Tente novamente em instantes; se persistir, fale com o suporte.",
+        });
+      }
+    }
+
     await multiBot.desconectar(req.slug).catch(() => {});
     await empresas.excluir(req.slug);
     res.json({ ok: true });

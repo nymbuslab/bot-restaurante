@@ -1265,6 +1265,15 @@ button:disabled {
 }
 .cfg-perigo-titulo { color: var(--error); }
 .cfg-perigo-divisor { height: 1px; background: rgba(239,68,68,0.25); margin: 4px 0 16px; }
+.cfg-perigo-aviso {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 0 0 16px; padding: 12px 14px; border-radius: var(--radius);
+  background: var(--warning-subtle, rgba(234,179,8,0.12));
+  border: 1px solid rgba(234,179,8,0.4);
+  font-size: 13px; line-height: 1.5; color: var(--text-primary);
+}
+.cfg-perigo-aviso svg { color: var(--warning); flex-shrink: 0; margin-top: 1px; }
+.cfg-perigo-aviso b { font-weight: 700; }
 
 /* Seções com cabeçalho + ícone */
 .cfg-secao { margin-bottom: 26px; }

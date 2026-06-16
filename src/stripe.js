@@ -206,11 +206,52 @@ async function listarFaturas(stripeCustomerId, limite = 12) {
   }));
 }
 
+// True quando o erro do Stripe é "assinatura já não existe / já cancelada" —
+// nesses casos as operações abaixo são idempotentes (o objetivo já está atingido).
+function jaResolvida(e) {
+  return e && (e.code === "resource_missing" ||
+    /no such subscription|already (been )?canceled/i.test(e.message || ""));
+}
+
 // Cancela imediatamente a assinatura no Stripe. O webhook subscription.deleted
 // confirma o estado no tenant depois; aqui só disparamos o cancelamento.
+// Idempotente: se a assinatura já não existe/foi cancelada, retorna sem erro.
 async function cancelarAssinatura(stripeSubscriptionId) {
   if (!stripe || !stripeSubscriptionId) return false;
-  await stripe.subscriptions.cancel(stripeSubscriptionId);
+  try {
+    await stripe.subscriptions.cancel(stripeSubscriptionId);
+  } catch (e) {
+    if (jaResolvida(e)) return true;
+    throw e;
+  }
+  return true;
+}
+
+// Pausa a cobrança da assinatura SEM cancelá-la (reversível). Usada ao SUSPENDER
+// um tenant: enquanto pausada, as faturas do período são anuladas (behavior:void),
+// então o cartão não é cobrado. `retomarAssinatura` desfaz. Idempotente.
+async function pausarAssinatura(stripeSubscriptionId) {
+  if (!stripe || !stripeSubscriptionId) return false;
+  try {
+    await stripe.subscriptions.update(stripeSubscriptionId, {
+      pause_collection: { behavior: "void" },
+    });
+  } catch (e) {
+    if (jaResolvida(e)) return true;
+    throw e;
+  }
+  return true;
+}
+
+// Retoma a cobrança de uma assinatura pausada (usada ao REATIVAR um tenant).
+async function retomarAssinatura(stripeSubscriptionId) {
+  if (!stripe || !stripeSubscriptionId) return false;
+  try {
+    await stripe.subscriptions.update(stripeSubscriptionId, { pause_collection: "" });
+  } catch (e) {
+    if (jaResolvida(e)) return true;
+    throw e;
+  }
   return true;
 }
 
@@ -292,7 +333,7 @@ async function tratarEvento(event) {
 module.exports = {
   stripe, CONFIGURADO, PRICE_ID, PUBLISHABLE_KEY,
   criarCheckout, criarPortal, verificarEvento, tratarEvento,
-  listarFaturas, cancelarAssinatura,
+  listarFaturas, cancelarAssinatura, pausarAssinatura, retomarAssinatura,
   garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup,
   listarCartoes, criarSetupIntentCartao, definirCartaoPadrao, removerCartao,
 };

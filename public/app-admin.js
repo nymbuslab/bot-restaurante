@@ -642,13 +642,16 @@ function fecharGerenciar() {
 async function suspender(slug) {
   const ok = await confirmar(
     "Suspender restaurante",
-    `O restaurante "${slug}" perderá acesso ao painel e o bot será desconectado na hora. Você pode reativar depois. Deseja suspender?`,
+    `O restaurante "${slug}" perderá acesso ao painel e o bot será desconectado na hora. Se houver assinatura ativa, a cobrança será pausada no Stripe. Você pode reativar depois. Deseja suspender?`,
     "Suspender"
   );
   if (!ok) return;
   try {
-    await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/suspender`);
+    const r = await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/suspender`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(d.erro || "Erro ao suspender.", "erro"); return; }
     toast("Restaurante suspenso.");
+    if (d.avisoStripe) toast(d.avisoStripe, "erro");
     await aposAcaoTenant();
   } catch (e) {
     if (e.message !== "Sessão expirada") toast("Erro ao suspender.", "erro");
@@ -657,8 +660,11 @@ async function suspender(slug) {
 
 async function reativar(slug) {
   try {
-    await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/reativar`);
+    const r = await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/reativar`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(d.erro || "Erro ao reativar.", "erro"); return; }
     toast("Restaurante reativado.");
+    if (d.avisoStripe) toast(d.avisoStripe, "erro");
     await aposAcaoTenant();
   } catch (e) {
     if (e.message !== "Sessão expirada") toast("Erro ao reativar.", "erro");

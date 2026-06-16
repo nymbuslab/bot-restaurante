@@ -1544,8 +1544,15 @@ $("btnExportarDados").addEventListener("click", async () => {
 });
 
 $("btnAbrirExcluir").addEventListener("click", () => {
-  alternarFormConta("formExcluir", $("formExcluir").hidden);
+  const abrindo = $("formExcluir").hidden;
+  alternarFormConta("formExcluir", abrindo);
   $("btnConfirmarExcluir").disabled = true;
+  if (abrindo) {
+    // Alerta de assinatura ativa: status com cobrança viva no Stripe.
+    const st = (assinaturaAtual && assinaturaAtual.status) || "";
+    const temAssinatura = ["trialing", "active", "past_due"].includes(st);
+    $("excluirAvisoAssinatura").hidden = !temAssinatura;
+  }
 });
 $("excluirConfirma").addEventListener("input", () => {
   $("btnConfirmarExcluir").disabled = $("excluirConfirma").value.trim() !== "EXCLUIR";

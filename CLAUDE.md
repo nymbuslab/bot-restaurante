@@ -230,11 +230,21 @@ apenas** (a tela vem em passo posterior).
 - **Suspensão (efeito real):** `setAtivo(slug,0)` → login do restaurante já é recusado
   (`autenticar` filtra `ativo`) + `exigeAuth` checa `ativo` a cada request (a sessão aberta
   cai no próximo request, mesmo com JWT válido) + `multiBot.desconectar(slug)` (bot para).
-- **Exclusão (destrutiva, ordem importa):** `multiBot.desconectar` (libera sessão Baileys)
-  → `empresas.excluir(slug)`, que apaga a linha em `empresas` (**cascateia** os `pedidos`),
-  remove o **usuário do Supabase Auth** (`auth.admin.deleteUser`) e apaga `data/tenants/{slug}/`
-  (sessões/imagens). **Trava de segurança:** o corpo deve trazer `{ confirmacao: "<slug>" }`
-  igual ao slug da URL, senão responde 400 sem apagar nada.
+  **Reflete no Stripe:** se houver `stripeSubscriptionId`, **pausa a cobrança**
+  (`stripe.pausarAssinatura` → `pause_collection: void`, reversível) para não cobrar enquanto
+  suspenso; **Reativar** retoma (`retomarAssinatura`). Se o Stripe falhar, a suspensão/reativação
+  (bloqueio de acesso) acontece mesmo assim e a rota devolve `avisoStripe` → o painel master
+  alerta o admin (toast) a verificar/contatar o suporte.
+- **Exclusão (destrutiva, ordem importa):** **cancela a assinatura no Stripe ANTES** (se houver
+  `stripeSubscriptionId`) — senão a assinatura ficaria órfã cobrando o cartão; **se o cancelamento
+  falhar, ABORTA a exclusão (502)** e orienta a contatar o suporte. Depois `multiBot.desconectar`
+  (libera sessão Baileys) → `empresas.excluir(slug)`, que apaga a linha em `empresas` (**cascateia**
+  os `pedidos`), remove o **usuário do Supabase Auth** (`auth.admin.deleteUser`) e apaga
+  `data/tenants/{slug}/` (sessões/imagens). **Trava de segurança:** o corpo deve trazer
+  `{ confirmacao: "<slug>" }` igual ao slug da URL, senão responde 400 sem apagar nada. O mesmo
+  cancelamento-antes-de-apagar vale para o **autoatendimento** (`DELETE /api/conta`), que exige
+  senha + `"EXCLUIR"`; `cancelarAssinatura`/`pausarAssinatura`/`retomarAssinatura` são **idempotentes**
+  (toleram assinatura já cancelada/inexistente).
 - **Tela (`public/admin-master.html` + `public/app-admin.js`):** página **separada** do
   painel de restaurante (não usar `admin.html`/`app.js`). Login master + dashboard de tenants
   na mesma página (gate por token). Token guardado em `sessionStorage["tokenAdmin"]` — chave

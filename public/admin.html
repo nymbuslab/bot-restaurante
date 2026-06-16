@@ -255,6 +255,10 @@
             <!-- Form de exclusão (oculto até clicar) -->
             <form class="cfg-conta-form" id="formExcluir" hidden autocomplete="off">
               <div class="cfg-perigo-divisor"></div>
+              <div class="cfg-perigo-aviso" id="excluirAvisoAssinatura" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Você tem uma <b>assinatura ativa</b>. Ao excluir, ela será <b>cancelada no Stripe</b> e o acesso encerra imediatamente — sem reembolso do período atual.</span>
+              </div>
               <div class="campo"><label for="excluirSenha">Senha atual</label><input id="excluirSenha" type="password" autocomplete="current-password" placeholder="Confirme sua senha" /></div>
               <div class="campo"><label for="excluirConfirma">Digite <b>EXCLUIR</b> para confirmar</label><input id="excluirConfirma" type="text" autocomplete="off" placeholder="EXCLUIR" /></div>
               <div class="cfg-conta-acoes">
