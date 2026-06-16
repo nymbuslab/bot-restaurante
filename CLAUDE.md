@@ -64,8 +64,11 @@ No **primeiro acesso**, crie a primeira empresa pelo onboarding público em `/ca
 (nome, e-mail e senha). O tenant nasce limpo (cardápio vazio, identidade só com o nome).
 Depois faça login e, na aba **Conexão**, clique em "Conectar ao WhatsApp".
 
-Não há suíte de testes automatizada — use o simulador de conversa (`node testar-bot.js` ou a
-aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
+**Testes:** `npm test` (runner nativo `node:test`, sem dep — testa a lógica pura crítica em
+`test/`: validação de payload, magic bytes, hash master bcrypt/legado, slug) e `npm run check`
+(varredura de sintaxe). Os testes usam **env dummy** → rodam sem segredos (e no CI, ver
+`.github/workflows/test.yml`). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
+ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
 ## Arquitetura
 

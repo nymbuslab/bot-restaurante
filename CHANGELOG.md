@@ -261,3 +261,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Upload valida magic bytes:** `POST /api/imagem` confere a **assinatura real dos bytes** (JPEG/PNG/WebP) e usa o tipo detectado como fonte de verdade para extensão/contentType — o MIME do header (falsificável) deixa de ser confiável
 - **Refinos:** `escapar()` do `app.js` passou a cobrir a **aspa simples** (alinhado ao `app-admin.js`); `unhandledRejection` loga só `reason.message` (não despeja payload no log); `.gitignore` cobre `.env.*` e `baileys-*/`
 - **Documentados como risco aceito** (não exigem código): **M2** enumeração de conta no cadastro — sem fluxo de verificação por e-mail, uma resposta genérica só pioraria a UX, e a enumeração em massa já está contida pelo rate limit de cadastro; **RLS sem policies** — o backend acessa pela conexão privilegiada (ignora RLS) e a anon key não chega ao navegador, então policies teriam valor prático ~zero. **Jurídico:** textos legais seguem pendentes de revisão de advogado
+
+## [0.22.3] — Suíte de testes automatizada + CI
+
+- **`npm test`** com o runner nativo `node:test` (**zero dependência nova**): cobre a lógica pura crítica — validação de payload (config/cardápio), magic bytes do upload, hash master bcrypt + migração do SHA-256 legado, e geração de slug. Os testes usam env dummy → **rodam sem segredos**
+- **`npm run check`** — varredura de sintaxe (`node --check`) em todo `src/`, `scripts/` e `index.js` (o "build" honesto de um app CommonJS)
+- **CI no GitHub Actions** (`.github/workflows/test.yml`): roda `npm run check` + `npm test` a cada push/PR
+- Refactor de apoio: validadores e detecção de magic bytes extraídos do `servidor.js` para `src/validacao.js` (puro e testável; sem mudança de comportamento)

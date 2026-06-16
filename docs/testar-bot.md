@@ -1,5 +1,12 @@
 # Testando o bot
 
+> **Dois níveis de teste:**
+> - **Unitário (lógica pura):** `npm test` — runner nativo `node:test` (sem dependência), cobre
+>   `test/` (validação de payload, magic bytes do upload, hash master bcrypt + migração do SHA-256
+>   legado, geração de slug). Usa **env dummy** → roda sem segredos, inclusive no CI
+>   (`.github/workflows/test.yml`). `npm run check` faz a varredura de sintaxe.
+> - **Integração/fluxo do bot:** o **simulador** abaixo (`testar-bot.js` ou a aba Simulador).
+
 O arquivo `testar-bot.js` na raiz simula uma conversa completa no terminal,
 sem precisar de WhatsApp, QR ou celular. Usa os dados do primeiro tenant.
 
