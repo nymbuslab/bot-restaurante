@@ -272,3 +272,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.22.4] — Export CSV de pedidos
 
 - **Botão "Exportar"** na aba **Pedidos** (painel do restaurante) baixa um **CSV** dos pedidos atualmente filtrados (período + tipo + busca): número, data, cliente, telefone, tipo, endereço, pagamento, itens (com observação), total e se o cliente já foi avisado. Formato Excel-BR (separador `;` + BOM UTF-8); arquivo `pedidos-AAAA-MM-DD.csv`
+
+## [0.22.5] — Segurança: anti-enumeração no cadastro (M2) + RLS hardening
+
+- **M2 — cadastro não revela mais se um e-mail existe:** o cadastro público responde uma mensagem **genérica e uniforme** em qualquer falha (fecha o oráculo de enumeração) — a dica "se já tiver conta, faça login" aparece sempre, então não vaza existência de conta; o detalhe vai só pro log. A criação de tenant pelo super-admin segue informando "já cadastrado" (sem risco). Soma-se ao rate limit de cadastro (Onda 1)
+- **RLS hardening (defesa em profundidade):** migration que reafirma o RLS habilitado e **revoga explicitamente qualquer acesso de `anon`/`authenticated`** às tabelas `empresas`, `pedidos`, `wa_auth` e `plataforma_config` (que só o backend privilegiado acessa) — protege ainda mais a sessão do WhatsApp e o hash da senha master. Decisão consciente de **não criar policies** (abririam um caminho de leitura hoje fechado); o reforço vai na direção de *mais* trancado
