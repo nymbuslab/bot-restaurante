@@ -74,7 +74,7 @@ function configInicial(nomeRestaurante) {
       perguntarObservacao: true,
     },
     mensagens: {
-      boasVindas: "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.\n\nComo posso ajudar? Digite o número da opção:",
+      boasVindas: "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.",
       fechado: "No momento estamos *fechados* 😴. Nosso horário é: {horario}.\n\nVolte mais tarde para fazer seu pedido!",
       atendente: "Tudo bem! Um de nossos atendentes vai continuar por aqui em instantes. 🧑‍🍳\n\n(Digite *menu* para voltar ao atendimento automático.)",
       pedidoConfirmado: "🎉 *Pedido confirmado!* Número *#{numero}*.\n\nJá estamos preparando. Tempo estimado: *{tempo}*.\nObrigado pela preferência! 🍴",
