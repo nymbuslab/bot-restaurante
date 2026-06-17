@@ -17,16 +17,17 @@
       <h1 id="cd-nome" class="cd-nome">Cardápio</h1>
       <p id="cd-info" class="cd-info"></p>
       <span id="cd-status" class="cd-status" style="display:none"></span>
+      <div class="cd-search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="cd-busca" type="search" placeholder="Buscar no cardápio…" autocomplete="off" />
+      </div>
     </div>
   </header>
 
   <div class="cd-bar" id="cd-bar" style="display:none">
     <div class="cd-bar-inner">
-      <div class="cd-search">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="cd-busca" type="search" placeholder="Buscar no cardápio…" autocomplete="off" />
-      </div>
-      <div class="cd-chips" id="cd-chips"></div>
+      <span class="cd-cats-label">Categorias</span>
+      <div class="cd-cats" id="cd-cats"></div>
     </div>
   </div>
 
