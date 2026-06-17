@@ -7,7 +7,7 @@
   <meta name="description" content="Cardápio digital" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body class="cd-body">
@@ -16,44 +16,18 @@
     <div class="cd-header-inner">
       <h1 id="cd-nome" class="cd-nome">Cardápio</h1>
       <p id="cd-info" class="cd-info"></p>
-      <span id="cd-status" class="cd-status" style="display:none"></span>
+      <span id="cd-fechado" class="cd-fechado" style="display:none">● Fechado no momento</span>
     </div>
   </header>
-
-  <div class="cd-bar" id="cd-bar" style="display:none">
-    <div class="cd-bar-inner">
-      <div class="cd-search">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="cd-busca" type="search" placeholder="Buscar no cardápio…" autocomplete="off" />
-      </div>
-      <div class="cd-chips" id="cd-chips"></div>
-    </div>
-  </div>
 
   <main class="cd-main">
     <div id="cd-estado" class="cd-estado">Carregando cardápio…</div>
     <div id="cd-categorias"></div>
-    <div id="cd-vazio" class="cd-estado" style="display:none">Nenhum item encontrado para a sua busca.</div>
   </main>
 
   <footer class="cd-rodape">
     Cardápio digital por <strong>Nymbus Lab</strong>
   </footer>
-
-  <!-- Bottom-sheet de detalhe do item -->
-  <div class="cd-sheet-overlay" id="cd-sheet-overlay">
-    <div class="cd-sheet" id="cd-sheet" role="dialog" aria-modal="true" aria-label="Detalhe do item">
-      <div class="cd-sheet-handle"></div>
-      <button class="cd-sheet-fechar" id="cd-sheet-fechar" type="button" aria-label="Fechar">✕</button>
-      <img id="cd-sheet-foto" class="cd-sheet-foto" alt="" style="display:none" />
-      <div class="cd-sheet-corpo">
-        <h3 id="cd-sheet-nome" class="cd-sheet-nome"></h3>
-        <p id="cd-sheet-preco" class="cd-sheet-preco"></p>
-        <p id="cd-sheet-desc" class="cd-sheet-desc"></p>
-        <div id="cd-sheet-extra"></div>
-      </div>
-    </div>
-  </div>
 
   <script src="/cardapio-publico.js"></script>
 </body>
