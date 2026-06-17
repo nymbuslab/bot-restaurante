@@ -44,6 +44,17 @@
 
 * { box-sizing: border-box; }
 
+/* Rolagem suave ao clicar nos links âncora (nav da landing). O scroll-padding
+   compensa a nav sticky (74px) pra a seção não parar escondida atrás dela.
+   Respeita quem prefere menos movimento (acessibilidade). */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 92px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   margin: 0;
