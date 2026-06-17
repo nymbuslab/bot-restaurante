@@ -10,6 +10,11 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 
 ## Fora de escopo
 
+> **Nota (2026-06-17):** os itens abaixo sobre **ciclo do pedido, cozinha e pagamento** estão **em
+> reavaliação** dado o objetivo de evoluir para um sistema de restaurante — ver *"Avaliação: evoluir
+> para sistema de restaurante"* no fim deste arquivo. A decisão original abaixo continua valendo até
+> que o novo escopo seja aprovado.
+
 - Notificação de pedidos para cozinha via bot — o restaurante usa seu próprio sistema
 - Gestão de ciclo do pedido (preparando, saiu para entrega, entregue) pelo bot
 - Integração com sistemas de pagamento online (por ora, apenas informa forma de pagamento)
@@ -72,3 +77,54 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - App mobile para o atendente receber pedidos
 - **Limpeza ativa de sessões abandonadas (bot)** — varredura periódica (`setInterval`) removendo sessões expiradas, no lugar da expiração lazy atual (que só limpa quando chega nova mensagem). Relevante só quando o volume de clientes simultâneos justificar — cruza com a nota de RAM por tenant no `PROGRESSO.md`.
 - **Resiliência: sair de processo/máquina única** — hoje é **um processo Node numa máquina só**: se cai, cai para todos, e **todos os bots rodam no mesmo processo** (um crash afeta geral). Caminhos, em ordem: (1) supervisor que reinicia sozinho (PM2/systemd — já no `DEPLOY.md`); (2) redundância real (múltiplas instâncias com sessão/estado compartilhados — exige sair do SQLite local para **Postgres**); (3) isolamento de falha entre tenants. **Prematuro — só importa com volume**; levantado na revisão "crescer e vender".
+
+---
+
+## Avaliação: evoluir para sistema de restaurante (2026-06-17)
+
+Análise honesta a pedido do dono: a stack atual se comporta como um **sistema completo de
+restaurante** (atendimento, produtos, venda, impressos de venda/cozinha, relatórios)?
+
+**Veredito:** não — hoje é um **bot de captura de pedidos no WhatsApp + painel de gestão**,
+escopado de propósito como "porta de entrada". Cobre bem **Atendimento** (bot completo) e
+**parcialmente** Produtos/Venda/Relatórios; **não tem** impressão, cozinha (KDS), caixa, fiscal
+nem venda presencial. Chegar em "completo" = praticamente **construir um PDV/ERP em volta** do
+que existe.
+
+Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura). Esforço: **P** dias ·
+**M** 1-2 semanas · **G** semanas/mês+.
+
+### Fase 0 — Fundação operacional (cabe 100% na stack; maior valor / menor custo)
+
+- **Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca é atualizada;
+  falta transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
+  *Reverte a decisão "fora de escopo" acima — precisa de aval consciente.*
+- **Relatórios de verdade** (P/M) — faturamento agregado, mais vendidos, mix de pagamento,
+  horário de pico. Dados já estão em `pedidos`.
+
+### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
+
+- **KDS / tela de cozinha** (M) — depende do status; polling no início, pub-sub ao escalar.
+- **Estoque simples** (M) — quantidade + baixa no pedido + alerta (item é jsonb, sem migração pesada).
+- **Caixa / fechamento** (M) — nova tabela de movimentos; reusa o total do pedido.
+
+### Fase 2 — Venda presencial e dinheiro
+
+- **PDV de balcão / comanda / mesa** (G) — lançar pedido manual no painel; reusa o modelo de pedido.
+- **Pagamento real do cliente (Pix/cartão)** (M/G) — gateway novo (não confundir com o Stripe da assinatura).
+
+### Fase 3 — Os "duros" (esbarram na arquitetura / regulados)
+
+- **Impressão (cupom de venda + comanda de cozinha)** (G + decisão de arquitetura) — app web
+  stateless **não imprime em térmica** direto; exige agente local (ex.: QZ Tray), impressora com
+  API ou app desktop. Escolher o caminho antes de codar.
+- **Fiscal (NFC-e/SAT)** (G + regulatório) — via parceiro fiscal (PlugNotas/Focus NFe/Tecnospeed);
+  praticamente um produto à parte.
+
+### Transversal (quando houver tração)
+
+- Tempo real: instância única + cache em memória → invalidação/pub-sub (ex.: Redis) + múltiplas instâncias.
+- WhatsApp Baileys (não-oficial) → Cloud API oficial (reduz risco de bloqueio) — ver P3 acima.
+
+**Ordem recomendada:** Fase 0 → 1 → 2 → 3. Começar pelo **status do pedido** (menor custo, sem
+tocar na arquitetura, reaproveita dados existentes).
