@@ -207,20 +207,14 @@ function planoBadge(status) {
   return `<span class="assin-badge ${cls}">${txt}</span>`;
 }
 
-// Tier do plano contratado (multi-tier). Lookup por mapa → sem risco de injeção.
-const TIER_MAP = { bot: "Bot", digital: "Cardápio Digital" };
-function tierChip(plano) {
-  return `<span class="am-tier-chip">${TIER_MAP[plano] || "Bot"}</span>`;
-}
-
-// Célula "Plano" da tabela: tier contratado + badge de status + subtexto.
+// Célula "Plano" da tabela: badge + subtexto (dias de trial / próxima cobrança).
 function planoCelula(t) {
   const st = t.assinaturaStatus || "nenhuma";
   let sub = "";
   if (st === "trialing") { const d = diasAte(t.trialAte); sub = d != null ? `${d}d restantes` : ""; }
   else if (st === "active" && t.proximaCobranca) { sub = `renova ${formatarData(t.proximaCobranca)}`; }
   else if (st === "cortesia") { sub = "acesso manual"; }
-  return `${tierChip(t.plano)}${planoBadge(st)}${sub ? `<span class="am-plano-sub">${sub}</span>` : ""}`;
+  return `${planoBadge(st)}${sub ? `<span class="am-plano-sub">${sub}</span>` : ""}`;
 }
 
 async function carregarTenants() {

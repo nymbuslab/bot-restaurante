@@ -40,14 +40,6 @@ function validarCardapio(body) {
   return null;
 }
 
-// Canal de visibilidade de um item do cardápio. Item tem `canais = { bot, digital }`.
-// RETROCOMPAT: item SEM `canais` (cardápios antigos) é tratado como visível só no
-// bot (preserva o comportamento atual), igual `disponivel` ser lido como `!== false`.
-function itemNoCanal(item, canal) {
-  if (!item || !item.canais) return canal === "bot";
-  return item.canais[canal] === true;
-}
-
 // Detecta o tipo REAL da imagem pelos magic bytes (não confia no MIME do header,
 // que é falsificável). Retorna { ext, mime } ou null se não for imagem suportada.
 function tipoImagemPorAssinatura(buf) {
@@ -62,7 +54,6 @@ function tipoImagemPorAssinatura(buf) {
 module.exports = {
   validarConfig,
   validarCardapio,
-  itemNoCanal,
   tipoImagemPorAssinatura,
   LIMITE_CONFIG_BYTES,
   LIMITE_CARDAPIO_BYTES,

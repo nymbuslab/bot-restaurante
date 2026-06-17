@@ -6,62 +6,6 @@ const btn  = document.getElementById("co-btn");
 const erro = document.getElementById("co-erro");
 const LABEL_BTN = "Iniciar teste grátis de 7 dias";
 let stripe, elements;
-let planoEscolhido = "bot";
-
-// Carrega os planos vendáveis e monta o seletor (radio). Plano inicial: ?plano=
-// (vindo do cadastro/painel) se válido, senão o primeiro da lista.
-async function carregarPlanos() {
-  const wrap = document.getElementById("co-planos");
-  if (!wrap) return;
-  let lista = [];
-  try {
-    const r = await fetch("/api/planos");
-    lista = await r.json();
-  } catch (_) { /* segue com lista vazia */ }
-  if (!Array.isArray(lista) || !lista.length) { wrap.style.display = "none"; return; }
-
-  const qs = new URLSearchParams(location.search).get("plano");
-  if (qs && lista.some((p) => p.chave === qs)) planoEscolhido = qs;
-  else planoEscolhido = lista[0].chave;
-
-  wrap.innerHTML = "";
-  lista.forEach((p) => {
-    const card = document.createElement("label");
-    card.className = "co-plano-opt" + (p.chave === planoEscolhido ? " selecionado" : "");
-    card.dataset.plano = p.chave;
-
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "plano";
-    radio.value = p.chave;
-    radio.checked = p.chave === planoEscolhido;
-
-    const info = document.createElement("div");
-    info.className = "co-plano-opt-info";
-    const nome = document.createElement("span");
-    nome.className = "co-plano-opt-nome";
-    nome.textContent = p.nome;
-    const desc = document.createElement("span");
-    desc.className = "co-plano-opt-desc";
-    desc.textContent = p.features && p.features.cardapioDigital ? "Bot no WhatsApp + Cardápio Digital" : "Bot no WhatsApp";
-    info.appendChild(nome);
-    info.appendChild(desc);
-
-    const preco = document.createElement("span");
-    preco.className = "co-plano-opt-preco";
-    preco.textContent = p.precoLabel;
-
-    card.appendChild(radio);
-    card.appendChild(info);
-    card.appendChild(preco);
-    radio.addEventListener("change", () => {
-      planoEscolhido = p.chave;
-      wrap.querySelectorAll(".co-plano-opt").forEach((el) =>
-        el.classList.toggle("selecionado", el.dataset.plano === planoEscolhido));
-    });
-    wrap.appendChild(card);
-  });
-}
 
 function falhar(msg) {
   erro.textContent = msg || "Algo deu errado. Tente novamente.";
@@ -134,7 +78,7 @@ form.addEventListener("submit", async (e) => {
     const r = await fetch("/api/assinatura/confirmar", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-      body: JSON.stringify({ setupIntentId: setupIntent.id, plano: planoEscolhido }),
+      body: JSON.stringify({ setupIntentId: setupIntent.id }),
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
@@ -147,5 +91,4 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-carregarPlanos();
 init();

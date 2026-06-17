@@ -1,36 +1,8 @@
 # Assinatura (Stripe)
 
-Monetização via **assinatura mensal** com **7 dias grátis com cartão**. Pacote `stripe`;
-lógica em `src/stripe.js`. Sem chave/preço base (`STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID`),
-as rotas `/api/assinatura/*` respondem **503** (igual ao super-admin).
-
-## Planos / tiers — `src/planos.js`
-
-Registro central (módulo PURO) dos planos. Fonte única do que cada plano custa e libera.
-Adicionar um plano = **uma entrada** no `PLANOS` + o env do price (sem rearquitetar).
-
-| Plano | Chave | Preço | Features | Env do price |
-| --- | --- | --- | --- | --- |
-| Bot | `bot` | R$ 79/mês | `bot` | `STRIPE_PRICE_ID` (base) |
-| Cardápio Digital | `digital` | R$ 89/mês | `bot` + `cardapioDigital` | `STRIPE_PRICE_ID_DIGITAL` |
-| *(futuro: pedido no digital)* | `pedidos` | — | `+ pedidoDigital` | `STRIPE_PRICE_ID_PEDIDOS` |
-
-- O tenant guarda só a **chave** na coluna `empresas.plano` (default `'bot'`; migration
-  `*_plano_tenant.sql`). O preço real é o Stripe Price (env).
-- Helpers: `get(chave)` (fallback `bot`), `temFeature(chave, feature)`, `priceIdDe(chave)`,
-  `planoPorPriceId(priceId)` (mapa reverso usado pelo webhook), `publico()` (lista vendável p/ UI).
-- **Degradação graciosa:** se `STRIPE_PRICE_ID_DIGITAL` não estiver setado, o plano `digital`
-  some de `planos.publico()` (não é vendável) — não derruba o app. **Pra vender o plano digital,
-  crie o Price R$89 no Stripe e configure o env** (sandbox agora; produção no go-live).
-- **Checkout** (`/api/assinatura/checkout|confirmar`) recebe `plano` do body, valida que tem
-  price, e cria a subscription nesse preço (`metadata.plano`). `aplicarSubscription` deriva o
-  plano do **preço real** da subscription (fonte de verdade) → grava em `empresas.plano`.
-- **Gating por feature:** `exigeFeature(feature)` (em `servidor.js`) = assinatura em dia **e**
-  `temFeature(plano, feature)`. `exigeAssinatura` virou `exigeFeature('bot')` (idêntico — todo
-  plano tem `bot`). 402 = sem acesso/pagamento; 403 = feature fora do plano.
-
-> Cardápio Digital (página pública por slug): ver **Cardápio Digital** em
-> [../CLAUDE.md](../CLAUDE.md) e o canal por item em [modelo-dados.md](modelo-dados.md).
+Monetização via **assinatura mensal** (1 plano, **R$ 79/mês**, **7 dias grátis com cartão**).
+Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KEY` +
+`STRIPE_PRICE_ID`), as rotas `/api/assinatura/*` respondem **503** (igual ao super-admin).
 
 - **Dois eixos de acesso (independentes), em `empresas.js`:**
   - `ativo` (boolean) = suspensão **manual** do admin (hard block, bloqueia até o login).

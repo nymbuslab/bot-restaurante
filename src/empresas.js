@@ -190,7 +190,7 @@ async function resolverPorToken(token) {
   }
   if (!userId) return null;
   const r = await db.query(
-    "SELECT slug, ativo, plano, assinatura_status AS \"assinaturaStatus\", trial_ate AS \"trialAte\" FROM empresas WHERE user_id = $1",
+    "SELECT slug, ativo, assinatura_status AS \"assinaturaStatus\", trial_ate AS \"trialAte\" FROM empresas WHERE user_id = $1",
     [userId]
   );
   return r.rows[0] || null;
@@ -198,7 +198,7 @@ async function resolverPorToken(token) {
 
 async function buscarPorSlug(slug) {
   const r = await db.query(
-    `SELECT id, user_id, slug, nome, email, ativo, plano, criado_em,
+    `SELECT id, user_id, slug, nome, email, ativo, criado_em,
             assinatura_status        AS "assinaturaStatus",
             trial_ate                AS "trialAte",
             proxima_cobranca         AS "proximaCobranca",
@@ -224,7 +224,7 @@ async function buscarPorStripeCustomer(stripeCustomerId) {
 
 async function listar() {
   const r = await db.query(
-    `SELECT slug, nome, email, ativo, plano, criado_em AS "criadoEm",
+    `SELECT slug, nome, email, ativo, criado_em AS "criadoEm",
             assinatura_status AS "assinaturaStatus",
             trial_ate         AS "trialAte",
             proxima_cobranca  AS "proximaCobranca"
@@ -243,7 +243,6 @@ async function setAtivo(slug, ativo) {
 async function atualizarAssinatura(slug, dados = {}) {
   const COLS = {
     status:               "assinatura_status",
-    plano:                "plano",
     trialAte:             "trial_ate",
     proximaCobranca:      "proxima_cobranca",
     stripeCustomerId:     "stripe_customer_id",

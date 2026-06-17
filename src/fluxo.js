@@ -12,7 +12,6 @@
 const store = require("./store");
 const { limparSessao } = require("./sessoes");
 const pedidos = require("./pedidos");
-const { itemNoCanal } = require("./validacao");
 
 function formatarMoeda(valor) {
   return "R$ " + Number(valor).toFixed(2).replace(".", ",");
@@ -107,7 +106,7 @@ function textoCardapio(tenantDir) {
   const config = store.getConfig(tenantDir);
   let texto = `*📋 CARDÁPIO — ${config.restaurante.nome}*\n`;
   for (const cat of cardapio.categorias) {
-    const disp = cat.itens.filter((i) => i.disponivel && itemNoCanal(i, "bot"));
+    const disp = cat.itens.filter((i) => i.disponivel);
     if (disp.length === 0) continue;
     texto += `\n*${cat.nome}*\n`;
     for (const item of disp) {
@@ -122,7 +121,7 @@ function bebidasDisponiveis(tenantDir) {
   const cardapio = store.getCardapio(tenantDir);
   const cat = cardapio.categorias.find((c) => c.nome.toLowerCase().includes("bebida"));
   if (!cat) return [];
-  return cat.itens.filter((i) => i.disponivel && itemNoCanal(i, "bot"));
+  return cat.itens.filter((i) => i.disponivel);
 }
 
 function textoBebidas(tenantDir) {
@@ -145,7 +144,7 @@ function menuPrincipal(tenantDir) {
 
 function categoriasDisponiveis(tenantDir) {
   const cardapio = store.getCardapio(tenantDir);
-  return cardapio.categorias.filter((c) => c.itens.some((i) => i.disponivel && itemNoCanal(i, "bot")));
+  return cardapio.categorias.filter((c) => c.itens.some((i) => i.disponivel));
 }
 
 function textoCategorias(tenantDir) {
@@ -157,7 +156,7 @@ function textoCategorias(tenantDir) {
 
 function listaItensDaCategoria(categoria) {
   let texto = `*${categoria.nome}*\n\n`;
-  for (const item of categoria.itens.filter((i) => i.disponivel && itemNoCanal(i, "bot"))) {
+  for (const item of categoria.itens.filter((i) => i.disponivel)) {
     texto += `*${item.id}* — ${item.nome} — ${formatarMoeda(item.preco)}\n`;
     if (item.desc) texto += `   _${item.desc}_\n`;
   }

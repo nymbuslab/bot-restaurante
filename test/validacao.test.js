@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { validarConfig, validarCardapio, itemNoCanal, tipoImagemPorAssinatura } = require("../src/validacao");
+const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("../src/validacao");
 
 // ---- validarConfig ----
 test("validarConfig: objeto normal passa", () => {
@@ -35,24 +35,6 @@ test("validarCardapio: rejeita categorias demais", () => {
 test("validarCardapio: rejeita itens demais numa categoria", () => {
   const itens = Array.from({ length: 501 }, (_, i) => ({ id: i, nome: "x" }));
   assert.equal(validarCardapio({ categorias: [{ nome: "C", itens }] }), "Itens demais em uma categoria.");
-});
-
-// ---- itemNoCanal (retrocompat dos canais por item) ----
-test("itemNoCanal: item SEM canais = só bot (retrocompat)", () => {
-  const legado = { nome: "X" };
-  assert.equal(itemNoCanal(legado, "bot"), true);
-  assert.equal(itemNoCanal(legado, "digital"), false);
-});
-test("itemNoCanal: respeita as flags explícitas de canais", () => {
-  assert.equal(itemNoCanal({ canais: { bot: true, digital: false } }, "bot"), true);
-  assert.equal(itemNoCanal({ canais: { bot: true, digital: false } }, "digital"), false);
-  assert.equal(itemNoCanal({ canais: { bot: false, digital: true } }, "bot"), false);
-  assert.equal(itemNoCanal({ canais: { bot: false, digital: true } }, "digital"), true);
-});
-test("itemNoCanal: canais ausente/parcial trata flag não-true como false", () => {
-  assert.equal(itemNoCanal({ canais: { digital: true } }, "bot"), false);
-  assert.equal(itemNoCanal({ canais: {} }, "digital"), false);
-  assert.equal(itemNoCanal(null, "bot"), true);
 });
 
 // ---- tipoImagemPorAssinatura (magic bytes) ----

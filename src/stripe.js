@@ -15,7 +15,6 @@
 const Stripe = require("stripe");
 const empresas = require("./empresas");
 const multiBot = require("./multi-bot");
-const planos = require("./planos");
 
 const SECRET = process.env.STRIPE_SECRET_KEY || "";
 const PRICE_ID = process.env.STRIPE_PRICE_ID || "";
@@ -74,7 +73,7 @@ async function criarSetupIntent({ slug, nome, email, stripeCustomerId }) {
 
 // Passo 2: com o cartão já confirmado pelo front, define-o como padrão do Customer
 // e cria a assinatura (trial 7d). Idempotente: não duplica se já houver assinatura viva.
-async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId, stripeSubscriptionId, plano = "bot" }) {
+async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId, stripeSubscriptionId }) {
   const si = await stripe.setupIntents.retrieve(setupIntentId);
   if (si.status !== "succeeded") throw new Error("Cartão ainda não confirmado.");
   if (si.customer !== stripeCustomerId) throw new Error("Cartão não pertence a este cliente.");
@@ -97,10 +96,10 @@ async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId,
 
   const sub = await stripe.subscriptions.create({
     customer: stripeCustomerId,
-    items: [{ price: planos.priceIdDe(plano) || PRICE_ID }],
+    items: [{ price: PRICE_ID }],
     trial_period_days: 7,
     default_payment_method: pm,
-    metadata: { slug, plano },
+    metadata: { slug },
   });
   await aplicarSubscription(slug, sub, stripeCustomerId);
   return sub;
@@ -108,15 +107,15 @@ async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId,
 
 // Cria (ou reusa) o Customer do tenant e abre a Checkout Session HOSPEDADA
 // (fallback; o fluxo padrão agora é o checkout próprio acima).
-async function criarCheckout({ slug, nome, email, stripeCustomerId, baseUrl, plano = "bot" }) {
+async function criarCheckout({ slug, nome, email, stripeCustomerId, baseUrl }) {
   const customer = await garantirCustomer({ slug, nome, email, stripeCustomerId });
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer,
-    line_items: [{ price: planos.priceIdDe(plano) || PRICE_ID, quantity: 1 }],
-    subscription_data: { trial_period_days: 7, metadata: { slug, plano } },
+    line_items: [{ price: PRICE_ID, quantity: 1 }],
+    subscription_data: { trial_period_days: 7, metadata: { slug } },
     payment_method_types: ["card"],
-    metadata: { slug, plano },
+    metadata: { slug },
     success_url: `${baseUrl}/admin.html?assinatura=ok`,
     cancel_url: `${baseUrl}/admin.html?assinatura=cancelado`,
   });
@@ -270,15 +269,10 @@ async function slugDoCustomer(customerId) {
 // Aplica o estado de uma subscription do Stripe ao tenant (grava + liga/desliga bot).
 async function aplicarSubscription(slug, sub, customerId) {
   const status = mapStatus(sub.status);
-  const item0 = sub.items && sub.items.data && sub.items.data[0];
-  const periodEnd = sub.current_period_end || (item0 && item0.current_period_end);
-  // Plano derivado do PREÇO real da subscription (fonte de verdade — segue
-  // correto mesmo se o cliente trocar de plano pelo portal); fallback metadata → 'bot'.
-  const priceId = item0 && item0.price && item0.price.id;
-  const plano = planos.planoPorPriceId(priceId) || (sub.metadata && sub.metadata.plano) || "bot";
+  const periodEnd = sub.current_period_end
+    || (sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].current_period_end);
   await empresas.atualizarAssinatura(slug, {
     status,
-    plano,
     stripeSubscriptionId: sub.id,
     stripeCustomerId: customerId,
     trialAte: paraISO(sub.trial_end),
