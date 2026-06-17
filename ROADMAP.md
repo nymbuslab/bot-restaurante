@@ -8,9 +8,9 @@ Plataforma SaaS multi-tenant para restaurantes receberem pedidos via WhatsApp.
 O bot é a **porta de entrada** — coleta o pedido completo (itens, opcionais, entrega, pagamento)
 e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sistema do restaurante.
 
-> **Em mudança (2026-06-17):** o pedido **conversacional** está sendo trocado por um **cardápio web
-> linkado** — o bot manda o link e o cliente monta/finaliza na web (chat longo gera desistência). Ver
-> *"Cardápio web como canal de pedido"* no fim deste arquivo.
+> **Implementado (2026-06-17):** o pedido **conversacional** foi **substituído** por um **cardápio web
+> linkado** — o bot manda o link e o cliente monta/finaliza na web. Ver *"Cardápio web como canal de
+> pedido"* no fim deste arquivo.
 
 ## Fora de escopo
 
@@ -135,13 +135,17 @@ tocar na arquitetura, reaproveita dados existentes).
 
 ---
 
-## Cardápio web como canal de pedido (plano — 2026-06-17)
+## Cardápio web como canal de pedido — ✅ implementado (2026-06-17)
 
-Substitui o pedido **conversacional** do bot (ver *Visão*): com cardápio grande, a conversa fica
-longa e o cliente desiste. Em vez disso, o bot manda **um link** e o cliente monta/finaliza o pedido
-na web; o pedido cai no nosso backend e o bot **confirma** no WhatsApp. Baseado no projeto de
-referência `docs/cardapio` (React/Tailwind) — trazido como **referência visual**, portado pro stack
-vanilla do repo (os tokens de design já são idênticos).
+Substituiu o pedido **conversacional** do bot (ver *Visão*): com cardápio grande, a conversa ficava
+longa e o cliente desistia. Agora o bot manda **um link** e o cliente monta/finaliza o pedido na web;
+o pedido cai no backend (recalculado lá) e o bot **confirma** no WhatsApp. Baseado no projeto de
+referência `docs/cardapio` (React/Tailwind) — usado como **referência visual**, portado pro stack
+vanilla do repo (os tokens de design já eram idênticos).
+
+**Status:** entregue nas Fases 1→5 (API pública + token, página vanilla, POST com recálculo no
+servidor + confirmação pelo bot, bot envia o link, docs). Migração `20260617120000_pedido_observacao`
+aplicada. **Requer no ambiente:** `PUBLIC_URL` + `CARDAPIO_LINK_SECRET`.
 
 ### Decisões travadas
 
