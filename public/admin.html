@@ -115,6 +115,14 @@
         </div>
       </div>
       <div class="metricas-cardapio" id="cardapioMetricas"></div>
+      <div class="cd-link-card" id="cardapioDigitalCard" style="display:none">
+        <div class="cd-link-info">
+          <strong>🖥️ Cardápio Digital ativo</strong>
+          <span>Compartilhe este link (ou um QR Code dele) com seus clientes no local. Itens marcados como <em>“Cardápio Digital”</em> aparecem nesta página.</span>
+          <a class="cd-link-url" id="cardapioDigitalLink" href="#" target="_blank" rel="noopener"></a>
+        </div>
+        <button class="secundario mini" id="cardapioDigitalCopiar">Copiar link</button>
+      </div>
       <div id="cardapioContainer"></div>
       <div class="barra-salvar">
         <button id="btnSalvarCardapio">Salvar cardápio</button>
@@ -502,7 +510,7 @@
           </div>
           <div class="assin-plano-col">
             <span class="assin-col-label">Valor mensal</span>
-            <span class="assin-col-valor">R$ 79,00<span class="assin-col-ciclo">/mês</span></span>
+            <span class="assin-col-valor" id="assinPlanoValor">R$ 79,00<span class="assin-col-ciclo">/mês</span></span>
           </div>
           <div class="assin-plano-col">
             <span class="assin-col-label">Próximo vencimento</span>
@@ -633,6 +641,14 @@
           <div class="campo toggle">
             <input type="checkbox" id="editor-disponivel" />
             <label for="editor-disponivel">Disponível para pedidos</label>
+          </div>
+          <div class="campo">
+            <label>Visível em</label>
+            <div class="canais-grupo">
+              <label class="canal-opt"><input type="checkbox" id="editor-canal-bot" /> <span>Bot WhatsApp <em>(delivery)</em></span></label>
+              <label class="canal-opt" id="editor-canal-digital-wrap"><input type="checkbox" id="editor-canal-digital" /> <span>Cardápio Digital <em>(local)</em></span></label>
+            </div>
+            <small class="canal-upsell" id="editor-canal-upsell" style="display:none">O Cardápio Digital faz parte do plano <strong>Cardápio Digital</strong>. Faça upgrade para usá-lo.</small>
           </div>
         </div>
       </div>

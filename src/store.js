@@ -15,6 +15,7 @@
 
 const path = require("path");
 const db = require("./db");
+const { itemNoCanal } = require("./validacao");
 
 const cache = {}; // slug -> { config, cardapio }
 const slugDe = (dir) => path.basename(dir);
@@ -64,7 +65,7 @@ function itensDisponiveis(dir) {
   const mapa = {};
   for (const cat of getCardapio(dir).categorias) {
     for (const item of cat.itens) {
-      if (item.disponivel) mapa[item.id] = { ...item, categoria: cat.nome };
+      if (item.disponivel && itemNoCanal(item, "bot")) mapa[item.id] = { ...item, categoria: cat.nome };
     }
   }
   return mapa;

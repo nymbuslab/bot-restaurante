@@ -16,7 +16,8 @@ const pedidos = require("./pedidos");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin } = require("./supabase");
 const stripeBilling = require("./stripe");
-const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("./validacao");
+const planos = require("./planos");
+const { validarConfig, validarCardapio, itemNoCanal, tipoImagemPorAssinatura } = require("./validacao");
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem } = require("./fluxo");
 
@@ -71,6 +72,7 @@ const loginLimiter      = limitador(15, 10, TENTE_DEPOIS); // login de restauran
 const adminLoginLimiter = limitador(15, 5,  TENTE_DEPOIS); // login master (mais rígido)
 const cadastroLimiter   = limitador(60, 5,  "Muitos cadastros a partir deste IP. Tente novamente mais tarde.");
 const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / checkout
+const publicoLimiter    = limitador(15, 60, TENTE_DEPOIS); // cardápio digital público (por IP)
 
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
 // A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
@@ -113,20 +115,27 @@ async function exigeAuth(req, res, next) {
   next();
 }
 
-// Gate de assinatura: exige trial/assinatura em dia (além do exigeAuth).
-// Protege a ação que de fato presta o serviço (ligar o bot). Responde 402
-// (Payment Required) quando o acesso não está liberado.
-async function exigeAssinatura(req, res, next) {
-  try {
-    const emp = await empresas.buscarPorSlug(req.slug);
-    if (!empresas.acessoLiberado(emp)) {
-      return res.status(402).json({ erro: "Assinatura inativa. Ative seu plano para usar o bot." });
+// Gate de FEATURE por plano (além do exigeAuth). Exige (1) assinatura/trial em
+// dia E (2) que o plano do tenant inclua a feature pedida. Responde 402 (sem
+// acesso/pagamento) ou 403 (feature fora do plano). `exigeAssinatura` é o caso
+// 'bot' (todo plano tem bot → comportamento idêntico ao anterior).
+function exigeFeature(feature) {
+  return async (req, res, next) => {
+    try {
+      const emp = await empresas.buscarPorSlug(req.slug);
+      if (!empresas.acessoLiberado(emp)) {
+        return res.status(402).json({ erro: "Assinatura inativa. Ative seu plano para usar o bot." });
+      }
+      if (!planos.temFeature(emp.plano, feature)) {
+        return res.status(403).json({ erro: "Recurso não incluído no seu plano." });
+      }
+      next();
+    } catch (e) {
+      res.status(500).json({ erro: "Falha ao validar a assinatura." });
     }
-    next();
-  } catch (e) {
-    res.status(500).json({ erro: "Falha ao validar a assinatura." });
-  }
+  };
 }
+const exigeAssinatura = exigeFeature("bot");
 
 // ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
 // Token próprio em memória, separado do JWT de restaurante.
@@ -204,11 +213,13 @@ function baseUrlDe(req) {
 // Inicia o trial de 7 dias: abre a Checkout Session (coleta cartão) e devolve a URL.
 app.post("/api/assinatura/checkout", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  const plano = planos.get((req.body || {}).plano);
+  if (!plano.stripePriceId) return res.status(400).json({ erro: "Plano indisponível para contratação." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
     const url = await stripeBilling.criarCheckout({
       slug: emp.slug, nome: emp.nome, email: emp.email,
-      stripeCustomerId: emp.stripeCustomerId, baseUrl: baseUrlDe(req),
+      stripeCustomerId: emp.stripeCustomerId, baseUrl: baseUrlDe(req), plano: plano.chave,
     });
     res.json({ url });
   } catch (e) {
@@ -251,6 +262,8 @@ app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   const { setupIntentId } = req.body || {};
   if (!setupIntentId) return res.status(400).json({ erro: "setupIntentId é obrigatório." });
+  const plano = planos.get((req.body || {}).plano);
+  if (!plano.stripePriceId) return res.status(400).json({ erro: "Plano indisponível para contratação." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
     if (!emp.stripeCustomerId) return res.status(400).json({ erro: "Inicie o checkout antes de confirmar." });
@@ -259,6 +272,7 @@ app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
       setupIntentId,
       stripeCustomerId: emp.stripeCustomerId,
       stripeSubscriptionId: emp.stripeSubscriptionId,
+      plano: plano.chave,
     });
     res.json({ ok: true });
   } catch (e) {
@@ -275,8 +289,14 @@ app.get("/api/assinatura", exigeAuth, async (req, res) => {
     if (emp.stripeCustomerId && stripeBilling.CONFIGURADO) {
       faturas = await stripeBilling.listarFaturas(emp.stripeCustomerId).catch(() => []);
     }
+    const p = planos.get(emp.plano);
     res.json({
       status: emp.assinaturaStatus,
+      slug: emp.slug,
+      plano: p.chave,
+      planoNome: p.nome,
+      precoLabel: p.precoLabel,
+      features: p.features,
       trialAte: emp.trialAte,
       proximaCobranca: emp.proximaCobranca,
       acessoLiberado: empresas.acessoLiberado(emp),
@@ -316,6 +336,68 @@ app.get("/api/plataforma/publico", async (_req, res) => {
   } catch (e) {
     res.json({});
   }
+});
+
+// Planos disponíveis para contratação (cadastro / aba Assinatura). Público.
+app.get("/api/planos", (_req, res) => {
+  res.json(planos.publico());
+});
+
+// ---- Cardápio Digital PÚBLICO (vitrine por slug, sem auth) ----
+// Página que o cliente abre no navegador (ex.: QR na mesa). Só fica disponível
+// se o tenant tem o plano com a feature `cardapioDigital` E acesso liberado.
+// Resposta 200 SEMPRE (com flag `disponivel`); nunca devolve o jsonb cru —
+// projeção whitelisted, só itens marcados pro canal `digital` e disponíveis.
+app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp || !emp.ativo) return res.json({ disponivel: false, motivo: "nao_encontrado" });
+    if (!planos.temFeature(emp.plano, "cardapioDigital") || !empresas.acessoLiberado(emp)) {
+      return res.json({ disponivel: false, motivo: "indisponivel" });
+    }
+    const tenantDir = empresas.tenantDir(emp.slug);
+    await store.ensure(tenantDir);
+    const cardapio = store.getCardapio(tenantDir) || { categorias: [] };
+    const config = store.getConfig(tenantDir) || {};
+    const rest = config.restaurante || {};
+    const at = config.atendimento || {};
+
+    const categorias = (cardapio.categorias || [])
+      .map((cat) => ({
+        nome: cat.nome || "",
+        itens: (cat.itens || [])
+          .filter((it) => it.disponivel !== false && itemNoCanal(it, "digital"))
+          .map((it) => ({
+            nome: it.nome || "",
+            preco: it.preco,
+            desc: it.desc || "",
+            composicao: it.composicao || "",
+            opcionais: it.opcionais || "",
+            imagem: it.imagem || "",
+          })),
+      }))
+      .filter((c) => c.itens.length > 0);
+
+    res.json({
+      disponivel: true,
+      restaurante: {
+        nome: rest.nome || "Cardápio",
+        telefone: rest.telefone || "",
+        endereco: rest.endereco || "",
+        horario: rest.horario || "",
+      },
+      aberto: at.aberto !== false,
+      categorias,
+    });
+  } catch (e) {
+    res.json({ disponivel: false, motivo: "erro" });
+  }
+});
+
+// Página (HTML) do cardápio digital — URL amigável p/ QR. O slug vai no path;
+// o JS lê de location.pathname e busca em /api/c/:slug.
+app.get("/c/:slug", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "cardapio-publico.html"));
 });
 
 // ---- Gestão de cartões no painel (Stripe) ----

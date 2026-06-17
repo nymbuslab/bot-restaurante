@@ -48,6 +48,10 @@ let editorFotoUrl = "";
 let editorComposicao = [];
 let editorOpcionais = [];
 
+// Features do plano do tenant (preenchido por carregarPlano(); ver Assinatura).
+// Default conservador: só bot até sabermos o plano de verdade.
+let featuresPlano = { bot: true, cardapioDigital: false };
+
 // ============================================================
 // TOAST (substitui flash)
 // ============================================================
@@ -193,10 +197,28 @@ async function carregarAssinatura() {
   const r = await api("GET", "/api/assinatura");
   if (!r || !r.ok) return;
   assinaturaAtual = await r.json();
+  // Features do plano → habilita/desabilita recursos no painel (canal digital,
+  // link do cardápio digital). Vem junto da assinatura pra evitar 1 fetch a mais.
+  if (assinaturaAtual.features) featuresPlano = assinaturaAtual.features;
   renderAssinatura(assinaturaAtual);
   aplicarGate(assinaturaAtual);
+  atualizarCardapioDigitalCard(assinaturaAtual);
   carregarCartoes();
   carregarPlataforma();
+}
+
+// Mostra (ou esconde) o card com o link público do cardápio digital, conforme
+// o plano. O link é o domínio atual + /c/<slug>.
+function atualizarCardapioDigitalCard(a) {
+  const card = $("cardapioDigitalCard");
+  if (!card) return;
+  const tem = a && a.features && a.features.cardapioDigital === true && a.slug;
+  if (!tem) { card.style.display = "none"; return; }
+  const url = `${location.origin}/c/${a.slug}`;
+  const link = $("cardapioDigitalLink");
+  link.textContent = url;
+  link.href = url;
+  card.style.display = "";
 }
 
 function renderAssinatura(a) {
@@ -216,6 +238,13 @@ function renderAssinatura(a) {
   const [texto, cls] = mapa[a.status] || mapa.nenhuma;
   badge.textContent = texto;
   badge.className = "assin-badge " + cls;
+
+  // Nome/valor do plano (multi-tier): vêm do servidor (planos.js).
+  const nomeEl = $("assinPlanoNome");
+  if (nomeEl && a.planoNome) nomeEl.textContent = a.planoNome;
+  const valorEl = $("assinPlanoValor");
+  if (valorEl && a.precoLabel) valorEl.textContent = a.precoLabel;
+  const preco = a.precoLabel || "R$ 79,00/mês";
 
   // Próximo vencimento no card do plano (trial → fim do teste; ativa → próxima cobrança).
   const venc = $("assinVencimento");
@@ -241,9 +270,9 @@ function renderAssinatura(a) {
 
   if (a.status === "trialing") {
     const d = diasRestantes(a.trialAte);
-    info.innerHTML = `Seu teste grátis termina em <strong>${d} dia${d === 1 ? "" : "s"}</strong> (${fmtDataAssin(a.trialAte)}). Depois disso a cobrança de <strong>R$ 79,00/mês</strong> é automática no cartão cadastrado.`;
+    info.innerHTML = `Seu teste grátis termina em <strong>${d} dia${d === 1 ? "" : "s"}</strong> (${fmtDataAssin(a.trialAte)}). Depois disso a cobrança de <strong>${preco}</strong> é automática no cartão cadastrado.`;
   } else if (a.status === "active") {
-    info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · R$ 79,00/mês.`;
+    info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · ${preco}.`;
   } else if (a.status === "cortesia") {
     info.innerHTML = `Acesso liberado pela equipe <strong>Nymbus Lab</strong> (cortesia). Você usa o sistema <strong>sem cobrança</strong> — não é necessário cadastrar cartão.`;
   } else if (a.status === "past_due") {
@@ -480,6 +509,17 @@ function fecharModalCartao() {
 if ($("btnAddCartao")) $("btnAddCartao").addEventListener("click", abrirModalCartao);
 if ($("cartao-fechar")) $("cartao-fechar").addEventListener("click", fecharModalCartao);
 if ($("cartao-cancelar")) $("cartao-cancelar").addEventListener("click", fecharModalCartao);
+
+if ($("cardapioDigitalCopiar")) $("cardapioDigitalCopiar").addEventListener("click", async () => {
+  const url = $("cardapioDigitalLink").textContent;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("✓ Link copiado!");
+  } catch (_) {
+    toast("Copie o link manualmente.");
+  }
+});
 
 if ($("cartao-form")) $("cartao-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -799,6 +839,8 @@ function abrirEditorItem(ci, ii) {
     $("editor-preco").value = "";
     $("editor-desc").value = "";
     $("editor-disponivel").checked = true;
+    $("editor-canal-bot").checked = true;
+    $("editor-canal-digital").checked = featuresPlano.cardapioDigital === true;
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
@@ -808,10 +850,14 @@ function abrirEditorItem(ci, ii) {
     Dinheiro.setValor("editor-preco", it.preco);
     $("editor-desc").value = it.desc || "";
     $("editor-disponivel").checked = it.disponivel !== false;
+    // Retrocompat: item sem `canais` = só bot (igual ao filtro do servidor).
+    $("editor-canal-bot").checked = it.canais ? it.canais.bot === true : true;
+    $("editor-canal-digital").checked = it.canais ? it.canais.digital === true : false;
     editorFotoUrl = it.imagem || "";
     editorComposicao = parsearComposicao(it.composicao || "");
     editorOpcionais = parsearOpcionais(it.opcionais || "");
   }
+  aplicarGateCanalDigital();
   renderEditorComposicao();
   renderEditorOpcionais();
 
@@ -853,6 +899,21 @@ function atualizarPreviewFoto() {
   }
 }
 
+// Trava a opção "Cardápio Digital" quando o plano do tenant não a inclui
+// (desabilita + esmaece + mostra o upsell). O gate REAL é no servidor/endpoint
+// público; aqui é só UX/upsell.
+function aplicarGateCanalDigital() {
+  const temDigital = featuresPlano.cardapioDigital === true;
+  const chk = $("editor-canal-digital");
+  const wrap = $("editor-canal-digital-wrap");
+  const upsell = $("editor-canal-upsell");
+  if (!chk) return;
+  chk.disabled = !temDigital;
+  if (!temDigital) chk.checked = false;
+  if (wrap) wrap.classList.toggle("desabilitado", !temDigital);
+  if (upsell) upsell.style.display = temDigital ? "none" : "";
+}
+
 async function salvarEditorItem() {
   const nome  = $("editor-nome").value.trim();
   const preco = Dinheiro.valor("editor-preco");
@@ -877,6 +938,7 @@ async function salvarEditorItem() {
     preco,
     desc:        $("editor-desc").value,
     disponivel:  $("editor-disponivel").checked,
+    canais:      { bot: $("editor-canal-bot").checked, digital: $("editor-canal-digital").checked },
     composicao:  serializarComposicao(editorComposicao),
     opcionais:   serializarOpcionais(editorOpcionais),
     imagem:      editorFotoUrl,

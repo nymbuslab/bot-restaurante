@@ -3739,3 +3739,107 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .lp-float-card { left: 8px; bottom: 12px; padding: 9px 12px; }
   .lp-stat + .lp-stat::before { display: none; }
 }
+
+/* ---- Canais de visibilidade do item (Bot / Cardápio Digital) ---- */
+.canais-grupo { display: flex; flex-wrap: wrap; gap: 8px; }
+.canal-opt {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 13px; color: var(--text-primary); cursor: pointer; user-select: none;
+}
+.canal-opt input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.canal-opt em { color: var(--text-secondary); font-style: normal; font-size: 12px; }
+.canal-opt.desabilitado { opacity: 0.5; cursor: not-allowed; }
+.canal-opt.desabilitado input { cursor: not-allowed; }
+.canal-upsell { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+
+/* ============================================================
+   CARDÁPIO DIGITAL PÚBLICO (vitrine /c/:slug)
+   ============================================================ */
+.cd-body {
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  min-height: 100vh;
+}
+.cd-header {
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.35), rgba(115, 210, 230, 0.18)), var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 36px 20px 28px;
+}
+.cd-header-inner { max-width: 920px; margin: 0 auto; }
+.cd-nome { margin: 0 0 6px; font-size: 28px; font-weight: 800; letter-spacing: -0.4px; }
+.cd-info { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.cd-fechado {
+  display: inline-block; margin-top: 12px; padding: 5px 12px; border-radius: 999px;
+  background: var(--error-subtle); color: #FCA5A5; font-size: 12px; font-weight: 600;
+}
+.cd-main { max-width: 920px; margin: 0 auto; padding: 24px 20px 48px; }
+.cd-estado { text-align: center; color: var(--text-secondary); padding: 48px 16px; font-size: 14px; }
+.cd-cat { margin-bottom: 32px; }
+.cd-cat-nome {
+  margin: 0 0 14px; font-size: 16px; font-weight: 700; color: var(--text-primary);
+  padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);
+}
+.cd-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.cd-item {
+  display: flex; gap: 14px; background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 12px; overflow: hidden;
+}
+.cd-item-foto {
+  width: 84px; height: 84px; flex-shrink: 0; object-fit: cover;
+  border-radius: var(--radius); background: var(--bg-elevated);
+}
+.cd-item-corpo { min-width: 0; flex: 1; }
+.cd-item-topo { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.cd-item-nome { margin: 0; font-size: 14px; font-weight: 700; }
+.cd-item-preco { color: var(--accent-fg); font-weight: 700; font-size: 14px; white-space: nowrap; }
+.cd-item-desc { margin: 4px 0 0; color: var(--text-secondary); font-size: 12.5px; line-height: 1.45; }
+.cd-item-comp { margin: 8px 0 0; padding: 0; list-style: none; }
+.cd-item-comp li { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.cd-item-add { margin: 8px 0 0; color: var(--text-secondary); font-size: 12px; font-style: italic; }
+.cd-rodape { text-align: center; padding: 24px 16px; color: var(--text-disabled); font-size: 12px; border-top: 1px solid var(--border-subtle); }
+.cd-rodape strong { color: var(--text-secondary); }
+@media (max-width: 640px) {
+  .cd-grid { grid-template-columns: 1fr; }
+  .cd-nome { font-size: 23px; }
+  .cd-header { padding: 28px 16px 22px; }
+}
+
+/* ---- Card do link do Cardápio Digital (aba Cardápio) ---- */
+.cd-link-card {
+  display: flex; align-items: center; gap: 16px; justify-content: space-between;
+  background: var(--accent-subtle); border: 1px solid var(--accent);
+  border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 18px;
+}
+.cd-link-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cd-link-info strong { font-size: 13px; color: var(--text-primary); }
+.cd-link-info span { font-size: 12px; color: var(--text-secondary); line-height: 1.45; }
+.cd-link-info em { color: var(--accent-fg); font-style: normal; }
+.cd-link-url { font-size: 12.5px; color: var(--accent-fg); word-break: break-all; margin-top: 2px; }
+.cd-link-card .secundario { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .cd-link-card { flex-direction: column; align-items: stretch; }
+}
+
+/* ---- Chip de tier (plano contratado) no painel master ---- */
+.am-tier-chip {
+  display: inline-block; margin-right: 6px; padding: 2px 8px; border-radius: 999px;
+  background: var(--secondary-subtle); color: var(--secondary); border: 1px solid rgba(115,210,230,0.3);
+  font-size: 11px; font-weight: 600; vertical-align: middle;
+}
+
+/* ---- Seletor de planos no checkout ---- */
+.co-planos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.co-plano-opt {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer;
+  background: var(--bg-elevated); border: 1.5px solid var(--border); border-radius: var(--radius);
+  transition: border-color .15s, background .15s;
+}
+.co-plano-opt.selecionado { border-color: var(--accent); background: var(--accent-subtle); }
+.co-plano-opt input { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+.co-plano-opt-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.co-plano-opt-nome { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.co-plano-opt-desc { font-size: 12px; color: var(--text-secondary); }
+.co-plano-opt-preco { font-size: 14px; font-weight: 700; color: var(--accent-fg); white-space: nowrap; }

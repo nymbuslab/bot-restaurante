@@ -6,10 +6,14 @@
 ```json
 { "id": 10, "nome": "Marmitex P", "preco": 18.0, "desc": "...",
   "disponivel": true,
+  "canais": { "bot": true, "digital": false },
   "composicao": "Principal:\n* Arroz\n* Feijão",
   "opcionais": "Ovo frito | 2.00\nBacon | 3.50" }
 ```
-`composicao` e `opcionais` são texto parseado em runtime.
+`composicao` e `opcionais` são texto parseado em runtime. `canais` = em quais canais o item
+aparece (bot do WhatsApp × Cardápio Digital público); **item sem `canais` = só bot** (retrocompat,
+ver `itemNoCanal` em `src/validacao.js`). O cardápio digital só é servido se o plano do tenant
+tiver a feature `cardapioDigital` (ver [assinatura-stripe.md](assinatura-stripe.md)).
 
 **Tabela `pedidos`** (Postgres/Supabase, uma só, isolada por `empresa_id`):
 

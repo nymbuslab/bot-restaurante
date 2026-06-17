@@ -78,6 +78,7 @@ src/
   db.js               -> pool Postgres (pg), lê DATABASE_URL do .env
   supabase.js         -> clients do Supabase (Auth admin/anon + Storage)
   stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas
+  planos.js           -> registro de planos/tiers (bot/digital): preço, features, mapa price→plano
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
   servidor.js         -> Express: API REST multi-tenant + serve /public
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
@@ -95,6 +96,7 @@ public/
   admin.html          -> painel administrativo (inclui aba Assinatura + gate)
   admin-master.html   -> painel super-admin (gestão de tenants + assinatura + Config Master)
   termos.html / privacidade.html -> páginas legais (LGPD); identidade injetada de /api/plataforma/publico
+  cardapio-publico.html/.js -> Cardápio Digital PÚBLICO (vitrine por slug, rota /c/:slug, sem auth)
   app.js, app-admin.js, footer.js, style.css -> lógica dos painéis, footer e estilos
   endereco-cep.js     -> util: máscara/busca de CEP (ViaCEP) + composição de endereço
   dinheiro.js         -> util: máscara monetária (centavos primeiro) + formatação BR
@@ -125,7 +127,11 @@ fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é im
   [docs/lgpd-e-conta.md](docs/lgpd-e-conta.md).
 - **Super-admin (painel master, métricas, suspender/excluir, Config Master):** ver
   [docs/super-admin.md](docs/super-admin.md).
-- **Assinatura (Stripe):** ver [docs/assinatura-stripe.md](docs/assinatura-stripe.md).
+- **Assinatura + Planos/tiers (Stripe):** plano por tenant (`empresas.plano`), registro em
+  `src/planos.js`, gating por feature (`exigeFeature`). Ver [docs/assinatura-stripe.md](docs/assinatura-stripe.md).
+- **Cardápio Digital:** página pública por slug (`/c/:slug`, sem auth, só vitrine), liberada pela
+  feature `cardapioDigital` do plano. Cada item do cardápio tem `canais = { bot, digital }` (item
+  sem o campo = só bot, retrocompat); `itemNoCanal()` filtra bot × cardápio digital.
 
 ## Convenções
 
