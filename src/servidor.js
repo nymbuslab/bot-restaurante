@@ -353,6 +353,11 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
   }
 });
 
+// Página do cardápio web (casca estática; o JS lê o slug da URL e busca a API acima).
+app.get("/c/:slug", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "cardapio.html"));
+});
+
 // ---- Gestão de cartões no painel (Stripe) ----
 app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });

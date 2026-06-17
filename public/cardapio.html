@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cardápio</title>
+  <meta name="description" content="Monte seu pedido e finalize pelo WhatsApp." />
+  <link rel="stylesheet" href="/cardapio.css" />
+</head>
+<body>
+  <div class="cd">
+    <!-- Carregando -->
+    <div id="cdLoading" class="cd-estado">Carregando cardápio…</div>
+
+    <!-- Indisponível -->
+    <div id="cdIndisponivel" class="cd-estado" hidden>
+      <div class="cd-estado-box">
+        <h1>Cardápio indisponível</h1>
+        <p>Este cardápio não está disponível no momento.</p>
+      </div>
+    </div>
+
+    <!-- App principal -->
+    <div id="cdMain" hidden>
+      <header class="cd-header">
+        <div class="cd-header-in">
+          <div class="cd-marca">
+            <span id="cdNome" class="cd-nome">Restaurante</span>
+            <span id="cdStatus" class="cd-status">—</span>
+          </div>
+          <button id="cdCartBtn" class="cd-cart-btn" type="button" aria-label="Ver carrinho">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            <span id="cdCartCount" class="cd-cart-count" hidden>0</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="cd-main">
+        <!-- View: cardápio -->
+        <section id="cdViewCardapio" class="cd-view">
+          <h1 class="cd-title">Cardápio</h1>
+          <p class="cd-sub">Monte seu pedido e finalize pelo WhatsApp.</p>
+          <div class="cd-search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="cdBusca" type="search" placeholder="Buscar item…" autocomplete="off" />
+          </div>
+          <nav id="cdCats" class="cd-cats" aria-label="Categorias"></nav>
+          <div id="cdGrid" class="cd-grid"></div>
+          <div id="cdVazio" class="cd-vazio" hidden>Nenhum item encontrado.</div>
+        </section>
+
+        <!-- View: checkout (montada pelo JS) -->
+        <section id="cdViewCheckout" class="cd-view" hidden></section>
+
+        <!-- View: sucesso -->
+        <section id="cdViewSucesso" class="cd-view" hidden>
+          <div class="cd-sucesso">
+            <div class="cd-sucesso-icon">✓</div>
+            <h1>Pedido enviado!</h1>
+            <p id="cdSucessoMsg">Recebemos seu pedido.</p>
+            <button id="cdNovoPedido" class="cd-btn cd-btn-primary" type="button">Voltar ao cardápio</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Carrinho (drawer) -->
+    <div id="cdSheet" class="cd-sheet" hidden>
+      <div class="cd-sheet-overlay" data-close="sheet"></div>
+      <aside class="cd-sheet-painel" role="dialog" aria-label="Seu pedido">
+        <header class="cd-sheet-head">
+          <h2>Seu pedido</h2>
+          <button class="cd-x" type="button" data-close="sheet" aria-label="Fechar">×</button>
+        </header>
+        <div id="cdSheetItens" class="cd-sheet-itens"></div>
+        <footer id="cdSheetRodape" class="cd-sheet-rodape" hidden>
+          <div class="cd-sheet-total"><span>Total</span><strong id="cdSheetTotal">R$ 0,00</strong></div>
+          <button id="cdIrCheckout" class="cd-btn cd-btn-primary" type="button">Ir para o checkout</button>
+        </footer>
+      </aside>
+    </div>
+
+    <!-- Modal de item (conteúdo montado pelo JS) -->
+    <div id="cdModal" class="cd-modal" hidden>
+      <div class="cd-modal-overlay" data-close="modal"></div>
+      <div id="cdModalCaixa" class="cd-modal-caixa" role="dialog" aria-label="Adicionar item"></div>
+    </div>
+  </div>
+
+  <script src="/dinheiro.js"></script>
+  <script src="/endereco-cep.js"></script>
+  <script src="/cardapio.js"></script>
+</body>
+</html>
