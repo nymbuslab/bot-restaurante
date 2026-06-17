@@ -18,7 +18,8 @@ const { supabaseAdmin } = require("./supabase");
 const stripeBilling = require("./stripe");
 const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("./validacao");
 const { getSessao, resetSessao } = require("./sessoes");
-const { processarMensagem } = require("./fluxo");
+const { processarMensagem, estaAberto } = require("./fluxo");
+const cardapioWeb = require("./cardapio-web");
 
 const app = express();
 
@@ -71,6 +72,7 @@ const loginLimiter      = limitador(15, 10, TENTE_DEPOIS); // login de restauran
 const adminLoginLimiter = limitador(15, 5,  TENTE_DEPOIS); // login master (mais rígido)
 const cadastroLimiter   = limitador(60, 5,  "Muitos cadastros a partir deste IP. Tente novamente mais tarde.");
 const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / checkout
+const publicoLimiter    = limitador(15, 60, "Muitas requisições. Aguarde um momento e tente novamente."); // cardápio web público
 
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
 // A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
@@ -315,6 +317,39 @@ app.get("/api/plataforma/publico", async (_req, res) => {
     });
   } catch (e) {
     res.json({});
+  }
+});
+
+// ---- Cardápio web público (canal de pedido por link) ----
+// Sem auth: o cliente abre /c/:slug e a página busca esta API. Devolve só
+// dados públicos do tenant (projeção whitelist — nunca o jsonb cru). Gate:
+// tenant ativo com acesso liberado; senão `{ disponivel:false }` (200, não 4xx).
+app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp || !empresas.acessoLiberado(emp)) {
+      return res.json({ disponivel: false, motivo: "indisponivel" });
+    }
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    const config = store.getConfig(dir);
+    const r = config.restaurante || {};
+    res.json({
+      disponivel: true,
+      aberto: estaAberto(dir),
+      restaurante: {
+        nome: r.nome || emp.nome,
+        telefone: r.telefone || "",
+        endereco: r.endereco || "",
+        horario: r.horario || "",
+      },
+      taxaEntrega: Number(config.atendimento && config.atendimento.taxaEntrega) || 0,
+      pagamentos: Array.isArray(config.pagamentos) ? config.pagamentos : [],
+      cardapio: cardapioWeb.projetarCardapio(store.getCardapio(dir)),
+    });
+  } catch (e) {
+    console.error("GET /api/c/:slug:", e.message);
+    res.status(500).json({ erro: "Falha ao carregar o cardápio." });
   }
 });
 

@@ -12,6 +12,7 @@
 const store = require("./store");
 const { limparSessao } = require("./sessoes");
 const pedidos = require("./pedidos");
+const { parseOpcionais } = require("./cardapio-web");
 
 function formatarMoeda(valor) {
   return "R$ " + Number(valor).toFixed(2).replace(".", ",");
@@ -33,21 +34,6 @@ function formatarComposicao(texto) {
     else out += `• ${linha.replace(/^[*\-•]\s*/, "")}\n`;
   }
   return out.trim();
-}
-
-function parseOpcionais(texto) {
-  if (!texto || !texto.trim()) return [];
-  const lista = [];
-  for (let linha of texto.split("\n")) {
-    linha = linha.trim().replace(/^[*\-•]\s*/, "");
-    if (!linha) continue;
-    const partes = linha.split("|");
-    const nome = partes[0].trim();
-    let preco = 0;
-    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-    if (nome) lista.push({ nome, preco });
-  }
-  return lista;
 }
 
 // ---------- Verificação de horário ----------
@@ -595,4 +581,4 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
   }
 }
 
-module.exports = { processarMensagem };
+module.exports = { processarMensagem, estaAberto };
