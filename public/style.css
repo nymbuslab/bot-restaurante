@@ -1284,7 +1284,7 @@ button:disabled {
   margin-bottom: 14px;
 }
 .cfg-secao-cabeca svg { color: var(--accent-fg); flex-shrink: 0; }
-.cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; padding: 0; border: none; }
 .cfg-secao-sub { margin: -6px 0 14px; }
 
 /* Linha de switch (label + toggle) — comportamento do bot */

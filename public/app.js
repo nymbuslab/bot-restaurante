@@ -1272,21 +1272,28 @@ function preencherConfig() {
   $("cfgConfirmado").value = c.mensagens.pedidoConfirmado || "";
   $("cfgMsgProntoEntrega").value  = c.mensagens?.pedidoPronto?.entrega  || "";
   $("cfgMsgProntoRetirada").value = c.mensagens?.pedidoPronto?.retirada || "";
-  atualizarBadgeAtendimento(lojaAbertaAgora(c));
+  const realAberto = lojaAbertaAgora(c);
+  atualizarBadgeAtendimento(realAberto);
   atualizarStatusConfig(!!c.atendimento.aberto);
+  atualizarChipStatus(realAberto);
   renderHorarios();
   renderPagamentos();
 }
 
-// Sincroniza o chip "Status:" do cabeçalho e o rótulo do toggle com o estado aberto/fechado.
-function atualizarStatusConfig(aberto) {
+// Rótulo da chave (ABERTO/FECHADO PARA PEDIDOS) — reflete só a posição do toggle manual.
+function atualizarStatusConfig(toggleAberto) {
+  const lbl = $("cfgAbertoLabel");
+  if (lbl) lbl.textContent = toggleAberto ? "ABERTO PARA PEDIDOS" : "FECHADO PARA PEDIDOS";
+}
+
+// Chip "Status:" do topo — reflete o estado REAL agora (toggle E horário), mesma
+// fonte do badge do header, pra os dois nunca se contradizerem.
+function atualizarChipStatus(real) {
   const chip = $("cfgStatusChip");
   if (chip) {
-    chip.textContent = aberto ? "Aberto" : "Fechado";
-    chip.className = "cfg-status-chip " + (aberto ? "aberto" : "fechado");
+    chip.textContent = real ? "Aberto" : "Fechado";
+    chip.className = "cfg-status-chip " + (real ? "aberto" : "fechado");
   }
-  const lbl = $("cfgAbertoLabel");
-  if (lbl) lbl.textContent = aberto ? "ABERTO PARA PEDIDOS" : "FECHADO PARA PEDIDOS";
 }
 
 function renderPagamentos() {
@@ -1345,7 +1352,9 @@ function adicionarPagamentoInline() {
 function sincronizarHorario() {
   const horarios = lerHorariosDoDOM();
   $("cfgHorario").value = resumirHorarios(horarios);
-  atualizarBadgeAtendimento(lojaAbertaAgora({ atendimento: { aberto: $("cfgAberto").checked }, horarios }));
+  const real = lojaAbertaAgora({ atendimento: { aberto: $("cfgAberto").checked }, horarios });
+  atualizarBadgeAtendimento(real);
+  atualizarChipStatus(real);
 }
 
 $("cfgAberto").addEventListener("change", (e) => {
