@@ -43,6 +43,36 @@ test("projetarCardapio: cardápio vazio/sem categorias → { categorias: [] }", 
   assert.deepEqual(cw.projetarCardapio({}), { categorias: [] });
 });
 
+// ---- recalcularItens (recálculo no servidor) ----
+const CARD = { categorias: [
+  { nome: "L", itens: [
+    { id: 1, nome: "Burger", preco: 20, disponivel: true, opcionais: "Bacon | 3\nOvo | 2" },
+    { id: 2, nome: "Off", preco: 9, disponivel: false },
+  ] },
+] };
+test("recalcularItens: usa preços do cardápio e soma opcionais×qtd", () => {
+  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 2, opcionais: [{ nome: "Ovo", qtd: 3 }], observacao: "x" }]);
+  assert.equal(r.subtotal, 52); // (20 + 2*3) * 2
+  assert.equal(r.itens.length, 1);
+  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Ovo", preco: 2, qtd: 3 }]);
+  assert.equal(r.itens[0].nome, "Burger");
+  assert.equal(r.itens[0].preco, 20);
+});
+test("recalcularItens: ignora preço/nome enviados pelo cliente (anti-fraude)", () => {
+  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 1, preco: 0.01, nome: "HACK", opcionais: [] }]);
+  assert.equal(r.subtotal, 20);
+  assert.equal(r.itens[0].nome, "Burger");
+});
+test("recalcularItens: opcional desconhecido é ignorado", () => {
+  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 1, opcionais: [{ nome: "Trufa", qtd: 5 }] }]);
+  assert.equal(r.subtotal, 20);
+  assert.equal(r.itens[0].opcionais.length, 0);
+});
+test("recalcularItens: item inexistente/indisponível → lança", () => {
+  assert.throws(() => cw.recalcularItens(CARD, [{ id: 999, qtd: 1 }]), /indispon/i);
+  assert.throws(() => cw.recalcularItens(CARD, [{ id: 2, qtd: 1 }]), /indispon/i);
+});
+
 // ---- token (assinar/verificar) ----
 const SECRET = "segredo-de-teste";
 test("token: assina e verifica → devolve chatId", () => {

@@ -358,6 +358,86 @@ app.get("/c/:slug", (_req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "cardapio.html"));
 });
 
+// Mensagem de confirmação padrão (se o tenant não tiver `mensagens.pedidoConfirmado`).
+const MSG_CONFIRMADO_PADRAO = "🎉 *Pedido confirmado!* Número *#{numero}*.\n\nJá estamos preparando. Tempo estimado: *{tempo}*.\nObrigado pela preferência! 🍴";
+const CARDAPIO_LINK_SECRET = process.env.CARDAPIO_LINK_SECRET || "";
+
+// Confirma ao cliente, pelo WhatsApp do tenant, o pedido feito na web. NÃO lança para
+// o fluxo do pedido: se o bot estiver offline, o pedido já está salvo (não perde venda).
+async function confirmarPedidoWeb(slug, dir, pedido) {
+  const config = store.getConfig(dir);
+  const template = (config.mensagens && config.mensagens.pedidoConfirmado) || MSG_CONFIRMADO_PADRAO;
+  const tempo = (config.atendimento && config.atendimento.tempoEstimado) || "";
+  const texto = template
+    .replace(/\{numero\}/g, String(pedido.numero))
+    .replace(/\{tempo\}/g, tempo)
+    .replace(/\{cliente\}/g, pedido.cliente || "");
+  let destino = pedido.chatId || "";
+  const ehJid = destino.endsWith("@s.whatsapp.net") || destino.endsWith("@lid");
+  if (!ehJid) {
+    const digits = (pedido.telefone || "").replace(/\D/g, "");
+    if (digits.length < 10) return; // sem canal/telefone — não há como confirmar
+    destino = (digits.length <= 11 ? "55" + digits : digits) + "@s.whatsapp.net";
+  }
+  await multiBot.enviarMensagem(slug, destino, texto);
+}
+
+// Recebe o pedido montado no cardápio web. RECALCULA tudo no servidor (nunca confia em
+// preço/total do cliente), salva e dispara a confirmação pelo bot. Sem auth, rate-limited.
+app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp || !empresas.acessoLiberado(emp)) return res.status(404).json({ erro: "Cardápio indisponível." });
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    if (!estaAberto(dir)) return res.status(409).json({ erro: "O restaurante está fechado no momento." });
+
+    const b = req.body || {};
+    const cliente = String(b.cliente || "").trim().slice(0, 120);
+    const telefone = String(b.telefone || "").replace(/\D/g, "");
+    const tipoEntrega = b.tipoEntrega === "Retirada" ? "Retirada" : "Entrega";
+    const endereco = tipoEntrega === "Entrega" ? String(b.endereco || "").trim().slice(0, 300) : "";
+    const pagamento = String(b.pagamento || "").trim().slice(0, 60);
+    const observacao = String(b.observacao || "").trim().slice(0, 300);
+
+    if (cliente.length < 2) return res.status(400).json({ erro: "Informe seu nome." });
+    if (telefone.length < 10) return res.status(400).json({ erro: "Telefone inválido." });
+    if (!Array.isArray(b.itens) || !b.itens.length) return res.status(400).json({ erro: "Carrinho vazio." });
+    if (tipoEntrega === "Entrega" && endereco.length < 4) return res.status(400).json({ erro: "Informe o endereço de entrega." });
+
+    const config = store.getConfig(dir);
+    const pagamentos = Array.isArray(config.pagamentos) ? config.pagamentos : [];
+    if (pagamentos.length && pagamentos.indexOf(pagamento) === -1) return res.status(400).json({ erro: "Forma de pagamento inválida." });
+
+    let recalc;
+    try {
+      recalc = cardapioWeb.recalcularItens(store.getCardapio(dir), b.itens);
+    } catch (e) {
+      return res.status(409).json({ erro: e.message || "Item indisponível." });
+    }
+    if (!recalc.itens.length) return res.status(400).json({ erro: "Carrinho vazio." });
+
+    const taxaEntrega = tipoEntrega === "Entrega" ? (Number(config.atendimento && config.atendimento.taxaEntrega) || 0) : 0;
+    const total = recalc.subtotal + taxaEntrega;
+
+    // chatId do token (liga ao cliente do WhatsApp); ausente/expirado → confirma pelo telefone.
+    const tk = cardapioWeb.verificarToken(CARDAPIO_LINK_SECRET, b.token, emp.slug);
+    const chatId = tk ? tk.chatId : "";
+
+    const pedido = await pedidos.salvarPedido(dir, {
+      cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
+      taxaEntrega, itens: recalc.itens, total, observacao,
+    });
+
+    confirmarPedidoWeb(emp.slug, dir, pedido).catch((e) => console.error("confirmar pedido web:", e.message));
+
+    res.json({ numero: pedido.numero });
+  } catch (e) {
+    console.error("POST /api/c/:slug/pedido:", e.message);
+    res.status(500).json({ erro: "Não foi possível registrar o pedido." });
+  }
+});
+
 // ---- Gestão de cartões no painel (Stripe) ----
 app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });

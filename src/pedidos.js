@@ -37,6 +37,7 @@ function mapRow(r) {
     taxaEntrega: r.taxa_entrega == null ? 0 : Number(r.taxa_entrega),
     itens: r.itens || [],
     total: r.total == null ? 0 : Number(r.total),
+    observacao: r.observacao || "",
     criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
     avisadoEm: r.avisado_em ? new Date(r.avisado_em).toISOString() : null,
   };
@@ -46,10 +47,10 @@ async function salvarPedido(dir, pedido) {
   const empId = await empresaId(dir);
   const r = await db.query(
     `INSERT INTO pedidos
-       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total)
+       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao)
      VALUES
        ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)
      RETURNING numero, criado_em`,
     [
       empId,
@@ -62,6 +63,7 @@ async function salvarPedido(dir, pedido) {
       pedido.taxaEntrega || 0,
       JSON.stringify(pedido.itens || []),
       pedido.total || 0,
+      pedido.observacao || "",
     ]
   );
   const row = r.rows[0];
@@ -114,7 +116,7 @@ async function contarNoMes(dir, inicioISO) {
 async function anonimizarAntigos(meses = 12) {
   const r = await db.query(
     `UPDATE pedidos
-        SET cliente = 'anonimizado', telefone = '', endereco = '', chat_id = '',
+        SET cliente = 'anonimizado', telefone = '', endereco = '', chat_id = '', observacao = '',
             itens = CASE
               WHEN jsonb_typeof(itens) = 'array' THEN COALESCE((
                 SELECT jsonb_agg(
@@ -131,6 +133,7 @@ async function anonimizarAntigos(meses = 12) {
              OR COALESCE(telefone,'') <> ''
              OR COALESCE(endereco,'') <> ''
              OR COALESCE(chat_id,'')  <> ''
+             OR COALESCE(observacao,'') <> ''
              OR (jsonb_typeof(itens) = 'array' AND EXISTS (
                    SELECT 1 FROM jsonb_array_elements(itens) AS e
                    WHERE COALESCE(e->>'observacao','') <> '')))`,

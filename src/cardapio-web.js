@@ -51,6 +51,42 @@ function projetarCardapio(cardapio) {
   return { categorias };
 }
 
+// Recalcula os itens do pedido a partir do cardápio (FONTE DE VERDADE dos preços):
+// nunca confiar em preço/nome/total vindos do cliente. Lança Error se um item não
+// existir ou estiver indisponível. Retorna { itens (normalizados p/ salvar), subtotal }.
+function recalcularItens(cardapio, itensPayload) {
+  const mapa = {};
+  ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+    ((c && c.itens) || []).forEach(function (it) {
+      if (it && it.disponivel !== false) mapa[it.id] = it;
+    });
+  });
+  const itens = [];
+  let subtotal = 0;
+  (itensPayload || []).forEach(function (p) {
+    const base = mapa[p && p.id];
+    if (!base) throw new Error("Item indisponível no cardápio.");
+    const qtd = Math.max(1, Math.min(50, parseInt(p.qtd, 10) || 1));
+    const opsMap = {};
+    parseOpcionais(base.opcionais).forEach(function (o) { opsMap[o.nome] = o.preco; });
+    const opcionais = [];
+    ((p && p.opcionais) || []).forEach(function (o) {
+      const nome = o && o.nome;
+      if (nome == null || !(nome in opsMap)) return; // ignora opcional desconhecido
+      const oq = Math.max(1, Math.min(10, parseInt(o.qtd, 10) || 1));
+      opcionais.push({ nome: nome, preco: opsMap[nome], qtd: oq });
+    });
+    const precoBase = Number(base.preco) || 0;
+    const addUnit = opcionais.reduce(function (s, o) { return s + o.preco * o.qtd; }, 0);
+    subtotal += (precoBase + addUnit) * qtd;
+    itens.push({
+      id: base.id, nome: base.nome, preco: precoBase, qtd: qtd,
+      opcionais: opcionais, observacao: String((p && p.observacao) || "").slice(0, 200),
+    });
+  });
+  return { itens: itens, subtotal: subtotal };
+}
+
 // ---- Token de link (HMAC-SHA256, stateless) ----
 // Liga o link `/c/:slug?p=<token>` ao chatId do cliente, pra confirmar o pedido
 // no WhatsApp depois. Formato: base64url(JSON) + "." + assinatura. Sem token
@@ -79,4 +115,4 @@ function verificarToken(secret, token, slug, agoraMs) {
   return { chatId: dados.chatId };
 }
 
-module.exports = { parseOpcionais, projetarCardapio, assinarToken, verificarToken, TOKEN_TTL_MS };
+module.exports = { parseOpcionais, projetarCardapio, recalcularItens, assinarToken, verificarToken, TOKEN_TTL_MS };
