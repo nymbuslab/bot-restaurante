@@ -8,6 +8,10 @@ Plataforma SaaS multi-tenant para restaurantes receberem pedidos via WhatsApp.
 O bot é a **porta de entrada** — coleta o pedido completo (itens, opcionais, entrega, pagamento)
 e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sistema do restaurante.
 
+> **Em mudança (2026-06-17):** o pedido **conversacional** está sendo trocado por um **cardápio web
+> linkado** — o bot manda o link e o cliente monta/finaliza na web (chat longo gera desistência). Ver
+> *"Cardápio web como canal de pedido"* no fim deste arquivo.
+
 ## Fora de escopo
 
 > **Nota (2026-06-17):** os itens abaixo sobre **ciclo do pedido, cozinha e pagamento** estão **em
@@ -128,3 +132,58 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 **Ordem recomendada:** Fase 0 → 1 → 2 → 3. Começar pelo **status do pedido** (menor custo, sem
 tocar na arquitetura, reaproveita dados existentes).
+
+---
+
+## Cardápio web como canal de pedido (plano — 2026-06-17)
+
+Substitui o pedido **conversacional** do bot (ver *Visão*): com cardápio grande, a conversa fica
+longa e o cliente desiste. Em vez disso, o bot manda **um link** e o cliente monta/finaliza o pedido
+na web; o pedido cai no nosso backend e o bot **confirma** no WhatsApp. Baseado no projeto de
+referência `docs/cardapio` (React/Tailwind) — trazido como **referência visual**, portado pro stack
+vanilla do repo (os tokens de design já são idênticos).
+
+### Decisões travadas
+
+- **Stack:** **HTML/CSS/JS puro** (sem build; casa com a CSP `scriptSrc 'self'` e a convenção do repo).
+- **Integração:** **web → backend + bot confirma** — bot manda link com **token assinado** (carrega o
+  `chatId`); a web faz `POST` do pedido; o bot confirma sozinho. (Não usa `wa.me`/reenvio.)
+- **Bot:** **substituir** o fluxo conversacional de pedido (mantendo saudação, "falar com atendente" e
+  a confirmação, que passa a vir do `POST` da web).
+
+### Fluxo
+
+```text
+"oi" no WhatsApp → bot envia 1 link: <PUBLIC_URL>/c/<slug>?p=<token(chatId)>
+ → web carrega GET /api/c/<slug> (cardápio whitelisted do tenant)
+ → cliente monta carrinho (itens + opcionais + obs) e faz checkout
+ → POST /api/c/<slug>/pedido → backend RECALCULA total por id → salvarPedido
+ → bot confirma (config.mensagens.pedidoConfirmado) p/ chatId (fallback: telefone) → web "pedido enviado"
+```
+
+### Fases
+
+- **Fase 1 — API + token:** `GET /api/c/:slug` (sem auth, rate-limited; projeção whitelisted + parse
+  de opcionais), helper de token HMAC (`crypto`, sem dep nova) e env novo `PUBLIC_URL`.
+- **Fase 2 — Página vanilla:** `/c/:slug` (`cardapio.html`/`.js`/`.css` reusando tokens do `style.css`):
+  categorias roláveis, busca, cards iFood, modal com opcionais/obs, carrinho, checkout — reusa
+  `dinheiro.js`/`endereco-cep.js`.
+- **Fase 3 — Fechar pedido:** `POST /api/c/:slug/pedido` → recalcula no servidor → `salvarPedido` →
+  bot confirma via `enviarMensagem`. Bot offline → salva mesmo assim.
+- **Fase 4 — Encolher o bot:** saudação → envia o link; aposenta os estados de pedido do `fluxo.js`.
+- **Fase 5 — Docs + testes:** atualizar `CLAUDE.md`/`docs/modelo-dados.md`; testes de whitelist, parse
+  de opcionais, recálculo de total e token.
+
+### Premissas e reuso
+
+- **Premissas:** opcionais entram já; loja fechada bloqueia o envio; **sem gating por plano** (é o canal
+  principal); funciona **com ou sem token** (QR na mesa cai no telefone do checkout).
+- **Reuso:** `pedidos.salvarPedido`, `store.getCardapio`, `multiBot.enviarMensagem`,
+  `empresas.buscarPorSlug`, `dinheiro.js`/`endereco-cep.js`. Precedente: a feature revertida
+  `cardapio-publico` (`/c/:slug`).
+
+### Riscos
+
+- **Confiança no cliente** → preço/total **sempre** recalculados no servidor; nunca devolver jsonb cru.
+- **Token** TTL curto; ausente/expirado → confirmação cai no telefone do checkout.
+- **Loja fechada / bot offline** → bloquear envio / salvar sem confirmar (não perde venda).
