@@ -71,3 +71,63 @@ Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KE
 
 - **Suspender/excluir refletem no Stripe** (cancelar/pausar) — ver [super-admin.md](super-admin.md)
   e [lgpd-e-conta.md](lgpd-e-conta.md).
+
+## Ambientes do Stripe (teste × produção) — importante
+
+O Stripe novo tem **três ambientes isolados**, que **não compartilham** produtos, preços, clientes
+nem webhooks:
+
+1. **Área restrita (Sandbox)** — ambiente de teste isolado. **É onde o app roda hoje.** As chaves
+   `sk_test`/`pk_test` do `.env` (e dos secrets do Fly) pertencem a esta área restrita, junto do
+   produto **"Nymbus Pedidos - Assinatura"** (`price_..._09kFv0`, R$ 79,00/mês).
+2. **Modo de teste** (clássico) — outro ambiente de teste, **vazio** (não usado).
+3. **Produção (Live)** — cobrança real, **vazio** até o go-live.
+
+> O botão de modo no dashboard é só uma **lente de visualização** — alternar entre os ambientes
+> não cria, apaga nem cobra nada. O que decide se há cobrança real é **qual chave está rodando no
+> app** (Fly secrets), não o que está selecionado no painel.
+
+## Webhook: estado atual
+
+**Nenhum webhook está cadastrado** em nenhum ambiente (verificado por `stripe webhook_endpoints
+list`). Ou seja, eventos de ciclo de assinatura (cancelamento, falha de pagamento, renovação) **não
+estão sincronizando** — o `STRIPE_WEBHOOK_SECRET` atual (Fly/`.env`) é provável resíduo de
+`stripe listen`. Cadastrar o webhook faz parte do go-live abaixo. (Em dev local, o caminho normal é
+`stripe listen --forward-to localhost:3000/api/stripe/webhook`, que gera o `whsec` de sessão.)
+
+## Go-live (teste → produção) — checklist
+
+Fazer **só quando for distribuir a plataforma e cobrar de verdade**. Passos:
+
+1. **Criar o produto/preço em Produção** (Live) — espelhar "Nymbus Pedidos - Assinatura", R$ 79/mês.
+   Anotar o novo `price_live_...`.
+2. **Pegar as chaves Live** (dashboard em Produção → Desenvolvedores → Chaves de API): `sk_live_...`
+   e `pk_live_...`.
+3. **Cadastrar o webhook em Produção** apontando para o domínio:
+
+   ```bash
+   stripe webhook_endpoints create \
+     --api-key sk_live_... \
+     --url https://pedidos.nymbuslab.com.br/api/stripe/webhook \
+     --enabled-events checkout.session.completed \
+     --enabled-events customer.subscription.created \
+     --enabled-events customer.subscription.updated \
+     --enabled-events customer.subscription.deleted \
+     --enabled-events invoice.paid \
+     --enabled-events invoice.payment_failed
+   ```
+
+   Guardar o `whsec_...` que ele devolve (signing secret do endpoint).
+4. **Trocar os 4 secrets no Fly** pelas versões live (dispara redeploy):
+
+   ```bash
+   fly secrets set \
+     STRIPE_SECRET_KEY="sk_live_..." \
+     STRIPE_PUBLISHABLE_KEY="pk_live_..." \
+     STRIPE_PRICE_ID="price_live_..." \
+     STRIPE_WEBHOOK_SECRET="whsec_..."
+   ```
+
+5. **Testar em produção** com um cartão real (e estornar): cadastro → checkout → assinatura
+   `trialing`/`active` no painel; conferir no dashboard (Live) que o webhook entregou os eventos.
+6. **Reconciliar:** se algum tenant testou no período sem webhook, conferir o `assinatura_status`.

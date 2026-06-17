@@ -259,6 +259,52 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 
 ---
 
+## 🌐 Domínio próprio (custom domain)
+
+Por padrão o app abre em `https://bot-restaurante.fly.dev`. Para usar um domínio seu
+(ex.: `pedidos.nymbuslab.com.br`), **não precisa mexer em código** — as URLs de retorno do
+Stripe (`success_url`/`return_url`) são derivadas do host da requisição
+([`src/servidor.js`](../src/servidor.js) → `baseUrlDe`), então se adaptam sozinhas ao endereço
+que o cliente acessar. O `.fly.dev` continua funcionando em paralelo.
+
+Passo a passo (feito em 2026-06-16 para `pedidos.nymbuslab.com.br`):
+
+1. **Pedir o certificado no Fly** (na raiz do projeto):
+
+   ```bash
+   fly certs add pedidos.nymbuslab.com.br
+   ```
+
+   O Fly imprime os registros DNS recomendados (A/AAAA com IPs **ou** a alternativa por CNAME).
+
+2. **Criar o registro DNS no provedor** (Hostinger → *Gerenciar registros DNS*, **não** a seção
+   "Subdomínios"). Para subdomínio, o **CNAME** é o mais simples e resiliente (acompanha o Fly se
+   o IP mudar):
+
+   | Tipo | Nome | Valor | TTL |
+   | --- | --- | --- | --- |
+   | `CNAME` | `pedidos` | `bot-restaurante.fly.dev` | padrão |
+
+   > ⚠️ Não dá pra ter um CNAME e um A/AAAA no **mesmo nome** (conflito de DNS). Escolha um. Se
+   > já houver um registro automático para `pedidos`, apague antes.
+
+3. **Esperar a propagação e validar** (alguns minutos a horas):
+
+   ```bash
+   fly certs check pedidos.nymbuslab.com.br
+   ```
+
+   Quando o `Status = Issued` + `Certificate is verified and active`, o domínio serve HTTPS
+   automático (Let's Encrypt gerenciado pelo Fly). Não precisa renomear o app no Fly nem mexer
+   no `fly.toml`.
+
+4. **Stripe:** atualizar a URL do **webhook** para o domínio novo — ver o checklist em
+   [`docs/assinatura-stripe.md`](../docs/assinatura-stripe.md) (seção *Go-live*). Como hoje o app
+   roda em **Área restrita (teste)** e o webhook ainda não foi cadastrado, isso entra no checklist
+   de lançamento, não bloqueia a troca de domínio.
+
+---
+
 ## 💾 Backup dos dados
 
 **App stateless — tudo está no Supabase.** O backup é **gerenciado pelo Supabase**:
