@@ -1908,17 +1908,15 @@ function abrirModalPedido(p) {
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 
   const taxa = p.taxaEntrega || 0;
-  const subtotal = p.itens.reduce((acc, i) => {
-    const extras = (i.opcionais || []).reduce((s, o) => s + (o.preco || 0), 0);
-    return acc + (i.preco + extras) * i.qtd;
-  }, 0);
+  // Soma dos extras de um item: cada opcional conta a sua quantidade (ex.: 2x Ovo).
+  const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0);
+  const subtotal = p.itens.reduce((acc, i) => acc + (i.preco + extrasDe(i)) * i.qtd, 0);
 
   // Itens como cards de leitura (qtd Nx, nome, opcionais como subitens, preço à direita)
   const itensHtml = p.itens.map((i) => {
-    const extras = (i.opcionais || []).reduce((s, o) => s + (o.preco || 0), 0);
-    const sub = (i.preco + extras) * i.qtd;
+    const sub = (i.preco + extrasDe(i)) * i.qtd;
     const opcHtml = (i.opcionais && i.opcionais.length)
-      ? `<div class="ped-item-opc">${i.opcionais.map((o) => "+ " + escapar(o.nome)).join("<br>")}</div>`
+      ? `<div class="ped-item-opc">${i.opcionais.map((o) => "+ " + (o.qtd > 1 ? o.qtd + "x " : "") + escapar(o.nome)).join("<br>")}</div>`
       : "";
     return `<div class="ped-item">
       <span class="ped-item-qtd">${i.qtd}x</span>
@@ -1930,6 +1928,12 @@ function abrirModalPedido(p) {
     </div>`;
   }).join("");
 
+  // Observação geral do pedido (informada no checkout do cardápio web).
+  let obsPedidoHtml = "";
+  if (p.observacao && p.observacao.trim()) {
+    obsPedidoHtml = `<div class="ped-obs"><span class="ped-obs-titulo">Observação do pedido</span><p>${escapar(p.observacao)}</p></div>`;
+  }
+
   // Observação agregada dos itens (só aparece se houver alguma; prefixo só com >1 item)
   const comObs = p.itens.filter((i) => i.observacao && i.observacao.trim());
   let obsHtml = "";
@@ -1939,7 +1943,7 @@ function abrirModalPedido(p) {
         ? `<p><strong>${escapar(i.nome)}:</strong> ${escapar(i.observacao)}</p>`
         : `<p>${escapar(i.observacao)}</p>`
     ).join("");
-    obsHtml = `<div class="ped-obs"><span class="ped-obs-titulo">Observação</span>${linhas}</div>`;
+    obsHtml = `<div class="ped-obs"><span class="ped-obs-titulo">Observação dos itens</span>${linhas}</div>`;
   }
 
   const tipoTag = p.tipoEntrega === "Entrega"
@@ -1972,6 +1976,7 @@ function abrirModalPedido(p) {
             </div>
           </div>
         </div>
+        ${obsPedidoHtml}
         ${obsHtml}
         <div class="ped-bloco">
           <div class="ped-bloco-titulo">Itens do pedido</div>
