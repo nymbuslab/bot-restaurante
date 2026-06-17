@@ -22,7 +22,7 @@ try {
 const _nomeEmpresa = sessionStorage.getItem("empresaNome");
 document.addEventListener("DOMContentLoaded", () => {
   const h = document.getElementById("headerNome");
-  if (h && _nomeEmpresa) h.textContent = "🍴 " + _nomeEmpresa;
+  if (h && _nomeEmpresa) h.textContent = _nomeEmpresa;
 });
 
 async function api(metodo, url, corpo) {

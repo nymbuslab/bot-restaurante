@@ -1,6 +1,6 @@
 # Design System (`public/style.css`)
 
-Marca: **Nymbus Lab**. Tema escuro fixo. Fonte: **Plus Jakarta Sans** (Google Fonts), fallback `-apple-system`.
+Marca: **Nymbus Pedidos**. Tema escuro fixo. Fonte: **Plus Jakarta Sans** (Google Fonts), fallback `-apple-system`.
 Base: 14px / line-height 1.5.
 
 > Referência completa de UI por tela (o que manter e o que NÃO construir): **`design/UI.md`**.
@@ -93,7 +93,7 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 - Sem laranja: a marca é roxo (`--accent`) + ciano (`--secondary`); status em cores semânticas.
 - Antes de redesenhar uma tela, consultar `design/UI.md` (referência visual + o que NÃO construir).
 
-## Padrões de layout reutilizáveis (redesign Nymbus Lab)
+## Padrões de layout reutilizáveis (redesign Nymbus Pedidos)
 
 Padrões consolidados no redesign do painel. Reaproveitar nas próximas telas — não reinventar.
 

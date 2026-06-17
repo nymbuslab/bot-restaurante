@@ -1,4 +1,4 @@
-# 🍴 Nymbus Lab — Bot de Pedidos no WhatsApp + Painel
+# 🍴 Nymbus Pedidos — Bot de Pedidos no WhatsApp + Painel
 
 Plataforma **SaaS multi-tenant** da **Nymbus Lab**: qualquer restaurante se cadastra, configura
 o cardápio e começa a receber pedidos pelo WhatsApp de forma automatizada. Cada empresa tem seu

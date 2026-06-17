@@ -41,7 +41,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 ## [0.3.1] — Design system e protótipos de UI
 
-- Tokens de cor Nymbus Lab aplicados em `public/style.css`: `--accent` (#6344BC roxo), `--secondary` (#73D2E6 ciano), `--accent-fg` (#A589EA para texto/ícone roxo sobre fundo escuro), tema escuro fixo
+- Tokens de cor Nymbus Pedidos aplicados em `public/style.css`: `--accent` (#6344BC roxo), `--secondary` (#73D2E6 ciano), `--accent-fg` (#A589EA para texto/ícone roxo sobre fundo escuro), tema escuro fixo
 - Protótipos de telas (desktop + mobile) em `design/prototipos/`
 - Referência visual por tela em `design/UI.md` com o que manter e o que não construir
 

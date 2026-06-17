@@ -1,4 +1,4 @@
-# UI.md — Referência de UI (Redesign Nymbus Lab)
+# UI.md — Referência de UI (Redesign Nymbus Pedidos)
 
 Documento que o Claude Code consulta **antes de redesenhar qualquer tela**.
 

@@ -39,7 +39,7 @@ Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KE
   `multiBot.desconectar`). Não toca `ativo`.
 
 - **Gerenciar** (cliente): aba **Assinatura** no painel + **gate** que trava o painel sem acesso.
-  Página de billing com **card largo do plano** (plano `Plano Nymbus Lab` · `R$ 79,00/mês` ·
+  Página de billing com **card largo do plano** (plano `Plano Nymbus Pedidos` · `R$ 79,00/mês` ·
   próximo vencimento · badge de status), duas colunas (Pagamento + "Precisa de ajuda?" à esquerda,
   **Histórico de Faturas** à direita) e, no mobile, tudo empilhado (faturas viram cards via
   `data-label`). "Gerenciar assinatura" abre o **Customer Portal** hospedado
