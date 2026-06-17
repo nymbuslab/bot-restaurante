@@ -3750,3 +3750,104 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .lp-float-card { left: 8px; bottom: 12px; padding: 9px 12px; }
   .lp-stat + .lp-stat::before { display: none; }
 }
+
+/* ---------- Card do link/QR do cardápio digital (aba Cardápio) ---------- */
+.cardapio-link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.cardapio-link-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+.cardapio-link-icone {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--accent-subtle);
+  color: var(--accent-fg);
+}
+.cardapio-link-titulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 2px;
+}
+.cardapio-link-info .sub { margin: 0 0 8px; }
+.cardapio-link-url {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--secondary);
+  word-break: break-all;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+}
+.cardapio-link-acoes {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.cardapio-link-acoes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Modal do QR Code */
+.qr-caixa { max-width: 340px; text-align: center; }
+.qr-corpo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0 18px;
+}
+.qr-img {
+  width: 240px;
+  height: 240px;
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 10px;
+}
+.qr-url {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--secondary);
+  word-break: break-all;
+}
+/* <a> estilizado como botão secundário (download do QR) */
+.botao-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.botao-link:hover { background: var(--bg-elevated); border-color: var(--text-secondary); }
+
+@media (max-width: 640px) {
+  .cardapio-link-card { flex-direction: column; align-items: stretch; }
+  .cardapio-link-acoes { justify-content: stretch; }
+  .cardapio-link-acoes button { flex: 1; justify-content: center; }
+}

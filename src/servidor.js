@@ -8,6 +8,7 @@ const crypto  = require("crypto");
 const multer  = require("multer");
 const helmet  = require("helmet");
 const rateLimit = require("express-rate-limit");
+const QRCode  = require("qrcode");
 
 const empresas = require("./empresas");
 const plataforma = require("./plataforma");
@@ -961,6 +962,20 @@ app.put("/api/cardapio", exigeAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });
+  }
+});
+
+// Link público do cardápio web + QR Code (p/ o dono copiar/imprimir e divulgar).
+// A URL usa o host da requisição (localhost no teste, domínio em produção) — fonte
+// única da verdade. QR como data URL PNG (CSP libera imgSrc data:).
+app.get("/api/cardapio/link", exigeAuth, async (req, res) => {
+  try {
+    const url = `${baseUrlDe(req)}/c/${req.slug}`;
+    const qr = await QRCode.toDataURL(url, { margin: 2, width: 512 });
+    res.json({ url, qr });
+  } catch (e) {
+    console.error("GET /api/cardapio/link:", e.message);
+    res.status(500).json({ erro: "Falha ao gerar o link do cardápio." });
   }
 });
 

@@ -98,6 +98,28 @@
 
     <!-- CARDÁPIO -->
     <section class="aba" id="aba-cardapio">
+      <div class="card cardapio-link-card" id="cardapioLinkCard">
+        <div class="cardapio-link-info">
+          <span class="cardapio-link-icone">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
+          </span>
+          <div>
+            <h3 class="cardapio-link-titulo">Seu cardápio digital</h3>
+            <p class="sub">Compartilhe o link ou imprima o QR Code para as mesas — os pedidos chegam aqui automaticamente.</p>
+            <div class="cardapio-link-url" id="cardapioLinkUrl">Carregando link…</div>
+          </div>
+        </div>
+        <div class="cardapio-link-acoes">
+          <button class="secundario" id="btnCopiarLink">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span id="btnCopiarLinkTxt">Copiar link</span>
+          </button>
+          <button class="secundario" id="btnVerQr">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
+            Ver QR Code
+          </button>
+        </div>
+      </div>
       <div class="cardapio-topo">
         <div class="cardapio-topo-texto">
           <h2 class="cardapio-titulo">Gestão de Itens</h2>
@@ -594,6 +616,27 @@
       <div class="ped-rodape">
         <div class="pedido-acoes" id="pedido-acoes"></div>
         <button class="secundario" id="pedido-fechar-rodape">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal do QR Code do cardápio -->
+  <div id="qr-overlay" class="modal-overlay" style="display:none">
+    <div class="modal-caixa qr-caixa">
+      <div class="pedido-detalhe-header">
+        <div>
+          <h3>QR Code do cardápio</h3>
+          <span class="sub">Aponte a câmera do celular para abrir o cardápio</span>
+        </div>
+        <button class="secundario mini" id="qr-fechar">✕</button>
+      </div>
+      <div class="qr-corpo">
+        <img id="qr-img" class="qr-img" alt="QR Code do cardápio digital" />
+        <div class="qr-url" id="qr-url"></div>
+      </div>
+      <div class="modal-acoes">
+        <a id="qr-baixar" class="secundario botao-link" download="cardapio.png">Baixar QR Code</a>
+        <button id="qr-fechar-rodape">Fechar</button>
       </div>
     </div>
   </div>

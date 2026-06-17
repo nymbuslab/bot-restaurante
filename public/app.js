@@ -2260,11 +2260,74 @@ simInput.addEventListener("keydown", (e) => {
   }
 });
 
+// ============================================================
+// LINK + QR DO CARDÁPIO DIGITAL (aba Cardápio)
+// ============================================================
+let _linkCardapio = ""; // URL pública do cardápio; preenchida por carregarLinkCardapio()
+let _qrCardapio = "";   // data URL (PNG) do QR Code
+
+async function carregarLinkCardapio() {
+  const elUrl = $("cardapioLinkUrl");
+  try {
+    const r = await api("GET", "/api/cardapio/link");
+    if (!r || !r.ok) throw new Error("falha");
+    const d = await r.json();
+    _linkCardapio = d.url || "";
+    _qrCardapio = d.qr || "";
+    if (elUrl) elUrl.textContent = _linkCardapio || "—";
+  } catch (e) {
+    if (elUrl) elUrl.textContent = "Não foi possível carregar o link.";
+  }
+}
+
+// Copiar link (Clipboard API com fallback p/ contexto não seguro).
+$("btnCopiarLink").addEventListener("click", async () => {
+  if (!_linkCardapio) return;
+  try {
+    await navigator.clipboard.writeText(_linkCardapio);
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = _linkCardapio;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (_) { /* ignora */ }
+    document.body.removeChild(ta);
+  }
+  const txt = $("btnCopiarLinkTxt");
+  if (txt) {
+    txt.textContent = "Copiado!";
+    setTimeout(() => { txt.textContent = "Copiar link"; }, 1600);
+  }
+  toast("Link copiado!");
+});
+
+// Modal do QR Code.
+function abrirQr() {
+  if (!_qrCardapio) { toast("QR ainda carregando, tente de novo.", "erro"); return; }
+  $("qr-img").src = _qrCardapio;
+  $("qr-url").textContent = _linkCardapio;
+  const slug = (_linkCardapio.split("/c/")[1] || "cardapio").replace(/[^\w-]/g, "");
+  const baixar = $("qr-baixar");
+  baixar.href = _qrCardapio;
+  baixar.download = "cardapio-" + slug + ".png";
+  $("qr-overlay").style.display = "flex";
+}
+function fecharQr() { $("qr-overlay").style.display = "none"; }
+
+$("btnVerQr").addEventListener("click", abrirQr);
+$("qr-fechar").addEventListener("click", fecharQr);
+$("qr-fechar-rodape").addEventListener("click", fecharQr);
+$("qr-overlay").addEventListener("click", (e) => { if (e.target === $("qr-overlay")) fecharQr(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("qr-overlay").style.display === "flex") fecharQr();
+});
+
 async function inicial() {
   carregarPedidos();   // Pedidos é a aba inicial (home)
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
   if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }
+  carregarLinkCardapio();   // link público + QR (aba Cardápio)
   await carregarConfig();
   await carregarConta();        // e-mail de acesso (aba Empresa)
   await carregarAssinatura();   // aplica o gate de billing
