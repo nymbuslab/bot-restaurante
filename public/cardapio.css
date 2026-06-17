@@ -233,6 +233,9 @@ button { font-family: inherit; cursor: pointer; }
 .cd-op input { width: 18px; height: 18px; accent-color: var(--accent); }
 .cd-op-nome { flex: 1; font-size: 14px; }
 .cd-op-preco { font-size: 13px; color: var(--accent-fg); font-weight: 700; }
+.cd-op-qtd { flex: none; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); }
+.cd-op-qtd button { width: 30px; height: 30px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
+.cd-op-qtd span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
 .cd-campo { display: block; margin: 14px 0 0; }
 .cd-campo > span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 6px; }
 .cd-campo input, .cd-campo textarea, .cd-campo select {
@@ -251,6 +254,11 @@ button { font-family: inherit; cursor: pointer; }
 .cd-resumo h2 { font-size: 14px; font-weight: 700; margin: 0 0 10px; }
 .cd-resumo-linha { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 4px 0; }
 .cd-resumo-linha .q { color: var(--accent-fg); font-weight: 700; }
+.cd-resumo-esq { min-width: 0; }
+.cd-resumo-preco { white-space: nowrap; font-weight: 600; }
+.cd-resumo-add-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 4px; }
+.cd-resumo-add { font-size: 12px; color: var(--accent-fg); padding-left: 2px; }
+.cd-resumo-obs { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .cd-resumo-tot { display: flex; justify-content: space-between; border-top: 1px solid var(--border-subtle); margin-top: 10px; padding-top: 10px; font-weight: 700; }
 .cd-resumo-tax { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); padding: 2px 0; }
 
