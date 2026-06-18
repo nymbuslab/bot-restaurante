@@ -1941,6 +1941,22 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   word-break: break-word;
   text-align: right;
 }
+.sim-ctx-nota {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.sim-ctx-nota code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  background: var(--bg-elevated);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--secondary);
+}
 
 .sim-chat {
   flex: 1;

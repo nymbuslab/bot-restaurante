@@ -1093,7 +1093,6 @@ app.post("/api/simulador/mensagem", exigeAuth, async (req, res) => {
     res.json({
       respostas: resultado.respostas || [],
       estado: sessao.estado,
-      carrinho: sessao.carrinho,
     });
   } catch (e) {
     res.status(500).json({ erro: "Falha no simulador." });

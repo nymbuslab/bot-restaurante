@@ -408,12 +408,12 @@
     <section class="aba" id="aba-simulador">
       <div class="sim-topo">
         <div class="sim-topo-texto">
-          <h2 class="sim-titulo">Console de Testes</h2>
-          <p class="sub">Interaja com o bot em tempo real para validar fluxos e regras.</p>
+          <h2 class="sim-titulo">Prévia do atendimento</h2>
+          <p class="sub">Veja a mensagem que o cliente recebe e teste o atalho de atendente — sem usar um número real.</p>
         </div>
         <button class="secundario" id="btnSimReset">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Resetar Sessão
+          Reiniciar conversa
         </button>
       </div>
       <div class="sim-grid">
@@ -433,11 +433,10 @@
           <div class="sim-ctx-card">
             <div class="sim-ctx-titulo">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4a2 2 0 0 0-2 2v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2 2 0 0 0 2 2"/><path d="M17 4a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2 2 2 0 0 0-2 2v3a2 2 0 0 1-2 2"/></svg>
-              Variáveis de Contexto
+              Estado da conversa
             </div>
             <div class="sim-ctx-linha"><span>Etapa atual</span><span class="sim-ctx-val" id="simCtxEtapa">—</span></div>
-            <div class="sim-ctx-linha"><span>Itens no carrinho</span><span class="sim-ctx-val" id="simCtxItens">0</span></div>
-            <div class="sim-ctx-linha"><span>Total</span><span class="sim-ctx-val" id="simCtxTotal">R$ 0,00</span></div>
+            <p class="sim-ctx-nota">O pedido é feito no <strong>cardápio web</strong> — o bot envia o link. Em produção (com <code>PUBLIC_URL</code> configurada) o link aparece na conversa; em teste local sem ela, vem o aviso "cardápio quase pronto".</p>
           </div>
         </aside>
       </div>

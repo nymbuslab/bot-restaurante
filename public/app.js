@@ -2180,22 +2180,16 @@ function simMostrarTyping() {
   return div;
 }
 
-// Total do carrinho: (preço do item + opcionais) × quantidade.
-function simTotalCarrinho(carrinho) {
-  if (!carrinho || !carrinho.length) return 0;
-  return carrinho.reduce((acc, l) => {
-    const opc = (l.opcionais || []).reduce((s, o) => s + (o.preco || 0), 0);
-    return acc + (((l.preco || 0) + opc) * (l.qtd || 1));
-  }, 0);
+// Rótulo amigável da etapa do bot (o fluxo só tem MENU/ATENDENTE).
+function simRotuloEtapa(estado) {
+  if (estado === "ATENDENTE") return "Atendente";
+  if (estado === "MENU" || estado === "INICIO") return "Menu";
+  return estado || "—";
 }
 
-function simAtualizarEstado(estado, carrinho) {
+function simAtualizarEstado(estado) {
   const etapa = $("simCtxEtapa");
-  const itens = $("simCtxItens");
-  const total = $("simCtxTotal");
-  if (etapa) etapa.textContent = estado || "—";
-  if (itens) itens.textContent = carrinho ? carrinho.length : 0;
-  if (total) total.textContent = "R$ " + moedaBR(simTotalCarrinho(carrinho));
+  if (etapa) etapa.textContent = simRotuloEtapa(estado);
 }
 
 function simRolarParaBaixo() {
@@ -2229,7 +2223,7 @@ $("simForm").addEventListener("submit", async (e) => {
     const data = await r.json();
     typing.remove();
     simAdicionarMensagensBot(data.respostas || []);
-    simAtualizarEstado(data.estado, data.carrinho);
+    simAtualizarEstado(data.estado);
   } catch {
     typing.remove();
     simAdicionarMensagensBot(["⚠️ Erro ao conectar com o servidor."]);
@@ -2242,8 +2236,8 @@ $("simForm").addEventListener("submit", async (e) => {
 $("btnSimReset").addEventListener("click", async () => {
   await fetch("/api/simulador/reset", { method: "POST", headers: cabecalhos });
   simChat.innerHTML = `<div class="sim-hint">Digite <strong>oi</strong> para começar o atendimento.</div>`;
-  simAdicionarSeparador("Sessão reiniciada");
-  simAtualizarEstado("INICIO", []);
+  simAdicionarSeparador("Conversa reiniciada");
+  simAtualizarEstado("INICIO");
   simInput.focus();
 });
 
