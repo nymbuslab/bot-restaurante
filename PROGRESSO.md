@@ -6,7 +6,7 @@
 
 _(nada no momento)_
 
-> Untracked fora do git de propósito: `docs/cardapio/` (projeto de referência) e **`assets/notificacao-pedido.mp3`** (som de notificação — provável feature futura "tocar som ao chegar pedido", ainda não integrada).
+> Versionados: `docs/cardapio/` (projeto de referência React/Tailwind — só referência visual, não roda no app) e **`assets/notificacao-pedido.mp3`** (som de notificação — provável feature futura "tocar som ao chegar pedido", ainda não integrada).
 
 ## 📋 Próximos Passos
 
