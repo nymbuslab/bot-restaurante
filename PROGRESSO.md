@@ -4,9 +4,25 @@
 
 ## 🔄 Em Andamento
 
-_(nada no momento)_
+**Checkpoint salvo em 2026-06-18 13:35**
 
-> Versionado: `docs/cardapio/` (projeto de referência React/Tailwind — só referência visual, não roda no app). O som `notificacao-pedido.mp3` foi movido p/ `public/assets/` e **integrado** (ver Concluído).
+### Feito nesta sessão
+- Tudo commitado e em `origin/main` (working tree limpo). Detalhe de cada item em ✅ Concluído. Resumo:
+- **Bot/horário:** fix do fuso BR + virada de noite + variável `{proximaAbertura}`; mensagem de fechado curta.
+- **Cardápio web:** link limpo `/c/:slug` (sem token); secrets `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` no Fly (deploy **v28** feito durante a sessão).
+- **Notificação de pedido novo:** poll 15s + som (toggle 🔔/🔕) + badge + **modal rico** (cliente/itens/total) + tag NOVO; rota `/api/pedidos/ultimo`. Validado E2E (Playwright).
+- **Auth:** "Manter conectado" + sessão segura por **cookie httpOnly** (refresh token no cookie, access token em memória). Validado E2E. Antes nesta sessão: renovação de sessão, higiene de sessões abandonadas, auditoria + E2E de isolamento multi-tenant.
+- **Docs:** ROADMAP padronizado com `[x]`/`[ ]`; `assets/` + `docs/cardapio/` versionados; CHANGELOG até **[0.26.0]**.
+
+### Em meio de edição
+- Nada — working tree limpo, tudo commitado/pushado.
+
+### Próximo passo
+- Rodar **`fly deploy`** (você fará pelo terminal) p/ subir tudo da sessão à produção e, depois, **reconectar o bot** na aba Conexão (restore-no-boot ainda não existe).
+
+### Decisões pendentes
+- **(P1) Restaurar o bot no boot** (em Próximos Passos) — evita reconectar manualmente após restart/deploy.
+- "Ideia diferente" do card do link do cardápio ainda não descrita.
 
 ## 📋 Próximos Passos
 
@@ -40,6 +56,7 @@ _(nada no momento)_
 
 ## ✅ Concluído
 
+- [x] **Cardápio web — categorias visíveis + aba "Todos"** — no `/c/:slug` a categoria não aparecia em lugar nenhum quando o restaurante tinha 1 só (caso do Sabor D'Casa: 1 categoria "Espetos"): a barra de chips era escondida com `≤1` categoria e o título de seção só renderizava com 2+ grupos. Em `public/cardapio.js`: (1) título da seção passa a renderizar sempre que o grupo tem nome (`if (g.nome)`), (2) nova aba **"Todos"** (`catAtiva === null`, ativa por padrão) que empilha todas as categorias com seus títulos, (3) a barra de categorias aparece sempre que houver ≥1 categoria, montando **[ Todos ] [ cat… ]**. Busca segue sem título (grupo sem nome) — sem regressão. Validado E2E (Playwright local, Sabor D'Casa real): Todos mostra "ESPETOS" + 3 itens, chip da categoria filtra, busca "queijo" filtra sem título; 0 erro de console (fora favicon). ⚠️ exige `fly deploy`. — 2026-06-18
 - [x] **"Manter conectado" + auth segura por cookie httpOnly** — substituído o token no `sessionStorage` pelo padrão seguro de SPA: **refresh token em cookie `httpOnly` + `Secure` + `SameSite=Lax`** (o JS não lê → imune a XSS) e **access token só na memória** (nunca persistido). Checkbox **"Manter conectado neste dispositivo"** no login controla a validade do cookie: marcado → **persistente 30 dias** (reabre o navegador e cai direto no painel); desmarcado → **cookie de sessão** (some ao fechar). Backend (`servidor.js`): `/api/login` seta os cookies (`rt`+`rtl`), `/api/refresh` lê do cookie e **rotaciona**, `/api/logout` e exclusão de conta limpam; `empresas.renovarSessao` passou a devolver slug+nome e checar `ativo`. Front: `app.js` faz **boot via `/api/refresh`** (token em memória, `iniciarSessao` antes de `inicial()`); `login.js`/`cadastro.js` não guardam mais token. **CSRF mitigado** (SameSite=Lax + auth real das rotas via `Bearer`, não via cookie). Validado E2E (Playwright + curl): cookie httpOnly **invisível ao JS**, **nada** em storage, login→reload mantém a sessão, logout limpa e bloqueia acesso, sem cookie→login; lembrar=true→Max-Age 30d, lembrar=false→cookie de sessão, `/api/refresh` rotaciona/401. 34/34 testes. ⚠️ exige `fly deploy`. — 2026-06-18
 - [x] **Notificação de pedido novo no painel (som + badge + modal rico)** — o painel avisa o restaurante quando chega pedido: poll leve a cada 15s (`GET /api/pedidos/ultimo` → `pedidos.ultimo`: nº, cliente, itens e total) detecta nº maior que o visto → **toca som** (`public/assets/notificacao-pedido.mp3`, com destrava de autoplay no 1º clique + toggle 🔔/🔕 no header, persistido no localStorage), mostra **badge** de contagem no item Pedidos da sidebar e, **fora** da aba Pedidos, abre um **modal dedicado** "Novo Pedido Recebido!" (fiel ao protótipo do usuário: ícone, pill de som que reflete o estado, bloco cliente/nº, **lista de itens com preço**, caixa de Valor Total, botões **Visualizar Pedido** + **Fechar**). "Visualizar Pedido" → aba Pedidos + abre o detalhe. Adaptação honesta: sem "Recusar" (ciclo do pedido é fora de escopo → botão é "Fechar"); subtítulo neutro. **Na** aba Pedidos: só som + tag **"NOVO"** na linha (sem modal). `ultimoNumeroVisto` por slug no localStorage (não alerta pedidos antigos; baseline na 1ª checagem). Som movido p/ `public/assets/`. **Validado E2E no navegador (Playwright, conta real Sabor D'Casa, sem escrever no banco — mock do fetch):** estado inicial, modal com todos os campos (João Silva/#4829/2× Burger R$65,90/1× Coca R$20,00/Total R$85,90), "Visualizar Pedido" abre o detalhe, toggle de som, badge, tag NOVO; produção intacta (3 pedidos). 34/34 testes unit. ⚠️ exige `fly deploy`. — 2026-06-18
 - [x] **Limpeza ativa de sessões abandonadas (bot)** — a expiração de sessão era só **lazy** (`getSessao` só apagava a sessão de 30min quando a MESMA chave voltava); conversa abandonada nunca mais era acessada → ficava na RAM pra sempre (vaza memória na instância única com vários tenants). Adicionado `sessoes.limparExpiradas(agora?)` que varre o Map e descarta inativas há +`TEMPO_EXPIRA_MS` (deletar do Map na iteração é seguro em JS), agendado a cada **10min** no `index.js` (`limparSessoesMemoria`, com log quando remove). Sem mudança de comportamento (sessão ativa intacta; quem volta após 30min recebe sessão nova, como já era). Validado: 3 testes novos em `test/sessoes.test.js` (não remove dentro da janela / remove além de 30min / recria zerada após varrer) — npm test 34/34, check OK. — 2026-06-18

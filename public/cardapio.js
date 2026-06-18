@@ -77,8 +77,7 @@
     st.textContent = DADOS.aberto ? "Aberto" : "Fechado";
     st.className = "cd-status " + (DADOS.aberto ? "aberto" : "fechado");
 
-    var cats = (DADOS.cardapio.categorias || []);
-    catAtiva = cats.length ? cats[0].nome : null;
+    catAtiva = null; // abre na aba "Todos"
     renderCategorias();
     renderItens();
     atualizarBadge();
@@ -90,8 +89,15 @@
     var cats = DADOS.cardapio.categorias || [];
     var nav = $("cdCats");
     nav.innerHTML = "";
-    if (cats.length <= 1) { nav.hidden = true; return; }
+    if (!cats.length) { nav.hidden = true; return; }
     nav.hidden = false;
+    // Aba "Todos" (catAtiva === null): lista todas as categorias de uma vez.
+    var todos = document.createElement("button");
+    todos.type = "button";
+    todos.className = "cd-chip" + (catAtiva === null && !busca ? " ativo" : "");
+    todos.textContent = "Todos";
+    todos.addEventListener("click", function () { catAtiva = null; busca = ""; $("cdBusca").value = ""; renderCategorias(); renderItens(); });
+    nav.appendChild(todos);
     cats.forEach(function (c) {
       var b = document.createElement("button");
       b.type = "button";
@@ -116,6 +122,7 @@
       });
       return [{ nome: null, itens: achados }];
     }
+    if (catAtiva === null) return cats; // aba "Todos": todas as categorias empilhadas
     var cat = cats.filter(function (c) { return c.nome === catAtiva; })[0] || cats[0];
     return cat ? [cat] : [];
   }
@@ -127,7 +134,7 @@
     var qtd = grupos.reduce(function (s, g) { return s + g.itens.length; }, 0);
     $("cdVazio").hidden = qtd > 0;
     grupos.forEach(function (g) {
-      if (g.nome && grupos.length > 1) {
+      if (g.nome) {
         var h = document.createElement("div");
         h.className = "cd-cat-titulo";
         h.textContent = g.nome;
