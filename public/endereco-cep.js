@@ -43,12 +43,14 @@
     async function buscar(cep) {
       setHint("Buscando endereço...");
       try {
-        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        // Nosso backend (cache no banco + ViaCEP no servidor). Devolve
+        // { logradouro, bairro, cidade, uf } ou { erro: true }.
+        const r = await fetch(`/api/cep/${cep}`);
         const d = await r.json();
         if (d.erro) { setHint("CEP não encontrado — preencha o endereço à mão.", "erro-hint"); return; }
         if (d.logradouro && $(ids.logradouro)) $(ids.logradouro).value = d.logradouro;
         if (d.bairro && $(ids.bairro))         $(ids.bairro).value = d.bairro;
-        if (d.localidade && $(ids.cidade))     $(ids.cidade).value = d.localidade;
+        if (d.cidade && $(ids.cidade))         $(ids.cidade).value = d.cidade;
         if (d.uf && $(ids.uf))                 $(ids.uf).value = d.uf;
         setHint("Endereço preenchido — confira e informe o número.", "ok-hint");
         if ($(ids.numero)) $(ids.numero).focus();

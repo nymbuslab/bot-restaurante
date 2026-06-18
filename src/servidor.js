@@ -15,6 +15,7 @@ const plataforma = require("./plataforma");
 const store = require("./store");
 const pedidos = require("./pedidos");
 const clientes = require("./clientes");
+const cep = require("./cep");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin } = require("./supabase");
 const stripeBilling = require("./stripe");
@@ -43,7 +44,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", SUPABASE_ORIGIN].filter(Boolean),
-      connectSrc: ["'self'", "https://api.stripe.com", "https://viacep.com.br", SUPABASE_ORIGIN].filter(Boolean),
+      connectSrc: ["'self'", "https://api.stripe.com", SUPABASE_ORIGIN].filter(Boolean),
       frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
       frameAncestors: ["'self'"],
       baseUri: ["'self'"],
@@ -358,6 +359,19 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
 // Página do cardápio web (casca estática; o JS lê o slug da URL e busca a API acima).
 app.get("/c/:slug", (_req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "cardapio.html"));
+});
+
+// Busca de CEP com cache no banco (substitui a chamada direta do front ao ViaCEP).
+// Público (usado no checkout, onboarding e painel) e rate-limited.
+app.get("/api/cep/:cep", publicoLimiter, async (req, res) => {
+  try {
+    const end = await cep.buscarCep(req.params.cep);
+    if (!end) return res.json({ erro: true });
+    res.json(end);
+  } catch (e) {
+    console.error("GET /api/cep:", e.message);
+    res.json({ erro: true }); // front cai no preenchimento manual
+  }
 });
 
 // Mensagem de confirmação padrão (se o tenant não tiver `mensagens.pedidoConfirmado`).
