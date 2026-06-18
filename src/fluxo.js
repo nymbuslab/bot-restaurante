@@ -10,7 +10,6 @@
 
 const path = require("path");
 const store = require("./store");
-const cardapioWeb = require("./cardapio-web");
 const clientes = require("./clientes");
 
 // Fallbacks p/ tenants antigos sem a mensagem salva na config.
@@ -144,17 +143,16 @@ function textoHorario(config) {
 
 // ---------- Link do cardápio + menu ----------
 
-// Monta o link público do cardápio com um token assinado (liga o pedido feito na
-// web ao cliente do WhatsApp, p/ a confirmação automática). Precisa de PUBLIC_URL;
-// sem ela, retorna "" (o menu mostra um aviso amigável). Token só com o segredo
-// configurado; ausente → o link vai sem token e a confirmação usa o telefone.
-function linkCardapio(tenantDir, chatId) {
+// Monta o link público e LIMPO do cardápio (/c/:slug), sem token. A confirmação
+// do pedido usa o telefone (WhatsApp) que o cliente digita no checkout — campo
+// obrigatório lá; sem precisar do número, que o WhatsApp nem sempre expõe (caso
+// @lid). Precisa de PUBLIC_URL; sem ela, retorna "" (o menu mostra um aviso).
+// (As funções de token em cardapio-web.js seguem existindo: o backend ainda
+//  aceita ?p=<token> se um link antigo chegar, mas o bot não gera mais.)
+function linkCardapio(tenantDir) {
   const base = (process.env.PUBLIC_URL || "").replace(/\/+$/, "");
   if (!base) return "";
-  const slug = path.basename(tenantDir);
-  const secret = process.env.CARDAPIO_LINK_SECRET || "";
-  const token = secret && chatId ? cardapioWeb.assinarToken(secret, slug, chatId) : "";
-  return base + "/c/" + slug + (token ? "?p=" + encodeURIComponent(token) : "");
+  return base + "/c/" + path.basename(tenantDir);
 }
 
 // Saudação + menu numerado (sem o link — o link vem depois, ao escolher "1").
@@ -170,9 +168,9 @@ async function menuPrincipal(tenantDir, chatId, telefone = "") {
   return intro + `\n\nComo posso te ajudar?\n*1* - Fazer pedido\n*2* - Falar com atendente`;
 }
 
-// Resposta da opção "1": envia o link do cardápio web (com token, se houver).
-function respostaPedido(tenantDir, chatId) {
-  const link = linkCardapio(tenantDir, chatId);
+// Resposta da opção "1": envia o link (limpo) do cardápio web.
+function respostaPedido(tenantDir) {
+  const link = linkCardapio(tenantDir);
   if (!link) return `🛒 Nosso cardápio digital está quase pronto. Volte em instantes!`;
   return `Continue seu pedido no nosso cardápio 👇\n${link}\n\nÉ só montar o pedido e confirmar — ele chega aqui automaticamente. 😉\n\n_Digite *menu* para voltar, *atendente* para falar com uma pessoa, ou *sair* para encerrar._`;
 }
@@ -237,7 +235,7 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
     return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
   }
   // "1" ou qualquer outra coisa → manda o link do cardápio.
-  return { respostas: [respostaPedido(tenantDir, chatId)] };
+  return { respostas: [respostaPedido(tenantDir)] };
 }
 
 module.exports = { processarMensagem, estaAberto };
