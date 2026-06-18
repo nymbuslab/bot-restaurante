@@ -66,7 +66,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 
 ## P3 — Ideias futuras (sem compromisso)
 
-- **WhatsApp: biblioteca não-oficial → API Oficial (Cloud API)** — hoje roda via **Baileys**
+- [ ] **WhatsApp: biblioteca não-oficial → API Oficial (Cloud API)** — hoje roda via **Baileys**
   (não-oficial, WebSocket; substituiu o `whatsapp-web.js`/Chromium por instabilidade — QR
   parava de gerar quando o WhatsApp Web mudava). Baileys é mais leve e estável, **mas continua
   não-oficial** (pode quebrar quando o WhatsApp muda; risco de bloqueio do número). A **Cloud
@@ -74,13 +74,13 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   conversa**, exige **Meta Business + templates aprovados** e muda o onboarding (cada número
   habilitado na API). **Migrar quando houver tração** (clientes pagando) — é reescrita +
   burocracia, prematuro antes disso.
-- Relatórios de pedidos por período no painel — ✅ **concluído** (no redesign de Pedidos): seletor de período (Hoje / 7 dias / Personalizado) + métricas reais (total de pedidos, média diária, ticket médio e comparativo vs período anterior) + **export CSV** dos pedidos filtrados (botão Exportar; ver `CHANGELOG.md` v0.22.4)
-- Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
-- Redesign visual completo (Nymbus Pedidos) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
-- Integração com sistemas de PDV / impressora de cupom
-- App mobile para o atendente receber pedidos
-- **Limpeza ativa de sessões abandonadas (bot)** — varredura periódica (`setInterval`) removendo sessões expiradas, no lugar da expiração lazy atual (que só limpa quando chega nova mensagem). Relevante só quando o volume de clientes simultâneos justificar — cruza com a nota de RAM por tenant no `PROGRESSO.md`.
-- **Resiliência: sair de processo/máquina única** — hoje é **um processo Node numa máquina só**: se cai, cai para todos, e **todos os bots rodam no mesmo processo** (um crash afeta geral). Caminhos, em ordem: (1) supervisor que reinicia sozinho (PM2/systemd — já no `DEPLOY.md`); (2) redundância real (múltiplas instâncias com sessão/estado compartilhados — exige sair do SQLite local para **Postgres**); (3) isolamento de falha entre tenants. **Prematuro — só importa com volume**; levantado na revisão "crescer e vender".
+- [x] Relatórios de pedidos por período no painel — ✅ **concluído** (no redesign de Pedidos): seletor de período (Hoje / 7 dias / Personalizado) + métricas reais (total de pedidos, média diária, ticket médio e comparativo vs período anterior) + **export CSV** dos pedidos filtrados (botão Exportar; ver `CHANGELOG.md` v0.22.4)
+- [x] Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
+- [x] Redesign visual completo (Nymbus Pedidos) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
+- [ ] Integração com sistemas de PDV / impressora de cupom
+- [ ] App mobile para o atendente receber pedidos
+- [ ] **Limpeza ativa de sessões abandonadas (bot)** — varredura periódica (`setInterval`) removendo sessões expiradas, no lugar da expiração lazy atual (que só limpa quando chega nova mensagem). Relevante só quando o volume de clientes simultâneos justificar — cruza com a nota de RAM por tenant no `PROGRESSO.md`.
+- [ ] **Resiliência: sair de processo/máquina única** — hoje é **um processo Node numa máquina só**: se cai, cai para todos, e **todos os bots rodam no mesmo processo** (um crash afeta geral). Caminhos, em ordem: (1) supervisor que reinicia sozinho (PM2/systemd — já no `DEPLOY.md`); (2) redundância real (múltiplas instâncias com sessão/estado compartilhados — exige sair do SQLite local para **Postgres**); (3) isolamento de falha entre tenants. **Prematuro — só importa com volume**; levantado na revisão "crescer e vender".
 
 ---
 
@@ -100,35 +100,35 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 ### Fase 0 — Fundação operacional (cabe 100% na stack; maior valor / menor custo)
 
-- **Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca é atualizada;
+- [ ] **Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca é atualizada;
   falta transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
   *Reverte a decisão "fora de escopo" acima — precisa de aval consciente.*
-- **Relatórios de verdade** (P/M) — faturamento agregado, mais vendidos, mix de pagamento,
+- [ ] **Relatórios de verdade** (P/M) — faturamento agregado, mais vendidos, mix de pagamento,
   horário de pico. Dados já estão em `pedidos`.
 
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
-- **KDS / tela de cozinha** (M) — depende do status; polling no início, pub-sub ao escalar.
-- **Estoque simples** (M) — quantidade + baixa no pedido + alerta (item é jsonb, sem migração pesada).
-- **Caixa / fechamento** (M) — nova tabela de movimentos; reusa o total do pedido.
+- [ ] **KDS / tela de cozinha** (M) — depende do status; polling no início, pub-sub ao escalar.
+- [ ] **Estoque simples** (M) — quantidade + baixa no pedido + alerta (item é jsonb, sem migração pesada).
+- [ ] **Caixa / fechamento** (M) — nova tabela de movimentos; reusa o total do pedido.
 
 ### Fase 2 — Venda presencial e dinheiro
 
-- **PDV de balcão / comanda / mesa** (G) — lançar pedido manual no painel; reusa o modelo de pedido.
-- **Pagamento real do cliente (Pix/cartão)** (M/G) — gateway novo (não confundir com o Stripe da assinatura).
+- [ ] **PDV de balcão / comanda / mesa** (G) — lançar pedido manual no painel; reusa o modelo de pedido.
+- [ ] **Pagamento real do cliente (Pix/cartão)** (M/G) — gateway novo (não confundir com o Stripe da assinatura).
 
 ### Fase 3 — Os "duros" (esbarram na arquitetura / regulados)
 
-- **Impressão (cupom de venda + comanda de cozinha)** (G + decisão de arquitetura) — app web
+- [ ] **Impressão (cupom de venda + comanda de cozinha)** (G + decisão de arquitetura) — app web
   stateless **não imprime em térmica** direto; exige agente local (ex.: QZ Tray), impressora com
   API ou app desktop. Escolher o caminho antes de codar.
-- **Fiscal (NFC-e/SAT)** (G + regulatório) — via parceiro fiscal (PlugNotas/Focus NFe/Tecnospeed);
+- [ ] **Fiscal (NFC-e/SAT)** (G + regulatório) — via parceiro fiscal (PlugNotas/Focus NFe/Tecnospeed);
   praticamente um produto à parte.
 
 ### Transversal (quando houver tração)
 
-- Tempo real: instância única + cache em memória → invalidação/pub-sub (ex.: Redis) + múltiplas instâncias.
-- WhatsApp Baileys (não-oficial) → Cloud API oficial (reduz risco de bloqueio) — ver P3 acima.
+- [ ] Tempo real: instância única + cache em memória → invalidação/pub-sub (ex.: Redis) + múltiplas instâncias.
+- [ ] WhatsApp Baileys (não-oficial) → Cloud API oficial (reduz risco de bloqueio) — ver P3 acima.
 
 **Ordem recomendada:** Fase 0 → 1 → 2 → 3. Começar pelo **status do pedido** (menor custo, sem
 tocar na arquitetura, reaproveita dados existentes).
@@ -145,7 +145,14 @@ vanilla do repo (os tokens de design já eram idênticos).
 
 **Status:** entregue nas Fases 1→5 (API pública + token, página vanilla, POST com recálculo no
 servidor + confirmação pelo bot, bot envia o link, docs). Migração `20260617120000_pedido_observacao`
-aplicada. **Requer no ambiente:** `PUBLIC_URL` + `CARDAPIO_LINK_SECRET`.
+aplicada. **Requer no ambiente:** `PUBLIC_URL` (`CARDAPIO_LINK_SECRET` virou opcional — ver atualização).
+
+> **Atualização (2026-06-18):** o link agora é **limpo** (`/c/:slug`, **sem** `?p=<token>`). A
+> confirmação do pedido passou a usar o **telefone informado no checkout** (o fallback que já existia) —
+> motivo: no caso `@lid` o WhatsApp não expõe o número na mensagem recebida, e o checkout coleta o
+> telefone de qualquer forma. O bot **não gera mais** o token; o backend ainda aceita `?p=` de links
+> antigos. Logo, `CARDAPIO_LINK_SECRET` virou **opcional**. Os trechos abaixo que citam o token
+> descrevem o **desenho original**.
 
 ### Decisões travadas
 
@@ -158,24 +165,25 @@ aplicada. **Requer no ambiente:** `PUBLIC_URL` + `CARDAPIO_LINK_SECRET`.
 ### Fluxo
 
 ```text
-"oi" no WhatsApp → bot envia 1 link: <PUBLIC_URL>/c/<slug>?p=<token(chatId)>
+"oi" no WhatsApp → bot envia 1 link LIMPO: <PUBLIC_URL>/c/<slug>
  → web carrega GET /api/c/<slug> (cardápio whitelisted do tenant)
- → cliente monta carrinho (itens + opcionais + obs) e faz checkout
+ → cliente monta carrinho (itens + opcionais + obs) e faz checkout (informa telefone)
  → POST /api/c/<slug>/pedido → backend RECALCULA total por id → salvarPedido
- → bot confirma (config.mensagens.pedidoConfirmado) p/ chatId (fallback: telefone) → web "pedido enviado"
+ → bot confirma (config.mensagens.pedidoConfirmado) p/ telefone do checkout → web "pedido enviado"
+   (links antigos com ?p=<token> ainda são aceitos e confirmam pelo chatId)
 ```
 
 ### Fases
 
-- **Fase 1 — API + token:** `GET /api/c/:slug` (sem auth, rate-limited; projeção whitelisted + parse
+- [x] **Fase 1 — API + token:** `GET /api/c/:slug` (sem auth, rate-limited; projeção whitelisted + parse
   de opcionais), helper de token HMAC (`crypto`, sem dep nova) e env novo `PUBLIC_URL`.
-- **Fase 2 — Página vanilla:** `/c/:slug` (`cardapio.html`/`.js`/`.css` reusando tokens do `style.css`):
+- [x] **Fase 2 — Página vanilla:** `/c/:slug` (`cardapio.html`/`.js`/`.css` reusando tokens do `style.css`):
   categorias roláveis, busca, cards iFood, modal com opcionais/obs, carrinho, checkout — reusa
   `dinheiro.js`/`endereco-cep.js`.
-- **Fase 3 — Fechar pedido:** `POST /api/c/:slug/pedido` → recalcula no servidor → `salvarPedido` →
+- [x] **Fase 3 — Fechar pedido:** `POST /api/c/:slug/pedido` → recalcula no servidor → `salvarPedido` →
   bot confirma via `enviarMensagem`. Bot offline → salva mesmo assim.
-- **Fase 4 — Encolher o bot:** saudação → envia o link; aposenta os estados de pedido do `fluxo.js`.
-- **Fase 5 — Docs + testes:** atualizar `CLAUDE.md`/`docs/modelo-dados.md`; testes de whitelist, parse
+- [x] **Fase 4 — Encolher o bot:** saudação → envia o link; aposenta os estados de pedido do `fluxo.js`.
+- [x] **Fase 5 — Docs + testes:** atualizar `CLAUDE.md`/`docs/modelo-dados.md`; testes de whitelist, parse
   de opcionais, recálculo de total e token.
 
 ### Premissas e reuso
