@@ -16,10 +16,12 @@ super-admin (`/admin-master`).
 
 **Atendimento (bot):**
 
-- Mostra categorias e itens do cardápio; monta o pedido pelo WhatsApp.
-- Por item: composição, **opcionais** com preço, **observação** e quantidade.
-- Pergunta **"deseja adicionar bebida?"** automaticamente (se houver categoria de bebidas).
-- Coleta nome, entrega/retirada, endereço e forma de pagamento; confirma e registra.
+- Saúda o cliente e mostra um **menu enxuto**: *1 · Fazer pedido* · *2 · Falar com atendente*.
+  Reconhece quem já pediu antes e cumprimenta pelo nome ("Bem-vindo de novo, Fulano").
+- **Fazer pedido** → envia o **link do cardápio digital** (`/c/:slug`), onde o cliente monta o
+  pedido (itens, opcionais, observação, entrega, endereço e pagamento) e finaliza na web; o
+  pedido cai no painel e o bot **confirma** automaticamente pelo WhatsApp.
+- Navegação simples: `menu`/`voltar` volta ao início, `atendente` chama um humano, `sair` encerra.
 - Respeita **horário de funcionamento** configurável por dia da semana — responde
   automaticamente "fechado" fora do horário.
 - **Só responde a mensagens recebidas após a conexão** (não dispara em massa).
@@ -34,7 +36,8 @@ super-admin (`/admin-master`).
   (trocar e-mail/senha), mensagens, horário por dia, taxa de entrega, formas de pagamento,
   abrir/fechar manualmente; **Privacidade e dados** (exportar/excluir conta — LGPD).
 - **Assinatura**: status do plano, dias de trial, próxima cobrança, faturas (Stripe) e cartões.
-- **Simulador**: testa o fluxo completo do bot direto no navegador, sem WhatsApp.
+- **Prévia do atendimento**: vê a mensagem que o cliente recebe e testa o atalho de atendente
+  direto no navegador, sem usar um número real.
 
 **Painel master (super-admin):** dashboard com métricas de billing, gestão de tenants
 (criar / suspender / reativar / excluir, cortesia) e **Configurações Master** (dados da plataforma).
@@ -209,26 +212,19 @@ node testar-bot.js
 | `/status` | Exibe o estado interno da sessão em JSON   |
 | `/quit`   | Encerra o simulador                        |
 
-**Fluxo completo de teste:**
+**Fluxo de teste:**
 
 ```text
-oi              → exibe o menu
-1               → categorias do cardápio
-1               → itens da 1ª categoria
-<número>        → escolhe o item (ex: 10)
-0               → sem opcionais
-0               → sem observação
-1               → quantidade 1
-2               → finalizar pedido
-2               → não quero bebida
-João            → nome do cliente
-1               → delivery
-Rua X, 10       → endereço
-1               → forma de pagamento
-1               → confirmar pedido
+oi          → saudação + menu (1 · Fazer pedido  ·  2 · Falar com atendente)
+1           → envia o link do cardápio digital (/c/:slug)
+voltar      → volta ao menu (também: menu, 0)
+2           → fala com atendente (o bot silencia)
+menu        → volta ao atendimento automático
+sair        → despedida e encerra a sessão (o próximo "oi" recomeça)
 ```
 
-O pedido é gravado na tabela `pedidos` (Supabase) e aparece no painel na aba **Pedidos**.
+> O pedido em si é montado e finalizado no **cardápio web** (`/c/:slug`), não na conversa — lá
+> ele é gravado na tabela `pedidos` (Supabase), aparece na aba **Pedidos** e o bot confirma.
 
 ## 🗂️ Estrutura
 
@@ -285,8 +281,8 @@ Clique em **Editar** (ou **+ Adicionar item**) para abrir o **editor**, onde voc
 - Botão **on/off** de disponibilidade por item: desative quando algo acaba no dia.
 
 > Internamente, composição e opcionais são salvos em texto (`Sub:\n* item` e `Nome | preço`)
-> — o construtor visual só facilita a edição. A pergunta "deseja bebida?" aparece
-> automaticamente quando existe uma categoria com **"Bebida"** no nome.
+> — o construtor visual só facilita a edição. Esses campos alimentam o **cardápio web**
+> (`/c/:slug`), onde o cliente monta o pedido (itens, opcionais, observação).
 
 ## ⚠️ Avisos
 
