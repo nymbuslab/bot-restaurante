@@ -15,6 +15,7 @@ require("dotenv").config();
 const servidor = require("./src/servidor");
 const { limparSessoesAntigas } = require("./src/wa-auth");
 const pedidos = require("./src/pedidos");
+const clientes = require("./src/clientes");
 const PORTA = process.env.PORT || 3000;
 
 // Higiene diária: remove sessões de clientes (`session:*`) inativas há +90 dias.
@@ -45,6 +46,21 @@ async function anonimizarPedidos() {
 }
 setTimeout(anonimizarPedidos, 45_000);              // 45s após o boot
 setInterval(anonimizarPedidos, 24 * 60 * 60 * 1000); // a cada 24h
+
+// Retenção (LGPD): remove clientes inativos há mais de 12 meses (por
+// atualizado_em) — cascata apaga os endereços. PII pura sem valor estatístico,
+// então apaga de vez (≠ pedidos, que anonimiza). Job global, idempotente.
+const MESES_RETENCAO_CLIENTES = 12;
+async function removerClientesInativos() {
+  try {
+    const n = await clientes.removerInativos(MESES_RETENCAO_CLIENTES);
+    if (n > 0) console.log(`🔒 Retenção: ${n} cliente(s) inativo(s) > ${MESES_RETENCAO_CLIENTES} meses removido(s).`);
+  } catch (e) {
+    console.error("Retenção de clientes falhou (ignorado):", e.message);
+  }
+}
+setTimeout(removerClientesInativos, 60_000);             // 60s após o boot
+setInterval(removerClientesInativos, 24 * 60 * 60 * 1000); // a cada 24h
 
 // Impede que erros do bot/WhatsApp derrubem o servidor.
 // O bot pode travar ou cair; o painel continua no ar.

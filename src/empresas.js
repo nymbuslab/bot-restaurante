@@ -12,6 +12,7 @@ const bcrypt = require("bcryptjs");
 const db = require("./db");
 const store = require("./store");
 const pedidos = require("./pedidos");
+const clientes = require("./clientes");
 const { supabaseAdmin, supabaseAnon } = require("./supabase");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
@@ -340,6 +341,7 @@ async function excluir(slug) {
 
   store.esquecer(slug);
   pedidos.esquecer(slug);
+  clientes.esquecer(slug); // limpa o cache de empresa_id (clientes/enderecos já caem na cascata)
 
   // Limpa imagens do tenant no Storage (best-effort; falha logada p/ reconciliação).
   try {

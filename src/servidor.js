@@ -941,6 +941,7 @@ app.get("/api/conta/exportar", exigeAuth, async (req, res) => {
       config: store.getConfig(req.tenantDir),
       cardapio: store.getCardapio(req.tenantDir),
       pedidos: await pedidos.lerTodos(req.tenantDir),
+      clientes: await clientes.exportar(req.tenantDir),
     };
     res.json(dados);
   } catch (e) {

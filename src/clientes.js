@@ -100,7 +100,47 @@ async function buscarCliente(dir, { chatId, telefone } = {}) {
   }
 }
 
+// LGPD — exporta os clientes do tenant (cada um com seus endereços), p/ o
+// "exportar meus dados". Inclui só o que é útil ao dono (sem o chat_id interno).
+async function exportar(dir) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `SELECT c.nome, c.telefone, c.criado_em, c.atualizado_em,
+            COALESCE((
+              SELECT jsonb_agg(jsonb_build_object(
+                       'cep', e.cep, 'logradouro', e.logradouro, 'numero', e.numero,
+                       'complemento', e.complemento, 'bairro', e.bairro,
+                       'cidade', e.cidade, 'uf', e.uf, 'apelido', e.apelido
+                     ) ORDER BY e.criado_em)
+              FROM enderecos e WHERE e.cliente_id = c.id
+            ), '[]'::jsonb) AS enderecos
+       FROM clientes c
+      WHERE c.empresa_id = $1
+      ORDER BY c.criado_em`,
+    [empId]
+  );
+  return r.rows.map((x) => ({
+    nome: x.nome,
+    telefone: x.telefone,
+    criadoEm: x.criado_em ? new Date(x.criado_em).toISOString() : null,
+    atualizadoEm: x.atualizado_em ? new Date(x.atualizado_em).toISOString() : null,
+    enderecos: x.enderecos || [],
+  }));
+}
+
+// Retenção (LGPD): remove clientes inativos há mais de `meses` (por
+// atualizado_em). Cascata apaga os endereços. Diferente de pedidos (que
+// anonimiza p/ manter estatística), aqui é PII pura sem valor estatístico →
+// apaga de vez. Global (todos os tenants), idempotente.
+async function removerInativos(meses = 12) {
+  const r = await db.query(
+    "DELETE FROM clientes WHERE atualizado_em < now() - make_interval(months => $1)",
+    [meses]
+  );
+  return r.rowCount;
+}
+
 // Limpa o empresa_id cacheado de um slug (ex.: ao excluir um tenant).
 function esquecer(slug) { delete idCache[slug]; }
 
-module.exports = { registrarDoPedido, buscarCliente, esquecer };
+module.exports = { registrarDoPedido, buscarCliente, exportar, removerInativos, esquecer };
