@@ -10,8 +10,11 @@ const erro = document.getElementById("erro");
   document.body.style.visibility = "hidden";
   fetch("/api/refresh", { method: "POST" })
     .then(function (r) {
-      if (r.ok) { location.replace("admin.html"); return; }
-      document.body.style.visibility = "";
+      if (!r.ok) { document.body.style.visibility = ""; return; }
+      // Onboarding incompleto → retoma o cadastro (igual ao login manual); senão, painel.
+      return r.json().then(function (d) {
+        location.replace(d && d.onboardingConcluido === false ? "cadastro.html" : "admin.html");
+      });
     })
     .catch(function () { document.body.style.visibility = ""; });
 })();

@@ -248,7 +248,7 @@ app.post("/api/refresh", refreshLimiter, async (req, res) => {
     }
     const lembrar = lerCookie(req, COOKIE_RTL) === "1";
     setSessaoCookies(req, res, r.refreshToken, lembrar);
-    res.json({ token: r.token, slug: r.slug, nome: r.nome });
+    res.json({ token: r.token, slug: r.slug, nome: r.nome, onboardingConcluido: r.onboardingConcluido });
   } catch (e) {
     res.status(401).json({ erro: "Sessão expirada. Faça login novamente." });
   }

@@ -5,7 +5,13 @@
   var temSessao = document.cookie.split(";").some(function (c) { return c.trim() === "sess=1"; });
   if (!temSessao) return;
   fetch("/api/refresh", { method: "POST" })
-    .then(function (r) { if (r.ok) location.replace("admin.html"); })
+    .then(function (r) {
+      if (!r.ok) return;
+      // Onboarding incompleto → retoma o cadastro; senão, painel (espelha o login).
+      return r.json().then(function (d) {
+        location.replace(d && d.onboardingConcluido === false ? "cadastro.html" : "admin.html");
+      });
+    })
     .catch(function () { /* fica na landing */ });
 })();
 

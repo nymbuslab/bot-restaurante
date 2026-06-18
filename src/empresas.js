@@ -171,13 +171,18 @@ async function renovarSessao(refreshToken) {
   if (!refreshToken) return null;
   const { data, error } = await supabaseAnon.auth.refreshSession({ refresh_token: refreshToken });
   if (error || !data || !data.session) return null;
-  const r = await db.query("SELECT slug, nome, ativo FROM empresas WHERE user_id = $1", [data.user.id]);
+  const r = await db.query(
+    "SELECT slug, nome, ativo, config->'onboarding' AS onboarding FROM empresas WHERE user_id = $1",
+    [data.user.id]
+  );
   const emp = r.rows[0];
   if (!emp || !emp.ativo) return null;
+  const onb = emp.onboarding; // ausente = conta antiga → concluída (igual ao login)
   return {
     token: data.session.access_token,
     refreshToken: data.session.refresh_token,
     slug: emp.slug, nome: emp.nome,
+    onboardingConcluido: onb ? onb.concluido === true : true,
   };
 }
 
