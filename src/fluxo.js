@@ -11,6 +11,15 @@
 const path = require("path");
 const store = require("./store");
 const cardapioWeb = require("./cardapio-web");
+const clientes = require("./clientes");
+
+// Fallback p/ tenants antigos sem `boasVindasRetorno` salvo na config.
+const MSG_RETORNO_PADRAO = "Que bom te ver de novo, *{cliente}*! 👋";
+
+// Só o primeiro nome deixa a saudação mais natural ("Pablo", não "Pablo Martins").
+function primeiroNome(nome) {
+  return String(nome || "").trim().split(/\s+/)[0] || "";
+}
 
 function aplicar(texto, vars) {
   let t = texto || "";
@@ -81,9 +90,15 @@ function linkCardapio(tenantDir, chatId) {
   return base + "/c/" + slug + (token ? "?p=" + encodeURIComponent(token) : "");
 }
 
-function menuPrincipal(tenantDir, chatId) {
+async function menuPrincipal(tenantDir, chatId, telefone = "") {
   const config = store.getConfig(tenantDir);
-  const intro = aplicar(config.mensagens.boasVindas, { restaurante: config.restaurante.nome });
+  // Reconhece o cliente (por chat_id ou telefone) p/ saudar pelo nome.
+  const cli = await clientes.buscarCliente(tenantDir, { chatId, telefone });
+  const intro = cli && cli.nome
+    ? aplicar(config.mensagens.boasVindasRetorno || MSG_RETORNO_PADRAO, {
+        cliente: primeiroNome(cli.nome), restaurante: config.restaurante.nome,
+      })
+    : aplicar(config.mensagens.boasVindas, { restaurante: config.restaurante.nome });
   const link = linkCardapio(tenantDir, chatId);
   const corpo = link
     ? `\n\n🛒 *Faça seu pedido pelo nosso cardápio:*\n${link}\n\nÉ só escolher os itens, montar o pedido e confirmar — ele chega aqui automaticamente. 😉`
@@ -109,7 +124,7 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
   if (sessao.estado === "ATENDENTE") {
     if (lower === "menu") {
       sessao.estado = "MENU";
-      return { respostas: [menuPrincipal(tenantDir, chatId)] };
+      return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
     }
     return { respostas: [] };
   }
@@ -128,7 +143,7 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
 
   // Aberto: qualquer mensagem recebe o menu com o link do cardápio.
   sessao.estado = "MENU";
-  return { respostas: [menuPrincipal(tenantDir, chatId)] };
+  return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
 }
 
 module.exports = { processarMensagem, estaAberto };

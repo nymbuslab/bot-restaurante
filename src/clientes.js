@@ -74,7 +74,33 @@ async function registrarDoPedido(dir, { telefone, chatId, nome, tipoEntrega, end
   return clienteId;
 }
 
+// Reconhece o cliente por chat_id (chave forte, vinda do token) ou, em fallback,
+// pelo telefone. Ignora nome vazio e "anonimizado" (LGPD) → retorna null nesses
+// casos (saudação genérica). Best-effort: erro de banco também retorna null,
+// para nunca quebrar o atendimento do bot.
+async function buscarCliente(dir, { chatId, telefone } = {}) {
+  const chat = (chatId || "").trim();
+  const tel = (telefone || "").replace(/\D/g, "");
+  if (!chat && !tel) return null;
+  try {
+    const empId = await empresaId(dir);
+    const r = await db.query(
+      `SELECT nome, telefone, chat_id FROM clientes
+         WHERE empresa_id = $1
+           AND nome <> '' AND nome <> 'anonimizado'
+           AND ( ($2 <> '' AND chat_id = $2) OR ($3 <> '' AND telefone = $3) )
+         ORDER BY atualizado_em DESC
+         LIMIT 1`,
+      [empId, chat, tel]
+    );
+    return r.rows[0] ? { nome: r.rows[0].nome, telefone: r.rows[0].telefone, chatId: r.rows[0].chat_id } : null;
+  } catch (e) {
+    console.error("buscarCliente:", e.message);
+    return null;
+  }
+}
+
 // Limpa o empresa_id cacheado de um slug (ex.: ao excluir um tenant).
 function esquecer(slug) { delete idCache[slug]; }
 
-module.exports = { registrarDoPedido, esquecer };
+module.exports = { registrarDoPedido, buscarCliente, esquecer };

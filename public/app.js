@@ -1267,6 +1267,7 @@ function preencherConfig() {
   $("cfgPerguntarBebida").checked = c.atendimento.perguntarBebida !== false;
   $("cfgPerguntarObservacao").checked = c.atendimento.perguntarObservacao !== false;
   $("cfgBoasVindas").value = c.mensagens.boasVindas || "";
+  $("cfgBoasVindasRetorno").value = c.mensagens.boasVindasRetorno || "";
   $("cfgFechado").value = c.mensagens.fechado || "";
   $("cfgAtendente").value = c.mensagens.atendente || "";
   $("cfgConfirmado").value = c.mensagens.pedidoConfirmado || "";
@@ -1418,6 +1419,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.atendimento.perguntarObservacao = $("cfgPerguntarObservacao").checked;
   configAtual.horarios = lerHorariosDoDOM();
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
+  configAtual.mensagens.boasVindasRetorno = $("cfgBoasVindasRetorno").value;
   configAtual.mensagens.fechado = $("cfgFechado").value;
   configAtual.mensagens.atendente = $("cfgAtendente").value;
   configAtual.mensagens.pedidoConfirmado = $("cfgConfirmado").value;

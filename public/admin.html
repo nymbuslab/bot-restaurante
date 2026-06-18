@@ -313,9 +313,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <h3>Mensagens Automáticas</h3>
         </div>
-        <p class="sub cfg-secao-sub">Use {restaurante}, {horario}, {numero} e {tempo} — serão substituídos automaticamente.</p>
+        <p class="sub cfg-secao-sub">Use {restaurante}, {cliente}, {horario}, {numero} e {tempo} — serão substituídos automaticamente.</p>
         <div class="cfg-msgs-grid">
-          <div class="card cfg-msg"><label>Mensagem de Boas-vindas</label><textarea id="cfgBoasVindas"></textarea></div>
+          <div class="card cfg-msg"><label>Mensagem de Boas-vindas <span class="cfg-msg-hint">(1º contato)</span></label><textarea id="cfgBoasVindas"></textarea></div>
+          <div class="card cfg-msg"><label>Boas-vindas — Cliente que retorna <span class="cfg-msg-hint">({cliente})</span></label><textarea id="cfgBoasVindasRetorno" placeholder="Que bom te ver de novo, *{cliente}*! 👋"></textarea></div>
           <div class="card cfg-msg"><label>Aviso de Estabelecimento Fechado</label><textarea id="cfgFechado"></textarea></div>
           <div class="card cfg-msg"><label>Falar com Atendente</label><textarea id="cfgAtendente"></textarea></div>
           <div class="card cfg-msg"><label>Pedido Confirmado</label><textarea id="cfgConfirmado"></textarea></div>
