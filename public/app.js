@@ -271,7 +271,7 @@ function abrirNovoPedido(d) {
     ? itens.map((i) => {
         const sub = ((i.preco || 0) + extrasItemNP(i)) * (i.qtd || 1);
         return `<div class="np-item">
-          <span class="np-item-qtd">${i.qtd || 1}×</span>
+          <span class="np-item-qtd">${escapar(String(i.qtd || 1))}×</span>
           <span class="np-item-nome">${escapar(i.nome || "")}</span>
           <span class="np-item-preco">R$ ${moedaBR(sub)}</span>
         </div>`;
@@ -2101,7 +2101,7 @@ function abrirModalPedido(p) {
       ? `<div class="ped-item-opc">${i.opcionais.map((o) => "+ " + (o.qtd > 1 ? o.qtd + "x " : "") + escapar(o.nome)).join("<br>")}</div>`
       : "";
     return `<div class="ped-item">
-      <span class="ped-item-qtd">${i.qtd}x</span>
+      <span class="ped-item-qtd">${escapar(String(i.qtd))}x</span>
       <div class="ped-item-info">
         <div class="ped-item-nome">${escapar(i.nome)}</div>
         ${opcHtml}
