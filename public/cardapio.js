@@ -465,15 +465,18 @@
     if (tel.length < 10) { erro("cdErrTel", "Telefone inválido."); ok = false; }
 
     var endereco = "";
+    var enderecoCampos = null;
     if (temEntrega()) {
       var logr = ($("cdLogradouro").value || "").trim();
       var num = ($("cdNumero").value || "").trim();
       var cidade = ($("cdCidade").value || "").trim();
       if (!logr || !num || !cidade) { erro("cdErrEnd", "Preencha rua, número e cidade."); ok = false; }
-      endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco({
-        logradouro: logr, numero: num, bairro: ($("cdBairro").value || "").trim(),
-        complemento: ($("cdCompl").value || "").trim(), cidade: cidade, uf: ($("cdUf").value || "").trim(), cep: ($("cdCep").value || "").trim(),
-      }) : logr + ", " + num;
+      enderecoCampos = {
+        cep: ($("cdCep").value || "").trim(), logradouro: logr, numero: num,
+        complemento: ($("cdCompl").value || "").trim(), bairro: ($("cdBairro").value || "").trim(),
+        cidade: cidade, uf: ($("cdUf").value || "").trim(),
+      };
+      endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(enderecoCampos) : logr + ", " + num;
     }
     if (!pagamentoSel) { erro("cdErrGeral", "Escolha a forma de pagamento."); ok = false; }
     if (!ok) return;
@@ -490,6 +493,7 @@
       telefone: tel,
       tipoEntrega: tipoEntrega,
       endereco: endereco,
+      enderecoCampos: enderecoCampos,
       pagamento: pagamentoSel,
       troco: troco,
       observacao: ($("cdObsPedido").value || "").trim(),

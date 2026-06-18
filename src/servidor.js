@@ -14,6 +14,7 @@ const empresas = require("./empresas");
 const plataforma = require("./plataforma");
 const store = require("./store");
 const pedidos = require("./pedidos");
+const clientes = require("./clientes");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin } = require("./supabase");
 const stripeBilling = require("./stripe");
@@ -384,6 +385,22 @@ async function confirmarPedidoWeb(slug, dir, pedido) {
 }
 
 // Recebe o pedido montado no cardápio web. RECALCULA tudo no servidor (nunca confia em
+// Sanitiza os campos estruturados de endereço vindos do checkout (p/ a tabela
+// `enderecos`). Limites curtos; CEP só dígitos; UF maiúscula.
+function sanitizarEnderecoCampos(c) {
+  c = c || {};
+  const s = (v, n) => String(v || "").trim().slice(0, n);
+  return {
+    cep: s(c.cep, 12).replace(/\D/g, "").slice(0, 8),
+    logradouro: s(c.logradouro, 160),
+    numero: s(c.numero, 20),
+    complemento: s(c.complemento, 80),
+    bairro: s(c.bairro, 80),
+    cidade: s(c.cidade, 80),
+    uf: s(c.uf, 2).toUpperCase(),
+  };
+}
+
 // preço/total do cliente), salva e dispara a confirmação pelo bot. Sem auth, rate-limited.
 app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
   try {
@@ -431,6 +448,12 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     });
 
     confirmarPedidoWeb(emp.slug, dir, pedido).catch((e) => console.error("confirmar pedido web:", e.message));
+
+    // Cadastro do cliente + endereço (best-effort: o pedido já foi salvo acima).
+    const enderecoCampos = tipoEntrega === "Entrega" ? sanitizarEnderecoCampos(b.enderecoCampos) : null;
+    clientes
+      .registrarDoPedido(dir, { telefone, chatId, nome: cliente, tipoEntrega, endereco: enderecoCampos })
+      .catch((e) => console.error("registrar cliente web:", e.message));
 
     res.json({ numero: pedido.numero });
   } catch (e) {
