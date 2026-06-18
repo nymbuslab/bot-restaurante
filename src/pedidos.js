@@ -82,15 +82,22 @@ async function lerTodos(dir) {
   return r.rows.map(mapRow);
 }
 
-// Pedido mais recente (só nº + cliente) — consulta leve p/ o painel saber se
-// chegou pedido novo (polling de notificação). Retorna null se não há pedidos.
+// Pedido mais recente (nº, cliente, itens e total) — p/ o polling de notificação
+// do painel detectar pedido novo e montar o modal. Retorna null se não há pedidos.
 async function ultimo(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT numero, cliente FROM pedidos WHERE empresa_id = $1 ORDER BY id DESC LIMIT 1",
+    "SELECT numero, cliente, itens, total FROM pedidos WHERE empresa_id = $1 ORDER BY id DESC LIMIT 1",
     [empId]
   );
-  return r.rows[0] || null;
+  const row = r.rows[0];
+  if (!row) return null;
+  return {
+    numero: row.numero,
+    cliente: row.cliente,
+    itens: row.itens || [],
+    total: row.total == null ? 0 : Number(row.total),
+  };
 }
 
 async function lerPorId(dir, id) {

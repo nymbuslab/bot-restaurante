@@ -195,7 +195,7 @@ const CHAVE_PEDIDO_VISTO = "pedidoVisto:" + _slugPainel;
 let pedidoUltimoNumero = null;                                   // último nº conhecido (servidor)
 let pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0); // nº já visto pelo usuário
 const pedidosNovosDestaque = new Set();                          // nºs a marcar "NOVO" na lista
-let avisoPedidoAberto = false;
+let novoPedidoNumeroAtual = null;
 
 // Som — respeita o toggle; navegadores bloqueiam autoplay até a 1ª interação,
 // então destravamos o áudio no primeiro clique/tecla.
@@ -254,17 +254,49 @@ function marcarPedidosVistos() {
   atualizarBadgePedidos();
 }
 
-async function abrirAvisoPedido(numero, cliente) {
-  if (avisoPedidoAberto) return;            // não empilha modais
-  avisoPedidoAberto = true;
-  const msg = `Pedido #${numero}${cliente ? " de " + cliente : ""} acabou de chegar.`;
-  const ir = await confirmar("🔔 Novo pedido!", msg, "Ver pedidos");
-  avisoPedidoAberto = false;
-  if (ir) {
-    const btn = document.querySelector("nav button[data-aba='pedidos']");
-    if (btn) btn.click();
-  }
+// Modal rico de "novo pedido" (cliente, nº, itens e total). Não empilha.
+function extrasItemNP(i) { return (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0); }
+
+function abrirNovoPedido(d) {
+  const overlay = $("novo-pedido-overlay");
+  if (!overlay || overlay.style.display === "flex") return; // já aberto → não empilha
+  novoPedidoNumeroAtual = d.numero;
+  $("np-cliente").textContent = d.cliente || "Cliente";
+  $("np-numero").textContent = "#" + d.numero;
+  const pill = $("np-som-pill");
+  pill.textContent = somHabilitado ? "🔔 Som de alerta ativo" : "🔕 Som desligado";
+  pill.classList.toggle("off", !somHabilitado);
+  const itens = Array.isArray(d.itens) ? d.itens : [];
+  $("np-itens").innerHTML = itens.length
+    ? itens.map((i) => {
+        const sub = ((i.preco || 0) + extrasItemNP(i)) * (i.qtd || 1);
+        return `<div class="np-item">
+          <span class="np-item-qtd">${i.qtd || 1}×</span>
+          <span class="np-item-nome">${escapar(i.nome || "")}</span>
+          <span class="np-item-preco">R$ ${moedaBR(sub)}</span>
+        </div>`;
+      }).join("")
+    : `<div class="np-item np-item-vazio">Veja os detalhes no pedido.</div>`;
+  $("np-total").textContent = "R$ " + moedaBR(d.total || 0);
+  overlay.style.display = "flex";
 }
+
+function fecharNovoPedido() {
+  const overlay = $("novo-pedido-overlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+async function visualizarNovoPedido() {
+  fecharNovoPedido();
+  const btn = document.querySelector("nav button[data-aba='pedidos']");
+  if (btn) btn.click();                 // troca pra aba Pedidos (carrega lista + marca visto + NOVO)
+  await carregarPedidos();
+  const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
+  if (p) abrirModalPedido(p);
+}
+
+if ($("np-fechar")) $("np-fechar").addEventListener("click", fecharNovoPedido);
+if ($("np-visualizar")) $("np-visualizar").addEventListener("click", visualizarNovoPedido);
 
 async function checarPedidoNovo() {
   const r = await api("GET", "/api/pedidos/ultimo");
@@ -289,7 +321,7 @@ async function checarPedidoNovo() {
       carregarPedidos();        // atualiza a lista (linhas novas ganham "NOVO")
       marcarPedidosVistos();    // estando na aba, o badge da sidebar fica zerado
     } else {
-      abrirAvisoPedido(numero, d.cliente);  // modal só fora da aba Pedidos
+      abrirNovoPedido(d);  // modal rico só fora da aba Pedidos
     }
     atualizarBadgePedidos();
   }

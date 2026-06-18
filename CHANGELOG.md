@@ -291,4 +291,4 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 ## [0.25.0] — Aviso de pedido novo no painel
 
-- **Notificação de pedido novo:** quando chega um pedido, o painel **toca um som**, mostra um **contador** no menu "Pedidos" e — se você estiver em outra tela — abre um **aviso na hora**. Já estando na tela de Pedidos, o pedido novo aparece destacado com uma etiqueta **"NOVO"**. Tem um botão **🔔/🔕** no topo pra ligar/desligar o som. (Verifica a cada ~15s.)
+- **Notificação de pedido novo:** quando chega um pedido, o painel **toca um som**, mostra um **contador** no menu "Pedidos" e — se você estiver em outra tela — abre um **aviso completo** com o cliente, o número do pedido, os itens e o total, com o botão **Visualizar Pedido**. Já estando na tela de Pedidos, o pedido novo aparece destacado com uma etiqueta **"NOVO"**. Tem um botão **🔔/🔕** no topo pra ligar/desligar o som. (Verifica a cada ~15s.)

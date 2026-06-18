@@ -1896,6 +1896,92 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 
 .modal-overlay.saindo .modal-caixa { animation: modalOut 0.15s ease both; }
 
+/* Modal de NOVO PEDIDO (notificação) */
+.np-modal {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 26px 24px 20px;
+  width: 90%;
+  max-width: 420px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: modalIn 0.18s ease both;
+}
+.np-icone {
+  width: 56px; height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(99,68,188,0.18);
+}
+.np-titulo { font-size: 20px; font-weight: 700; color: var(--accent-fg); margin: 0 0 4px; }
+.np-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; }
+.np-som-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--accent-fg); background: rgba(99,68,188,0.14);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 12px; margin-bottom: 18px;
+}
+.np-som-pill.off { color: var(--text-disabled); }
+.np-info {
+  display: flex; justify-content: space-between; gap: 12px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  text-align: left; margin-bottom: 16px;
+}
+.np-info-dir { text-align: right; }
+.np-info-bloco { display: flex; flex-direction: column; gap: 3px; }
+.np-info-label { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; color: var(--text-secondary); }
+.np-info-valor { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.np-num { color: var(--accent-fg); }
+.np-itens-label { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; color: var(--text-secondary); text-align: left; margin-bottom: 8px; }
+.np-itens { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.np-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-elevated); border-radius: var(--radius-sm);
+  padding: 10px 12px; text-align: left;
+}
+.np-item-qtd {
+  flex-shrink: 0; min-width: 30px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--accent-fg);
+  background: rgba(99,68,188,0.16); border-radius: 6px; padding: 3px 0;
+}
+.np-item-nome { flex: 1; font-size: 14px; color: var(--text-primary); }
+.np-item-preco { font-size: 14px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.np-item-vazio { justify-content: center; color: var(--text-secondary); font-size: 13px; }
+.np-total {
+  display: flex; justify-content: space-between; align-items: center;
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 18px; background: rgba(99,68,188,0.08);
+}
+.np-total-label { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.np-total-valor { font-size: 18px; font-weight: 800; color: var(--accent-fg); }
+.np-acoes { display: flex; gap: 10px; }
+.np-btn-primario {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius); padding: 13px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s, transform 0.1s;
+}
+.np-btn-primario:hover { background: #6f50ce; }
+.np-btn-primario:active { transform: scale(0.98); }
+.np-btn-secundario {
+  background: var(--bg-elevated); color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 13px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.np-btn-secundario:hover { color: var(--text-primary); border-color: var(--text-disabled); }
+@media (max-width: 520px) {
+  .np-acoes { flex-direction: column; }
+  .np-btn-secundario { padding: 13px; }
+}
+
 @keyframes modalIn  { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes modalOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.96); } }
 
