@@ -4,41 +4,24 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-18 00:31**
+_(nada no momento)_
 
-### Feito nesta sessão
+> Untracked fora do git de propósito: `docs/cardapio/` (projeto de referência) e **`assets/notificacao-pedido.mp3`** (som de notificação — provável feature futura "tocar som ao chegar pedido", ainda não integrada).
 
-- **Polimentos pós-cardápio-web** (commits `d776c11`→`f06042e`): detalhe do pedido no painel respeita a qtd do opcional ("2x Ovo") e mostra a observação do pedido; **link + QR do cardápio** na aba Cardápio (`GET /api/cardapio/link`); Simulador rebaixado para **"Prévia do atendimento"** (carrinho fantasma removido).
-- **Cadastro de cliente/endereço + bot mais inteligente — Fases A–E** (commits `710c344`→`e6800e7`):
-  - **A** — tabelas `clientes`/`enderecos` (migração aplicada) + persistência no checkout (`src/clientes.js`).
-  - **B** — bot reconhece quem volta ("Bem-vindo de novo, Fulano") via `clientes.buscarCliente`; `boasVindasRetorno` editável.
-  - **C** — **menu numerado** (1 Fazer pedido / 2 Atendente), remoção dos toggles mortos, migração que normaliza a boas-vindas legada; + navegação `voltar`/`sair` e despedida editável.
-  - **D** — **cache de CEP** no banco (`src/cep.js` + `GET /api/cep/:cep`); `endereco-cep.js` passa pelo backend; CSP perde o ViaCEP.
-  - **E** — LGPD: clientes/enderecos no exportar, excluir (cascata) e retenção (`removerInativos`, 12 meses).
-- **Alinhamento de textos ao novo formato** (commits `2c84b2b`→`3d8dd6f`): landing (hero/demo/cards), Termos (2.2/2.3), Privacidade (coleta no cardápio web, cadastro persistente, ViaCEP, retenção 5.3/5.5), README e `design/UI.md`; + limpeza de fantasmas (nav "Prévia", `sessoes.js` enxuto, rota órfã `/api/simulador/status`).
+## 📋 Próximos Passos
 
-### Em meio de edição
+### Em aberto
 
-- Working tree limpo (tudo commitado e com push). Untracked, fora do git de propósito: `docs/cardapio/` (projeto de referência) e **`assets/notificacao-pedido.mp3`** (som de notificação adicionado pelo usuário — provável feature futura "tocar som ao chegar pedido", ainda não integrada).
-
-### Próximo passo
-
-- Usuário tem uma **"ideia diferente" para o card do link do cardápio** (aba Cardápio) — detalhar e implementar.
-
-### Decisões pendentes
-
-- A "ideia diferente" do card do link ainda não foi descrita.
-- ⚠️ **Reiniciar o servidor** (local/produção) pra todo o trabalho desta sessão valer — o processo no ar está com código/config antigos.
+- [ ] **(P1) Restaurar o bot no boot** — hoje, após um restart/deploy, o bot fica offline até reconectar manualmente na aba Conexão (`multiBot.iniciar` só é chamado pelo botão "Conectar"). Restaurar as sessões salvas em `wa_auth` no start do servidor (reconectam sem QR), restaurando só tenants ativos/com assinatura válida.
+- [ ] **"Ideia diferente" para o card do link do cardápio** (aba Cardápio) — ainda não descrita pelo usuário.
 
 ### Pendências operacionais (standing)
 
-- **(produto) Deploy do cardápio web:** setar `PUBLIC_URL` (ex.: `https://pedidos.nymbuslab.com.br`) e `CARDAPIO_LINK_SECRET` (`openssl rand -hex 32`) nos secrets do Fly e rodar `fly deploy`. Sem `PUBLIC_URL` o bot manda um aviso no lugar do link. Há 1 pedido de teste (#3) no `sabor-d-casa` que pode ser apagado pelo painel.
+- **(produto) Pedido de teste #3** no `sabor-d-casa` pode ser apagado pelo painel (resíduo do cardápio web; `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` já setados e no ar na v28).
 - **(produto) Go-live do Stripe (teste → produção):** hoje o app roda na **Área restrita (teste)** do Stripe e **nenhum webhook está cadastrado** (eventos de assinatura — cancelamento/falha/renovação — não sincronizam). Ao distribuir a plataforma, seguir o **checklist de go-live** em [docs/assinatura-stripe.md](docs/assinatura-stripe.md): criar produto/preço + chaves `live`, cadastrar o webhook em produção apontando pra `https://pedidos.nymbuslab.com.br/api/stripe/webhook`, trocar os 4 secrets do Stripe no Fly e testar com cartão real. Não bloqueia nada enquanto pré-lançamento.
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.
 - **(jurídico) Revisão dos textos legais:** Termos e Privacidade já refletem o novo fluxo (cardápio web), mas seguem merecendo revisão de um advogado antes de oficializar (limite de responsabilidade, prazo de retenção, figura do DPO).
-
-## 📋 Próximos Passos
 
 ### Pacote de melhorias — UI/UX e conta (jun/2026) — fazer 1 por vez
 
@@ -57,9 +40,10 @@
 
 ## ✅ Concluído
 
-- [x] **Painel parava de deslogar sozinho (renovação de sessão)** — o JWT do Supabase expira em ~1h e o front nunca renovava → a cada hora a próxima chamada dava 401 e `api()` jogava o usuário pro login ([app.js:32-34](public/app.js)). Agora o login guarda também o `refresh_token` (antes descartado em `empresas.autenticar`); nova rota `POST /api/refresh` (+ `empresas.renovarSessao` → `supabaseAnon.auth.refreshSession`, com `refreshLimiter` 60/15min) troca o refresh por um novo par de tokens. No front, `api()` ao tomar 401 **renova uma vez e repete a requisição** (renovações concorrentes coalescidas num só refresh, pois o refresh_token rotaciona); só vai pro login se a renovação falhar. Sessão deixa de morrer a cada hora. `refresh_token` no `sessionStorage` (mesma superfície do token atual; cookie httpOnly fica como hardening futuro). Validado: 31/31 testes + sintaxe front/back. **UI não validada visualmente** (exige login real). ⚠️ exige `fly deploy`. (O bot parar junto é outra causa — restart do servidor sem restore no boot; tratado à parte.)
-- [x] **Link do cardápio LIMPO (sem token) + secrets do cardápio web em produção** — (1) **Secrets no Fly:** `PUBLIC_URL=https://pedidos.nymbuslab.com.br` + `CARDAPIO_LINK_SECRET` (aleatório) setados — antes ausentes, o bot caía no aviso "cardápio quase pronto" em vez do link. (2) **Link limpo:** `linkCardapio` (`fluxo.js`) parou de anexar o `?p=<token>` — o link vira `/c/:slug` puro. A confirmação automática do pedido usa o **telefone (WhatsApp) digitado no checkout** (campo já obrigatório em `cardapio.js`); o fallback por telefone já existia em `confirmarPedidoWeb` (`servidor.js`). Motivo: pro caso `@lid` o WhatsApp **não expõe** o número na mensagem que chega, então captar do bot não é confiável — mas o checkout já coleta o número de qualquer forma. Trade-off: se o cliente digitar número errado, a confirmação não chega (pedido é salvo mesmo assim). Backend ainda aceita `?p=` de links antigos; `cardapioWeb` (import morto) removido de `fluxo.js`. Validado: check OK, 31/31 testes, preview do link limpo. ⚠️ exige `fly deploy` pra ir ao ar
-- [x] **Fix do horário (fuso BR) + virada de noite + msg de fechado curta** — `estaAberto` (`fluxo.js`) calculava com a hora do **servidor** (UTC no Fly → 3h adiantado) e marcava "fechado" na hora errada (sobretudo de madrugada; ex.: quinta 00:00–02:00 BR = 03:00–05:00 UTC). Agora usa **America/Sao_Paulo** (`agoraBR`, mesmo padrão das métricas) e trata **janelas que viram a noite** (`fecha ≤ abre`; `00:00` = meia-noite/1440), incluindo a **cauda da madrugada** do dia anterior (ex.: Sexta 08:00→02:00 abre na noite e segue até 02:00 de sábado; Quarta 11:00→00:00 deixava o dia sempre fechado). Nova variável **`{proximaAbertura}`** ("hoje às 18:00" / "amanhã (sexta) às 08:00") p/ o usuário montar uma mensagem curta; `{horario}` (semana toda) mantido. Texto **padrão** de fechado encurtado (só tenants novos — não sobrescreve quem personalizou). Painel: legenda de variáveis reescrita em lista (`.cfg-vars`) + dica no campo "Aviso de Fechado". Validado: 12 casos da lógica com a agenda real (0 falhas) + `agoraBR` confirmando o offset; npm test 31/31, check OK. **UI não validada visualmente** (exige sessão logada). ⚠️ exige reiniciar o servidor pra valer
+- [x] **Painel parava de deslogar sozinho (renovação de sessão)** — o JWT do Supabase expira em ~1h e o front nunca renovava → a cada hora a próxima chamada dava 401 e `api()` jogava o usuário pro login ([app.js:32-34](public/app.js)). Agora o login guarda também o `refresh_token` (antes descartado em `empresas.autenticar`); nova rota `POST /api/refresh` (+ `empresas.renovarSessao` → `supabaseAnon.auth.refreshSession`, com `refreshLimiter` 60/15min) troca o refresh por um novo par de tokens. No front, `api()` ao tomar 401 **renova uma vez e repete a requisição** (renovações concorrentes coalescidas num só refresh, pois o refresh_token rotaciona); só vai pro login se a renovação falhar. Sessão deixa de morrer a cada hora. `refresh_token` no `sessionStorage` (mesma superfície do token atual; cookie httpOnly fica como hardening futuro). Validado: 31/31 testes + sintaxe front/back. **UI não validada visualmente** (exige login real). No ar na v28 — 2026-06-18. (O bot parar junto é outra causa — restart do servidor sem restore no boot; em Próximos Passos.)
+- [x] **Link do cardápio LIMPO (sem token) + secrets do cardápio web em produção** — (1) **Secrets no Fly:** `PUBLIC_URL=https://pedidos.nymbuslab.com.br` + `CARDAPIO_LINK_SECRET` (aleatório) setados — antes ausentes, o bot caía no aviso "cardápio quase pronto" em vez do link. (2) **Link limpo:** `linkCardapio` (`fluxo.js`) parou de anexar o `?p=<token>` — o link vira `/c/:slug` puro. A confirmação automática do pedido usa o **telefone (WhatsApp) digitado no checkout** (campo já obrigatório em `cardapio.js`); o fallback por telefone já existia em `confirmarPedidoWeb` (`servidor.js`). Motivo: pro caso `@lid` o WhatsApp **não expõe** o número na mensagem que chega, então captar do bot não é confiável — mas o checkout já coleta o número de qualquer forma. Trade-off: se o cliente digitar número errado, a confirmação não chega (pedido é salvo mesmo assim). Backend ainda aceita `?p=` de links antigos; `cardapioWeb` (import morto) removido de `fluxo.js`. Validado: check OK, 31/31 testes, preview do link limpo. No ar na v28 — 2026-06-18
+- [x] **Fix do horário (fuso BR) + virada de noite + msg de fechado curta** — `estaAberto` (`fluxo.js`) calculava com a hora do **servidor** (UTC no Fly → 3h adiantado) e marcava "fechado" na hora errada (sobretudo de madrugada; ex.: quinta 00:00–02:00 BR = 03:00–05:00 UTC). Agora usa **America/Sao_Paulo** (`agoraBR`, mesmo padrão das métricas) e trata **janelas que viram a noite** (`fecha ≤ abre`; `00:00` = meia-noite/1440), incluindo a **cauda da madrugada** do dia anterior (ex.: Sexta 08:00→02:00 abre na noite e segue até 02:00 de sábado; Quarta 11:00→00:00 deixava o dia sempre fechado). Nova variável **`{proximaAbertura}`** ("hoje às 18:00" / "amanhã (sexta) às 08:00") p/ o usuário montar uma mensagem curta; `{horario}` (semana toda) mantido. Texto **padrão** de fechado encurtado (só tenants novos — não sobrescreve quem personalizou). Painel: legenda de variáveis reescrita em lista (`.cfg-vars`) + dica no campo "Aviso de Fechado". Validado: 12 casos da lógica com a agenda real (0 falhas) + `agoraBR` confirmando o offset; npm test 31/31, check OK. **UI não validada visualmente** (exige sessão logada). No ar na v28 — 2026-06-18
+- [x] **Auditoria + teste E2E de isolamento multi-tenant** — verificado que as mudanças desta sessão (renovação de sessão, link limpo, fuso) **não quebraram o isolamento**: a fronteira (`exigeAuth` → `resolverPorToken`: JWT `sub` → `empresas WHERE user_id`) não foi tocada, e `/api/refresh` devolve só tokens (sem dado de tenant). Teste E2E ao vivo com **2 empresas fictícias** (criadas e excluídas): **25/25 checks** — token e **token renovado** sempre resolvem para o próprio tenant e nunca para o outro; `GET /api/config` por HTTP (app no ar) só lê os próprios dados; banco confirma mapeamento `user_id→empresa` 1:1 e pedidos particionados por `empresa_id`. — 2026-06-18
 - [x] Estrutura base do bot (whatsapp-web.js + Express)
 - [x] Máquina de estados do atendimento (fluxo.js) — cardápio → opcionais → finalização
 - [x] Painel web administrativo (login, cardápio, configurações, conexão, pedidos)

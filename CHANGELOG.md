@@ -277,3 +277,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **M2 — cadastro não revela mais se um e-mail existe:** o cadastro público responde uma mensagem **genérica e uniforme** em qualquer falha (fecha o oráculo de enumeração) — a dica "se já tiver conta, faça login" aparece sempre, então não vaza existência de conta; o detalhe vai só pro log. A criação de tenant pelo super-admin segue informando "já cadastrado" (sem risco). Soma-se ao rate limit de cadastro (Onda 1)
 - **RLS hardening (defesa em profundidade):** migration que reafirma o RLS habilitado e **revoga explicitamente qualquer acesso de `anon`/`authenticated`** às tabelas `empresas`, `pedidos`, `wa_auth` e `plataforma_config` (que só o backend privilegiado acessa) — protege ainda mais a sessão do WhatsApp e o hash da senha master. Decisão consciente de **não criar policies** (abririam um caminho de leitura hoje fechado); o reforço vai na direção de *mais* trancado
+
+## [0.23.0] — Horário no fuso certo, link do cardápio limpo e sessão que não cai
+
+- **Horário no fuso do Brasil:** o bot calcula "aberto/fechado" em horário de Brasília (antes usava a hora do servidor, 3h adiantada em produção — errava sobretudo de madrugada) e agora entende horários que viram a noite (ex.: sexta das 08:00 às 02:00).
+- **Variável `{proximaAbertura}`** na mensagem de fechado (ex.: "Abrimos amanhã (sexta) às 08:00") — dá pra escrever um aviso curto em vez de listar a semana inteira.
+- **Link do cardápio mais limpo** no WhatsApp: agora é só `…/c/seu-restaurante`, sem o código comprido no fim. A confirmação do pedido usa o telefone informado no checkout.
+- **Painel não desloga mais sozinho:** a sessão é renovada automaticamente — o usuário deixa de cair na tela de login a cada ~1h.
