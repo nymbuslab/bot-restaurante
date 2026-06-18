@@ -70,8 +70,6 @@ function configInicial(nomeRestaurante) {
       aberto: true,
       tempoEstimado: "30 a 45 min",
       taxaEntrega: 0,
-      perguntarBebida: true,
-      perguntarObservacao: true,
     },
     mensagens: {
       boasVindas: "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.",

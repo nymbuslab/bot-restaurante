@@ -90,6 +90,7 @@ function linkCardapio(tenantDir, chatId) {
   return base + "/c/" + slug + (token ? "?p=" + encodeURIComponent(token) : "");
 }
 
+// Saudação + menu numerado (sem o link — o link vem depois, ao escolher "1").
 async function menuPrincipal(tenantDir, chatId, telefone = "") {
   const config = store.getConfig(tenantDir);
   // Reconhece o cliente (por chat_id ou telefone) p/ saudar pelo nome.
@@ -99,11 +100,14 @@ async function menuPrincipal(tenantDir, chatId, telefone = "") {
         cliente: primeiroNome(cli.nome), restaurante: config.restaurante.nome,
       })
     : aplicar(config.mensagens.boasVindas, { restaurante: config.restaurante.nome });
+  return intro + `\n\nComo posso te ajudar?\n*1* - Fazer pedido\n*2* - Falar com atendente`;
+}
+
+// Resposta da opção "1": envia o link do cardápio web (com token, se houver).
+function respostaPedido(tenantDir, chatId) {
   const link = linkCardapio(tenantDir, chatId);
-  const corpo = link
-    ? `\n\n🛒 *Faça seu pedido pelo nosso cardápio:*\n${link}\n\nÉ só escolher os itens, montar o pedido e confirmar — ele chega aqui automaticamente. 😉`
-    : `\n\n🛒 Nosso cardápio digital está quase pronto. Volte em instantes!`;
-  return intro + corpo + `\n\n_Precisa falar com uma pessoa? Digite *atendente*._`;
+  if (!link) return `🛒 Nosso cardápio digital está quase pronto. Volte em instantes!`;
+  return `Continue seu pedido no nosso cardápio 👇\n${link}\n\nÉ só montar o pedido e confirmar — ele chega aqui automaticamente. 😉\n\n_Precisa falar com uma pessoa? Digite *atendente*._`;
 }
 
 // ---------- Máquina de estados ----------
@@ -124,26 +128,42 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
   if (sessao.estado === "ATENDENTE") {
     if (lower === "menu") {
       sessao.estado = "MENU";
+      sessao.saudou = true;
       return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
     }
     return { respostas: [] };
   }
 
-  // Atalho para atendimento humano, a qualquer momento.
+  // Atalho global para atendimento humano (palavra explícita, a qualquer momento).
   if (["atendente", "humano"].includes(lower)) {
     sessao.estado = "ATENDENTE";
     return { respostas: [config.mensagens.atendente] };
   }
 
-  // Loja fechada: informa o horário e não envia o link de pedido.
+  // Loja fechada: informa o horário e não envia o menu/link. Ao reabrir, cumprimenta de novo.
   if (!aberto) {
     sessao.estado = "MENU";
+    sessao.saudou = false;
     return { respostas: [aplicar(config.mensagens.fechado, { horario: textoHorario(config) })] };
   }
 
-  // Aberto: qualquer mensagem recebe o menu com o link do cardápio.
+  // Aberto. Primeiro contato da sessão → saudação + menu numerado (1/2).
   sessao.estado = "MENU";
-  return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
+  if (!sessao.saudou) {
+    sessao.saudou = true;
+    return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
+  }
+
+  // Já cumprimentado: trata a escolha do menu.
+  if (lower === "2") {
+    sessao.estado = "ATENDENTE";
+    return { respostas: [config.mensagens.atendente] };
+  }
+  if (lower === "menu") {
+    return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
+  }
+  // "1" ou qualquer outra coisa → manda o link do cardápio.
+  return { respostas: [respostaPedido(tenantDir, chatId)] };
 }
 
 module.exports = { processarMensagem, estaAberto };
