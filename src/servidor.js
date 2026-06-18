@@ -188,7 +188,7 @@ app.post("/api/cadastro", cadastroLimiter, async (req, res) => {
 // O refresh token (longevo) vive num cookie httpOnly+Secure+SameSite=Lax — o JS
 // NÃO o lê (imune a XSS). O access token (JWT, ~1h) fica só na memória do front.
 // `rt` = refresh token; `rtl` = flag "lembrar" (controla a validade do cookie).
-const COOKIE_RT = "rt", COOKIE_RTL = "rtl";
+const COOKIE_RT = "rt", COOKIE_RTL = "rtl", COOKIE_SESS = "sess";
 const LEMBRAR_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 function lerCookie(req, nome) {
@@ -208,11 +208,18 @@ function opcoesCookie(req, lembrar) {
 function setSessaoCookies(req, res, refreshToken, lembrar) {
   res.cookie(COOKIE_RT, refreshToken, opcoesCookie(req, lembrar));
   res.cookie(COOKIE_RTL, lembrar ? "1" : "0", opcoesCookie(req, lembrar));
+  // Cookie de PRESENÇA (NÃO-httpOnly, path "/"): o front lê pra decidir se tenta
+  // retomar a sessão em login.html/landing (evita chamar /api/refresh à toa).
+  // Não guarda nada sensível — só "1"; o refresh token segue httpOnly intocado.
+  const oSess = { secure: !!req.secure, sameSite: "lax", path: "/" };
+  if (lembrar) oSess.maxAge = LEMBRAR_MS;
+  res.cookie(COOKIE_SESS, "1", oSess);
 }
 function limparSessaoCookies(req, res) {
   const o = { httpOnly: true, secure: !!req.secure, sameSite: "lax", path: "/api" };
   res.clearCookie(COOKIE_RT, o);
   res.clearCookie(COOKIE_RTL, o);
+  res.clearCookie(COOKIE_SESS, { secure: !!req.secure, sameSite: "lax", path: "/" });
 }
 
 app.post("/api/login", loginLimiter, async (req, res) => {

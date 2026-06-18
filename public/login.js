@@ -1,6 +1,21 @@
 const btn  = document.getElementById("btnEntrar");
 const erro = document.getElementById("erro");
 
+// Já logado? O cookie de presença "sess" (legível pelo JS) sinaliza uma sessão
+// ativa. Se houver, tenta retomar via /api/refresh e cai direto no painel — sem
+// piscar o formulário. Em 401 o servidor limpa os cookies e o form aparece.
+(function retomarSessao() {
+  var temSessao = document.cookie.split(";").some(function (c) { return c.trim() === "sess=1"; });
+  if (!temSessao) return;
+  document.body.style.visibility = "hidden";
+  fetch("/api/refresh", { method: "POST" })
+    .then(function (r) {
+      if (r.ok) { location.replace("admin.html"); return; }
+      document.body.style.visibility = "";
+    })
+    .catch(function () { document.body.style.visibility = ""; });
+})();
+
 function toggleSenha(inputId, btnId) {
   const inp = document.getElementById(inputId);
   const isHidden = inp.type === "password";
