@@ -75,6 +75,7 @@ const loginLimiter      = limitador(15, 10, TENTE_DEPOIS); // login de restauran
 const adminLoginLimiter = limitador(15, 5,  TENTE_DEPOIS); // login master (mais rígido)
 const cadastroLimiter   = limitador(60, 5,  "Muitos cadastros a partir deste IP. Tente novamente mais tarde.");
 const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / checkout
+const refreshLimiter    = limitador(15, 60, TENTE_DEPOIS); // renovação de sessão (~1x/h por usuário)
 const publicoLimiter    = limitador(15, 60, "Muitas requisições. Aguarde um momento e tente novamente."); // cardápio web público
 
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
@@ -189,11 +190,24 @@ app.post("/api/login", loginLimiter, async (req, res) => {
     const r = await empresas.autenticar(email, senha);
     if (!r) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
     res.json({
-      token: r.token, slug: r.slug, nome: r.nome,
+      token: r.token, refreshToken: r.refreshToken, slug: r.slug, nome: r.nome,
       onboardingConcluido: r.onboardingConcluido, onboardingEtapa: r.onboardingEtapa,
     });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao entrar. Tente de novo." });
+  }
+});
+
+// Renova a sessão: o front troca o refresh_token por um novo par de tokens
+// antes/quando o JWT (~1h) expira, evitando o logout automático.
+app.post("/api/refresh", refreshLimiter, async (req, res) => {
+  try {
+    const { refreshToken } = req.body || {};
+    const r = await empresas.renovarSessao(refreshToken);
+    if (!r) return res.status(401).json({ erro: "Sessão expirada. Faça login novamente." });
+    res.json({ token: r.token, refreshToken: r.refreshToken });
+  } catch (e) {
+    res.status(401).json({ erro: "Sessão expirada. Faça login novamente." });
   }
 });
 

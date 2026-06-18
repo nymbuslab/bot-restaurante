@@ -141,7 +141,7 @@ async function cadastrar({ nome, email, senha }) {
   return { slug, nome };
 }
 
-// Autentica via Supabase Auth. Retorna { slug, nome, token } ou null.
+// Autentica via Supabase Auth. Retorna { slug, nome, token, refreshToken } ou null.
 async function autenticar(email, senha) {
   const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password: senha });
   if (error || !data || !data.session) return null;
@@ -155,7 +155,22 @@ async function autenticar(email, senha) {
   const onb = emp.onboarding;
   const onboardingConcluido = onb ? onb.concluido === true : true;
   const onboardingEtapa = (onb && onb.etapa) || 2;
-  return { slug: emp.slug, nome: emp.nome, token: data.session.access_token, onboardingConcluido, onboardingEtapa };
+  return {
+    slug: emp.slug, nome: emp.nome,
+    token: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    onboardingConcluido, onboardingEtapa,
+  };
+}
+
+// Renova a sessão a partir do refresh_token (o access_token/JWT expira em ~1h).
+// Mantém o painel logado sem novo login. Retorna { token, refreshToken } (o
+// refresh_token rotaciona a cada uso) ou null se expirou/foi revogado.
+async function renovarSessao(refreshToken) {
+  if (!refreshToken) return null;
+  const { data, error } = await supabaseAnon.auth.refreshSession({ refresh_token: refreshToken });
+  if (error || !data || !data.session) return null;
+  return { token: data.session.access_token, refreshToken: data.session.refresh_token };
 }
 
 // Verificação LOCAL do JWT (sem ida à rede) via JWKS público do Supabase.
@@ -360,7 +375,7 @@ async function excluir(slug) {
 }
 
 module.exports = {
-  cadastrar, autenticar, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
+  cadastrar, autenticar, renovarSessao, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, hashSenha, verificarSenhaMaster, slugBase,
   atualizarAssinatura, podeLogar, acessoLiberado,
   trocarSenha, trocarEmail, conferirSenha,

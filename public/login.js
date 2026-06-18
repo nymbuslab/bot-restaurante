@@ -33,8 +33,9 @@ async function entrar() {
       body: JSON.stringify({ email, senha }),
     });
     if (r.ok) {
-      const { token, slug, nome, onboardingConcluido } = await r.json();
+      const { token, refreshToken, slug, nome, onboardingConcluido } = await r.json();
       sessionStorage.setItem("token", token);
+      if (refreshToken) sessionStorage.setItem("refreshToken", refreshToken);
       sessionStorage.setItem("slug", slug);
       sessionStorage.setItem("empresaNome", nome);
       // Onboarding incompleto → retoma o cadastro de onde parou. Senão, painel.

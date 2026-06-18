@@ -2,7 +2,7 @@
 // LÓGICA DO PAINEL (front-end)
 // ============================================================
 
-const token = sessionStorage.getItem("token");
+let token = sessionStorage.getItem("token");
 if (!token) location.href = "login.html";
 
 const cabecalhos = {
@@ -25,14 +25,49 @@ document.addEventListener("DOMContentLoaded", () => {
   if (h && _nomeEmpresa) h.textContent = _nomeEmpresa;
 });
 
+// Renova o JWT (expira em ~1h) usando o refresh_token guardado no login, sem
+// deslogar o usuário. Chamadas concorrentes são coalescidas numa única
+// renovação (o refresh_token rotaciona a cada uso). Retorna true se renovou.
+let _renovando = null;
+function renovarSessao() {
+  if (!_renovando) {
+    _renovando = (async () => {
+      const refreshToken = sessionStorage.getItem("refreshToken");
+      if (!refreshToken) return false;
+      try {
+        const r = await fetch("/api/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (!r.ok) return false;
+        const d = await r.json();
+        token = d.token;
+        cabecalhos.Authorization = "Bearer " + d.token;
+        sessionStorage.setItem("token", d.token);
+        if (d.refreshToken) sessionStorage.setItem("refreshToken", d.refreshToken);
+        return true;
+      } catch (e) { return false; }
+    })().finally(() => { _renovando = null; });
+  }
+  return _renovando;
+}
+
 async function api(metodo, url, corpo) {
-  const opc = { method: metodo, headers: cabecalhos };
-  if (corpo) opc.body = JSON.stringify(corpo);
-  const r = await fetch(url, opc);
+  const fazer = () => {
+    const opc = { method: metodo, headers: cabecalhos };
+    if (corpo) opc.body = JSON.stringify(corpo);
+    return fetch(url, opc);
+  };
+  let r = await fazer();
   if (r.status === 401) {
-    sessionStorage.removeItem("token");
-    location.href = "login.html";
-    return;
+    // Token expirado: tenta renovar uma vez e repete a requisição.
+    if (await renovarSessao()) r = await fazer();
+    if (r.status === 401) {
+      sessionStorage.clear();
+      location.href = "login.html";
+      return;
+    }
   }
   return r;
 }
