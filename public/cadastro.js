@@ -95,10 +95,7 @@
         const ld = await lr.json();
         if (!lr.ok) { erro.textContent = "Conta criada, mas falha ao entrar. Faça login."; btn.disabled = false; btn.textContent = "Criar conta e começar →"; return; }
 
-        token = ld.token;
-        sessionStorage.setItem("token", ld.token);
-        sessionStorage.setItem("slug", ld.slug);
-        sessionStorage.setItem("empresaNome", ld.nome);
+        token = ld.token; // access token em memória; a sessão (refresh) veio no cookie do /api/login
 
         // Carrega a config limpa do tenant recém-criado (mutada e salva nas próximas etapas)
         const cr = await fetch("/api/config", { headers: authHeaders() });
@@ -123,10 +120,7 @@
         });
         if (!lr.ok) return false; // senha não confere → deixa o chamador avisar
         const ld = await lr.json();
-        token = ld.token;
-        sessionStorage.setItem("token", ld.token);
-        sessionStorage.setItem("slug", ld.slug);
-        sessionStorage.setItem("empresaNome", ld.nome);
+        token = ld.token; // sessão (refresh) no cookie httpOnly; access token em memória
         if (ld.onboardingConcluido === false) {
           const cr = await fetch("/api/config", { headers: authHeaders() });
           cfg = await cr.json();
@@ -334,12 +328,15 @@
     // Boot: se já há sessão (veio do login ou recarregou), retoma o wizard de onde
     // parou; se o onboarding já terminou, vai pro painel. Sem sessão → Etapa 1.
     async function boot() {
-      const t = sessionStorage.getItem("token");
-      if (!t) { irPara(1); return; }
-      token = t;
+      // Recarregou a página: tenta a sessão pelo cookie httpOnly (refresh token).
+      try {
+        const rr = await fetch("/api/refresh", { method: "POST" });
+        if (!rr.ok) { irPara(1); return; }
+        token = (await rr.json()).token;
+      } catch (e) { irPara(1); return; }
       try {
         const cr = await fetch("/api/config", { headers: authHeaders() });
-        if (!cr.ok) { sessionStorage.removeItem("token"); irPara(1); return; }
+        if (!cr.ok) { irPara(1); return; }
         cfg = await cr.json();
         cfg.onboarding = cfg.onboarding || { concluido: false, etapa: 2 };
         if (cfg.onboarding.concluido) { location.href = "admin.html"; return; }

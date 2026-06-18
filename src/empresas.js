@@ -164,13 +164,21 @@ async function autenticar(email, senha) {
 }
 
 // Renova a sessão a partir do refresh_token (o access_token/JWT expira em ~1h).
-// Mantém o painel logado sem novo login. Retorna { token, refreshToken } (o
-// refresh_token rotaciona a cada uso) ou null se expirou/foi revogado.
+// Mantém o painel logado sem novo login. Retorna { token, refreshToken, slug,
+// nome } (o refresh_token rotaciona a cada uso) ou null se expirou/foi revogado
+// ou a conta foi suspensa/excluída (checa `ativo`, igual ao login).
 async function renovarSessao(refreshToken) {
   if (!refreshToken) return null;
   const { data, error } = await supabaseAnon.auth.refreshSession({ refresh_token: refreshToken });
   if (error || !data || !data.session) return null;
-  return { token: data.session.access_token, refreshToken: data.session.refresh_token };
+  const r = await db.query("SELECT slug, nome, ativo FROM empresas WHERE user_id = $1", [data.user.id]);
+  const emp = r.rows[0];
+  if (!emp || !emp.ativo) return null;
+  return {
+    token: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    slug: emp.slug, nome: emp.nome,
+  };
 }
 
 // Verificação LOCAL do JWT (sem ida à rede) via JWKS público do Supabase.

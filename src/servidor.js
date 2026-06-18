@@ -184,13 +184,45 @@ app.post("/api/cadastro", cadastroLimiter, async (req, res) => {
   }
 });
 
+// ---- Sessão via cookie httpOnly (refresh token) ----
+// O refresh token (longevo) vive num cookie httpOnly+Secure+SameSite=Lax — o JS
+// NÃO o lê (imune a XSS). O access token (JWT, ~1h) fica só na memória do front.
+// `rt` = refresh token; `rtl` = flag "lembrar" (controla a validade do cookie).
+const COOKIE_RT = "rt", COOKIE_RTL = "rtl";
+const LEMBRAR_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
+
+function lerCookie(req, nome) {
+  const raw = req.headers.cookie || "";
+  for (const par of raw.split(";")) {
+    const i = par.indexOf("=");
+    if (i === -1) continue;
+    if (par.slice(0, i).trim() === nome) return decodeURIComponent(par.slice(i + 1).trim());
+  }
+  return "";
+}
+function opcoesCookie(req, lembrar) {
+  const o = { httpOnly: true, secure: !!req.secure, sameSite: "lax", path: "/api" };
+  if (lembrar) o.maxAge = LEMBRAR_MS; // persistente; sem isso = cookie de sessão (some ao fechar)
+  return o;
+}
+function setSessaoCookies(req, res, refreshToken, lembrar) {
+  res.cookie(COOKIE_RT, refreshToken, opcoesCookie(req, lembrar));
+  res.cookie(COOKIE_RTL, lembrar ? "1" : "0", opcoesCookie(req, lembrar));
+}
+function limparSessaoCookies(req, res) {
+  const o = { httpOnly: true, secure: !!req.secure, sameSite: "lax", path: "/api" };
+  res.clearCookie(COOKIE_RT, o);
+  res.clearCookie(COOKIE_RTL, o);
+}
+
 app.post("/api/login", loginLimiter, async (req, res) => {
   try {
-    const { email, senha } = req.body || {};
+    const { email, senha, lembrar } = req.body || {};
     const r = await empresas.autenticar(email, senha);
     if (!r) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+    setSessaoCookies(req, res, r.refreshToken, !!lembrar); // refresh token só no cookie
     res.json({
-      token: r.token, refreshToken: r.refreshToken, slug: r.slug, nome: r.nome,
+      token: r.token, slug: r.slug, nome: r.nome,
       onboardingConcluido: r.onboardingConcluido, onboardingEtapa: r.onboardingEtapa,
     });
   } catch (e) {
@@ -198,21 +230,28 @@ app.post("/api/login", loginLimiter, async (req, res) => {
   }
 });
 
-// Renova a sessão: o front troca o refresh_token por um novo par de tokens
-// antes/quando o JWT (~1h) expira, evitando o logout automático.
+// Renova a sessão: lê o refresh token do COOKIE, devolve um access token novo e
+// ROTACIONA o cookie. Evita o logout automático e mantém o "lembrar de mim".
 app.post("/api/refresh", refreshLimiter, async (req, res) => {
   try {
-    const { refreshToken } = req.body || {};
-    const r = await empresas.renovarSessao(refreshToken);
-    if (!r) return res.status(401).json({ erro: "Sessão expirada. Faça login novamente." });
-    res.json({ token: r.token, refreshToken: r.refreshToken });
+    const r = await empresas.renovarSessao(lerCookie(req, COOKIE_RT));
+    if (!r) {
+      limparSessaoCookies(req, res);
+      return res.status(401).json({ erro: "Sessão expirada. Faça login novamente." });
+    }
+    const lembrar = lerCookie(req, COOKIE_RTL) === "1";
+    setSessaoCookies(req, res, r.refreshToken, lembrar);
+    res.json({ token: r.token, slug: r.slug, nome: r.nome });
   } catch (e) {
     res.status(401).json({ erro: "Sessão expirada. Faça login novamente." });
   }
 });
 
-// Logout: o JWT é descartado no cliente (sessionStorage). Sem estado no servidor.
-app.post("/api/logout", (_req, res) => res.json({ ok: true }));
+// Logout: descarta o cookie de sessão (o access token só vivia na memória do front).
+app.post("/api/logout", (req, res) => {
+  limparSessaoCookies(req, res);
+  res.json({ ok: true });
+});
 
 // ---- Assinatura (Stripe) — rotas do restaurante ----
 
@@ -991,6 +1030,7 @@ app.delete("/api/conta", exigeAuth, async (req, res) => {
 
     await multiBot.desconectar(req.slug).catch(() => {});
     await empresas.excluir(req.slug);
+    limparSessaoCookies(req, res); // conta apagada → derruba a sessão
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao excluir a conta." });

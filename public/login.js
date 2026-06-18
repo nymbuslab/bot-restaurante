@@ -25,19 +25,18 @@ async function entrar() {
     btn.textContent = "Entrar";
   }
 
+  const lembrar = !!document.getElementById("lembrar")?.checked;
+
   try {
-    // 1) Tenta login de restaurante (Supabase Auth).
+    // 1) Tenta login de restaurante (Supabase Auth). A sessão (refresh token)
+    //    fica num cookie httpOnly setado pelo servidor — nada vai pro storage.
     const r = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, senha }),
+      body: JSON.stringify({ email, senha, lembrar }),
     });
     if (r.ok) {
-      const { token, refreshToken, slug, nome, onboardingConcluido } = await r.json();
-      sessionStorage.setItem("token", token);
-      if (refreshToken) sessionStorage.setItem("refreshToken", refreshToken);
-      sessionStorage.setItem("slug", slug);
-      sessionStorage.setItem("empresaNome", nome);
+      const { onboardingConcluido } = await r.json();
       // Onboarding incompleto → retoma o cadastro de onde parou. Senão, painel.
       location.href = onboardingConcluido === false ? "cadastro.html" : "admin.html";
       return;

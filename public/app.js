@@ -2,12 +2,14 @@
 // LÓGICA DO PAINEL (front-end)
 // ============================================================
 
-let token = sessionStorage.getItem("token");
-if (!token) location.href = "login.html";
+// Sessão segura: o refresh token vive num cookie httpOnly (o JS não lê → imune a
+// XSS). O access token (JWT, ~1h) fica SÓ aqui na memória, nunca persistido.
+let token = null;
+let painelSlug = "", painelNome = "";
 
 const cabecalhos = {
   "Content-Type": "application/json",
-  Authorization: "Bearer " + token,
+  Authorization: "",
 };
 
 // Limpeza: o assistente de onboarding no painel foi revertido (virou wizard no
@@ -18,34 +20,38 @@ try {
     .forEach((k) => localStorage.removeItem(k));
 } catch (e) { /* ignora */ }
 
-// Exibe o nome da empresa no header ao carregar a página
-const _nomeEmpresa = sessionStorage.getItem("empresaNome");
-document.addEventListener("DOMContentLoaded", () => {
-  const h = document.getElementById("headerNome");
-  if (h && _nomeEmpresa) h.textContent = _nomeEmpresa;
-});
+// Boot da sessão: troca o cookie (refresh token) por um access token em memória
+// via /api/refresh. Com "Lembrar de mim", o cookie sobrevive ao fechar o
+// navegador → cai direto no painel. Sem cookie válido → volta pro login.
+async function iniciarSessao() {
+  try {
+    const r = await fetch("/api/refresh", { method: "POST" });
+    if (!r.ok) { location.href = "login.html"; return false; }
+    const d = await r.json();
+    token = d.token;
+    cabecalhos.Authorization = "Bearer " + token;
+    painelSlug = d.slug || "";
+    painelNome = d.nome || "";
+    CHAVE_PEDIDO_VISTO = "pedidoVisto:" + painelSlug;
+    pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0);
+    const h = document.getElementById("headerNome");
+    if (h && painelNome) h.textContent = painelNome;
+    return true;
+  } catch (e) { location.href = "login.html"; return false; }
+}
 
-// Renova o JWT (expira em ~1h) usando o refresh_token guardado no login, sem
-// deslogar o usuário. Chamadas concorrentes são coalescidas numa única
-// renovação (o refresh_token rotaciona a cada uso). Retorna true se renovou.
+// Renova o access token (expira em ~1h) usando o cookie httpOnly (refresh token),
+// sem deslogar. Chamadas concorrentes são coalescidas numa única renovação.
 let _renovando = null;
 function renovarSessao() {
   if (!_renovando) {
     _renovando = (async () => {
-      const refreshToken = sessionStorage.getItem("refreshToken");
-      if (!refreshToken) return false;
       try {
-        const r = await fetch("/api/refresh", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
-        });
+        const r = await fetch("/api/refresh", { method: "POST" }); // cookie vai junto
         if (!r.ok) return false;
         const d = await r.json();
         token = d.token;
         cabecalhos.Authorization = "Bearer " + d.token;
-        sessionStorage.setItem("token", d.token);
-        if (d.refreshToken) sessionStorage.setItem("refreshToken", d.refreshToken);
         return true;
       } catch (e) { return false; }
     })().finally(() => { _renovando = null; });
@@ -190,10 +196,9 @@ document.querySelectorAll("nav button").forEach((btn) => {
 // ============================================================
 // NOTIFICAÇÃO DE PEDIDO NOVO (polling 15s + som + badge + modal)
 // ============================================================
-const _slugPainel = sessionStorage.getItem("slug") || "";
-const CHAVE_PEDIDO_VISTO = "pedidoVisto:" + _slugPainel;
+let CHAVE_PEDIDO_VISTO = "pedidoVisto:";                         // completada com o slug no boot
 let pedidoUltimoNumero = null;                                   // último nº conhecido (servidor)
-let pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0); // nº já visto pelo usuário
+let pedidoVistoNumero = 0;                                       // nº já visto pelo usuário (lido no boot)
 const pedidosNovosDestaque = new Set();                          // nºs a marcar "NOVO" na lista
 let novoPedidoNumeroAtual = null;
 
@@ -326,8 +331,7 @@ async function checarPedidoNovo() {
     atualizarBadgePedidos();
   }
 }
-setTimeout(checarPedidoNovo, 3000);          // base logo após carregar
-setInterval(checarPedidoNovo, 15000);        // poll a cada 15s
+// O poll de notificação começa em inicial() (depois do boot da sessão).
 
 // Chip de teste grátis no header → abre a aba Assinatura.
 const _headerTrial = $("headerTrial");
@@ -2499,6 +2503,8 @@ document.addEventListener("keydown", (e) => {
 });
 
 async function inicial() {
+  setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
+  setInterval(checarPedidoNovo, 15000); // poll a cada 15s
   carregarPedidos();   // Pedidos é a aba inicial (home)
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
@@ -2524,4 +2530,5 @@ async function inicial() {
     history.replaceState(null, "", location.pathname);
   }
 }
-inicial();
+// Boot: obtém a sessão pelo cookie (refresh) e só então carrega o painel.
+iniciarSessao().then((ok) => { if (ok) inicial(); });

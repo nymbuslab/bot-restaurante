@@ -243,6 +243,23 @@ h3 {
 .auth-aceite a { color: var(--accent-fg); text-decoration: none; }
 .auth-aceite a:hover { text-decoration: underline; }
 
+.auth-lembrar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.auth-lembrar input[type="checkbox"] {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .auth-footer {
   margin-top: 24px;
   text-align: center;

@@ -292,3 +292,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.25.0] — Aviso de pedido novo no painel
 
 - **Notificação de pedido novo:** quando chega um pedido, o painel **toca um som**, mostra um **contador** no menu "Pedidos" e — se você estiver em outra tela — abre um **aviso completo** com o cliente, o número do pedido, os itens e o total, com o botão **Visualizar Pedido**. Já estando na tela de Pedidos, o pedido novo aparece destacado com uma etiqueta **"NOVO"**. Tem um botão **🔔/🔕** no topo pra ligar/desligar o som. (Verifica a cada ~15s.)
+
+## [0.26.0] — "Manter conectado" no login (sessão segura)
+
+- **Manter conectado:** o login ganhou a opção **"Manter conectado neste dispositivo"**. Marcada, você fecha e reabre o navegador e **cai direto no painel**, sem digitar e-mail e senha de novo (vale por 30 dias). Desmarcada, a sessão encerra ao fechar o navegador — como antes.
+- **Sessão mais segura:** a credencial de sessão passou a ficar num **cookie protegido que o JavaScript não consegue ler** (bem mais resistente a ataques), em vez de no armazenamento do navegador.
