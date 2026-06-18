@@ -313,11 +313,19 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <h3>Mensagens Automáticas</h3>
         </div>
-        <p class="sub cfg-secao-sub">Use {restaurante}, {cliente}, {horario}, {numero} e {tempo} — serão substituídos automaticamente.</p>
+        <p class="sub cfg-secao-sub">Escreva entre chaves <code>{ }</code> que o bot troca pelo dado real ao enviar:</p>
+        <ul class="cfg-vars">
+          <li><code>{restaurante}</code> nome do restaurante</li>
+          <li><code>{cliente}</code> nome do cliente</li>
+          <li><code>{numero}</code> nº do pedido</li>
+          <li><code>{tempo}</code> tempo estimado de preparo</li>
+          <li><code>{horario}</code> horário da semana inteira</li>
+          <li><code>{proximaAbertura}</code> quando o restaurante reabre (ex.: "amanhã às 08:00")</li>
+        </ul>
         <div class="cfg-msgs-grid">
           <div class="card cfg-msg"><label>Mensagem de Boas-vindas <span class="cfg-msg-hint">(1º contato)</span></label><textarea id="cfgBoasVindas"></textarea></div>
           <div class="card cfg-msg"><label>Boas-vindas — Cliente que retorna <span class="cfg-msg-hint">({cliente})</span></label><textarea id="cfgBoasVindasRetorno" placeholder="Que bom te ver de novo, *{cliente}*! 👋"></textarea></div>
-          <div class="card cfg-msg"><label>Aviso de Estabelecimento Fechado</label><textarea id="cfgFechado"></textarea></div>
+          <div class="card cfg-msg"><label>Aviso de Estabelecimento Fechado <span class="cfg-msg-hint">({proximaAbertura} ou {horario})</span></label><textarea id="cfgFechado"></textarea></div>
           <div class="card cfg-msg"><label>Falar com Atendente</label><textarea id="cfgAtendente"></textarea></div>
           <div class="card cfg-msg"><label>Despedida <span class="cfg-msg-hint">(comando "sair")</span></label><textarea id="cfgDespedida" placeholder="Atendimento encerrado. Quando quiser pedir de novo, é só mandar *oi*! 👋"></textarea></div>
           <div class="card cfg-msg"><label>Pedido Confirmado</label><textarea id="cfgConfirmado"></textarea></div>

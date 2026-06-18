@@ -1297,6 +1297,25 @@ button:disabled {
 .cfg-secao-cabeca svg { color: var(--accent-fg); flex-shrink: 0; }
 .cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; padding: 0; border: none; }
 .cfg-secao-sub { margin: -6px 0 14px; }
+.cfg-vars {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 4px 16px;
+  margin: -6px 0 16px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.cfg-vars code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  background: var(--bg-elevated);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--secondary);
+  margin-right: 6px;
+}
 
 /* Linha de switch (label + toggle) — comportamento do bot */
 .cfg-switch-linha {

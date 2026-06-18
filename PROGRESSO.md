@@ -4,22 +4,39 @@
 
 ## 🔄 Em Andamento
 
-— Nada em andamento. —
+**Checkpoint salvo em 2026-06-18 00:31**
 
-> Última sessão (2026-06-16): **auditoria de segurança fechada** — Ondas 1, 2 e 3 concluídas (blindagem de borda + histórico do git purgado + hardening do super-admin), commitadas, push e **deployadas no Fly**. Veredito: isolamento multi-tenant sólido (sem IDOR), webhook Stripe verificado, sem cartão no banco. Depois, montada a **suíte de testes** (`npm test` com `node:test`, zero dep) + **CI** (GitHub Actions), e fechadas 3 pontas: **export CSV de pedidos**, faxina do PROGRESSO (T5 fechado, pendência `session-*` removida por moot). Só restam itens **aceitos** (M2/RLS) + ações suas (suporte WhatsApp, domínio, revisão jurídica). Ver "✅ Concluído".
+### Feito nesta sessão
 
-### Segurança — Auditoria CONCLUÍDA (Ondas 1, 2 e 3); só restam itens "aceitos"
+- **Polimentos pós-cardápio-web** (commits `d776c11`→`f06042e`): detalhe do pedido no painel respeita a qtd do opcional ("2x Ovo") e mostra a observação do pedido; **link + QR do cardápio** na aba Cardápio (`GET /api/cardapio/link`); Simulador rebaixado para **"Prévia do atendimento"** (carrinho fantasma removido).
+- **Cadastro de cliente/endereço + bot mais inteligente — Fases A–E** (commits `710c344`→`e6800e7`):
+  - **A** — tabelas `clientes`/`enderecos` (migração aplicada) + persistência no checkout (`src/clientes.js`).
+  - **B** — bot reconhece quem volta ("Bem-vindo de novo, Fulano") via `clientes.buscarCliente`; `boasVindasRetorno` editável.
+  - **C** — **menu numerado** (1 Fazer pedido / 2 Atendente), remoção dos toggles mortos, migração que normaliza a boas-vindas legada; + navegação `voltar`/`sair` e despedida editável.
+  - **D** — **cache de CEP** no banco (`src/cep.js` + `GET /api/cep/:cep`); `endereco-cep.js` passa pelo backend; CSP perde o ViaCEP.
+  - **E** — LGPD: clientes/enderecos no exportar, excluir (cascata) e retenção (`removerInativos`, 12 meses).
+- **Alinhamento de textos ao novo formato** (commits `2c84b2b`→`3d8dd6f`): landing (hero/demo/cards), Termos (2.2/2.3), Privacidade (coleta no cardápio web, cadastro persistente, ViaCEP, retenção 5.3/5.5), README e `design/UI.md`; + limpeza de fantasmas (nav "Prévia", `sessoes.js` enxuto, rota órfã `/api/simulador/status`).
 
-- **Ondas 1, 2 e 3 — todas concluídas** (ver "✅ Concluído" e `CHANGELOG.md` v0.22.0/0.22.1/0.22.2). Backup do filter-repo em `../bot-restaurante-backup-pre-filterrepo.bundle` (pode apagar quando confiar).
-- **M2 e RLS — FEITOS** (antes "aceitos", o usuário pediu pra implementar; ver "✅ Concluído", `CHANGELOG.md` v0.22.5): **M2** mensagem genérica/uniforme no cadastro (fecha o oráculo de enumeração sem piorar UX); **RLS hardening** por migration (revoke de anon/authenticated + RLS reafirmado + comentários — endurece *na direção de mais trancado*, em vez de adicionar policy que abriria caminho).
-- **Pendência jurídica (standing):** textos de Termos/Privacidade aguardam revisão de advogado (já listado nas pendências operacionais).
+### Em meio de edição
+
+- Working tree limpo (tudo commitado e com push). Untracked, fora do git de propósito: `docs/cardapio/` (projeto de referência) e **`assets/notificacao-pedido.mp3`** (som de notificação adicionado pelo usuário — provável feature futura "tocar som ao chegar pedido", ainda não integrada).
+
+### Próximo passo
+
+- Usuário tem uma **"ideia diferente" para o card do link do cardápio** (aba Cardápio) — detalhar e implementar.
+
+### Decisões pendentes
+
+- A "ideia diferente" do card do link ainda não foi descrita.
+- ⚠️ **Reiniciar o servidor** (local/produção) pra todo o trabalho desta sessão valer — o processo no ar está com código/config antigos.
 
 ### Pendências operacionais (standing)
 
+- **(produto) Deploy do cardápio web:** setar `PUBLIC_URL` (ex.: `https://pedidos.nymbuslab.com.br`) e `CARDAPIO_LINK_SECRET` (`openssl rand -hex 32`) nos secrets do Fly e rodar `fly deploy`. Sem `PUBLIC_URL` o bot manda um aviso no lugar do link. Há 1 pedido de teste (#3) no `sabor-d-casa` que pode ser apagado pelo painel.
 - **(produto) Go-live do Stripe (teste → produção):** hoje o app roda na **Área restrita (teste)** do Stripe e **nenhum webhook está cadastrado** (eventos de assinatura — cancelamento/falha/renovação — não sincronizam). Ao distribuir a plataforma, seguir o **checklist de go-live** em [docs/assinatura-stripe.md](docs/assinatura-stripe.md): criar produto/preço + chaves `live`, cadastrar o webhook em produção apontando pra `https://pedidos.nymbuslab.com.br/api/stripe/webhook`, trocar os 4 secrets do Stripe no Fly e testar com cartão real. Não bloqueia nada enquanto pré-lançamento.
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.
-- **(jurídico) Revisão dos textos legais:** Termos e Política de Privacidade são base sólida adaptada, mas merecem revisão de um advogado antes de oficializar (limite de responsabilidade, prazo de retenção, figura do DPO).
+- **(jurídico) Revisão dos textos legais:** Termos e Privacidade já refletem o novo fluxo (cardápio web), mas seguem merecendo revisão de um advogado antes de oficializar (limite de responsabilidade, prazo de retenção, figura do DPO).
 
 ## 📋 Próximos Passos
 
@@ -40,6 +57,7 @@
 
 ## ✅ Concluído
 
+- [x] **Fix do horário (fuso BR) + virada de noite + msg de fechado curta** — `estaAberto` (`fluxo.js`) calculava com a hora do **servidor** (UTC no Fly → 3h adiantado) e marcava "fechado" na hora errada (sobretudo de madrugada; ex.: quinta 00:00–02:00 BR = 03:00–05:00 UTC). Agora usa **America/Sao_Paulo** (`agoraBR`, mesmo padrão das métricas) e trata **janelas que viram a noite** (`fecha ≤ abre`; `00:00` = meia-noite/1440), incluindo a **cauda da madrugada** do dia anterior (ex.: Sexta 08:00→02:00 abre na noite e segue até 02:00 de sábado; Quarta 11:00→00:00 deixava o dia sempre fechado). Nova variável **`{proximaAbertura}`** ("hoje às 18:00" / "amanhã (sexta) às 08:00") p/ o usuário montar uma mensagem curta; `{horario}` (semana toda) mantido. Texto **padrão** de fechado encurtado (só tenants novos — não sobrescreve quem personalizou). Painel: legenda de variáveis reescrita em lista (`.cfg-vars`) + dica no campo "Aviso de Fechado". Validado: 12 casos da lógica com a agenda real (0 falhas) + `agoraBR` confirmando o offset; npm test 31/31, check OK. **UI não validada visualmente** (exige sessão logada). ⚠️ exige reiniciar o servidor pra valer
 - [x] Estrutura base do bot (whatsapp-web.js + Express)
 - [x] Máquina de estados do atendimento (fluxo.js) — cardápio → opcionais → finalização
 - [x] Painel web administrativo (login, cardápio, configurações, conexão, pedidos)

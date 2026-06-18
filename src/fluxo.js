@@ -37,19 +37,80 @@ function aplicar(texto, vars) {
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
+// Hora "agora" SEMPRE no fuso do Brasil (America/Sao_Paulo, UTC-3 fixo desde 2019).
+// O servidor de produção (Fly) roda em UTC → usar a hora local dele atrasava/adiantava
+// 3h e fazia o bot dizer "fechado" na hora errada (sobretudo de madrugada). Mesmo
+// padrão do corte de mês das métricas em src/servidor.js.
+function agoraBR() {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date());
+  const get = (t) => (p.find((x) => x.type === t) || {}).value;
+  const WD = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  let hora = Number(get("hour"));
+  if (hora === 24) hora = 0; // alguns ambientes devolvem "24" à meia-noite
+  return { dia: WD[get("weekday")], min: hora * 60 + Number(get("minute")) };
+}
+
+// "HH:MM" -> minutos do dia. Fechamento "00:00" representa a meia-noite (fim do dia)
+// → 1440, e NÃO o começo do dia, pra "11:00 às 00:00" abrir o dia inteiro até as 24h.
+function paraMin(hhmm, ehFecha = false) {
+  const [h, m] = String(hhmm).split(":").map(Number);
+  const min = h * 60 + m;
+  return ehFecha && min === 0 ? 1440 : min;
+}
+
+// Janela de um dia normalizada, ou null se fechado/sem horário (= sempre aberto trata fora).
+function janela(h) {
+  if (!h || h.fechado || !h.abre || !h.fecha) return null;
+  return { abre: paraMin(h.abre), fecha: paraMin(h.fecha, true) };
+}
+
 function estaAberto(tenantDir) {
   const config = store.getConfig(tenantDir);
   if (!config.atendimento.aberto) return false;
   const horarios = config.horarios;
   if (!horarios) return true;
-  const agora = new Date();
-  const h = horarios[DIAS[agora.getDay()]];
-  if (!h || h.fechado) return false;
-  if (!h.abre || !h.fecha) return true;
-  const [hA, mA] = h.abre.split(":").map(Number);
-  const [hF, mF] = h.fecha.split(":").map(Number);
-  const min = agora.getHours() * 60 + agora.getMinutes();
-  return min >= hA * 60 + mA && min < hF * 60 + mF;
+  const { dia, min } = agoraBR();
+
+  // Dia atual.
+  const hoje = horarios[DIAS[dia]];
+  if (hoje && !hoje.fechado && (!hoje.abre || !hoje.fecha)) return true; // aberto sem horário definido
+  const jHoje = janela(hoje);
+  if (jHoje) {
+    if (jHoje.fecha > jHoje.abre) {
+      if (min >= jHoje.abre && min < jHoje.fecha) return true; // janela no mesmo dia
+    } else {
+      if (min >= jHoje.abre) return true; // vira a noite: parte antes da meia-noite
+    }
+  }
+
+  // Cauda da madrugada: o dia ANTERIOR pode ter virado a noite (fecha <= abre).
+  const jOntem = janela(horarios[DIAS[(dia + 6) % 7]]);
+  if (jOntem && jOntem.fecha <= jOntem.abre && min < jOntem.fecha) return true;
+
+  return false;
+}
+
+// Próxima abertura a partir de agora (fuso BR), em texto curto p/ a variável
+// {proximaAbertura}: "hoje às *18:00*", "amanhã (sexta) às *08:00*" ou "sábado às *10:00*".
+// Varre os próximos 7 dias; "" se não houver nenhum dia aberto.
+function proximaAbertura(config) {
+  const horarios = config.horarios;
+  if (!horarios) return "";
+  const { dia, min } = agoraBR();
+  const LABEL = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  for (let d = 0; d < 7; d++) {
+    const j = janela(horarios[DIAS[(dia + d) % 7]]);
+    if (!j) continue;
+    if (d === 0 && min >= j.abre) continue; // hoje, mas o horário de abertura já passou
+    const hora = `*${String(Math.floor(j.abre / 60)).padStart(2, "0")}:${String(j.abre % 60).padStart(2, "0")}*`;
+    if (d === 0) return `hoje às ${hora}`;
+    if (d === 1) return `amanhã (${LABEL[(dia + 1) % 7]}) às ${hora}`;
+    return `${LABEL[(dia + d) % 7]} às ${hora}`;
+  }
+  return "";
 }
 
 // Texto do horário de funcionamento (mesmo formato do painel) p/ a variável {horario}
@@ -150,7 +211,10 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
   if (!aberto) {
     sessao.estado = "MENU";
     sessao.saudou = false;
-    return { respostas: [aplicar(config.mensagens.fechado, { horario: textoHorario(config) })] };
+    return { respostas: [aplicar(config.mensagens.fechado, {
+      horario: textoHorario(config),
+      proximaAbertura: proximaAbertura(config),
+    })] };
   }
 
   // Aberto. Primeiro contato da sessão → saudação + menu numerado (1/2).
