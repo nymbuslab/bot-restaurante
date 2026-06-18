@@ -79,7 +79,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - [x] Redesign visual completo (Nymbus Pedidos) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
 - [ ] Integração com sistemas de PDV / impressora de cupom
 - [ ] App mobile para o atendente receber pedidos
-- [ ] **Limpeza ativa de sessões abandonadas (bot)** — varredura periódica (`setInterval`) removendo sessões expiradas, no lugar da expiração lazy atual (que só limpa quando chega nova mensagem). Relevante só quando o volume de clientes simultâneos justificar — cruza com a nota de RAM por tenant no `PROGRESSO.md`.
+- [x] **Limpeza ativa de sessões abandonadas (bot)** — ✅ **concluído**: `sessoes.limparExpiradas()` varre o Map e descarta as sessões inativas há +30min, agendada a cada 10min no `index.js` (no lugar da expiração só-lazy, que nunca limpava conversa abandonada). Sem mudança de comportamento; só libera RAM. Ver `CHANGELOG.md` v0.24.0.
 - [ ] **Resiliência: sair de processo/máquina única** — hoje é **um processo Node numa máquina só**: se cai, cai para todos, e **todos os bots rodam no mesmo processo** (um crash afeta geral). Caminhos, em ordem: (1) supervisor que reinicia sozinho (PM2/systemd — já no `DEPLOY.md`); (2) redundância real (múltiplas instâncias com sessão/estado compartilhados — exige sair do SQLite local para **Postgres**); (3) isolamento de falha entre tenants. **Prematuro — só importa com volume**; levantado na revisão "crescer e vender".
 
 ---

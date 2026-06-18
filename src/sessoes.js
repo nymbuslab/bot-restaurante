@@ -39,6 +39,22 @@ function getSessao(chatId) {
   return s;
 }
 
+// Varredura ATIVA: descarta sessões inativas há mais de TEMPO_EXPIRA_MS. A
+// expiração do getSessao é lazy (só limpa quando a MESMA chave volta); conversa
+// abandonada nunca volta, então ficaria na memória pra sempre. Esta varredura
+// (agendada no index.js) recupera essa RAM. Deletar do Map durante a iteração é
+// seguro em JS. `agora` é injetável só para teste. Retorna quantas removeu.
+function limparExpiradas(agora = Date.now()) {
+  let removidas = 0;
+  for (const [chave, s] of sessoes) {
+    if (agora - s.atualizadoEm > TEMPO_EXPIRA_MS) {
+      sessoes.delete(chave);
+      removidas++;
+    }
+  }
+  return removidas;
+}
+
 // Limpa uma sessão APAGANDO por chave. Mantido para quem conhece a chave exata
 // (ex.: endpoint /api/simulador/reset). NÃO usar dentro do fluxo: lá a chave de
 // armazenamento (slug:jid) difere do chatId do canal — use limparSessao(sessao).
@@ -57,4 +73,4 @@ function limparSessao(sessao) {
   delete sessao.telefone;
 }
 
-module.exports = { getSessao, resetSessao, limparSessao };
+module.exports = { getSessao, resetSessao, limparSessao, limparExpiradas };

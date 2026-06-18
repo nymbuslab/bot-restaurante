@@ -14,6 +14,7 @@ require("dotenv").config();
 
 const servidor = require("./src/servidor");
 const { limparSessoesAntigas } = require("./src/wa-auth");
+const sessoes = require("./src/sessoes");
 const pedidos = require("./src/pedidos");
 const clientes = require("./src/clientes");
 const PORTA = process.env.PORT || 3000;
@@ -61,6 +62,20 @@ async function removerClientesInativos() {
 }
 setTimeout(removerClientesInativos, 60_000);             // 60s após o boot
 setInterval(removerClientesInativos, 24 * 60 * 60 * 1000); // a cada 24h
+
+// Higiene de memória: varre as sessões de conversa (em memória) e descarta as
+// inativas há +30min. A expiração do sessoes.js é lazy (só limpa quando a mesma
+// chave volta); conversa abandonada nunca volta, então ficaria na RAM. Barato
+// (itera um Map). A cada 10min (sessão expira em 30min → memória fica enxuta).
+function limparSessoesMemoria() {
+  try {
+    const n = sessoes.limparExpiradas();
+    if (n > 0) console.log(`🧹 Sessões em memória: ${n} inativa(s) descartada(s).`);
+  } catch (e) {
+    console.error("Limpeza de sessões em memória falhou (ignorado):", e.message);
+  }
+}
+setInterval(limparSessoesMemoria, 10 * 60 * 1000);   // a cada 10min
 
 // Impede que erros do bot/WhatsApp derrubem o servidor.
 // O bot pode travar ou cair; o painel continua no ar.

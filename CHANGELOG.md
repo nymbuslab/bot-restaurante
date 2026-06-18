@@ -284,3 +284,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Variável `{proximaAbertura}`** na mensagem de fechado (ex.: "Abrimos amanhã (sexta) às 08:00") — dá pra escrever um aviso curto em vez de listar a semana inteira.
 - **Link do cardápio mais limpo** no WhatsApp: agora é só `…/c/seu-restaurante`, sem o código comprido no fim. A confirmação do pedido usa o telefone informado no checkout.
 - **Painel não desloga mais sozinho:** a sessão é renovada automaticamente — o usuário deixa de cair na tela de login a cada ~1h.
+
+## [0.24.0] — Higiene de memória das conversas do bot
+
+- **Limpeza ativa de sessões abandonadas:** o bot passou a varrer periodicamente (a cada 10min) as conversas em memória e descartar as inativas há mais de 30min. Antes, uma conversa que o cliente abandonava ficava ocupando memória indefinidamente. Sem efeito visível pro usuário — só deixa o servidor mais leve e estável ao longo do tempo.
