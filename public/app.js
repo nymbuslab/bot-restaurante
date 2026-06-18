@@ -173,15 +173,129 @@ function lojaAbertaAgora(config) {
 // ============================================================
 document.querySelectorAll("nav button").forEach((btn) => {
   btn.addEventListener("click", () => {
+    // Saindo da aba Pedidos → some o destaque "NOVO" (cliente já viu os pedidos).
+    const saindoDePedidos = $("aba-pedidos").classList.contains("ativa") && btn.dataset.aba !== "pedidos";
+    if (saindoDePedidos) pedidosNovosDestaque.clear();
+
     document.querySelectorAll("nav button").forEach((b) => b.classList.remove("ativo"));
     document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
     btn.classList.add("ativo");
     $("aba-" + btn.dataset.aba).classList.add("ativa");
-    if (btn.dataset.aba === "pedidos") carregarPedidos();
+    if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
     if (btn.dataset.aba === "conexao") atualizarStatus();
     if (btn.dataset.aba === "assinatura") carregarAssinatura();
   });
 });
+
+// ============================================================
+// NOTIFICAÇÃO DE PEDIDO NOVO (polling 15s + som + badge + modal)
+// ============================================================
+const _slugPainel = sessionStorage.getItem("slug") || "";
+const CHAVE_PEDIDO_VISTO = "pedidoVisto:" + _slugPainel;
+let pedidoUltimoNumero = null;                                   // último nº conhecido (servidor)
+let pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0); // nº já visto pelo usuário
+const pedidosNovosDestaque = new Set();                          // nºs a marcar "NOVO" na lista
+let avisoPedidoAberto = false;
+
+// Som — respeita o toggle; navegadores bloqueiam autoplay até a 1ª interação,
+// então destravamos o áudio no primeiro clique/tecla.
+let somHabilitado = localStorage.getItem("somPedido") !== "off"; // default ligado
+let audioPedido = null, audioDestravado = false;
+try {
+  audioPedido = new Audio("/assets/notificacao-pedido.mp3");
+  audioPedido.preload = "auto";
+} catch (_) { /* sem áudio: badge/modal seguem funcionando */ }
+
+function destravarAudio() {
+  if (audioDestravado || !audioPedido) return;
+  audioPedido.play().then(() => {
+    audioPedido.pause(); audioPedido.currentTime = 0; audioDestravado = true;
+  }).catch(() => { /* navegador ainda bloqueou — tenta de novo na próxima interação */ });
+}
+document.addEventListener("click", destravarAudio);
+document.addEventListener("keydown", destravarAudio);
+
+function tocarSomPedido() {
+  if (!somHabilitado || !audioPedido) return;
+  try { audioPedido.currentTime = 0; audioPedido.play().catch(() => {}); } catch (_) {}
+}
+
+function atualizarBotaoSom() {
+  const b = $("btnSomPedido");
+  if (!b) return;
+  b.textContent = somHabilitado ? "🔔" : "🔕";
+  b.title = somHabilitado ? "Som de novo pedido: ligado" : "Som de novo pedido: desligado";
+  b.setAttribute("aria-pressed", String(somHabilitado));
+}
+if ($("btnSomPedido")) {
+  atualizarBotaoSom();
+  $("btnSomPedido").addEventListener("click", () => {
+    somHabilitado = !somHabilitado;
+    localStorage.setItem("somPedido", somHabilitado ? "on" : "off");
+    atualizarBotaoSom();
+    if (somHabilitado) tocarSomPedido(); // feedback ao religar
+  });
+}
+
+function atualizarBadgePedidos() {
+  const novos = pedidoUltimoNumero == null ? 0 : Math.max(0, pedidoUltimoNumero - pedidoVistoNumero);
+  const badge = $("badge-pedidos");
+  if (!badge) return;
+  badge.textContent = novos > 9 ? "9+" : String(novos);
+  badge.hidden = novos === 0;
+}
+
+// Marca tudo como visto (zera o badge da sidebar). Chamado ao abrir a aba Pedidos.
+function marcarPedidosVistos() {
+  if (pedidoUltimoNumero != null) {
+    pedidoVistoNumero = pedidoUltimoNumero;
+    localStorage.setItem(CHAVE_PEDIDO_VISTO, String(pedidoVistoNumero));
+  }
+  atualizarBadgePedidos();
+}
+
+async function abrirAvisoPedido(numero, cliente) {
+  if (avisoPedidoAberto) return;            // não empilha modais
+  avisoPedidoAberto = true;
+  const msg = `Pedido #${numero}${cliente ? " de " + cliente : ""} acabou de chegar.`;
+  const ir = await confirmar("🔔 Novo pedido!", msg, "Ver pedidos");
+  avisoPedidoAberto = false;
+  if (ir) {
+    const btn = document.querySelector("nav button[data-aba='pedidos']");
+    if (btn) btn.click();
+  }
+}
+
+async function checarPedidoNovo() {
+  const r = await api("GET", "/api/pedidos/ultimo");
+  if (!r) return;
+  const d = await r.json().catch(() => null);
+  const numero = d && d.numero ? Number(d.numero) : 0;
+
+  // 1ª checagem: estabelece a base sem alertar pedidos que já existiam.
+  if (pedidoUltimoNumero == null) {
+    pedidoUltimoNumero = numero;
+    if (pedidoVistoNumero === 0 || pedidoVistoNumero > numero) pedidoVistoNumero = numero;
+    if ($("aba-pedidos").classList.contains("ativa")) marcarPedidosVistos(); // já está na aba
+    atualizarBadgePedidos();
+    return;
+  }
+
+  if (numero > pedidoUltimoNumero) {
+    for (let n = pedidoUltimoNumero + 1; n <= numero; n++) pedidosNovosDestaque.add(n);
+    pedidoUltimoNumero = numero;
+    tocarSomPedido();
+    if ($("aba-pedidos").classList.contains("ativa")) {
+      carregarPedidos();        // atualiza a lista (linhas novas ganham "NOVO")
+      marcarPedidosVistos();    // estando na aba, o badge da sidebar fica zerado
+    } else {
+      abrirAvisoPedido(numero, d.cliente);  // modal só fora da aba Pedidos
+    }
+    atualizarBadgePedidos();
+  }
+}
+setTimeout(checarPedidoNovo, 3000);          // base logo após carregar
+setInterval(checarPedidoNovo, 15000);        // poll a cada 15s
 
 // Chip de teste grátis no header → abre a aba Assinatura.
 const _headerTrial = $("headerTrial");
@@ -1869,8 +1983,9 @@ function renderListaPedidos(lista) {
     <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Tipo</th><th class="col-total">Total</th>
     </tr></thead><tbody>`;
   pagina.forEach((p) => {
-    tabela += `<tr class="pedido-linha" data-id="${p.id}">
-      <td class="ped-num">#${p.numero}</td>
+    const novo = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
+    tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}" data-id="${p.id}">
+      <td class="ped-num">#${p.numero}${novo}</td>
       <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
       <td>${escapar(p.cliente)}</td>
       <td>${escapar(telefoneFmt(p))}</td>
@@ -1884,9 +1999,10 @@ function renderListaPedidos(lista) {
   let cards = `<div class="pedidos-cards">`;
   pagina.forEach((p) => {
     const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    cards += `<div class="pedido-card" data-id="${p.id}">
+    const novoC = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
+    cards += `<div class="pedido-card${novoC ? " pedido-card-novo" : ""}" data-id="${p.id}">
       <div class="pedido-card-topo">
-        <span class="pedido-card-num">#${p.numero} • ${hora}</span>
+        <span class="pedido-card-num">#${p.numero}${novoC} • ${hora}</span>
         ${tagTipo(p)}
       </div>
       <div class="pedido-card-cliente">${escapar(p.cliente)}</div>

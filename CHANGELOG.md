@@ -288,3 +288,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.24.0] — Higiene de memória das conversas do bot
 
 - **Limpeza ativa de sessões abandonadas:** o bot passou a varrer periodicamente (a cada 10min) as conversas em memória e descartar as inativas há mais de 30min. Antes, uma conversa que o cliente abandonava ficava ocupando memória indefinidamente. Sem efeito visível pro usuário — só deixa o servidor mais leve e estável ao longo do tempo.
+
+## [0.25.0] — Aviso de pedido novo no painel
+
+- **Notificação de pedido novo:** quando chega um pedido, o painel **toca um som**, mostra um **contador** no menu "Pedidos" e — se você estiver em outra tela — abre um **aviso na hora**. Já estando na tela de Pedidos, o pedido novo aparece destacado com uma etiqueta **"NOVO"**. Tem um botão **🔔/🔕** no topo pra ligar/desligar o som. (Verifica a cada ~15s.)

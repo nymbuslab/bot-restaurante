@@ -82,6 +82,17 @@ async function lerTodos(dir) {
   return r.rows.map(mapRow);
 }
 
+// Pedido mais recente (só nº + cliente) — consulta leve p/ o painel saber se
+// chegou pedido novo (polling de notificação). Retorna null se não há pedidos.
+async function ultimo(dir) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "SELECT numero, cliente FROM pedidos WHERE empresa_id = $1 ORDER BY id DESC LIMIT 1",
+    [empId]
+  );
+  return r.rows[0] || null;
+}
+
 async function lerPorId(dir, id) {
   const empId = await empresaId(dir);
   const r = await db.query("SELECT * FROM pedidos WHERE empresa_id = $1 AND id = $2", [empId, id]);
@@ -151,4 +162,4 @@ function esquecer(slug) {
   delete idCache[slug];
 }
 
-module.exports = { salvarPedido, lerTodos, lerPorId, avisarPedido, contarNoMes, anonimizarAntigos, fecharConexao, esquecer };
+module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, contarNoMes, anonimizarAntigos, fecharConexao, esquecer };

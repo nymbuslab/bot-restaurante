@@ -458,6 +458,36 @@ nav button svg {
 
 nav button.ativo svg { opacity: 1; }
 
+/* Badge de pedidos novos (sidebar/bottom-nav) */
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--error);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.nav-badge[hidden] { display: none; }
+
+/* Toggle de som de novo pedido (header) */
+.btn-som {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+}
+.btn-som:hover { opacity: 1; background: var(--bg-elevated); }
+
 /* Badge de contagem no nav */
 .nav-badge {
   background: var(--accent);
@@ -1608,6 +1638,24 @@ button:disabled {
 .pedido-card-rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .pedido-card-rodape .sub { margin: 0; }
 .pedido-card-total { font-weight: 700; color: var(--accent-fg); }
+
+/* Destaque "NOVO" em pedido recém-chegado */
+.ped-novo {
+  display: inline-block;
+  background: var(--error);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  vertical-align: middle;
+  animation: pulseNovo 1.4s ease-in-out infinite;
+}
+@keyframes pulseNovo { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.pedido-linha-novo { background: var(--error-subtle); }
+.pedido-card-novo { border-color: var(--error); }
+@media (prefers-reduced-motion: reduce) { .ped-novo { animation: none; } }
 
 table {
   width: 100%;

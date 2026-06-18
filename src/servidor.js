@@ -1081,6 +1081,17 @@ app.get("/api/pedidos", exigeAuth, async (req, res) => {
   }
 });
 
+// Último pedido (nº + cliente) — consulta leve p/ o polling de notificação do
+// painel detectar pedido novo sem baixar a lista inteira.
+app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
+  try {
+    const p = await pedidos.ultimo(req.tenantDir);
+    res.json(p || { numero: 0 });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao consultar pedidos." });
+  }
+});
+
 const MSG_PRONTO_PADRAO = {
   entrega:  "Olá, {cliente}! Seu pedido #{numero} está pronto e já saiu para entrega. Logo chega aí!",
   retirada: "Olá, {cliente}! Seu pedido #{numero} está pronto para retirada. Pode vir buscar quando quiser!",
