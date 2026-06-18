@@ -1,8 +1,9 @@
 // ============================================================
 // GERENCIADOR DE SESSÕES
 // Guarda o "estado" da conversa de cada cliente em memória.
-// Estados possíveis: INICIO, MENU, PEDINDO, QUANTIDADE, FINALIZANDO_NOME,
-//                    FINALIZANDO_ENTREGA, FINALIZANDO_PAGAMENTO, CONFIRMANDO
+// Estados possíveis: INICIO, MENU (atendimento automático) e ATENDENTE (humano).
+// O pedido em si é montado no cardápio web — a sessão só guarda o estado da
+// conversa e se o cliente já foi saudado (`saudou`).
 // Obs: ao reiniciar o bot, as sessões se perdem (estão em memória).
 //      Para produção, troque por Redis ou banco de dados.
 // ============================================================
@@ -15,9 +16,7 @@ const sessoes = new Map();
 function estadoInicial(agora) {
   return {
     estado: "INICIO",
-    carrinho: [], // [{ id, nome, preco, qtd }]
-    itemPendente: null, // item aguardando quantidade
-    pedido: {}, // { nome, tipoEntrega, endereco, pagamento }
+    saudou: false, // já recebeu a saudação + menu nesta sessão?
     atualizadoEm: agora,
   };
 }

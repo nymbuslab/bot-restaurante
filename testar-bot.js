@@ -43,7 +43,7 @@ function mostrarRespostas(respostas) {
 
 function mostrarStatus() {
   const s = getSessao(CHAT_ID);
-  console.log(`${CINZA}Estado: ${NEGRITO}${s.estado}${RESET}${CINZA} | Carrinho: ${s.carrinho.length} item(s)${RESET}`);
+  console.log(`${CINZA}Estado: ${NEGRITO}${s.estado}${RESET}${CINZA} | ${s.saudou ? "saudado" : "novo"}${RESET}`);
 }
 
 function prompt() {

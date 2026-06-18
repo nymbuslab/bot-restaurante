@@ -1111,13 +1111,7 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
   }
 });
 
-// ---- Simulador ----
-
-app.get("/api/simulador/status", exigeAuth, (req, res) => {
-  const sid = `sim:${req.slug}`;
-  const s = getSessao(sid);
-  res.json({ estado: s.estado, carrinho: s.carrinho });
-});
+// ---- Simulador (Prévia do atendimento) ----
 
 app.post("/api/simulador/mensagem", exigeAuth, async (req, res) => {
   try {

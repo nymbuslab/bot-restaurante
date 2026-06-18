@@ -39,7 +39,7 @@ Regras que valem em TODAS as telas:
 
 ## Navegação (travada em todas as telas)
 
-Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Configurações · Simulador**.
+Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Configurações · Prévia**.
 
 - Desktop: sidebar fixa à esquerda; item ativo em roxo (`--accent-fg` + indicador).
 - Mobile: bottom-nav com os mesmos 5 itens (rótulos com espaçamento — não colar).
@@ -126,9 +126,10 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 - **Limites:** QR **real preto/branco escaneavel** (nunca decorativo). Sem promessas de
   "alta velocidade/envio instantaneo".
 
-### 9. Simulador — CONCLUIDO
+### 9. Prévia do atendimento — CONCLUIDO
 - **Construir:** chat de teste do fluxo — balao do bot a esquerda (neutro), do usuario a
-  direita em roxo, campo de digitacao. Desktop = mesmo chat, mais largo.
+  direita em roxo, campo de digitacao. Desktop = mesmo chat, mais largo. Painel lateral
+  "Estado da conversa" mostra so a etapa (Menu/Atendente) — o pedido e feito no cardapio web.
 - **Dados:** usa o fluxo atual (equivalente ao `testar-bot.js` no painel).
 - **Limites:** sem console de dev (variaveis de contexto, JSON, latencia, "Conectar API",
   "Status da Entrega") — o usuario e dono de restaurante.
