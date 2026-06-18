@@ -74,6 +74,7 @@ function configInicial(nomeRestaurante) {
     mensagens: {
       boasVindas: "Olá! 👋 Bem-vindo(a) ao *{restaurante}*.",
       boasVindasRetorno: "Que bom te ver de novo, *{cliente}*! 👋",
+      despedida: "Atendimento encerrado. Quando quiser pedir de novo, é só mandar *oi*! 👋",
       fechado: "No momento estamos *fechados* 😴. Nosso horário é: {horario}.\n\nVolte mais tarde para fazer seu pedido!",
       atendente: "Tudo bem! Um de nossos atendentes vai continuar por aqui em instantes. 🧑‍🍳\n\n(Digite *menu* para voltar ao atendimento automático.)",
       pedidoConfirmado: "🎉 *Pedido confirmado!* Número *#{numero}*.\n\nJá estamos preparando. Tempo estimado: *{tempo}*.\nObrigado pela preferência! 🍴",

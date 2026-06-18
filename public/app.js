@@ -1267,6 +1267,7 @@ function preencherConfig() {
   $("cfgBoasVindasRetorno").value = c.mensagens.boasVindasRetorno || "";
   $("cfgFechado").value = c.mensagens.fechado || "";
   $("cfgAtendente").value = c.mensagens.atendente || "";
+  $("cfgDespedida").value = c.mensagens.despedida || "";
   $("cfgConfirmado").value = c.mensagens.pedidoConfirmado || "";
   $("cfgMsgProntoEntrega").value  = c.mensagens?.pedidoPronto?.entrega  || "";
   $("cfgMsgProntoRetirada").value = c.mensagens?.pedidoPronto?.retirada || "";
@@ -1417,6 +1418,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.mensagens.boasVindasRetorno = $("cfgBoasVindasRetorno").value;
   configAtual.mensagens.fechado = $("cfgFechado").value;
   configAtual.mensagens.atendente = $("cfgAtendente").value;
+  configAtual.mensagens.despedida = $("cfgDespedida").value;
   configAtual.mensagens.pedidoConfirmado = $("cfgConfirmado").value;
   if (!configAtual.mensagens.pedidoPronto) configAtual.mensagens.pedidoPronto = {};
   configAtual.mensagens.pedidoPronto.entrega  = $("cfgMsgProntoEntrega").value;

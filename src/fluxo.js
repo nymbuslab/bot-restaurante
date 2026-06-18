@@ -13,8 +13,14 @@ const store = require("./store");
 const cardapioWeb = require("./cardapio-web");
 const clientes = require("./clientes");
 
-// Fallback p/ tenants antigos sem `boasVindasRetorno` salvo na config.
+// Fallbacks p/ tenants antigos sem a mensagem salva na config.
 const MSG_RETORNO_PADRAO = "Que bom te ver de novo, *{cliente}*! 👋";
+const MSG_DESPEDIDA_PADRAO = "Atendimento encerrado. Quando quiser pedir de novo, é só mandar *oi*! 👋";
+
+// Palavras de navegação do atendimento automático.
+const CMD_VOLTAR = ["menu", "voltar", "0"];
+const CMD_SAIR = ["sair", "#sair", "encerrar"];
+const CMD_ATENDENTE = ["atendente", "humano"];
 
 // Só o primeiro nome deixa a saudação mais natural ("Pablo", não "Pablo Martins").
 function primeiroNome(nome) {
@@ -107,7 +113,7 @@ async function menuPrincipal(tenantDir, chatId, telefone = "") {
 function respostaPedido(tenantDir, chatId) {
   const link = linkCardapio(tenantDir, chatId);
   if (!link) return `🛒 Nosso cardápio digital está quase pronto. Volte em instantes!`;
-  return `Continue seu pedido no nosso cardápio 👇\n${link}\n\nÉ só montar o pedido e confirmar — ele chega aqui automaticamente. 😉\n\n_Precisa falar com uma pessoa? Digite *atendente*._`;
+  return `Continue seu pedido no nosso cardápio 👇\n${link}\n\nÉ só montar o pedido e confirmar — ele chega aqui automaticamente. 😉\n\n_Digite *menu* para voltar, *atendente* para falar com uma pessoa, ou *sair* para encerrar._`;
 }
 
 // ---------- Máquina de estados ----------
@@ -135,7 +141,7 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
   }
 
   // Atalho global para atendimento humano (palavra explícita, a qualquer momento).
-  if (["atendente", "humano"].includes(lower)) {
+  if (CMD_ATENDENTE.includes(lower)) {
     sessao.estado = "ATENDENTE";
     return { respostas: [config.mensagens.atendente] };
   }
@@ -154,12 +160,16 @@ async function processarMensagem(chatId, texto, sessao, tenantDir, telefone = ""
     return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
   }
 
-  // Já cumprimentado: trata a escolha do menu.
+  // Já cumprimentado: trata a escolha do menu e a navegação.
+  if (CMD_SAIR.includes(lower)) {
+    sessao.saudou = false; // próximo "oi" recomeça do menu
+    return { respostas: [config.mensagens.despedida || MSG_DESPEDIDA_PADRAO] };
+  }
   if (lower === "2") {
     sessao.estado = "ATENDENTE";
     return { respostas: [config.mensagens.atendente] };
   }
-  if (lower === "menu") {
+  if (CMD_VOLTAR.includes(lower)) {
     return { respostas: [await menuPrincipal(tenantDir, chatId, sessao.telefone)] };
   }
   // "1" ou qualquer outra coisa → manda o link do cardápio.
