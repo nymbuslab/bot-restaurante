@@ -63,7 +63,7 @@
       <section class="lp-termos-secao">
         <h2>2. Quais dados coletamos</h2>
         <p>2.1. <strong>Dados da conta do Cliente (estabelecimento).</strong> No cadastro e durante o uso, coletamos: nome do estabelecimento, e-mail de acesso, senha (armazenada de forma criptografada — nunca em texto puro), telefone e endereço do estabelecimento. Esses dados são informados pelo próprio Cliente.</p>
-        <p>2.2. <strong>Dados do Cliente Final (consumidor do estabelecimento).</strong> Durante um pedido pelo WhatsApp, a Plataforma registra os dados que o consumidor informa para concluir o pedido: nome, telefone/identificador da conversa no WhatsApp, endereço de entrega (quando aplicável), itens, observações e forma de pagamento escolhida. Esses dados pertencem ao Cliente (Controlador) e são tratados pela Nymbus Lab como Operadora.</p>
+        <p>2.2. <strong>Dados do Cliente Final (consumidor do estabelecimento).</strong> O pedido é feito no <strong>cardápio digital</strong> (página web acessível pelo link que o bot envia no WhatsApp). Para concluí-lo, a Plataforma registra os dados que o consumidor informa: nome, telefone, identificador da conversa no WhatsApp (quando o acesso ocorre pelo link enviado pelo bot), endereço de entrega (quando aplicável), itens, observações e forma de pagamento escolhida. Para <strong>reconhecer o consumidor que retorna e agilizar novos pedidos</strong>, a Plataforma também mantém um cadastro do Cliente Final (nome, telefone e identificador da conversa) e dos endereços de entrega já utilizados, reaproveitáveis em pedidos futuros. Esses dados pertencem ao Cliente (Controlador) e são tratados pela Nymbus Lab como Operadora.</p>
         <p>2.3. <strong>Dados técnicos e de conexão.</strong> Para manter o atendimento ativo, armazenamos os dados de sessão da conexão do WhatsApp do Cliente (credenciais técnicas geradas pela conexão). Não acessamos nem armazenamos o histórico de conversas do WhatsApp além do necessário para processar o pedido em andamento.</p>
         <p>2.4. <strong>Dados de pagamento.</strong> A cobrança da assinatura é processada por provedor de pagamentos terceirizado (Stripe). <strong>Os dados completos do cartão são coletados e armazenados diretamente pelo Stripe, não pela Nymbus Lab.</strong> Guardamos apenas identificadores da assinatura (ex.: identificador de cliente e de assinatura no provedor) e informações não sensíveis como bandeira e os quatro últimos dígitos, para exibição no painel.</p>
         <p>2.5. <strong>Minimização.</strong> Coletamos apenas o necessário à prestação do serviço. Não solicitamos dados sensíveis (origem racial, saúde, biometria etc.) e pedimos ao Cliente que não cadastre esse tipo de informação na Plataforma.</p>
@@ -88,6 +88,7 @@
         <ul>
           <li><strong>Supabase</strong> — infraestrutura de banco de dados, autenticação e armazenamento de arquivos (imagens do cardápio);</li>
           <li><strong>Stripe</strong> — processamento de pagamentos da assinatura;</li>
+          <li><strong>ViaCEP</strong> — consulta de CEP para completar o endereço de entrega no cardápio digital; enviamos apenas o CEP informado (dado postal público), nunca dados pessoais do consumidor;</li>
           <li><strong>Provedores de hospedagem em nuvem</strong> — execução da aplicação.</li>
         </ul>
         <p>4.2. Também poderemos compartilhar dados quando exigido por lei, regulamento ou ordem judicial, ou para proteção de direitos, segurança e integridade da Plataforma e de seus usuários.</p>
@@ -98,8 +99,9 @@
         <h2>5. Por quanto tempo guardamos</h2>
         <p>5.1. <strong>Dados da conta do Cliente:</strong> mantidos enquanto a conta estiver ativa. Após o encerramento, os dados da conta são eliminados, ressalvados aqueles cuja guarda seja exigida por lei (ex.: registros fiscais e de transações) ou necessários ao exercício regular de direitos.</p>
         <p>5.2. <strong>Dados de pedidos (Cliente Final):</strong> os dados pessoais contidos nos pedidos (nome, telefone, endereço de entrega) são <strong>anonimizados automaticamente após 12 (doze) meses</strong> — preservamos apenas informações não pessoais do pedido (número, itens, valores e datas) para fins de histórico e contabilidade. O Cliente, como Controlador, também pode solicitar a anonimização ou eliminação antecipada desses dados.</p>
-        <p>5.3. <strong>Dados de sessão do WhatsApp:</strong> sessões inativas são removidas automaticamente após 90 (noventa) dias de inatividade.</p>
-        <p>5.4. <strong>Exclusão da conta:</strong> ao excluir uma conta, removemos os dados cadastrais, os pedidos vinculados, os dados de sessão do WhatsApp e as imagens armazenadas, conforme descrito na Cláusula 7.</p>
+        <p>5.3. <strong>Cadastro do Cliente Final e endereços salvos:</strong> o cadastro do consumidor (nome, telefone, identificador da conversa) e os endereços de entrega reaproveitáveis são <strong>excluídos automaticamente após 12 (doze) meses sem novos pedidos</strong>. A consulta de CEP é guardada apenas como cache técnico do dado postal público (CEP → logradouro/bairro/cidade/UF), sem vínculo com qualquer consumidor.</p>
+        <p>5.4. <strong>Dados de sessão do WhatsApp:</strong> sessões inativas são removidas automaticamente após 90 (noventa) dias de inatividade.</p>
+        <p>5.5. <strong>Exclusão da conta:</strong> ao excluir uma conta, removemos os dados cadastrais, os pedidos vinculados, o cadastro de Clientes Finais e seus endereços, os dados de sessão do WhatsApp e as imagens armazenadas, conforme descrito na Cláusula 7.</p>
       </section>
 
       <section class="lp-termos-secao">
