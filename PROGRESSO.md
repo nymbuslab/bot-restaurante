@@ -4,21 +4,19 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-18 13:35**
+**Checkpoint salvo em 2026-06-18 16:58**
 
 ### Feito nesta sessão
-- Tudo commitado e em `origin/main` (working tree limpo). Detalhe de cada item em ✅ Concluído. Resumo:
-- **Bot/horário:** fix do fuso BR + virada de noite + variável `{proximaAbertura}`; mensagem de fechado curta.
-- **Cardápio web:** link limpo `/c/:slug` (sem token); secrets `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` no Fly (deploy **v28** feito durante a sessão).
-- **Notificação de pedido novo:** poll 15s + som (toggle 🔔/🔕) + badge + **modal rico** (cliente/itens/total) + tag NOVO; rota `/api/pedidos/ultimo`. Validado E2E (Playwright).
-- **Auth:** "Manter conectado" + sessão segura por **cookie httpOnly** (refresh token no cookie, access token em memória). Validado E2E. Antes nesta sessão: renovação de sessão, higiene de sessões abandonadas, auditoria + E2E de isolamento multi-tenant.
-- **Docs:** ROADMAP padronizado com `[x]`/`[ ]`; `assets/` + `docs/cardapio/` versionados; CHANGELOG até **[0.26.0]**.
+- Tudo commitado e em `origin/main` (working tree limpo, fora `docs/frete-por-raio-cep-viacep-geoapify.md` não rastreado — não é desta sessão). Detalhe em ✅ Concluído. Resumo:
+- **Cardápio web — categorias visíveis + aba "Todos"** (`public/cardapio.js`): título de seção sempre que o grupo tem nome + aba "Todos" (padrão) empilhando todas as categorias; barra aparece com ≥1 categoria. Validado E2E (Playwright, Sabor D'Casa). Commit `529af61`.
+- **Auto-login: logado + "lembrar" cai direto no painel** (login.html e landing): cookie de presença `sess` (não-httpOnly, legível) decide se chama `/api/refresh`; 200 → painel, 401 → limpa e mostra a página. Backend em `src/servidor.js` (helpers de cookie). Commit `18094cb`.
+- **Auto-redirect espelha o login** (onboarding): `/api/refresh` devolve `onboardingConcluido` (`empresas.renovarSessao`); incompleto → `cadastro.html`, completo → `admin.html`. Validado E2E nos dois caminhos. Commit `e8f0b19`.
 
 ### Em meio de edição
 - Nada — working tree limpo, tudo commitado/pushado.
 
 ### Próximo passo
-- Rodar **`fly deploy`** (você fará pelo terminal) p/ subir tudo da sessão à produção e, depois, **reconectar o bot** na aba Conexão (restore-no-boot ainda não existe).
+- Rodar **`fly deploy`** (você faz pelo terminal) p/ subir as entregas pendentes à produção: cardápio "Todos" + auto-login + espelho de onboarding (sessão anterior) **+ nome do plano "Plano Essencial"** (`bed11b7`). Em produção o comportamento de login/landing e o nome do plano só mudam após o deploy. Depois, **reconectar o bot** na aba Conexão (restore-no-boot ainda não existe).
 
 ### Decisões pendentes
 - **(P1) Restaurar o bot no boot** (em Próximos Passos) — evita reconectar manualmente após restart/deploy.
@@ -34,7 +32,7 @@
 ### Pendências operacionais (standing)
 
 - **(produto) Pedido de teste #3** no `sabor-d-casa` pode ser apagado pelo painel (resíduo do cardápio web; `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` já setados e no ar na v28).
-- **(produto) Go-live do Stripe (teste → produção):** hoje o app roda na **Área restrita (teste)** do Stripe e **nenhum webhook está cadastrado** (eventos de assinatura — cancelamento/falha/renovação — não sincronizam). Ao distribuir a plataforma, seguir o **checklist de go-live** em [docs/assinatura-stripe.md](docs/assinatura-stripe.md): criar produto/preço + chaves `live`, cadastrar o webhook em produção apontando pra `https://pedidos.nymbuslab.com.br/api/stripe/webhook`, trocar os 4 secrets do Stripe no Fly e testar com cartão real. Não bloqueia nada enquanto pré-lançamento.
+- **(produto) Stripe go-live: FEITO (2026-06-18)** — em produção (live), cobrando de verdade. Detalhe em ✅ Concluído. **Resta só** o teste de ponta a ponta com **cartão real** (cadastro → checkout → `trialing`/`active` + conferir entrega dos eventos no webhook) e estornar.
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.
 - **(jurídico) Revisão dos textos legais:** Termos e Privacidade já refletem o novo fluxo (cardápio web), mas seguem merecendo revisão de um advogado antes de oficializar (limite de responsabilidade, prazo de retenção, figura do DPO).
@@ -138,3 +136,4 @@
 - [x] **Correção do CI de deploy + documentação** — removido o workflow de deploy automático do Fly (`fly-deploy.yml`), que falhava a cada push por falta do segredo `FLY_API_TOKEN` (o deploy é manual via `fly deploy`) → pararam os e-mails de falha; `test.yml` (CI de testes) atualizado para `checkout@v5`/`setup-node@v5`; `DEPLOY.md` ganhou a seção "Deploy automático (CI) — opcional" com o passo a passo pra ligar quando quiser. — 2026-06-16
 - [x] **README modernizado** — atualizado ao estado atual: Node 22 (não 20), modelo pago/Stripe + aba Assinatura, `.env` completo (super-admin + Stripe + suporte), seção de testes (`npm test`/`check` + CI), marca Nymbus Pedidos, abas do painel e árvore de arquivos; `.env.example` corrigido (hash master SHA-256 → bcrypt). — 2026-06-16
 - [x] **Domínio próprio `pedidos.nymbuslab.com.br`** — subdomínio criado na Hostinger (CNAME `pedidos` → `bot-restaurante.fly.dev`) + `fly certs add` (Let's Encrypt, `Status = Issued`, HTTPS automático gerenciado pelo Fly). App responde no domínio novo (HTTP 200 + TLS OK); o `.fly.dev` segue funcionando em paralelo. **Sem mudança de código** — `success_url`/`return_url` do Stripe derivam do host (`baseUrlDe` em `src/servidor.js`). Passo a passo registrado em [DEPLOY.md](DEPLOY.md) (seção *Domínio próprio*). Stripe: na auditoria descobriu-se que **não há webhook cadastrado** e o app roda em **Área restrita (teste)** → migração do webhook/chaves vira o **checklist de go-live** (ver Próximos Passos + [docs/assinatura-stripe.md](docs/assinatura-stripe.md)). — 2026-06-16
+- [x] **Stripe em produção (go-live)** — saiu da Área restrita (sandbox) e foi pra **produção (live)**, cobrando de verdade. Produto **"Plano Essencial"** (`prod_UjIR38QCFMhn9E` / `price_1Tjpqo...`, **R$ 79,00 · mensal · BRL**, livemode confirmado via API antes de aplicar). **Webhook live criado** (`we_1TjrFC...`, status `enabled`, 6 eventos → `https://pedidos.nymbuslab.com.br/api/stripe/webhook`); o `whsec` foi capturado na criação e aplicado direto no Fly **sem trafegar em texto**. **4 secrets** (`STRIPE_SECRET_KEY`/`PUBLISHABLE_KEY`/`PRICE_ID`/`WEBHOOK_SECRET`) trocados pelas versões live via `fly secrets set` → redeploy OK. Verificado: secrets `Deployed`, webhook responde **400** a POST não assinado (rota viva + verificação de assinatura ativa). **Nome do plano** no front trocado de "Plano Nymbus Pedidos" → **"Plano Essencial"** ([admin.html](public/admin.html)/[checkout.html](public/checkout.html), commit `bed11b7`) — preparando o terreno pro 2º plano. ⚠️ a mudança de nome **exige `fly deploy`** pra aparecer em produção (ainda não deployada por escolha do usuário). **Pendente:** teste com cartão real. Doc atualizado em [docs/assinatura-stripe.md](docs/assinatura-stripe.md). — 2026-06-18

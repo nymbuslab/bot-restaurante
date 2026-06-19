@@ -77,11 +77,12 @@ Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KE
 O Stripe novo tem **três ambientes isolados**, que **não compartilham** produtos, preços, clientes
 nem webhooks:
 
-1. **Área restrita (Sandbox)** — ambiente de teste isolado. **É onde o app roda hoje.** As chaves
-   `sk_test`/`pk_test` do `.env` (e dos secrets do Fly) pertencem a esta área restrita, junto do
-   produto **"Nymbus Pedidos - Assinatura"** (`price_..._09kFv0`, R$ 79,00/mês).
+1. **Área restrita (Sandbox)** — ambiente de teste isolado. Usado no **`.env` local** (dev), com as
+   chaves `sk_test`/`pk_test`. **Não é mais o que roda em produção.**
 2. **Modo de teste** (clássico) — outro ambiente de teste, **vazio** (não usado).
-3. **Produção (Live)** — cobrança real, **vazio** até o go-live.
+3. **Produção (Live)** — **É onde o app roda em produção desde 2026-06-18** (go-live feito). Os
+   secrets do **Fly** são as chaves `sk_live`/`pk_live`, com o produto **"Plano Essencial"**
+   (`prod_UjIR38QCFMhn9E` / `price_1Tjpqo2OKIQsz5AIqYw0XpcZ`, R$ 79,00/mês) e o webhook live ativo.
 
 > O botão de modo no dashboard é só uma **lente de visualização** — alternar entre os ambientes
 > não cria, apaga nem cobra nada. O que decide se há cobrança real é **qual chave está rodando no
@@ -89,15 +90,18 @@ nem webhooks:
 
 ## Webhook: estado atual
 
-**Nenhum webhook está cadastrado** em nenhum ambiente (verificado por `stripe webhook_endpoints
-list`). Ou seja, eventos de ciclo de assinatura (cancelamento, falha de pagamento, renovação) **não
-estão sincronizando** — o `STRIPE_WEBHOOK_SECRET` atual (Fly/`.env`) é provável resíduo de
-`stripe listen`. Cadastrar o webhook faz parte do go-live abaixo. (Em dev local, o caminho normal é
-`stripe listen --forward-to localhost:3000/api/stripe/webhook`, que gera o `whsec` de sessão.)
+**Produção (live): webhook ativo** — `we_1TjrFC...` (`enabled`), apontando para
+`https://pedidos.nymbuslab.com.br/api/stripe/webhook` com os 6 eventos do checklist abaixo. O
+`STRIPE_WEBHOOK_SECRET` no Fly é o signing secret desse endpoint. Eventos de ciclo de assinatura
+(renovação, falha, cancelamento) **sincronizam**.
 
-## Go-live (teste → produção) — checklist
+> **Dev local:** o caminho normal segue sendo `stripe listen --forward-to
+> localhost:3000/api/stripe/webhook`, que gera um `whsec` de sessão (sandbox) — separado do webhook
+> de produção.
 
-Fazer **só quando for distribuir a plataforma e cobrar de verdade**. Passos:
+## Go-live (teste → produção) — checklist ✅ CONCLUÍDO em 2026-06-18
+
+Mantido como referência (e para repetir ao criar um 2º plano / migrar de domínio). Passos:
 
 1. **Criar o produto/preço em Produção** (Live) — espelhar "Nymbus Pedidos - Assinatura", R$ 79/mês.
    Anotar o novo `price_live_...`.
