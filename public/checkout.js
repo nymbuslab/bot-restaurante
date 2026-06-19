@@ -1,5 +1,20 @@
-const token = sessionStorage.getItem("token");
-if (!token) { location.href = "login.html"; }
+// Sessão segura (v0.26.0+): o access token vive só em memória, obtido do cookie
+// httpOnly via /api/refresh — NÃO mais do sessionStorage (que ficava sempre vazio
+// numa página nova como esta, causando loop checkout→login→painel).
+let token = null;
+
+async function bootSessao() {
+  try {
+    const r = await fetch("/api/refresh", { method: "POST" }); // cookie httpOnly vai junto
+    if (!r.ok) { location.href = "login.html"; return false; }
+    const d = await r.json();
+    token = d.token;
+    return true;
+  } catch (e) {
+    location.href = "login.html";
+    return false;
+  }
+}
 
 const form = document.getElementById("co-form");
 const btn  = document.getElementById("co-btn");
@@ -91,4 +106,5 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-init();
+// Boot: garante o token via /api/refresh antes de montar o checkout.
+bootSessao().then(function (ok) { if (ok) init(); });
