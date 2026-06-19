@@ -227,7 +227,7 @@ async function resolverPorToken(token) {
 
 async function buscarPorSlug(slug) {
   const r = await db.query(
-    `SELECT id, user_id, slug, nome, email, ativo, criado_em,
+    `SELECT id, user_id, slug, nome, email, ativo, criado_em, plano,
             assinatura_status        AS "assinaturaStatus",
             trial_ate                AS "trialAte",
             proxima_cobranca         AS "proximaCobranca",
@@ -253,7 +253,7 @@ async function buscarPorStripeCustomer(stripeCustomerId) {
 
 async function listar() {
   const r = await db.query(
-    `SELECT slug, nome, email, ativo, criado_em AS "criadoEm",
+    `SELECT slug, nome, email, ativo, criado_em AS "criadoEm", plano,
             assinatura_status AS "assinaturaStatus",
             trial_ate         AS "trialAte",
             proxima_cobranca  AS "proximaCobranca"
@@ -276,6 +276,7 @@ async function atualizarAssinatura(slug, dados = {}) {
     proximaCobranca:      "proxima_cobranca",
     stripeCustomerId:     "stripe_customer_id",
     stripeSubscriptionId: "stripe_subscription_id",
+    plano:                "plano",
   };
   const sets = [];
   const vals = [];
@@ -303,6 +304,18 @@ function podeLogar(emp) {
 
 function acessoLiberado(emp) {
   return !!emp && !!emp.ativo && STATUS_LIBERADOS.includes(emp.assinaturaStatus);
+}
+
+// ---- Plano comercial (essencial | completo) ----
+// `plano` é gravado pelo webhook do Stripe (ver src/stripe.js). Default essencial.
+function planoDe(emp) {
+  return (emp && emp.plano) || "essencial";
+}
+
+// Porteiro do frete por raio (feature do Plano Completo): exige acesso liberado
+// E plano completo. Fonte ÚNICA da decisão dessa feature por plano.
+function temFreteRaio(emp) {
+  return acessoLiberado(emp) && planoDe(emp) === "completo";
 }
 
 // ---- Conta de acesso (e-mail/senha no Supabase Auth) ----
@@ -390,6 +403,6 @@ async function excluir(slug) {
 module.exports = {
   cadastrar, autenticar, renovarSessao, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, hashSenha, verificarSenhaMaster, slugBase,
-  atualizarAssinatura, podeLogar, acessoLiberado,
+  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio,
   trocarSenha, trocarEmail, conferirSenha,
 };

@@ -4,9 +4,14 @@
 
 ## 🔄 Em Andamento
 
-_(nada em andamento — tudo commitado, pushado e **deployado** em produção em 2026-06-18)_
+**Feature: Planos (Essencial × Completo) + Frete por raio** — spec aprovado em
+[docs/planos-e-frete.md](docs/planos-e-frete.md). 4 fases, 1 por vez.
 
-> **Restauração no boot implementada** (commit abaixo) — a partir do **próximo `fly deploy`**, os bots conectados voltam sozinhos (sem QR). Antes desse deploy, ainda é preciso reconectar manual na aba Conexão.
+- [x] **Parte 1 — Infra de planos (fundação)** — coluna `plano` em `empresas` (migration aplicada; default `essencial`, ambos os tenants confirmados no banco), módulo puro `src/planos.js` (`PLANO_INFO` + `planoDoPrice`), webhook (`stripe.js` `aplicarSubscription`) grava o plano pelo preço, helpers `empresas.planoDe`/`temFreteRaio` (porteiro de features), `GET /api/assinatura` devolve `plano`/`planoNome`/`valorMes`, e o painel exibe nome+valor **dinâmicos** (não mais fixos). `.env.example` ganhou `STRIPE_PRICE_ID_COMPLETO`. Validado: `npm test` 39/39 (5 novos) + check + banco. **Sem efeito visual ainda** (todos Essencial → painel igual). ⚠️ não deployado; exige setar `STRIPE_PRICE_ID_COMPLETO` no Fly no deploy.
+- [ ] **Parte 2** — aba "Entrega" em Configurações + mover frete fixo (raio com cadeado pro Essencial).
+- [ ] **Parte 3** — frete por raio (Geoapify + Haversine), gated pro Completo (setar `GEOAPIFY_API_KEY` no Fly).
+- [ ] **Parte 4** — escolher plano no cadastro + upgrade/downgrade na Assinatura (proration Stripe).
+
 > **Aguardando você:** teste do Stripe com **cartão real** (cadastro → checkout → `trialing`/`active` + conferir eventos no webhook) e estornar.
 
 ## 📋 Próximos Passos

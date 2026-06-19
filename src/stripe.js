@@ -15,11 +15,20 @@
 const Stripe = require("stripe");
 const empresas = require("./empresas");
 const multiBot = require("./multi-bot");
+const { PLANO_INFO, planoDoPrice } = require("./planos");
 
 const SECRET = process.env.STRIPE_SECRET_KEY || "";
-const PRICE_ID = process.env.STRIPE_PRICE_ID || "";
+const PRICE_ID = process.env.STRIPE_PRICE_ID || "";                       // Plano Essencial
+const PRICE_ID_COMPLETO = process.env.STRIPE_PRICE_ID_COMPLETO || "";     // Plano Completo
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || ""; // público, vai pro front
+
+// Mapa price_id → plano (essencial|completo), resolvido com os preços do .env.
+function planoDeSubscription(sub) {
+  const priceId = sub && sub.items && sub.items.data && sub.items.data[0]
+    && sub.items.data[0].price && sub.items.data[0].price.id;
+  return planoDoPrice(priceId, { essencial: PRICE_ID, completo: PRICE_ID_COMPLETO });
+}
 
 // Sem chave + preço, as rotas de assinatura respondem 503 (igual ao super-admin).
 const CONFIGURADO = Boolean(SECRET && PRICE_ID);
@@ -271,13 +280,17 @@ async function aplicarSubscription(slug, sub, customerId) {
   const status = mapStatus(sub.status);
   const periodEnd = sub.current_period_end
     || (sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].current_period_end);
-  await empresas.atualizarAssinatura(slug, {
+  const dados = {
     status,
     stripeSubscriptionId: sub.id,
     stripeCustomerId: customerId,
     trialAte: paraISO(sub.trial_end),
     proximaCobranca: paraISO(periodEnd),
-  });
+  };
+  // Plano vem do preço da assinatura; só grava se reconhecido (não rebaixa por engano).
+  const plano = planoDeSubscription(sub);
+  if (plano) dados.plano = plano;
+  await empresas.atualizarAssinatura(slug, dados);
   // Sem acesso → derruba o bot (a religação é manual pelo painel quando reativar).
   if (status === "past_due" || status === "canceled" || status === "nenhuma") {
     await multiBot.desconectar(slug).catch(() => {});
@@ -331,7 +344,7 @@ async function tratarEvento(event) {
 }
 
 module.exports = {
-  stripe, CONFIGURADO, PRICE_ID, PUBLISHABLE_KEY,
+  stripe, CONFIGURADO, PRICE_ID, PRICE_ID_COMPLETO, PUBLISHABLE_KEY, PLANO_INFO, planoDoPrice,
   criarCheckout, criarPortal, verificarEvento, tratarEvento,
   listarFaturas, cancelarAssinatura, pausarAssinatura, retomarAssinatura,
   garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup,

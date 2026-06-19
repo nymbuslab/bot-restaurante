@@ -402,6 +402,14 @@ function renderAssinatura(a) {
   badge.textContent = texto;
   badge.className = "assin-badge " + cls;
 
+  // Nome e valor do plano vêm da API (não fixos no HTML) — refletem Essencial/Completo.
+  const valorMes = a.valorMes || 79;
+  const valorTxt = "R$ " + valorMes.toFixed(2).replace(".", ",");
+  const nomeEl = $("assinPlanoNome");
+  if (nomeEl && a.planoNome) nomeEl.textContent = a.planoNome;
+  const valorEl = $("assinPlanoValor");
+  if (valorEl) valorEl.textContent = valorTxt;
+
   // Próximo vencimento no card do plano (trial → fim do teste; ativa → próxima cobrança).
   const venc = $("assinVencimento");
   if (venc) {
@@ -426,9 +434,9 @@ function renderAssinatura(a) {
 
   if (a.status === "trialing") {
     const d = diasRestantes(a.trialAte);
-    info.innerHTML = `Seu teste grátis termina em <strong>${d} dia${d === 1 ? "" : "s"}</strong> (${fmtDataAssin(a.trialAte)}). Depois disso a cobrança de <strong>R$ 79,00/mês</strong> é automática no cartão cadastrado.`;
+    info.innerHTML = `Seu teste grátis termina em <strong>${d} dia${d === 1 ? "" : "s"}</strong> (${fmtDataAssin(a.trialAte)}). Depois disso a cobrança de <strong>${valorTxt}/mês</strong> é automática no cartão cadastrado.`;
   } else if (a.status === "active") {
-    info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · R$ 79,00/mês.`;
+    info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · ${valorTxt}/mês.`;
   } else if (a.status === "cortesia") {
     info.innerHTML = `Acesso liberado pela equipe <strong>Nymbus Lab</strong> (cortesia). Você usa o sistema <strong>sem cobrança</strong> — não é necessário cadastrar cartão.`;
   } else if (a.status === "past_due") {

@@ -349,11 +349,16 @@ app.get("/api/assinatura", exigeAuth, async (req, res) => {
     if (emp.stripeCustomerId && stripeBilling.CONFIGURADO) {
       faturas = await stripeBilling.listarFaturas(emp.stripeCustomerId).catch(() => []);
     }
+    const plano = empresas.planoDe(emp);
+    const info = stripeBilling.PLANO_INFO[plano] || stripeBilling.PLANO_INFO.essencial;
     res.json({
       status: emp.assinaturaStatus,
       trialAte: emp.trialAte,
       proximaCobranca: emp.proximaCobranca,
       acessoLiberado: empresas.acessoLiberado(emp),
+      plano,
+      planoNome: info.nome,
+      valorMes: info.valorMes,
       faturas,
     });
   } catch (e) {
