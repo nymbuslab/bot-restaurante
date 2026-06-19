@@ -944,6 +944,7 @@ app.get("/api/admin/tenants/:slug/assinatura", exigeSuperAdmin, async (req, res)
     res.json({
       slug: emp.slug, nome: emp.nome, email: emp.email, criadoEm: emp.criado_em,
       ativo: !!emp.ativo,
+      plano: empresas.planoDe(emp),
       assinaturaStatus: emp.assinaturaStatus,
       trialAte: emp.trialAte,
       proximaCobranca: emp.proximaCobranca,
@@ -956,6 +957,29 @@ app.get("/api/admin/tenants/:slug/assinatura", exigeSuperAdmin, async (req, res)
   } catch (e) {
     console.error("admin assinatura:", e.message);
     res.status(500).json({ erro: "Falha ao carregar a assinatura." });
+  }
+});
+
+// Troca o plano do tenant (Essencial <-> Completo). Com assinatura viva no Stripe,
+// troca o preço lá (proration); senão (cortesia/sem Stripe), só ajusta a coluna.
+app.patch("/api/admin/tenants/:slug/plano", exigeSuperAdmin, async (req, res) => {
+  const slug = req.params.slug;
+  const plano = req.body && req.body.plano;
+  if (plano !== "essencial" && plano !== "completo") return res.status(400).json({ erro: "Plano inválido." });
+  const emp = await empresas.buscarPorSlug(slug);
+  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+  if (empresas.planoDe(emp) === plano) return res.json({ ok: true, plano, jaNoPlano: true });
+  try {
+    const temStripeVivo = emp.stripeSubscriptionId && ["trialing", "active", "past_due"].includes(emp.assinaturaStatus);
+    if (temStripeVivo && stripeBilling.CONFIGURADO) {
+      await stripeBilling.trocarPlano(slug, emp.stripeSubscriptionId, plano); // proration + aplica plano
+    } else {
+      await empresas.atualizarAssinatura(slug, { plano }); // override (cortesia / sem Stripe)
+    }
+    res.json({ ok: true, plano });
+  } catch (e) {
+    console.error("admin trocar plano:", e.message);
+    res.status(500).json({ erro: "Não foi possível trocar o plano." });
   }
 });
 

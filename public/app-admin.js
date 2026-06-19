@@ -389,6 +389,7 @@ function renderTenants() {
 // MODAL DE GESTÃO DE UM RESTAURANTE (assinatura + ações + faturas)
 // ============================================================
 let tenantAtual = null; // slug do restaurante aberto no modal
+let planoTenantAtual = "essencial"; // plano do tenant aberto (p/ a ação de troca)
 
 function abrirOverlay(id) {
   const ov = $(id);
@@ -480,6 +481,8 @@ function renderTenantModal(d) {
   $("am-t-email").textContent = d.email || "";
 
   const st = d.assinaturaStatus || "nenhuma";
+  planoTenantAtual = d.plano === "completo" ? "completo" : "essencial";
+  const planoNomeAtual = planoTenantAtual === "completo" ? "Plano Completo" : "Plano Essencial";
 
   // Linha de detalhe da assinatura (trial / próxima cobrança).
   let detalheAssin = "";
@@ -513,6 +516,10 @@ function renderTenantModal(d) {
         <span class="am-t-valor">${planoBadge(st)}</span>
       </div>
       <div class="am-t-linha">
+        <span class="am-t-rotulo">Plano</span>
+        <span class="am-t-valor">${planoNomeAtual}</span>
+      </div>
+      <div class="am-t-linha">
         <span class="am-t-rotulo">Detalhe</span>
         <span class="am-t-valor am-t-detalhe">${escapar(detalheAssin)}</span>
       </div>
@@ -532,6 +539,9 @@ function renderTenantModal(d) {
 
   // Ações disponíveis.
   const botoes = [];
+  // Trocar de plano (Essencial <-> Completo). Com Stripe vivo aplica proration; senão é override.
+  const outroPlano = planoTenantAtual === "completo" ? "Essencial" : "Completo";
+  botoes.push(`<button class="secundario mini" data-acao="trocarplano">Mudar para Plano ${outroPlano}</button>`);
   if (st === "cortesia") {
     botoes.push(`<button class="secundario mini" data-acao="revogar">Revogar cortesia</button>`);
   } else {
@@ -570,6 +580,7 @@ function renderTenantModal(d) {
 async function acaoGerenciar(acao) {
   const slug = tenantAtual;
   if (!slug) return;
+  if (acao === "trocarplano") return trocarPlanoTenant(slug);
   if (acao === "cortesia")  return liberarCortesia(slug);
   if (acao === "revogar")   return revogarCortesia(slug);
   if (acao === "cancelar")  return cancelarAssinatura(slug);
@@ -591,6 +602,24 @@ async function liberarCortesia(slug) {
     await aposAcaoTenant();
   } catch (e) {
     if (e.message !== "Sessão expirada") toast("Erro ao liberar acesso.", "erro");
+  }
+}
+
+async function trocarPlanoTenant(slug) {
+  const destino = planoTenantAtual === "completo" ? "essencial" : "completo";
+  const nome = destino === "completo" ? "Plano Completo (R$ 99/mês)" : "Plano Essencial (R$ 79/mês)";
+  const ok = await confirmar(
+    "Trocar de plano",
+    `Mudar "${slug}" para o ${nome}? Com assinatura ativa no Stripe, o valor é ajustado proporcionalmente; em cortesia/sem Stripe, a troca é imediata e sem cobrança.`,
+    "Trocar plano"
+  );
+  if (!ok) return;
+  try {
+    await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/plano`, { plano: destino });
+    toast("Plano atualizado.");
+    await aposAcaoTenant();
+  } catch (e) {
+    if (e.message !== "Sessão expirada") toast("Erro ao trocar o plano.", "erro");
   }
 }
 
