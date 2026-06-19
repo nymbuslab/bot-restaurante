@@ -59,6 +59,15 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+// ---- Health check (vivacidade) — usado pelo Fly para reciclar a máquina ----
+// Público, sem auth, trabalho mínimo: prova que o processo responde (event loop
+// vivo + servidor ouvindo). NÃO checa o Supabase de propósito — se o banco cair,
+// reiniciar não resolve e só causaria restart em loop; o app deve seguir de pé
+// esperando o banco voltar. Registrado cedo, fora de rate limit/auth.
+app.get("/health", (req, res) => {
+  res.json({ ok: true, uptime: Math.round(process.uptime()) });
+});
+
 // ---- Rate limiting (anti brute force / abuso) ----
 // trust proxy acima garante req.ip correto atrás do Fly. Mensagens genéricas.
 function limitador(windowMin, max, msg) {

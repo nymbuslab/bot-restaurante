@@ -252,6 +252,14 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 - O app é **stateless**: se a máquina reiniciar, **a sessão NÃO se perde** (está no Postgres) —
   o bot reconecta sem novo QR. Manter a máquina ligada (`auto_stop_machines = 'off'`) é só pra
   o bot não ficar offline enquanto está parada.
+- **Auto-cura (recuperação sozinha).** O ciclo: **(1)** se o processo morrer, o Fly reinicia a
+  máquina; **(2)** se ele travar "vivo" (event loop preso, mas o processo não morre — os guardas
+  de erro em `index.js` o mantêm de pé), o Fly detecta pelo **health check** (`[[http_service.checks]]`
+  no `fly.toml`, cutuca `GET /health` a cada 15s) e **recicla a máquina**; **(3)** ao subir de novo,
+  o job `restaurarBots()` (em `index.js`, ~10s após o boot) **religa sozinho** todos os tenants que
+  estavam conectados, sem QR. Ou seja: trava de qualquer jeito → volta sozinho em ~30–60s.
+  `GET /health` é só vivacidade (responde `200 {ok,uptime}`) e **não** consulta o Supabase de
+  propósito — se o banco cair, reiniciar não resolveria e só geraria restart em loop.
 - O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento
   (~$5–7/mês para 1 GB RAM em São Paulo).
 - Cada tenant WhatsApp é uma conexão WebSocket (Baileys, sem Chromium) — RAM baixa.

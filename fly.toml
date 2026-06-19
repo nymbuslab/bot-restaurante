@@ -21,6 +21,16 @@ primary_region = 'gru'
   auto_start_machines = true
   min_machines_running = 1
 
+  # Auto-cura: o Fly cutuca /health (vivacidade). Se travar "vivo" (event loop
+  # preso) e parar de responder, a máquina é reciclada → boot → restore-no-boot
+  # religa os bots. grace_period cobre o boot (restore roda ~10s após subir).
+  [[http_service.checks]]
+    grace_period = '30s'
+    interval = '15s'
+    timeout = '5s'
+    method = 'get'
+    path = '/health'
+
 [[vm]]
   cpu_kind = 'shared'
   cpus = 1
