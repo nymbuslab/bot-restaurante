@@ -4,23 +4,10 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-06-18 16:58**
+_(nada em andamento — tudo commitado, pushado e **deployado** em produção em 2026-06-18)_
 
-### Feito nesta sessão
-- Tudo commitado e em `origin/main` (working tree limpo, fora `docs/frete-por-raio-cep-viacep-geoapify.md` não rastreado — não é desta sessão). Detalhe em ✅ Concluído. Resumo:
-- **Cardápio web — categorias visíveis + aba "Todos"** (`public/cardapio.js`): título de seção sempre que o grupo tem nome + aba "Todos" (padrão) empilhando todas as categorias; barra aparece com ≥1 categoria. Validado E2E (Playwright, Sabor D'Casa). Commit `529af61`.
-- **Auto-login: logado + "lembrar" cai direto no painel** (login.html e landing): cookie de presença `sess` (não-httpOnly, legível) decide se chama `/api/refresh`; 200 → painel, 401 → limpa e mostra a página. Backend em `src/servidor.js` (helpers de cookie). Commit `18094cb`.
-- **Auto-redirect espelha o login** (onboarding): `/api/refresh` devolve `onboardingConcluido` (`empresas.renovarSessao`); incompleto → `cadastro.html`, completo → `admin.html`. Validado E2E nos dois caminhos. Commit `e8f0b19`.
-
-### Em meio de edição
-- Nada — working tree limpo, tudo commitado/pushado.
-
-### Próximo passo
-- Rodar **`fly deploy`** (você faz pelo terminal) p/ subir as entregas pendentes à produção: cardápio "Todos" + auto-login + espelho de onboarding (sessão anterior) **+ nome do plano "Plano Essencial"** (`bed11b7`). Em produção o comportamento de login/landing e o nome do plano só mudam após o deploy. Depois, **reconectar o bot** na aba Conexão (restore-no-boot ainda não existe).
-
-### Decisões pendentes
-- **(P1) Restaurar o bot no boot** (em Próximos Passos) — evita reconectar manualmente após restart/deploy.
-- "Ideia diferente" do card do link do cardápio ainda não descrita.
+> **Pós-deploy:** o `fly deploy` reinicia a máquina e o bot **desconecta** (não há restore-no-boot — ver P1). Se preciso, **reconectar na aba Conexão**.
+> **Aguardando você:** teste do Stripe com **cartão real** (cadastro → checkout → `trialing`/`active` + conferir eventos no webhook) e estornar.
 
 ## 📋 Próximos Passos
 
@@ -136,4 +123,4 @@
 - [x] **Correção do CI de deploy + documentação** — removido o workflow de deploy automático do Fly (`fly-deploy.yml`), que falhava a cada push por falta do segredo `FLY_API_TOKEN` (o deploy é manual via `fly deploy`) → pararam os e-mails de falha; `test.yml` (CI de testes) atualizado para `checkout@v5`/`setup-node@v5`; `DEPLOY.md` ganhou a seção "Deploy automático (CI) — opcional" com o passo a passo pra ligar quando quiser. — 2026-06-16
 - [x] **README modernizado** — atualizado ao estado atual: Node 22 (não 20), modelo pago/Stripe + aba Assinatura, `.env` completo (super-admin + Stripe + suporte), seção de testes (`npm test`/`check` + CI), marca Nymbus Pedidos, abas do painel e árvore de arquivos; `.env.example` corrigido (hash master SHA-256 → bcrypt). — 2026-06-16
 - [x] **Domínio próprio `pedidos.nymbuslab.com.br`** — subdomínio criado na Hostinger (CNAME `pedidos` → `bot-restaurante.fly.dev`) + `fly certs add` (Let's Encrypt, `Status = Issued`, HTTPS automático gerenciado pelo Fly). App responde no domínio novo (HTTP 200 + TLS OK); o `.fly.dev` segue funcionando em paralelo. **Sem mudança de código** — `success_url`/`return_url` do Stripe derivam do host (`baseUrlDe` em `src/servidor.js`). Passo a passo registrado em [DEPLOY.md](DEPLOY.md) (seção *Domínio próprio*). Stripe: na auditoria descobriu-se que **não há webhook cadastrado** e o app roda em **Área restrita (teste)** → migração do webhook/chaves vira o **checklist de go-live** (ver Próximos Passos + [docs/assinatura-stripe.md](docs/assinatura-stripe.md)). — 2026-06-16
-- [x] **Stripe em produção (go-live)** — saiu da Área restrita (sandbox) e foi pra **produção (live)**, cobrando de verdade. Produto **"Plano Essencial"** (`prod_UjIR38QCFMhn9E` / `price_1Tjpqo...`, **R$ 79,00 · mensal · BRL**, livemode confirmado via API antes de aplicar). **Webhook live criado** (`we_1TjrFC...`, status `enabled`, 6 eventos → `https://pedidos.nymbuslab.com.br/api/stripe/webhook`); o `whsec` foi capturado na criação e aplicado direto no Fly **sem trafegar em texto**. **4 secrets** (`STRIPE_SECRET_KEY`/`PUBLISHABLE_KEY`/`PRICE_ID`/`WEBHOOK_SECRET`) trocados pelas versões live via `fly secrets set` → redeploy OK. Verificado: secrets `Deployed`, webhook responde **400** a POST não assinado (rota viva + verificação de assinatura ativa). **Nome do plano** no front trocado de "Plano Nymbus Pedidos" → **"Plano Essencial"** ([admin.html](public/admin.html)/[checkout.html](public/checkout.html), commit `bed11b7`) — preparando o terreno pro 2º plano. ⚠️ a mudança de nome **exige `fly deploy`** pra aparecer em produção (ainda não deployada por escolha do usuário). **Pendente:** teste com cartão real. Doc atualizado em [docs/assinatura-stripe.md](docs/assinatura-stripe.md). — 2026-06-18
+- [x] **Stripe em produção (go-live)** — saiu da Área restrita (sandbox) e foi pra **produção (live)**, cobrando de verdade. Produto **"Plano Essencial"** (`prod_UjIR38QCFMhn9E` / `price_1Tjpqo...`, **R$ 79,00 · mensal · BRL**, livemode confirmado via API antes de aplicar). **Webhook live criado** (`we_1TjrFC...`, status `enabled`, 6 eventos → `https://pedidos.nymbuslab.com.br/api/stripe/webhook`); o `whsec` foi capturado na criação e aplicado direto no Fly **sem trafegar em texto**. **4 secrets** (`STRIPE_SECRET_KEY`/`PUBLISHABLE_KEY`/`PRICE_ID`/`WEBHOOK_SECRET`) trocados pelas versões live via `fly secrets set` → redeploy OK. Verificado: secrets `Deployed`, webhook responde **400** a POST não assinado (rota viva + verificação de assinatura ativa). **Nome do plano** no front trocado de "Plano Nymbus Pedidos" → **"Plano Essencial"** ([admin.html](public/admin.html)/[checkout.html](public/checkout.html), commit `bed11b7`) — preparando o terreno pro 2º plano. **`fly deploy` feito** → nome novo + as 3 entregas pendentes da sessão anterior no ar. **Pendente (usuário):** teste com cartão real. Doc atualizado em [docs/assinatura-stripe.md](docs/assinatura-stripe.md). — 2026-06-18
