@@ -22,6 +22,27 @@ const erro = document.getElementById("co-erro");
 const LABEL_BTN = "Iniciar teste grátis de 7 dias";
 let stripe, elements;
 
+// Plano escolhido (Essencial padrão). Pode vir pré-selecionado por ?plano=completo.
+function planoSelecionado() {
+  const r = document.querySelector('input[name="coPlano"]:checked');
+  return r && r.value === "completo" ? "completo" : "essencial";
+}
+function syncPlanoAtivo() {
+  document.querySelectorAll(".co-plano-opt").forEach((l) => {
+    const input = l.querySelector('input[name="coPlano"]');
+    l.classList.toggle("ativo", !!(input && input.checked));
+  });
+}
+document.querySelectorAll('input[name="coPlano"]').forEach((r) => r.addEventListener("change", syncPlanoAtivo));
+(function () {
+  const params = new URLSearchParams(location.search);
+  if (params.get("plano") === "completo") {
+    const rc = document.querySelector('input[name="coPlano"][value="completo"]');
+    if (rc) rc.checked = true;
+  }
+  syncPlanoAtivo();
+})();
+
 function falhar(msg) {
   erro.textContent = msg || "Algo deu errado. Tente novamente.";
   btn.disabled = false;
@@ -93,7 +114,7 @@ form.addEventListener("submit", async (e) => {
     const r = await fetch("/api/assinatura/confirmar", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-      body: JSON.stringify({ setupIntentId: setupIntent.id }),
+      body: JSON.stringify({ setupIntentId: setupIntent.id, plano: planoSelecionado() }),
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));

@@ -293,6 +293,23 @@ app.post("/api/assinatura/checkout", exigeAuth, assinaturaLimiter, async (req, r
 });
 
 // Abre o Customer Portal (trocar cartão / cancelar / ver faturas).
+// Troca de plano (upgrade/downgrade) de uma assinatura viva, com proration.
+app.post("/api/assinatura/plano", exigeAuth, async (req, res) => {
+  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+  const plano = req.body && req.body.plano;
+  if (plano !== "essencial" && plano !== "completo") return res.status(400).json({ erro: "Plano inválido." });
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!emp.stripeSubscriptionId) return res.status(400).json({ erro: "Ative um plano antes de trocar." });
+    if (empresas.planoDe(emp) === plano) return res.json({ ok: true, jaNoPlano: true });
+    await stripeBilling.trocarPlano(emp.slug, emp.stripeSubscriptionId, plano);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("trocar plano:", e.message);
+    res.status(500).json({ erro: "Não foi possível trocar de plano. Tente novamente." });
+  }
+});
+
 app.post("/api/assinatura/portal", exigeAuth, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
@@ -324,7 +341,7 @@ app.post("/api/assinatura/setup-intent", exigeAuth, assinaturaLimiter, async (re
 // Checkout PRÓPRIO — passo 2: confirma o cartão e cria a assinatura (trial 7d).
 app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
-  const { setupIntentId } = req.body || {};
+  const { setupIntentId, plano } = req.body || {};
   if (!setupIntentId) return res.status(400).json({ erro: "setupIntentId é obrigatório." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -334,6 +351,7 @@ app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
       setupIntentId,
       stripeCustomerId: emp.stripeCustomerId,
       stripeSubscriptionId: emp.stripeSubscriptionId,
+      plano: plano === "completo" ? "completo" : "essencial",
     });
     res.json({ ok: true });
   } catch (e) {

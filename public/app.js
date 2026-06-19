@@ -353,6 +353,28 @@ document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click"
 // ============================================================
 let assinaturaAtual = null;
 let planoAtual = "essencial"; // plano do tenant (essencial|completo) — gating de features no painel
+const PLANOS_INFO = { essencial: { nome: "Plano Essencial", valor: 79 }, completo: { nome: "Plano Completo", valor: 99 } };
+
+// Upgrade/downgrade de plano (assinatura viva). Confirma, troca no Stripe (proration)
+// e recarrega o plano (gating) + a aba Assinatura.
+async function trocarPlanoAcao(novoPlano) {
+  const info = PLANOS_INFO[novoPlano] || PLANOS_INFO.essencial;
+  const ehUpgrade = novoPlano === "completo";
+  const msg = ehUpgrade
+    ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter o frete por raio.`
+    : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter o frete por raio.`;
+  if (!window.confirm(msg)) return;
+  const r = await api("POST", "/api/assinatura/plano", { plano: novoPlano });
+  if (r && r.ok) {
+    toast("✓ Plano atualizado!");
+    await carregarConta();      // atualiza planoAtual (gating da aba Entrega)
+    await carregarAssinatura(); // re-renderiza a aba Assinatura com o novo plano
+  } else {
+    let d = {};
+    try { d = r ? await r.json() : {}; } catch (_) { /* sem corpo */ }
+    toast(d.erro || "Não foi possível trocar de plano.", "erro");
+  }
+}
 
 function diasRestantes(iso) {
   if (!iso) return null;
@@ -457,6 +479,14 @@ function renderAssinatura(a) {
     // Cortesia é gerenciada pela equipe Nymbus — sem ações de pagamento aqui.
   } else {
     acoes.appendChild(botaoAssin("Gerenciar assinatura", abrirPortal, "secundario"));
+  }
+
+  // Trocar de plano (upgrade/downgrade) — só com assinatura Stripe viva (trial/ativa).
+  if ((a.status === "trialing" || a.status === "active") && a.plano) {
+    const outro = a.plano === "completo" ? "essencial" : "completo";
+    const infoOutro = PLANOS_INFO[outro];
+    const label = (outro === "completo" ? "Fazer upgrade para o " : "Mudar para o ") + infoOutro.nome + " (R$ " + infoOutro.valor + "/mês)";
+    acoes.appendChild(botaoAssin(label, () => trocarPlanoAcao(outro), "secundario"));
   }
 }
 

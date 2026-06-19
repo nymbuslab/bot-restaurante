@@ -297,3 +297,12 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Manter conectado:** o login ganhou a opção **"Manter conectado neste dispositivo"**. Marcada, você fecha e reabre o navegador e **cai direto no painel**, sem digitar e-mail e senha de novo (vale por 30 dias). Desmarcada, a sessão encerra ao fechar o navegador — como antes.
 - **Sessão mais segura:** a credencial de sessão passou a ficar num **cookie protegido que o JavaScript não consegue ler** (bem mais resistente a ataques), em vez de no armazenamento do navegador.
+
+## [0.27.0] — Dois planos (Essencial × Completo) + frete por raio
+
+- **Plano Completo (R$ 99/mês):** novo plano além do **Essencial (R$ 79/mês)**. O Completo inclui tudo do Essencial **+ frete por raio** — o valor da entrega é calculado pela **distância (km)** do cliente até o restaurante.
+- **Frete por raio:** o restaurante define **faixas** (ex.: até 2 km R$ 5, até 4 km R$ 8…) na nova aba **Entrega** das Configurações. No cardápio, o cliente informa **CEP + número** e o sistema calcula o frete na hora; fora da área, oferece **retirada**. (O Essencial segue com **frete fixo**, agora também na aba Entrega.)
+- **Escolher o plano:** no **checkout** dá pra escolher Essencial ou Completo ao ativar o teste; quem já assina pode **mudar de plano** (upgrade/downgrade) na aba **Assinatura**, com ajuste proporcional. A landing passou a mostrar os **dois planos**.
+- **Correção:** o checkout não abria após o cadastro (ficava "piscando") — corrigido (a sessão agora é lida do cookie seguro).
+
+> Requer os secrets `STRIPE_PRICE_ID_COMPLETO` e `GEOAPIFY_API_KEY` no servidor (geocodificação via Geoapify, com cache).

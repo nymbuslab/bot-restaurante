@@ -3355,6 +3355,23 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .co-plano-trial { font-size: 13px; color: var(--text-secondary); }
 .co-plano-hoje { color: var(--success); font-weight: 700; }
 
+/* Seletor de plano no checkout (Essencial x Completo) */
+.co-planos { display: grid; gap: 10px; margin-bottom: 12px; }
+@media (min-width: 420px) { .co-planos { grid-template-columns: 1fr 1fr; } }
+.co-plano-opt {
+  display: flex; flex-direction: column; gap: 6px; cursor: pointer; position: relative;
+  background: var(--bg-elevated); border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; transition: border-color .15s, background .15s;
+}
+.co-plano-opt:hover { border-color: var(--accent); }
+.co-plano-opt.ativo { border-color: var(--accent); background: var(--accent-subtle); }
+.co-plano-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.co-plano-opt-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.co-plano-opt-nome { font-weight: 700; color: var(--text-primary); }
+.co-plano-opt-preco { font-size: 16px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.co-plano-opt-preco span { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+.co-plano-opt-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+
 .co-payment { margin-bottom: 14px; min-height: 44px; }
 .co-erro { margin: 0 0 10px; }
 .co-card .auth-btn { margin-top: 4px; }
@@ -3684,7 +3701,17 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700;
 }
-.lp-preco-nota { font-size: 12.5px; color: var(--text-disabled); margin: 14px 0 0; }
+.lp-preco-nota { font-size: 12.5px; color: var(--text-disabled); margin: 14px 0 0; text-align: center; }
+
+/* Dois planos lado a lado (landing) */
+.lp-planos { display: grid; gap: 22px; max-width: 860px; margin: 0 auto; }
+@media (min-width: 780px) { .lp-planos { grid-template-columns: 1fr 1fr; align-items: start; } }
+.lp-planos .lp-preco-card { max-width: none; width: auto; margin: 0; }
+.lp-preco-destaque { border-color: var(--accent); box-shadow: 0 12px 40px -16px rgba(99,68,188,0.7); }
+.lp-plano-nome {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent-fg);
+}
 
 /* CTA final */
 .lp-cta-final { padding: 80px 0; text-align: center; background: radial-gradient(700px 300px at 50% 120%, rgba(99,68,188,0.22), transparent 60%); }

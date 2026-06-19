@@ -82,7 +82,12 @@ async function criarSetupIntent({ slug, nome, email, stripeCustomerId }) {
 
 // Passo 2: com o cartão já confirmado pelo front, define-o como padrão do Customer
 // e cria a assinatura (trial 7d). Idempotente: não duplica se já houver assinatura viva.
-async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId, stripeSubscriptionId }) {
+// Resolve o price_id a partir do plano (default Essencial).
+function priceDoPlano(plano) {
+  return (plano === "completo" && PRICE_ID_COMPLETO) ? PRICE_ID_COMPLETO : PRICE_ID;
+}
+
+async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId, stripeSubscriptionId, plano }) {
   const si = await stripe.setupIntents.retrieve(setupIntentId);
   if (si.status !== "succeeded") throw new Error("Cartão ainda não confirmado.");
   if (si.customer !== stripeCustomerId) throw new Error("Cartão não pertence a este cliente.");
@@ -105,13 +110,30 @@ async function ativarAssinaturaComSetup({ slug, setupIntentId, stripeCustomerId,
 
   const sub = await stripe.subscriptions.create({
     customer: stripeCustomerId,
-    items: [{ price: PRICE_ID }],
+    items: [{ price: priceDoPlano(plano) }],
     trial_period_days: 7,
     default_payment_method: pm,
     metadata: { slug },
   });
   await aplicarSubscription(slug, sub, stripeCustomerId);
   return sub;
+}
+
+// Troca o plano de uma assinatura viva (upgrade/downgrade) com ajuste proporcional
+// (proration). Substitui o item de preço. Atualiza o estado do tenant em seguida
+// (o webhook subscription.updated também reflete). Lança em erro.
+async function trocarPlano(slug, stripeSubscriptionId, novoPlano) {
+  const price = priceDoPlano(novoPlano);
+  if (!stripe || !stripeSubscriptionId || !price) throw new Error("Assinatura ou plano inválido.");
+  const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  const itemId = sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].id;
+  if (!itemId) throw new Error("Assinatura sem item para trocar.");
+  const atualizada = await stripe.subscriptions.update(stripeSubscriptionId, {
+    items: [{ id: itemId, price }],
+    proration_behavior: "create_prorations",
+  });
+  await aplicarSubscription(slug, atualizada, sub.customer);
+  return atualizada;
 }
 
 // Cria (ou reusa) o Customer do tenant e abre a Checkout Session HOSPEDADA
@@ -347,6 +369,6 @@ module.exports = {
   stripe, CONFIGURADO, PRICE_ID, PRICE_ID_COMPLETO, PUBLISHABLE_KEY, PLANO_INFO, planoDoPrice,
   criarCheckout, criarPortal, verificarEvento, tratarEvento,
   listarFaturas, cancelarAssinatura, pausarAssinatura, retomarAssinatura,
-  garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup,
+  garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup, trocarPlano,
   listarCartoes, criarSetupIntentCartao, definirCartaoPadrao, removerCartao,
 };
