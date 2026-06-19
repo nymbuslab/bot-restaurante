@@ -4076,10 +4076,11 @@ html.embed, html.embed body { background: var(--bg-primary); }
   transition: border-color .15s, background .15s;
 }
 .cfg-frete-modo:hover { border-color: var(--accent); }
-.cfg-frete-modo input[type="radio"] { accent-color: var(--accent); margin-top: 2px; flex: none; }
+/* width:auto + tamanho fixo p/ escapar do `input { width:100% }` global (senão o radio estoura o card) */
+.cfg-frete-modo input[type="radio"] { accent-color: var(--accent); margin: 2px 0 0; padding: 0; flex: none; width: 18px; height: 18px; }
 .cfg-frete-modo:has(input:checked) { border-color: var(--accent); background: var(--accent-subtle); }
 .cfg-frete-modo.bloqueado { opacity: .72; }
-.cfg-frete-modo-txt { display: flex; flex-direction: column; gap: 2px; }
+.cfg-frete-modo-txt { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .cfg-frete-modo-txt strong { font-size: 14px; color: var(--text-primary); }
 .cfg-frete-modo-txt .sub { margin: 0; font-size: 12px; }
 .cfg-frete-lock {
