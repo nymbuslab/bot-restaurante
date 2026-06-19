@@ -2204,7 +2204,9 @@ function renderListaPedidos(lista) {
   cont.querySelectorAll("[data-id]").forEach((el) =>
     el.addEventListener("click", () => {
       const p = pedidosCache.find((x) => String(x.id) === el.dataset.id);
-      if (p) abrirModalPedido(p);
+      if (!p) return;
+      if (pedidosNovosDestaque.delete(p.numero)) renderPedidos(); // visto → remove o "NOVO" na hora
+      abrirModalPedido(p);
     })
   );
 
@@ -2652,7 +2654,7 @@ document.addEventListener("keydown", (e) => {
 
 async function inicial() {
   setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
-  setInterval(checarPedidoNovo, 15000); // poll a cada 15s
+  setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
   carregarPedidos();   // Pedidos é a aba inicial (home)
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
