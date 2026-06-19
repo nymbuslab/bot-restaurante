@@ -966,7 +966,7 @@ app.get("/api/conta", exigeAuth, async (req, res) => {
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
     if (!emp) return res.status(404).json({ erro: "Conta não encontrada." });
-    res.json({ email: emp.email, nome: emp.nome });
+    res.json({ email: emp.email, nome: emp.nome, plano: empresas.planoDe(emp) });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler a conta." });
   }

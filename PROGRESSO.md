@@ -8,7 +8,7 @@
 [docs/planos-e-frete.md](docs/planos-e-frete.md). 4 fases, 1 por vez.
 
 - [x] **Parte 1 — Infra de planos (fundação)** — coluna `plano` em `empresas` (migration aplicada; default `essencial`, ambos os tenants confirmados no banco), módulo puro `src/planos.js` (`PLANO_INFO` + `planoDoPrice`), webhook (`stripe.js` `aplicarSubscription`) grava o plano pelo preço, helpers `empresas.planoDe`/`temFreteRaio` (porteiro de features), `GET /api/assinatura` devolve `plano`/`planoNome`/`valorMes`, e o painel exibe nome+valor **dinâmicos** (não mais fixos). `.env.example` ganhou `STRIPE_PRICE_ID_COMPLETO`. Validado: `npm test` 39/39 (5 novos) + check + banco. **Sem efeito visual ainda** (todos Essencial → painel igual). ⚠️ não deployado; exige setar `STRIPE_PRICE_ID_COMPLETO` no Fly no deploy.
-- [ ] **Parte 2** — aba "Entrega" em Configurações + mover frete fixo (raio com cadeado pro Essencial).
+- [x] **Parte 2 — aba "Entrega" em Configurações** — 3ª subaba (Empresa · Bot · **Entrega**). Frete fixo (taxa + tempo) **movido** do Bot pra cá; o Bot ficou só com "Formas de Pagamento". Seletor **Modo de frete**: Fixo (ativo) × Por raio (com **cadeado "Plano Completo"** + upsell "Ver planos" pro Essencial; gating por `planoAtual`, vindo do `/api/conta` que passou a devolver `plano`). `config.frete.modo` persistido (clampado pra `fixo` se não for Completo). CSS novo do seletor. Validado: sintaxe (`app.js` + check) + 39/39; **UI não validada visualmente** (sem login de teste + evitar servidor local). Config do raio em si fica pra Parte 3.
 - [ ] **Parte 3** — frete por raio (Geoapify + Haversine), gated pro Completo (setar `GEOAPIFY_API_KEY` no Fly).
 - [ ] **Parte 4** — escolher plano no cadastro + upgrade/downgrade na Assinatura (proration Stripe).
 

@@ -352,6 +352,7 @@ document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click"
 // ASSINATURA (Stripe) — status, gate e ações de checkout/portal
 // ============================================================
 let assinaturaAtual = null;
+let planoAtual = "essencial"; // plano do tenant (essencial|completo) — gating de features no painel
 
 function diasRestantes(iso) {
   if (!iso) return null;
@@ -1456,6 +1457,11 @@ function preencherConfig() {
   $("cfgAberto").checked = !!c.atendimento.aberto;
   $("cfgTempo").value = c.atendimento.tempoEstimado || "";
   Dinheiro.setValor("cfgTaxaEntrega", c.atendimento.taxaEntrega || 0);
+  // Modo de frete (Entrega): "fixo" (padrão) | "raio". Gating do raio em renderEntregaModo.
+  const modo = (c.frete && c.frete.modo) || "fixo";
+  const radioModo = document.querySelector(`input[name="freteModo"][value="${modo}"]`);
+  if (radioModo) radioModo.checked = true;
+  renderEntregaModo();
   $("cfgBoasVindas").value = c.mensagens.boasVindas || "";
   $("cfgBoasVindasRetorno").value = c.mensagens.boasVindasRetorno || "";
   $("cfgFechado").value = c.mensagens.fechado || "";
@@ -1606,6 +1612,10 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.atendimento.aberto = $("cfgAberto").checked;
   configAtual.atendimento.tempoEstimado = $("cfgTempo").value;
   configAtual.atendimento.taxaEntrega = Dinheiro.valor("cfgTaxaEntrega");
+  // Modo de frete. "raio" só é permitido no Plano Completo (servidor também valida em Parte 3).
+  const modoSel = (document.querySelector('input[name="freteModo"]:checked') || {}).value || "fixo";
+  if (!configAtual.frete) configAtual.frete = {};
+  configAtual.frete.modo = (modoSel === "raio" && planoAtual === "completo") ? "raio" : "fixo";
   configAtual.horarios = lerHorariosDoDOM();
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
   configAtual.mensagens.boasVindasRetorno = $("cfgBoasVindasRetorno").value;
@@ -1635,6 +1645,40 @@ document.querySelectorAll(".cfg-subnav button").forEach((btn) => {
   });
 });
 
+// ---- Aba Entrega: modo de frete (fixo | raio) + gating do raio por plano ----
+// "Frete por raio" é feature do Plano Completo: pro Essencial aparece com cadeado
+// e um upsell (não persiste como raio — o save clampa pra fixo).
+function renderEntregaModo() {
+  const completo = planoAtual === "completo";
+  const lock = $("freteRaioLock");
+  const label = $("freteModoRaioLabel");
+  if (lock) lock.hidden = completo;
+  if (label) label.classList.toggle("bloqueado", !completo);
+
+  const modoVisual = (document.querySelector('input[name="freteModo"]:checked') || {}).value || "fixo";
+  const ehRaio = modoVisual === "raio";
+  const painelFixo = $("fretePainelFixo");
+  const painelRaio = $("fretePainelRaio");
+  if (painelFixo) painelFixo.hidden = ehRaio;
+  if (painelRaio) painelRaio.hidden = !ehRaio;
+  // Dentro do painel raio: Completo vê a config (Parte 3); Essencial vê o upsell.
+  const upsell = $("freteUpsell");
+  const raioConfig = $("freteRaioConfig");
+  if (upsell) upsell.hidden = completo;
+  if (raioConfig) raioConfig.hidden = !completo;
+}
+
+document.querySelectorAll('input[name="freteModo"]').forEach((r) => {
+  r.addEventListener("change", renderEntregaModo);
+});
+
+if ($("btnVerPlanos")) {
+  $("btnVerPlanos").addEventListener("click", () => {
+    const btnAssin = document.querySelector('.sidebar [data-aba="assinatura"]');
+    if (btnAssin) btnAssin.click();
+  });
+}
+
 // ============================================================
 // CONTA DE ACESSO (e-mail/senha de login)
 // ============================================================
@@ -1643,6 +1687,8 @@ async function carregarConta() {
   if (r && r.ok) {
     const c = await r.json();
     $("contaEmail").textContent = c.email || "—";
+    planoAtual = c.plano || "essencial";
+    renderEntregaModo(); // re-renderiza o gating do frete por raio com o plano já conhecido
   }
 }
 

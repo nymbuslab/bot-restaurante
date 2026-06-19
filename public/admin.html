@@ -163,6 +163,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
           <span>Bot</span>
         </button>
+        <button type="button" data-sub="entrega" role="tab">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          <span>Entrega</span>
+        </button>
       </div>
 
       <!-- ============ SUB-ABA: EMPRESA ============ -->
@@ -363,17 +367,13 @@
         </div>
       </div>
 
-      <!-- Entrega e Pagamento -->
+      <!-- Formas de Pagamento -->
       <div class="cfg-secao">
         <div class="cfg-secao-cabeca">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
-          <h3>Entrega e Pagamento</h3>
+          <h3>Formas de Pagamento</h3>
         </div>
         <div class="card">
-          <div class="linha">
-            <div class="campo"><label>Taxa de Entrega Fixa (R$)</label><input type="text" inputmode="numeric" id="cfgTaxaEntrega" placeholder="0,00 (grátis)" /></div>
-            <div class="campo"><label>Tempo Estimado de Entrega</label><input id="cfgTempo" placeholder="Ex: 30-45 min" /></div>
-          </div>
           <div class="campo">
             <label>Métodos de Pagamento Aceitos</label>
             <div id="pagamentosContainer" class="cfg-pagamentos"></div>
@@ -382,6 +382,60 @@
       </div>
 
       </div><!-- /cfg-sub-bot -->
+
+      <!-- ============ SUB-ABA: ENTREGA ============ -->
+      <div class="cfg-sub" id="cfg-sub-entrega">
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <h3>Frete</h3>
+          </div>
+          <p class="sub cfg-secao-sub">Como a taxa de entrega é calculada nos pedidos do cardápio.</p>
+
+          <div class="card cfg-frete-card">
+            <!-- Modo de frete -->
+            <div class="cfg-frete-modos">
+              <label class="cfg-frete-modo">
+                <input type="radio" name="freteModo" value="fixo" />
+                <span class="cfg-frete-modo-txt">
+                  <strong>Frete fixo</strong>
+                  <span class="sub">Uma taxa única para qualquer endereço de entrega.</span>
+                </span>
+              </label>
+              <label class="cfg-frete-modo" id="freteModoRaioLabel">
+                <input type="radio" name="freteModo" value="raio" id="freteModoRaio" />
+                <span class="cfg-frete-modo-txt">
+                  <strong>Frete por raio</strong>
+                  <span class="sub">Valor por distância (km) do cliente até o restaurante.</span>
+                </span>
+                <span class="cfg-frete-lock" id="freteRaioLock" hidden>🔒 Plano Completo</span>
+              </label>
+            </div>
+
+            <!-- Painel: frete fixo -->
+            <div class="cfg-frete-painel" id="fretePainelFixo">
+              <div class="linha">
+                <div class="campo"><label>Taxa de Entrega Fixa (R$)</label><input type="text" inputmode="numeric" id="cfgTaxaEntrega" placeholder="0,00 (grátis)" /></div>
+                <div class="campo"><label>Tempo Estimado de Entrega</label><input id="cfgTempo" placeholder="Ex: 30-45 min" /></div>
+              </div>
+            </div>
+
+            <!-- Painel: frete por raio -->
+            <div class="cfg-frete-painel" id="fretePainelRaio" hidden>
+              <!-- Upsell (plano Essencial) -->
+              <div class="cfg-frete-upsell" id="freteUpsell" hidden>
+                <p>O <strong>frete por raio</strong> calcula o valor pela distância do cliente (via CEP) até o seu restaurante. Disponível no <strong>Plano Completo</strong>.</p>
+                <button type="button" class="mini" id="btnVerPlanos">Ver planos</button>
+              </div>
+              <!-- Config do raio (Plano Completo) — faixas chegam na próxima atualização -->
+              <div class="cfg-frete-raio-config" id="freteRaioConfig" hidden>
+                <p class="sub">A configuração das faixas de frete por km será habilitada em breve.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
       <div class="barra-salvar cfg-barra">
         <span class="cfg-barra-aviso">As alterações não salvas serão perdidas ao sair desta página.</span>

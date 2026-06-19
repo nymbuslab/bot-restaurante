@@ -4037,3 +4037,33 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .cardapio-link-acoes { justify-content: stretch; }
   .cardapio-link-acoes button { flex: 1; justify-content: center; }
 }
+
+/* ---- Aba Entrega: modo de frete (fixo | raio) ---- */
+.cfg-frete-card { display: flex; flex-direction: column; gap: 16px; }
+.cfg-frete-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .cfg-frete-modos { grid-template-columns: 1fr; } }
+.cfg-frete-modo {
+  display: flex; align-items: flex-start; gap: 10px; position: relative;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elevated); cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.cfg-frete-modo:hover { border-color: var(--accent); }
+.cfg-frete-modo input[type="radio"] { accent-color: var(--accent); margin-top: 2px; flex: none; }
+.cfg-frete-modo:has(input:checked) { border-color: var(--accent); background: var(--accent-subtle); }
+.cfg-frete-modo.bloqueado { opacity: .72; }
+.cfg-frete-modo-txt { display: flex; flex-direction: column; gap: 2px; }
+.cfg-frete-modo-txt strong { font-size: 14px; color: var(--text-primary); }
+.cfg-frete-modo-txt .sub { margin: 0; font-size: 12px; }
+.cfg-frete-lock {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 11px; font-weight: 600; color: var(--accent-fg);
+  background: var(--accent-subtle); padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+.cfg-frete-painel { border-top: 1px solid var(--border-subtle); padding-top: 16px; }
+.cfg-frete-upsell {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  padding: 16px; border: 1px dashed var(--accent); border-radius: var(--radius);
+  background: var(--accent-subtle);
+}
+.cfg-frete-upsell p { margin: 0; font-size: 13px; color: var(--text-primary); line-height: 1.5; }
