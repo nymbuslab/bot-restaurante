@@ -4,8 +4,9 @@ Plataforma **SaaS multi-tenant** da **Nymbus Lab**: qualquer restaurante se cada
 o cardápio e começa a receber pedidos pelo WhatsApp de forma automatizada. Cada empresa tem seu
 próprio ambiente isolado — cardápio, configurações, pedidos e conexão WhatsApp separados.
 
-**Modelo de negócio (pago):** cadastro grátis → **teste grátis de 7 dias com cartão** →
-**R$ 79/mês** via **Stripe**. Sem pagar / em atraso, o painel trava na aba **Assinatura** e o bot
+**Modelo de negócio (pago):** cadastro grátis → **teste grátis de 7 dias com cartão** → dois planos
+via **Stripe**: **Essencial R$ 79/mês** e **Completo R$ 99/mês** (o Completo adiciona **frete por
+raio** por km). Sem pagar / em atraso, o painel trava na aba **Assinatura** e o bot
 desconecta (o login segue funcionando para reativar). A gestão de todos os tenants é feita pelo
 super-admin (`/admin-master`).
 
@@ -32,10 +33,12 @@ super-admin (`/admin-master`).
 - **Cardápio**: itens, preços, ativar/desativar, composição e opcionais — valem na hora.
 - **Pedidos**: métricas por período + lista com itens, opcionais, observação, total, entrega e
   telefone; **exportar CSV** dos pedidos filtrados.
-- **Configurações** (sub-abas **Empresa** e **Bot**): dados do restaurante, **conta de acesso**
-  (trocar e-mail/senha), mensagens, horário por dia, taxa de entrega, formas de pagamento,
-  abrir/fechar manualmente; **Privacidade e dados** (exportar/excluir conta — LGPD).
-- **Assinatura**: status do plano, dias de trial, próxima cobrança, faturas (Stripe) e cartões.
+- **Configurações** (sub-abas **Empresa**, **Bot** e **Entrega**): dados do restaurante, **conta de
+  acesso** (trocar e-mail/senha), mensagens, horário por dia, formas de pagamento, abrir/fechar
+  manualmente; **Privacidade e dados** (exportar/excluir conta — LGPD). Em **Entrega**: **frete
+  fixo** ou **frete por raio** (faixas por km — Plano Completo).
+- **Assinatura**: status do plano (Essencial/Completo), dias de trial, próxima cobrança, faturas
+  (Stripe), cartões e **upgrade/downgrade** de plano.
 - **Prévia do atendimento**: vê a mensagem que o cliente recebe e testa o atalho de atendente
   direto no navegador, sem usar um número real.
 
@@ -61,11 +64,15 @@ SUPABASE_SERVICE_ROLE_KEY=...    # secreto, só backend
 SUPERADMIN_EMAIL=...
 SUPERADMIN_SENHA_HASH=...        # gere com: npm run gerar-hash-admin -- "suaSenha"  (bcrypt)
 
-# Stripe (assinatura paga)
+# Stripe (assinatura paga) — STRIPE_PRICE_ID = Essencial, STRIPE_PRICE_ID_COMPLETO = Completo
 STRIPE_SECRET_KEY=...
 STRIPE_PUBLISHABLE_KEY=...
 STRIPE_PRICE_ID=...
+STRIPE_PRICE_ID_COMPLETO=...
 STRIPE_WEBHOOK_SECRET=...
+
+# Frete por raio (Plano Completo) — geocodificação Geoapify (free ~3.000/dia)
+GEOAPIFY_API_KEY=...
 
 # Plataforma (opcional)
 SUPORTE_WHATSAPP=...             # WhatsApp de suporte (só dígitos, ex.: 5511999999999)
@@ -129,10 +136,11 @@ fly launch --no-deploy
 
 # 3. Editar fly.toml: troque app = "bot-restaurante" pelo nome escolhido
 
-# 4. Configurar os secrets (os mesmos do .env: Supabase + super-admin + Stripe)
+# 4. Configurar os secrets (os mesmos do .env: Supabase + super-admin + Stripe + Geoapify)
 fly secrets set DATABASE_URL="..." SUPABASE_URL="..." SUPABASE_ANON_KEY="..." \
   SUPABASE_SERVICE_ROLE_KEY="..." SUPERADMIN_EMAIL="..." SUPERADMIN_SENHA_HASH="..." \
-  STRIPE_SECRET_KEY="..." STRIPE_PUBLISHABLE_KEY="..." STRIPE_PRICE_ID="..." STRIPE_WEBHOOK_SECRET="..."
+  STRIPE_SECRET_KEY="..." STRIPE_PUBLISHABLE_KEY="..." STRIPE_PRICE_ID="..." \
+  STRIPE_PRICE_ID_COMPLETO="..." STRIPE_WEBHOOK_SECRET="..." GEOAPIFY_API_KEY="..."
 
 # 5. Deploy (app stateless — NÃO precisa de volume persistente)
 fly deploy

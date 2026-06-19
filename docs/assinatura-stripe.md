@@ -1,8 +1,22 @@
 # Assinatura (Stripe)
 
-Monetização via **assinatura mensal** (1 plano, **R$ 79/mês**, **7 dias grátis com cartão**).
-Pacote `stripe`; lógica em `src/stripe.js`. Sem chave/preço (`STRIPE_SECRET_KEY` +
-`STRIPE_PRICE_ID`), as rotas `/api/assinatura/*` respondem **503** (igual ao super-admin).
+Monetização via **assinatura mensal**, **7 dias grátis com cartão**, em **dois planos**:
+**Essencial — R$ 79/mês** (`STRIPE_PRICE_ID`) e **Completo — R$ 99/mês** (`STRIPE_PRICE_ID_COMPLETO`).
+O Completo adiciona o **frete por raio** (ver [planos-e-frete.md](planos-e-frete.md)).
+Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `src/planos.js`). Sem chave/preço
+(`STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID`), as rotas `/api/assinatura/*` respondem **503**.
+
+- **Plano (`empresas.plano`, `essencial|completo`):** gravado pelo webhook (`aplicarSubscription`
+  mapeia o `price_id` da assinatura → plano via `planos.planoDoPrice`). Cortesia/sem Stripe =
+  essencial. Gating de feature por plano: `empresas.temFreteRaio(emp)` = `acessoLiberado` **e**
+  plano completo (fonte única).
+- **Escolher / trocar de plano:**
+  - **Cadastro/checkout:** seletor Essencial × Completo em `checkout.html` (`?plano=` pré-seleciona);
+    `ativarAssinaturaComSetup({plano})` cria a assinatura no preço escolhido.
+  - **Upgrade/downgrade (cliente):** `POST /api/assinatura/plano {plano}` → `stripe.trocarPlano`
+    (troca o item de preço com **proration**); botão na aba Assinatura (só com assinatura viva).
+  - **Master:** `PATCH /api/admin/tenants/:slug/plano {plano}` (modal Gerenciar) — com Stripe vivo
+    usa `trocarPlano` (proration); cortesia/sem Stripe ajusta só a coluna `plano`.
 
 - **Dois eixos de acesso (independentes), em `empresas.js`:**
   - `ativo` (boolean) = suspensão **manual** do admin (hard block, bloqueia até o login).

@@ -64,6 +64,10 @@ Para o **cardápio web** (canal de pedido): `PUBLIC_URL` (URL pública base p/ o
 link, ex.: `https://pedidos.seudominio.com`) e `CARDAPIO_LINK_SECRET` (assina o token que liga
 o pedido ao cliente). **Opcionais** — sem eles o app sobe, mas o bot manda um aviso no lugar do link.
 
+Para **planos e frete por raio**: `STRIPE_PRICE_ID_COMPLETO` (preço do **Plano Completo**, além do
+`STRIPE_PRICE_ID` do Essencial) e `GEOAPIFY_API_KEY` (geocodificação do frete por raio). Detalhe em
+[docs/planos-e-frete.md](docs/planos-e-frete.md).
+
 Schema: `npx supabase db push` aplica as migrações de `supabase/migrations/`.
 
 No **primeiro acesso**, crie a primeira empresa pelo onboarding público em `/cadastro.html`
@@ -83,14 +87,17 @@ index.js              -> sobe o servidor (NÃO inicia o bot) + jobs (higiene de 
 src/
   db.js               -> pool Postgres (pg), lê DATABASE_URL do .env
   supabase.js         -> clients do Supabase (Auth admin/anon + Storage)
-  stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas
+  stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas, trocaPlano (upgrade/downgrade)
+  planos.js           -> mapa PURO de planos (Essencial/Completo): PLANO_INFO + planoDoPrice (price→plano)
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
-  servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug)
+  servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete)
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
   wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> bot: saudação envia o LINK do cardápio web (/c/:slug?p=token); estados MENU/ATENDENTE
   cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, token HMAC do link)
+  frete.js            -> frete por raio (Plano Completo): Haversine + faixas (puros) + geocodificar() Geoapify c/ cache (tabela geo_cache)
+  cep.js              -> busca de CEP (ViaCEP) com cache no banco (tabela ceps)
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
   pedidos.js          -> tabela `pedidos` no Postgres, isolada por empresa_id (async)
@@ -161,9 +168,10 @@ O detalhe profundo de cada assunto vive em `docs/` (não carregado por padrão �
 relevante ao mexer na área):
 
 - [docs/super-admin.md](docs/super-admin.md) — painel master: auth isolada, rotas, métricas, suspender/excluir (reflexo no Stripe), Configurações Master, footer da landing.
-- [docs/assinatura-stripe.md](docs/assinatura-stripe.md) — monetização: eixos de acesso, checkout próprio, webhook, gate, faturas, gestão de cartões.
+- [docs/assinatura-stripe.md](docs/assinatura-stripe.md) — monetização: **dois planos** (Essencial/Completo), eixos de acesso, checkout próprio, webhook, gate, upgrade/downgrade (proration), faturas, gestão de cartões.
+- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo) + frete por raio**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, escolha no checkout + upgrade na Assinatura + troca no master.
 - [docs/lgpd-e-conta.md](docs/lgpd-e-conta.md) — conta de acesso (trocar e-mail/senha) + LGPD (exportar/excluir conta, retenção, páginas Termos/Privacidade, aceite no cadastro).
-- [docs/modelo-dados.md](docs/modelo-dados.md) — schema (`empresas`, `pedidos`, item do cardápio) + **cardápio web** (API pública, recálculo no servidor, token de link) + estados enxutos do bot (`fluxo.js`).
+- [docs/modelo-dados.md](docs/modelo-dados.md) — schema (`empresas` + coluna `plano`, `pedidos`, item do cardápio, `config.frete`, `geo_cache`) + **cardápio web** (API pública, recálculo no servidor, frete por raio, token de link) + estados enxutos do bot (`fluxo.js`).
 - [docs/features.md](docs/features.md) — onboarding (wizard 4 etapas), utils de formulário (`endereco-cep.js`/`dinheiro.js`) e horário de funcionamento.
 - [docs/gotchas.md](docs/gotchas.md) — pontos de atenção: anti-massa, conexão manual, sessão `wa_auth`, avisar cliente, segurança, backup, pooler.
 - [docs/testar-bot.md](docs/testar-bot.md) — simulador de conversa (terminal + painel).

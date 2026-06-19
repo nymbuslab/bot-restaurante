@@ -26,13 +26,22 @@ no checkout do cardápio web; é PII e é limpa na retenção).
 **Tabela `empresas`** (Postgres/Supabase):
 
 ```text
-id (uuid), user_id (uuid→auth.users), slug, nome, email, ativo,
+id (uuid), user_id (uuid→auth.users), slug, nome, email, ativo, plano,
 config (jsonb), cardapio (jsonb), criado_em (timestamptz)
 ```
 A **senha não fica aqui** — vive no Supabase Auth (`auth.users`, bcrypt). `config` e
 `cardapio` são os antigos `config.json`/`cardapio.json`. Colunas de billing
 (`assinatura_status`, `trial_ate`, `proxima_cobranca`, `stripe_customer_id`,
-`stripe_subscription_id`) — ver [assinatura-stripe.md](assinatura-stripe.md).
+`stripe_subscription_id`) — ver [assinatura-stripe.md](assinatura-stripe.md). **`plano`**
+(`essencial|completo`, default essencial) é o plano comercial — gating de features por plano
+(ver [planos-e-frete.md](planos-e-frete.md)).
+
+**Frete (em `config.frete` jsonb):** `modo` (`fixo|raio`), `taxaFixa` (R$), e — no modo raio —
+`raio: { coordEmpresa{lat,lon}, enderecoBase, faixas:[{ini,fim,valor}], foraDaArea }`. Compat: se
+só houver `config.atendimento.taxaEntrega`, vale como frete fixo (normalizado por `frete.freteDeConfig`).
+
+**Tabela `geo_cache`** (cache de geocodificação Geoapify): `endereco_norm` (PK), `lat`, `lon`,
+`criado_em` — cache-first, igual à `ceps` (ViaCEP). Evita rechamar a Geoapify pro mesmo endereço.
 
 **Linha do carrinho / pedido**:
 ```js

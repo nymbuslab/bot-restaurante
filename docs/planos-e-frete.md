@@ -1,6 +1,6 @@
 # Spec — Planos (Essencial × Completo) + Frete por raio
 
-> **Status:** design aprovado (2026-06-19), implementação em fases. Este documento é o
+> **Status:** ✅ **implementado e no ar** (Partes 1–4, 2026-06-19; CHANGELOG 0.27.0). Este documento é o
 > **contrato**; o guia genérico de frete por raio está em
 > [frete-por-raio-cep-viacep-geoapify.md](frete-por-raio-cep-viacep-geoapify.md) (referência),
 > mas aqui valem as decisões **adaptadas ao projeto** (config em jsonb, etc.).
