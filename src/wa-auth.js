@@ -80,6 +80,13 @@ async function limparSessao(slug) {
   await db.query("DELETE FROM wa_auth WHERE slug = $1", [slug]);
 }
 
+// Lista os slugs que JÁ têm credencial salva (`creds`) — ou seja, que conectaram
+// pelo menos uma vez e podem reconectar SEM QR. Usado pela restauração no boot.
+async function slugsComSessao() {
+  const r = await db.query("SELECT DISTINCT slug FROM wa_auth WHERE chave = 'creds'");
+  return r.rows.map((row) => row.slug);
+}
+
 // Higiene: apaga linhas de SESSÃO (`session:*`) inativas há mais de `dias`,
 // em todos os tenants. Seguro — o Baileys recria a sessão do cliente no próximo
 // contato. NÃO toca em creds/pre-keys/app-state (essas não envelhecem). Retorna
@@ -92,4 +99,4 @@ async function limparSessoesAntigas(dias = 90) {
   return r.rowCount;
 }
 
-module.exports = { usePostgresAuthState, limparSessao, limparSessoesAntigas };
+module.exports = { usePostgresAuthState, limparSessao, limparSessoesAntigas, slugsComSessao };

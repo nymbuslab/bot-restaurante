@@ -13,10 +13,12 @@
 require("dotenv").config();
 
 const servidor = require("./src/servidor");
-const { limparSessoesAntigas } = require("./src/wa-auth");
+const { limparSessoesAntigas, slugsComSessao } = require("./src/wa-auth");
 const sessoes = require("./src/sessoes");
 const pedidos = require("./src/pedidos");
 const clientes = require("./src/clientes");
+const empresas = require("./src/empresas");
+const multiBot = require("./src/multi-bot");
 const PORTA = process.env.PORT || 3000;
 
 // Higiene diária: remove sessões de clientes (`session:*`) inativas há +90 dias.
@@ -76,6 +78,34 @@ function limparSessoesMemoria() {
   }
 }
 setInterval(limparSessoesMemoria, 10 * 60 * 1000);   // a cada 10min
+
+// Restaura os bots no boot: após um deploy/restart, os tenants que estavam
+// conectados voltam sozinhos (sem QR), em vez de ficarem offline até alguém
+// reconectar manualmente na aba Conexão. Só reconecta quem (1) já tem credencial
+// salva em `wa_auth` (conectou antes → reconexão sem QR) E (2) tem acesso liberado
+// (ativo + assinatura em trialing/active/cortesia). Suspenso/vencido fica desligado.
+// Conexões espaçadas (~1,5s) para não abrir todos os sockets de uma vez.
+// NOTA: assume instância única (ver CLAUDE.md). Com 2+ instâncias, ambas tentariam
+// restaurar o mesmo tenant e o WhatsApp derrubaria uma (connectionReplaced).
+const RESTAURA_INTERVALO_MS = 1500;
+async function restaurarBots() {
+  try {
+    const comSessao = new Set(await slugsComSessao());
+    if (comSessao.size === 0) return;
+    const aptos = (await empresas.listar())
+      .filter((emp) => empresas.acessoLiberado(emp) && comSessao.has(emp.slug));
+    if (aptos.length === 0) return;
+    console.log(`🔌 Restaurando ${aptos.length} bot(s) com sessão salva...`);
+    for (let i = 0; i < aptos.length; i++) {
+      const { slug } = aptos[i];
+      multiBot.iniciar(slug, empresas.tenantDir(slug));
+      if (i < aptos.length - 1) await new Promise((r) => setTimeout(r, RESTAURA_INTERVALO_MS));
+    }
+  } catch (e) {
+    console.error("Restauração de bots no boot falhou (ignorado):", e.message);
+  }
+}
+setTimeout(restaurarBots, 10_000);   // 10s após o boot (deixa o servidor subir)
 
 // Impede que erros do bot/WhatsApp derrubem o servidor.
 // O bot pode travar ou cair; o painel continua no ar.
