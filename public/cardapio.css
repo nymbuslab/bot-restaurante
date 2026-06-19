@@ -299,3 +299,16 @@ button { font-family: inherit; cursor: pointer; }
 .cd-sucesso h1 { font-size: 22px; font-weight: 800; margin: 0 0 8px; }
 .cd-sucesso p { color: var(--text-secondary); margin: 0 0 24px; }
 .cd-sucesso .cd-btn { max-width: 280px; margin: 0 auto; }
+
+/* ---- Frete por raio: status no checkout ---- */
+.cd-frete-status { margin: 8px 0 0; font-size: 13px; line-height: 1.45; }
+.cd-frete-calc { color: var(--text-secondary); }
+.cd-frete-ok { color: var(--success); font-weight: 600; }
+.cd-frete-fora { color: var(--error); font-weight: 600; }
+.cd-frete-erro { color: var(--error); }
+.cd-frete-retirar {
+  display: inline-block; margin-left: 8px; padding: 4px 10px;
+  background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.cd-frete-retirar:hover { background: var(--accent-hover); }

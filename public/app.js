@@ -1461,6 +1461,13 @@ function preencherConfig() {
   const modo = (c.frete && c.frete.modo) || "fixo";
   const radioModo = document.querySelector(`input[name="freteModo"][value="${modo}"]`);
   if (radioModo) radioModo.checked = true;
+  // Config do frete por raio (faixas + fora-da-área).
+  const raioCfg = (c.frete && c.frete.raio) || {};
+  faixasFrete = Array.isArray(raioCfg.faixas)
+    ? raioCfg.faixas.map((f) => ({ ini: Number(f.ini) || 0, fim: Number(f.fim) || 0, valor: Number(f.valor) || 0 }))
+    : [];
+  if ($("freteForaArea")) $("freteForaArea").value = raioCfg.foraDaArea === "bloqueia" ? "bloqueia" : "retirada";
+  renderFaixas();
   renderEntregaModo();
   $("cfgBoasVindas").value = c.mensagens.boasVindas || "";
   $("cfgBoasVindasRetorno").value = c.mensagens.boasVindasRetorno || "";
@@ -1616,6 +1623,11 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   const modoSel = (document.querySelector('input[name="freteModo"]:checked') || {}).value || "fixo";
   if (!configAtual.frete) configAtual.frete = {};
   configAtual.frete.modo = (modoSel === "raio" && planoAtual === "completo") ? "raio" : "fixo";
+  if (configAtual.frete.modo === "raio") {
+    if (!configAtual.frete.raio) configAtual.frete.raio = {};
+    configAtual.frete.raio.faixas = lerFaixasDoDOM();           // coordEmpresa/enderecoBase: o servidor preenche
+    configAtual.frete.raio.foraDaArea = (($("freteForaArea") || {}).value === "bloqueia") ? "bloqueia" : "retirada";
+  }
   configAtual.horarios = lerHorariosDoDOM();
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
   configAtual.mensagens.boasVindasRetorno = $("cfgBoasVindasRetorno").value;
@@ -1632,7 +1644,11 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   const r = await api("PUT", "/api/config", configAtual);
   btn.disabled = false;
   btn.textContent = "Salvar configurações";
-  if (r && r.ok) toast("✓ Configurações salvas!");
+  if (r && r.ok) {
+    let aviso = null;
+    try { aviso = (await r.json()).avisoFrete; } catch (_) { /* sem corpo */ }
+    toast(aviso ? "✓ Salvo — " + aviso : "✓ Configurações salvas!");
+  }
 });
 
 // ---- Sub-abas das Configurações (Empresa × Bot) ----
@@ -1676,6 +1692,54 @@ if ($("btnVerPlanos")) {
   $("btnVerPlanos").addEventListener("click", () => {
     const btnAssin = document.querySelector('.sidebar [data-aba="assinatura"]');
     if (btnAssin) btnAssin.click();
+  });
+}
+
+// ---- Faixas de frete por raio (Plano Completo) ----
+let faixasFrete = []; // [{ ini, fim, valor }] em km / reais
+
+function lerFaixasDoDOM() {
+  const linhas = [];
+  document.querySelectorAll("#freteFaixasBody tr").forEach((tr) => {
+    const ini = parseFloat((tr.querySelector(".ff-ini") || {}).value) || 0;
+    const fim = parseFloat((tr.querySelector(".ff-fim") || {}).value) || 0;
+    const valorId = (tr.querySelector(".ff-valor") || {}).id;
+    const valor = (valorId && window.Dinheiro) ? Dinheiro.valor(valorId) : 0;
+    linhas.push({ ini, fim, valor });
+  });
+  return linhas;
+}
+
+function renderFaixas() {
+  const body = $("freteFaixasBody");
+  if (!body) return;
+  body.innerHTML = faixasFrete.map((f, i) =>
+    "<tr>" +
+      '<td><input type="number" class="ff-ini" min="0" step="0.1" value="' + (Number(f.ini) || 0) + '" /></td>' +
+      '<td><input type="number" class="ff-fim" min="0" step="0.1" value="' + (Number(f.fim) || 0) + '" /></td>' +
+      '<td><input type="text" inputmode="numeric" class="ff-valor" id="ffValor' + i + '" /></td>' +
+      '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover faixa">✕</button></td>' +
+    "</tr>"
+  ).join("");
+  faixasFrete.forEach((f, i) => {
+    if (window.Dinheiro) { Dinheiro.mascarar("ffValor" + i); Dinheiro.setValor("ffValor" + i, Number(f.valor) || 0); }
+  });
+  body.querySelectorAll(".ff-remover").forEach((b) => {
+    b.addEventListener("click", () => {
+      faixasFrete = lerFaixasDoDOM();
+      faixasFrete.splice(Number(b.dataset.i), 1);
+      renderFaixas();
+    });
+  });
+}
+
+if ($("btnAddFaixa")) {
+  $("btnAddFaixa").addEventListener("click", () => {
+    faixasFrete = lerFaixasDoDOM();
+    const ult = faixasFrete[faixasFrete.length - 1];
+    const ini = ult ? (Number(ult.fim) || 0) : 0;
+    faixasFrete.push({ ini, fim: ini + 2, valor: 0 });
+    renderFaixas();
   });
 }
 

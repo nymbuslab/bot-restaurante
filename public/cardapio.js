@@ -328,6 +328,7 @@
   // ---------- Checkout ----------
   var tipoEntrega = "Entrega";
   var pagamentoSel = "";
+  var freteRaio = null; // resultado do POST .../frete no modo raio: {entrega_disponivel, distancia_km, valor_frete, foraDaArea}
 
   function irCheckout() {
     if (!carrinho.length) { abrirSheet(); return; }
@@ -339,7 +340,13 @@
   }
 
   function temEntrega() { return tipoEntrega === "Entrega"; }
-  function taxa() { return temEntrega() ? (Number(DADOS.taxaEntrega) || 0) : 0; }
+  function modoRaio() { return !!(DADOS.frete && DADOS.frete.modo === "raio"); }
+  function taxa() {
+    if (!temEntrega()) return 0;
+    if (modoRaio()) return (freteRaio && freteRaio.entrega_disponivel) ? (Number(freteRaio.valor_frete) || 0) : 0;
+    var ff = DADOS.frete ? DADOS.frete.taxaFixa : undefined;
+    return Number(ff != null ? ff : DADOS.taxaEntrega) || 0;
+  }
   function totalPedido() { return subtotal() + taxa(); }
   function pagDinheiro() { return /dinheiro/i.test(pagamentoSel || ""); }
 
@@ -429,10 +436,57 @@
         '<input id="cdCompl" class="full" placeholder="Complemento (opcional)" />' +
       "</div>" +
       '<p class="cd-hint" id="cdCepHint">Digite o CEP para preencher automaticamente.</p>' +
+      (modoRaio() ? '<div class="cd-frete-status" id="cdFreteStatus"></div>' : "") +
       '<p class="cd-erro-campo" id="cdErrEnd" hidden></p></div>';
     if (window.EnderecoCep) {
       window.EnderecoCep.ligarBuscaCep({ cep: "cdCep", hint: "cdCepHint", hintClass: "cd-hint", logradouro: "cdLogradouro", numero: "cdNumero", bairro: "cdBairro", cidade: "cdCidade", uf: "cdUf" });
     }
+    // Frete por raio: recalcula ao completar CEP + número.
+    if (modoRaio()) {
+      freteRaio = null;
+      var recalcFrete = function () { calcularFreteRaioFront(); };
+      $("cdNumero").addEventListener("blur", recalcFrete);
+      $("cdNumero").addEventListener("change", recalcFrete);
+      $("cdCep").addEventListener("blur", function () { if (($("cdNumero").value || "").trim()) recalcFrete(); });
+    }
+  }
+
+  // Modo raio: chama o backend (CEP+número) pra calcular o frete e atualiza o status/total.
+  function calcularFreteRaioFront() {
+    var st = $("cdFreteStatus");
+    if (!st) return;
+    var cep = ($("cdCep").value || "").replace(/\D/g, "");
+    var num = ($("cdNumero").value || "").trim();
+    if (cep.length !== 8 || !num) { freteRaio = null; st.innerHTML = ""; atualizarTotais(); return; }
+    st.innerHTML = '<span class="cd-frete-calc">Calculando frete…</span>';
+    fetch("/api/c/" + encodeURIComponent(SLUG) + "/frete", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cep: cep, numero: num, complemento: ($("cdCompl").value || "").trim() }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { freteRaio = j; renderFreteStatus(j); atualizarTotais(); })
+      .catch(function () { freteRaio = null; st.innerHTML = '<span class="cd-frete-erro">Não foi possível calcular o frete. Tente de novo.</span>'; atualizarTotais(); });
+  }
+
+  function renderFreteStatus(j) {
+    var st = $("cdFreteStatus");
+    if (!st) return;
+    if (j && j.entrega_disponivel) {
+      var km = j.distancia_km != null ? String(j.distancia_km).replace(".", ",") : "?";
+      st.innerHTML = '<span class="cd-frete-ok">✓ Entrega disponível · ~' + km + " km · Frete " + money(Number(j.valor_frete) || 0) + "</span>";
+      return;
+    }
+    var msg = (j && j.mensagem) || "Endereço fora da área de entrega.";
+    var extra = (j && j.foraDaArea === "retirada") ? ' <button type="button" class="cd-frete-retirar" id="cdBtnRetirar">Mudar para retirada</button>' : "";
+    st.innerHTML = '<span class="cd-frete-fora">⚠ ' + esc(msg) + "</span>" + extra;
+    var br = $("cdBtnRetirar");
+    if (br) br.addEventListener("click", function () {
+      tipoEntrega = "Retirada";
+      var v = $("cdViewCheckout");
+      v.querySelectorAll("[data-tipo]").forEach(function (x) { x.classList.toggle("ativo", x.getAttribute("data-tipo") === "Retirada"); });
+      renderEndereco();
+      atualizarTotais();
+    });
   }
 
   function renderTroco() {
@@ -484,6 +538,11 @@
         cidade: cidade, uf: ($("cdUf").value || "").trim(),
       };
       endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(enderecoCampos) : logr + ", " + num;
+      // Frete por raio: exige cálculo OK (dentro da área) antes de enviar.
+      if (ok && modoRaio() && (!freteRaio || !freteRaio.entrega_disponivel)) {
+        erro("cdErrEnd", "Confirme o CEP e o número para calcular o frete — ou o endereço está fora da área de entrega.");
+        ok = false;
+      }
     }
     if (!pagamentoSel) { erro("cdErrGeral", "Escolha a forma de pagamento."); ok = false; }
     if (!ok) return;

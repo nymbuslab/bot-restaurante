@@ -427,9 +427,21 @@
                 <p>O <strong>frete por raio</strong> calcula o valor pela distância do cliente (via CEP) até o seu restaurante. Disponível no <strong>Plano Completo</strong>.</p>
                 <button type="button" class="mini" id="btnVerPlanos">Ver planos</button>
               </div>
-              <!-- Config do raio (Plano Completo) — faixas chegam na próxima atualização -->
+              <!-- Config do raio (Plano Completo): faixas por km + fora-da-área -->
               <div class="cfg-frete-raio-config" id="freteRaioConfig" hidden>
-                <p class="sub">A configuração das faixas de frete por km será habilitada em breve.</p>
+                <p class="sub">Valor do frete por faixa de distância (km) entre o cliente e o restaurante. Usa o <strong>endereço do restaurante</strong> (aba Empresa, com número) para localizar no mapa.</p>
+                <table class="cfg-faixas-tabela">
+                  <thead><tr><th>De (km)</th><th>Até (km)</th><th>Valor (R$)</th><th></th></tr></thead>
+                  <tbody id="freteFaixasBody"></tbody>
+                </table>
+                <button type="button" class="secundario mini" id="btnAddFaixa">+ Adicionar faixa</button>
+                <div class="campo cfg-fora-area">
+                  <label for="freteForaArea">Quando o cliente está fora da área de entrega</label>
+                  <select id="freteForaArea">
+                    <option value="retirada">Oferecer retirada no local</option>
+                    <option value="bloqueia">Bloquear entrega (não atende)</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ const store = require("./store");
 const pedidos = require("./pedidos");
 const clientes = require("./clientes");
 const cep = require("./cep");
+const frete = require("./frete");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin } = require("./supabase");
 const stripeBilling = require("./stripe");
@@ -420,7 +421,15 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
         endereco: r.endereco || "",
         horario: r.horario || "",
       },
-      taxaEntrega: Number(config.atendimento && config.atendimento.taxaEntrega) || 0,
+      // Frete: modo + taxa fixa; no raio NÃO expõe faixas/coords (privado) —
+      // só o modo e a política de fora-da-área; o valor sai do POST .../frete.
+      frete: (function () {
+        const f = frete.freteDeConfig(config);
+        return f.modo === "raio"
+          ? { modo: "raio", foraDaArea: f.raio.foraDaArea, configurado: !!(f.raio.coordEmpresa && f.raio.faixas.length) }
+          : { modo: "fixo", taxaFixa: f.taxaFixa };
+      })(),
+      taxaEntrega: frete.freteDeConfig(config).taxaFixa, // compat (checkout antigo)
       pagamentos: Array.isArray(config.pagamentos) ? config.pagamentos : [],
       cardapio: cardapioWeb.projetarCardapio(store.getCardapio(dir)),
     });
@@ -445,6 +454,45 @@ app.get("/api/cep/:cep", publicoLimiter, async (req, res) => {
   } catch (e) {
     console.error("GET /api/cep:", e.message);
     res.json({ erro: true }); // front cai no preenchimento manual
+  }
+});
+
+// Cálculo de frete por raio no checkout (Plano Completo). Público, rate-limited.
+// CEP → ViaCEP (cep.js) → endereço; cliente dá o número → geocodifica (cache) →
+// distância (Haversine) vs coords da empresa → faixa. Nunca expõe a chave/coords.
+app.post("/api/c/:slug/frete", publicoLimiter, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp || !empresas.acessoLiberado(emp)) return res.status(404).json({ erro: "Indisponível." });
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    const f = frete.freteDeConfig(store.getConfig(dir));
+    if (f.modo !== "raio") return res.status(400).json({ erro: "Frete por raio não está ativo." });
+    if (!f.raio.coordEmpresa || !f.raio.faixas.length) {
+      return res.json({ entrega_disponivel: false, foraDaArea: f.raio.foraDaArea, mensagem: "Entrega indisponível no momento." });
+    }
+    const b = req.body || {};
+    const cepDig = String(b.cep || "").replace(/\D/g, "");
+    const numero = String(b.numero || "").trim().slice(0, 20);
+    if (cepDig.length !== 8) return res.status(400).json({ erro: "CEP inválido." });
+    if (!numero) return res.status(400).json({ erro: "Informe o número do endereço." });
+
+    const end = await cep.buscarCep(cepDig);
+    if (!end) return res.json({ entrega_disponivel: false, foraDaArea: f.raio.foraDaArea, mensagem: "CEP não encontrado." });
+    const coordCliente = await frete.geocodificar(frete.montarEnderecoCompleto(Object.assign({}, end, { numero })));
+    if (!coordCliente) return res.json({ entrega_disponivel: false, foraDaArea: f.raio.foraDaArea, mensagem: "Não foi possível localizar o endereço." });
+
+    const r = frete.calcularFreteRaio(f.raio.coordEmpresa, coordCliente, f.raio.faixas);
+    res.json({
+      entrega_disponivel: r.entrega_disponivel,
+      distancia_km: r.distancia_km,
+      valor_frete: r.valor_frete,
+      foraDaArea: f.raio.foraDaArea,
+      endereco: { cep: cepDig, logradouro: end.logradouro, bairro: end.bairro, cidade: end.cidade, uf: end.uf, numero },
+    });
+  } catch (e) {
+    console.error("POST /api/c/:slug/frete:", e.message);
+    res.status(500).json({ erro: "Falha ao calcular o frete." });
   }
 });
 
@@ -523,7 +571,24 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     }
     if (!recalc.itens.length) return res.status(400).json({ erro: "Carrinho vazio." });
 
-    const taxaEntrega = tipoEntrega === "Entrega" ? (Number(config.atendimento && config.atendimento.taxaEntrega) || 0) : 0;
+    // Frete: o servidor é a fonte de verdade. Fixo = taxa única; Raio = recalcula
+    // do endereço (geocode + Haversine + faixa) e barra se estiver fora da área.
+    const f = frete.freteDeConfig(config);
+    let taxaEntrega = 0;
+    if (tipoEntrega === "Entrega") {
+      if (f.modo === "raio") {
+        if (!f.raio.coordEmpresa || !f.raio.faixas.length) return res.status(409).json({ erro: "Entrega indisponível no momento." });
+        const ec = sanitizarEnderecoCampos(b.enderecoCampos);
+        if (ec.cep.length !== 8 || !ec.numero) return res.status(400).json({ erro: "Endereço incompleto para entrega (CEP e número)." });
+        const endCep = await cep.buscarCep(ec.cep);
+        const coordCli = endCep ? await frete.geocodificar(frete.montarEnderecoCompleto(Object.assign({}, endCep, { numero: ec.numero }))) : null;
+        const rr = frete.calcularFreteRaio(f.raio.coordEmpresa, coordCli, f.raio.faixas);
+        if (!rr.entrega_disponivel) return res.status(409).json({ erro: "Endereço fora da área de entrega." });
+        taxaEntrega = rr.valor_frete;
+      } else {
+        taxaEntrega = f.taxaFixa;
+      }
+    }
     const total = recalc.subtotal + taxaEntrega;
 
     // chatId do token (liga ao cliente do WhatsApp); ausente/expirado → confirma pelo telefone.
@@ -953,8 +1018,28 @@ app.put("/api/config", exigeAuth, async (req, res) => {
   const invalido = validarConfig(req.body);
   if (invalido) return res.status(400).json({ erro: invalido });
   try {
-    await store.setConfig(req.tenantDir, req.body);
-    res.json({ ok: true });
+    const body = req.body;
+    let avisoFrete = null;
+    // Frete por raio: feature do Plano Completo (gate no servidor, não confia no front).
+    if (body.frete && body.frete.modo === "raio") {
+      const emp = await empresas.buscarPorSlug(req.slug);
+      if (!empresas.temFreteRaio(emp)) {
+        body.frete.modo = "fixo"; // sem Completo → não ativa o raio
+      } else {
+        // Geocodifica o endereço da empresa 1x (regeocodifica só se o endereço mudou).
+        const raio = body.frete.raio || (body.frete.raio = {});
+        const endEmpresa = frete.montarEnderecoCompleto(body.restaurante || {});
+        if (endEmpresa === "Brasil") {
+          avisoFrete = "Cadastre o endereço completo do restaurante (com número) para o frete por raio funcionar.";
+        } else if (!raio.coordEmpresa || raio.enderecoBase !== endEmpresa) {
+          const coord = await frete.geocodificar(endEmpresa);
+          if (coord) { raio.coordEmpresa = coord; raio.enderecoBase = endEmpresa; }
+          else avisoFrete = "Não foi possível localizar o endereço do restaurante no mapa. Confira o endereço cadastrado.";
+        }
+      }
+    }
+    await store.setConfig(req.tenantDir, body);
+    res.json({ ok: true, avisoFrete });
   } catch (e) {
     res.status(400).json({ erro: e.message });
   }
