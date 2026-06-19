@@ -4090,10 +4090,13 @@ html.embed, html.embed body { background: var(--bg-primary); }
 }
 .cfg-frete-painel { border-top: 1px solid var(--border-subtle); padding-top: 16px; }
 .cfg-frete-upsell {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  flex-direction: column; align-items: flex-start; gap: 12px;
   padding: 16px; border: 1px dashed var(--accent); border-radius: var(--radius);
   background: var(--accent-subtle);
 }
+/* display só quando NÃO oculto — senão `display:flex` venceria o atributo `hidden`
+   e o upsell apareceria mesmo pro Completo. */
+.cfg-frete-upsell:not([hidden]) { display: flex; }
 .cfg-frete-upsell p { margin: 0; font-size: 13px; color: var(--text-primary); line-height: 1.5; }
 
 /* Tabela de faixas (frete por raio) */
