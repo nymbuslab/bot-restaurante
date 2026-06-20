@@ -50,7 +50,7 @@ estrita, front sem framework, restaurantes pequenos, sem custo extra por impress
   - **Via cupom:** nº, hora, cliente, telefone, tipo, endereço, itens com preço, subtotal, taxa de
     entrega, **total**, forma de pagamento.
   - Separador `✂- - -` entre as vias.
-- **Toggle de corte** (Configurações → seção **Impressão**, bloqueada no Essencial):
+- **Toggle de corte** (Configurações → nova **sub-aba "Impressora"**, ao lado de Empresa/Bot/Entrega; bloqueada no Essencial):
   *"Cortar entre a via da cozinha e o cupom"* — padrão **desligado**.
   - Desligado → **1 trabalho de impressão**, vias juntas no mesmo papel; guilhotina corta só no fim.
   - Ligado → **2 trabalhos** em sequência (via cozinha, depois via cupom); a guilhotina corta
@@ -88,25 +88,31 @@ notificação de pedido novo). O único dado novo é o toggle em `config.impress
 
 ## Componentes
 
-### Novo: `public/impressao.js` (front)
+### Novo: `public/comanda.js` (pura, dual-mode — testável)
 
-- `montarComanda(pedido, config)` → **função pura** que devolve o **HTML** (ou string estruturada) das
-  vias a partir do objeto pedido e da config. Sem efeito colateral → testável isolada.
-- `imprimirPedido(pedido, config)` → injeta o HTML em `#area-impressao` e chama `window.print()`;
-  respeita `config.impressao.cortarEntreVias` (1 vs 2 trabalhos).
-- Helpers de formatação 80mm: linha separadora, alinhamento de valores à direita, quebra de itens
-  com opcionais/observação, cabeçalho com `config.restaurante.nome`.
+- `montarComanda(pedido, config)` → **função pura** que devolve `{ cozinha, cupom }` (strings de
+  texto monoespaçado, linhas separadas por `\n`). Sem efeito colateral → testável isolada.
+- Helpers de formatação 80mm (~48 colunas): linha separadora, alinhamento de valores à direita,
+  quebra de itens com opcionais/observação, cabeçalho com `config.restaurante.nome`, `fmtBR(n)`.
+- **Dual-mode** para rodar no browser *e* ser requerível no `node --test`: IIFE que expõe
+  `window.Comanda` no navegador e `module.exports` quando `module` existe. O teste
+  `test/comanda.test.js` faz `require("../public/comanda.js")`. Mantém **uma única fonte** da lógica
+  (DRY) usada pela impressão e pelo teste.
 
-> A função pura pode viver em `public/impressao.js` exportando um helper testável, ou ser espelhada
-> num módulo puro em `src/` se for mais simples cobrir com `node:test`. Decidir no plano de
-> implementação (preferência: manter a lógica de montagem pura e reaproveitável pelo teste).
+### Novo: `public/impressao.js` (orquestração de impressão — browser)
+
+- `Impressao.imprimir(pedido, config)` → injeta o texto das vias (em `<pre>`) no container oculto
+  `#area-impressao` e chama `window.print()`; respeita `config.impressao.cortarEntreVias` (1 trabalho
+  com as 2 vias × 2 trabalhos encadeados por `onafterprint`). Browser-only → validado por Playwright.
 
 ### Alterado: `public/admin.html`
 
 - Container oculto `#area-impressao` para o conteúdo de impressão.
-- Botão "Imprimir comanda" no detalhe do pedido e no modal de novo pedido.
-- Seção **Impressão** em Configurações com o toggle (bloqueada no Essencial).
-- `<link>`/`<script src>` do `impressao.js` (JS externo — CSP estrita, sem inline).
+- Botão "Imprimir comanda" no modal de detalhe do pedido e no modal de novo pedido.
+- Nova **sub-aba "Impressora"** na `.cfg-subnav` (botão `data-sub="impressora"` + painel
+  `cfg-sub-impressora`) com o toggle (bloqueada no Essencial). O handler de sub-abas existente
+  (genérico, em `app.js:1685`) já cobre a nova aba sem mudança.
+- `<script src>` de `comanda.js` e `impressao.js` (JS externo — CSP estrita, sem inline).
 
 ### Alterado: `public/app.js`
 
