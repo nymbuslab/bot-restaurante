@@ -2503,19 +2503,21 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 14px 22px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 .pedido-acoes {
-  flex: 1;
+  flex: 1 1 100%;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
 .pedido-acoes:empty { display: none; }
-.pedido-acoes button { width: 100%; }
+.pedido-acoes button { flex: 1 1 auto; min-width: 130px; }
 .pedido-acoes button.mini { width: auto; }
 .ped-rodape #pedido-fechar-rodape { flex-shrink: 0; }
 .pedido-avisado {
