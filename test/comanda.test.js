@@ -1,0 +1,68 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const { montarComanda } = require("../public/comanda.js");
+
+const config = { restaurante: { nome: "Pizzaria do João" } };
+
+const pedidoBase = {
+  numero: 123,
+  criadoEm: "2026-06-20T17:35:00.000Z", // 14:35 BRT
+  cliente: "João Silva",
+  telefone: "11987654321",
+  tipoEntrega: "Entrega",
+  endereco: "Rua X, 42, apto 101",
+  pagamento: "Pix",
+  taxaEntrega: 5.5,
+  total: 60.5,
+  observacao: "entrega rápida",
+  itens: [
+    { nome: "Burger X", preco: 25, qtd: 2,
+      opcionais: [{ nome: "Bacon", preco: 3, qtd: 1 }, { nome: "Queijo Extra", preco: 2.5, qtd: 2 }],
+      observacao: "sem cebola" },
+    { nome: "Refrigerante", preco: 5, qtd: 1, opcionais: [], observacao: "" },
+  ],
+};
+
+test("via cozinha: tem cabeçalho, número, itens e observações — SEM preços", () => {
+  const { cozinha } = montarComanda(pedidoBase, config);
+  assert.match(cozinha, /PIZZARIA DO JOÃO/i);
+  assert.match(cozinha, /COZINHA/i);
+  assert.match(cozinha, /#123/);
+  assert.match(cozinha, /2x Burger X/);
+  assert.match(cozinha, /Bacon/);
+  assert.match(cozinha, /2x Queijo Extra/);
+  assert.match(cozinha, /sem cebola/);
+  assert.match(cozinha, /entrega rápida/);
+  assert.equal(/R\$/.test(cozinha), false, "via cozinha não deve ter preços");
+});
+
+test("via cupom: tem cliente, endereço, pagamento, taxa e total", () => {
+  const { cupom } = montarComanda(pedidoBase, config);
+  assert.match(cupom, /CUPOM/i);
+  assert.match(cupom, /João Silva/);
+  assert.match(cupom, /Rua X, 42/);
+  assert.match(cupom, /Pix/);
+  assert.match(cupom, /5,50/);   // taxa
+  assert.match(cupom, /60,50/);  // total
+});
+
+test("retirada: via cozinha marca RETIRADA e cupom omite endereço", () => {
+  const ped = { ...pedidoBase, tipoEntrega: "Retirada", endereco: "" };
+  const { cozinha, cupom } = montarComanda(ped, config);
+  assert.match(cozinha, /RETIRADA/i);
+  assert.equal(/End:/.test(cupom), false);
+});
+
+test("taxa 0: cupom omite a linha de taxa mas mantém o total", () => {
+  const ped = { ...pedidoBase, taxaEntrega: 0, total: 55 };
+  const { cupom } = montarComanda(ped, config);
+  assert.equal(/Taxa/i.test(cupom), false);
+  assert.match(cupom, /55,00/);
+});
+
+test("item sem opcionais/observação: 1 linha, sem 'Obs'", () => {
+  const ped = { ...pedidoBase, itens: [{ nome: "Coca", preco: 5, qtd: 1, opcionais: [], observacao: "" }] };
+  const { cozinha } = montarComanda(ped, config);
+  assert.match(cozinha, /1x Coca/);
+  assert.equal(/Obs:/.test(cozinha), false);
+});
