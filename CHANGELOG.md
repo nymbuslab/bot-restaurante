@@ -314,3 +314,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Login do administrador (master) modernizado:** agora usa a mesma base de login segura do sistema (Supabase) — por isso também ganhou o "esqueci a senha". Nada muda no dia a dia: mesmo e-mail e senha.
 
 > Requer os secrets `RESEND_API_KEY` (+ `EMAIL_FROM` do domínio verificado) e `SUPERADMIN_EMAIL` (e-mail do administrador) no servidor.
+
+## [0.29.0] — Impressão de pedido na térmica (Plano Completo)
+
+- **Imprimir comanda:** ao abrir um pedido no painel (ou quando chega um pedido novo), aparece o botão **🖨️ Imprimir comanda**, que imprime numa **impressora térmica 80mm** (ex.: Elgin i7/i8, Epson T20x — qualquer uma com driver instalado). Saem **2 vias**: a da **cozinha** (itens, opcionais e observações, **sem preços**) e o **cupom do pedido** (cliente, endereço, pagamento e total).
+- **Exclusivo do Plano Completo:** no Plano Essencial o botão não aparece e a aba mostra o aviso de upgrade.
+- **Cortar entre as vias:** em **Configurações → Impressora** dá para imprimir as duas vias **juntas** (padrão, separadas por um tracejado para destacar à mão) ou em **2 cupons separados** (a guilhotina corta entre eles).
+- Impressão pelo próprio navegador (sem instalar nada). Para sair automático/sem caixa de diálogo, dá para rodar o Chrome em modo *kiosk-printing* (passo a passo em `docs/planos-e-frete.md`).

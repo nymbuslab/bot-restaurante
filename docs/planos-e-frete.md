@@ -182,3 +182,46 @@ item de preço trocado + proration; downgrade de volta) + cadastro escolhendo Co
 
 Ao final de cada fase: `npm run check` + `npm test`, atualizar `CHANGELOG.md` e `PROGRESSO.md`,
 commit + push, e aprovação antes da fase seguinte.
+
+---
+
+## 2º benefício do Completo — Impressão de pedido na térmica (80mm)
+
+> ✅ **implementado** (CHANGELOG 0.29.0). Spec/plano: `docs/superpowers/specs/2026-06-20-impressao-termica-design.md`
+> e `docs/superpowers/plans/2026-06-20-impressao-termica.md`.
+
+Além do frete por raio, o **Plano Completo** libera a **impressão de pedido** numa impressora
+térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x e similares — qualquer uma com **driver** no SO).
+
+- **Caminho:** impressão **pelo navegador** (`window.print()` + CSS `@page { size: 80mm auto }`),
+  sem agente local nem ESC/POS. A montagem do texto é pura e testada (`public/comanda.js`); a
+  orquestração fica em `public/impressao.js`. Largura amarrada ao físico via `font-size: 2.5mm`
+  (≈ 48 colunas em ~72mm, sem quebra de linha).
+- **Disparo:** botão **🖨️ Imprimir comanda** no modal de detalhe do pedido **e** no modal de novo
+  pedido. Saem **2 vias**: cozinha (itens/opcionais/observações, **sem preços**) + cupom (cliente,
+  endereço, pagamento, total).
+- **Gating:** front, por `planoAtual === "completo"` (impressão é ação **local**, sem recurso de
+  servidor a proteger). Essencial vê a sub-aba **Configurações → Impressora** com cadeado/upsell.
+- **Toggle de corte:** `config.impressao.cortarEntreVias` (jsonb, salvo pelo `PUT /api/config`
+  existente; **sem migração**). Desligado (padrão) = 1 trabalho, vias juntas com tracejado.
+  Ligado = 2 trabalhos encadeados (guilhotina corta entre as vias).
+
+### Impressão silenciosa/automática (opcional) — Chrome em *kiosk-printing*
+
+Por padrão a impressão abre a caixa de diálogo do navegador (a impressora é escolhida na 1ª vez e
+fica lembrada). Para o pedido sair **direto na térmica, sem diálogo** (útil num PC dedicado na
+cozinha), inicie o Chrome com a flag:
+
+```text
+chrome.exe --kiosk-printing
+```
+
+(defina a térmica como **impressora padrão** do Windows; opcionalmente adicione `--kiosk` para tela
+cheia). Nesse modo, o `window.print()` imprime na hora — e o modo "cortar entre as vias" sai com os
+2 cortes **silenciosos**. Sem a flag, segue funcionando no modo manual (1 ou 2 diálogos).
+
+### Fora do v1 (futuro)
+
+- ESC/POS via agente local (QZ Tray): corte fino/silencioso e impressão disparada pelo servidor
+  (sem painel aberto).
+- Auto-impressão ao chegar o pedido; largura 58mm; escolher quais vias; KDS (tela de cozinha).

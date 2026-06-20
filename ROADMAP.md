@@ -122,9 +122,13 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 ### Fase 3 — Os "duros" (esbarram na arquitetura / regulados)
 
-- [ ] **Impressão (cupom de venda + comanda de cozinha)** (G + decisão de arquitetura) — app web
-  stateless **não imprime em térmica** direto; exige agente local (ex.: QZ Tray), impressora com
-  API ou app desktop. Escolher o caminho antes de codar.
+- [x] **Impressão (comanda de cozinha + cupom)** — ✅ **entregue parcialmente** (caminho navegador):
+  botão **"Imprimir comanda"** no painel imprime 2 vias (cozinha sem preços + cupom completo) numa
+  **térmica 80mm** via `window.print()` + CSS `@page 80mm`, compatível com qualquer impressora com
+  driver (Elgin i7/i8, Epson T20x…). Exclusivo do **Plano Completo**; toggle "cortar entre as vias"
+  em Configurações → Impressora. Ver `CHANGELOG.md` 0.29.0 e [docs/planos-e-frete.md](docs/planos-e-frete.md).
+  **Futuro:** ESC/POS via agente local (QZ Tray) para corte fino/silencioso e impressão sem painel
+  aberto (decisão de arquitetura adiada — o caminho navegador atende o uso atual).
 - [ ] **Fiscal (NFC-e/SAT)** (G + regulatório) — via parceiro fiscal (PlugNotas/Focus NFe/Tecnospeed);
   praticamente um produto à parte.
 
