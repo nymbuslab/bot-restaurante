@@ -335,3 +335,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Impressão com pré-visualização:** **Imprimir comanda** agora abre uma **janela com a prévia das duas vias** (cozinha e cupom) e botões **Imprimir cozinha** e **Imprimir cupom**. Você vê o que vai sair e imprime cada via separada — **sem risco de fechar uma sem querer**. (Saiu o antigo ajuste "cortar entre as vias": como cada via é uma impressão, a impressora já corta no fim de cada uma.)
 - **Ícones no lugar de emojis:** botões e marcações do painel (som, cadeado, tipo de entrega/retirada, retirada no cardápio) passaram a usar **ícones** em vez de emojis, deixando a interface mais profissional.
 - **Caixa mais amigável:** sangria, suprimento e fechamento deixaram de usar a caixinha de texto do navegador e agora abrem um **modal próprio** — no fechamento, a **diferença (sobra/falta) aparece em tempo real** enquanto você digita o valor contado.
+
+## [0.32.0] — Recebimento no Pedido, Caixa mais organizado
+
+- **Receber pagamento agora é no pedido:** você abre o pedido e clica em **Receber pagamento**. A aba **Pedidos** ganhou um **selo** "A receber"/"Recebido" e um **filtro** por pagamento, pra achar rapidinho o que falta receber.
+- **Caixa focado na função dele:** abrir, sangria/suprimento, fechar e conferir o dinheiro. Ele mostra os **"Recebimentos deste caixa"** com a opção de **Estornar** (corrigir um recebimento errado) — sem mais a lista de "a receber" duplicada lá dentro.
+- **Pré-visualização de impressão mais fiel:** a prévia na tela agora mostra as linhas **exatamente como saem no papel** (não quebra linha onde a impressora não quebra).
