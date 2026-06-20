@@ -190,6 +190,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
     if (btn.dataset.aba === "conexao") atualizarStatus();
     if (btn.dataset.aba === "assinatura") carregarAssinatura();
+    if (btn.dataset.aba === "caixa") carregarCaixa();
   });
 });
 
@@ -1750,6 +1751,144 @@ if ($("btnVerPlanosImpressora")) {
   });
 }
 
+// ================= Caixa (Plano Completo) =================
+function fmtBRn(n) { return (Number(n) || 0).toFixed(2).replace(".", ","); }
+
+async function carregarCaixa() {
+  const completo = planoAtual === "completo";
+  $("caixaLock").hidden = completo;
+  $("caixaConteudo").hidden = !completo;
+  if (!completo) return;
+  const r = await api("GET", "/api/caixa");
+  if (!r || !r.ok) { $("caixaConteudo").innerHTML = "<p class='sub'>Falha ao carregar o caixa.</p>"; return; }
+  renderCaixa(await r.json());
+}
+
+function renderCaixa(data) {
+  const cont = $("caixaConteudo");
+  if (!data.caixa) {
+    cont.innerHTML = `
+      <div class="caixa-card">
+        <h3>Abrir caixa</h3>
+        <p class="sub">Informe o fundo de troco (dinheiro inicial na gaveta).</p>
+        <div class="campo"><label for="caixaFundo">Fundo de troco</label>
+          <input id="caixaFundo" inputmode="numeric" value="0,00"></div>
+        <button id="btnAbrirCaixa">Abrir caixa</button>
+      </div>`;
+    if (window.Dinheiro) Dinheiro.mascarar("caixaFundo");
+    $("btnAbrirCaixa").addEventListener("click", abrirCaixa);
+    return;
+  }
+  renderCaixaAberto(data);
+}
+
+async function abrirCaixa() {
+  const fundo = window.Dinheiro ? Dinheiro.valor("caixaFundo") : 0;
+  const r = await api("POST", "/api/caixa/abrir", { fundoTroco: fundo });
+  if (r && r.ok) { toast("✓ Caixa aberto!"); carregarCaixa(); }
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao abrir caixa."); }
+}
+
+function renderCaixaAberto(data) {
+  const cont = $("caixaConteudo");
+  const r = data.resumo;
+  const formas = Object.keys(r.recebidoPorForma);
+  const linhasForma = formas.length
+    ? formas.map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f])}</span></div>`).join("")
+    : "<p class='sub'>Nenhum recebimento ainda.</p>";
+  const aReceber = data.aReceber.map((p) =>
+    `<div class="caixa-ped"><span>#${p.numero} · ${escapar(p.cliente || "")} · ${escapar(p.pagamento || "")}</span>
+      <button class="secundario mini caixa-receber" data-id="${p.id}" data-forma="${escapar(p.pagamento || "")}" data-valor="${p.total}">Receber R$ ${fmtBRn(p.total)}</button></div>`).join("") || "<p class='sub'>Tudo recebido.</p>";
+  const recebidos = data.recebidos.map((p) =>
+    `<div class="caixa-ped"><span>#${p.numero} · ${escapar(p.cliente || "")}</span>
+      <button class="secundario mini caixa-estornar" data-id="${p.id}">Estornar</button></div>`).join("") || "";
+
+  cont.innerHTML = `
+    <div class="caixa-topo">
+      <div><h3>Caixa aberto</h3><span class="sub">Fundo de troco: R$ ${fmtBRn(data.caixa.fundoTroco)}</span></div>
+      <div class="caixa-acoes">
+        <button class="secundario" id="btnSangria">Sangria</button>
+        <button class="secundario" id="btnSuprimento">Suprimento</button>
+        <button class="secundario" id="btnHistCaixa">Histórico</button>
+        <button id="btnFecharCaixa">Fechar caixa</button>
+      </div>
+    </div>
+    <div class="caixa-resumo">
+      ${linhasForma}
+      <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(r.suprimentos)}</span></div>
+      <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(r.sangrias)}</span></div>
+      <div class="caixa-linha caixa-total"><span>Esperado em dinheiro</span><span>R$ ${fmtBRn(r.esperadoEspecie)}</span></div>
+    </div>
+    <h4>A receber</h4><div class="caixa-lista">${aReceber}</div>
+    <h4>Recebidos</h4><div class="caixa-lista">${recebidos}</div>`;
+
+  cont.querySelectorAll(".caixa-receber").forEach((b) =>
+    b.addEventListener("click", () => receberPedidoCaixa(b.dataset.id, b.dataset.forma, Number(b.dataset.valor))));
+  cont.querySelectorAll(".caixa-estornar").forEach((b) =>
+    b.addEventListener("click", () => estornarCaixa(b.dataset.id)));
+  $("btnSangria").addEventListener("click", () => movimentoCaixa("sangria"));
+  $("btnSuprimento").addEventListener("click", () => movimentoCaixa("suprimento"));
+  $("btnHistCaixa").addEventListener("click", verHistoricoCaixa);
+  $("btnFecharCaixa").addEventListener("click", () => fecharCaixaUI(r.esperadoEspecie));
+}
+
+async function receberPedidoCaixa(id, forma, valor) {
+  const r = await api("POST", "/api/caixa/receber/" + id, { forma, valor });
+  if (r && r.ok) { toast("✓ Recebido!"); carregarCaixa(); }
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao receber."); }
+}
+
+async function estornarCaixa(id) {
+  const r = await api("POST", "/api/caixa/estornar/" + id, {});
+  if (r && r.ok) { toast("Estornado."); carregarCaixa(); }
+}
+
+async function movimentoCaixa(tipo) {
+  const titulo = tipo === "sangria" ? "Sangria (retirar dinheiro)" : "Suprimento (reforçar dinheiro)";
+  const valorStr = window.prompt(titulo + "\nValor (ex.: 50,00):", "");
+  if (valorStr == null) return;
+  const valor = parseFloat(valorStr.replace(".", "").replace(",", ".")) || 0;
+  if (valor <= 0) { toast("Valor inválido."); return; }
+  const descricao = window.prompt("Motivo (opcional):", "") || "";
+  const r = await api("POST", "/api/caixa/movimento", { tipo, valor, descricao });
+  if (r && r.ok) { toast("✓ Registrado."); carregarCaixa(); }
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha."); }
+}
+
+async function fecharCaixaUI(esperado) {
+  const contadoStr = window.prompt(
+    "Fechar caixa\nEsperado em dinheiro: R$ " + fmtBRn(esperado) + "\n\nConte a gaveta e informe o valor (ex.: 165,00):", "");
+  if (contadoStr == null) return;
+  const contado = parseFloat(contadoStr.replace(".", "").replace(",", ".")) || 0;
+  const r = await api("POST", "/api/caixa/fechar", { contadoDinheiro: contado, observacao: "" });
+  if (r && r.ok) {
+    const d = await r.json();
+    const dif = d.diferenca;
+    toast(dif === 0 ? "✓ Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
+    carregarCaixa();
+  } else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao fechar."); }
+}
+
+async function verHistoricoCaixa() {
+  const r = await api("GET", "/api/caixa/historico");
+  if (!r || !r.ok) return;
+  const lista = await r.json();
+  const html = lista.length
+    ? lista.map((c) => `<div class="caixa-linha"><span>${new Date(c.fechadoEm).toLocaleString("pt-BR")}</span><span>${c.diferenca === 0 ? "ok" : (c.diferenca > 0 ? "sobra R$ " + fmtBRn(c.diferenca) : "falta R$ " + fmtBRn(-c.diferenca))}</span></div>`).join("")
+    : "<p class='sub'>Nenhum caixa fechado ainda.</p>";
+  const box = $("caixaConteudo");
+  const sec = document.createElement("div");
+  sec.className = "caixa-resumo";
+  sec.innerHTML = "<h4>Histórico</h4>" + html;
+  box.appendChild(sec);
+}
+
+if ($("btnVerPlanosCaixa")) {
+  $("btnVerPlanosCaixa").addEventListener("click", () => {
+    const b = document.querySelector('.sidebar [data-aba="assinatura"]'); if (b) b.click();
+  });
+}
+
 if ($("btnVerPlanos")) {
   $("btnVerPlanos").addEventListener("click", () => {
     const btnAssin = document.querySelector('.sidebar [data-aba="assinatura"]');
@@ -2403,8 +2542,9 @@ function textoAvisar(p) {
 function montarAcoes(p) {
   const cont = $("pedido-acoes");
   if (!cont) return;
-  if (!podeAvisar(p)) { cont.innerHTML = ""; return; } // sem canal: não oferece
-  if (p.avisadoEm) {
+  if (!podeAvisar(p)) {
+    cont.innerHTML = ""; // sem canal: não oferece avisar
+  } else if (p.avisadoEm) {
     const quando = new Date(p.avisadoEm).toLocaleString("pt-BR");
     cont.innerHTML = `
       <span class="pedido-avisado">✓ Cliente avisado em ${quando}</span>
@@ -2414,6 +2554,19 @@ function montarAcoes(p) {
   }
   const btn = $("btn-avisar");
   if (btn) btn.addEventListener("click", () => avisarCliente(p));
+
+  // Recebimento no caixa (Plano Completo): só se ainda não recebido.
+  if (planoAtual === "completo" && !p.recebidoEm) {
+    const extra = document.createElement("button");
+    extra.className = "secundario";
+    extra.textContent = "Receber pagamento (R$ " + fmtBRn(p.total) + ")";
+    extra.addEventListener("click", async () => {
+      const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
+      if (r && r.ok) { p.recebidoEm = new Date().toISOString(); toast("✓ Recebido no caixa!"); montarAcoes(p); }
+      else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Abra o caixa primeiro."); }
+    });
+    cont.appendChild(extra);
+  }
 }
 
 async function avisarCliente(p) {

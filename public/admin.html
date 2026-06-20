@@ -31,6 +31,10 @@
           <span>Pedidos</span>
           <span class="nav-badge" id="badge-pedidos" hidden>0</span>
         </button>
+        <button data-aba="caixa">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+          <span>Caixa</span>
+        </button>
         <button data-aba="cardapio">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
           <span>Cardápio</span>
@@ -588,6 +592,17 @@
       </div>
 
       <div id="pedidosContainer"></div>
+    </section>
+
+    <!-- CAIXA (Plano Completo) -->
+    <section class="aba" id="aba-caixa">
+      <div class="caixa-lock" id="caixaLock" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h3>Caixa é do Plano Completo</h3>
+        <p class="sub">Abra e feche o caixa do dia, registre recebimentos e confira o dinheiro. Disponível no Plano Completo.</p>
+        <button type="button" class="secundario" id="btnVerPlanosCaixa">Ver planos</button>
+      </div>
+      <div id="caixaConteudo" hidden></div>
     </section>
 
     <!-- ASSINATURA -->
