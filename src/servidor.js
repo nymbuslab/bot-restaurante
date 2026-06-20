@@ -17,7 +17,7 @@ const pedidos = require("./pedidos");
 const clientes = require("./clientes");
 const cep = require("./cep");
 const frete = require("./frete");
-const email = require("./email");
+const mail = require("./email");
 const db = require("./db");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin, supabaseAnon } = require("./supabase");
@@ -196,6 +196,7 @@ app.post("/api/cadastro", cadastroLimiter, async (req, res) => {
     if (!nome || !email || !senha) return res.status(400).json({ erro: "Preencha todos os campos." });
     if (senha.length < 6) return res.status(400).json({ erro: "Senha deve ter pelo menos 6 caracteres." });
     const empresa = await empresas.cadastrar({ nome, email, senha });
+    mail.boasVindas(email, empresa.nome).catch((e) => console.error("email boas-vindas:", e.message));
     res.json({ ok: true, slug: empresa.slug, nome: empresa.nome });
   } catch (e) {
     // Mensagem genérica e uniforme: NÃO confirma se o e-mail já existe (anti-enumeração).
@@ -365,6 +366,8 @@ app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
       stripeSubscriptionId: emp.stripeSubscriptionId,
       plano: plano === "completo" ? "completo" : "essencial",
     });
+    const planoNome = plano === "completo" ? "Plano Completo" : "Plano Essencial";
+    mail.assinaturaConfirmada(emp.email, emp.nome, planoNome).catch((e) => console.error("email assinatura:", e.message));
     res.json({ ok: true });
   } catch (e) {
     console.error("confirmar assinatura:", e.message);
@@ -512,7 +515,7 @@ app.post("/api/esqueci-senha", esqueciLimiter, async (req, res) => {
       [hashToken(token), email_, expira]
     );
     const link = `${baseUrlDe(req)}/redefinir-senha?token=${token}`;
-    await email.resetSenha(email_, link).catch((e) => console.error("email reset:", e.message));
+    await mail.resetSenha(email_, link).catch((e) => console.error("email reset:", e.message));
   } catch (e) {
     console.error("esqueci-senha:", e.message);
   }
@@ -912,6 +915,8 @@ app.patch("/api/admin/conta", exigeSuperAdmin, async (req, res) => {
     const upd = await supabaseAdmin.auth.updateUserById(req.adminUserId, updates);
     if (upd.error) return res.status(400).json({ erro: "Não foi possível atualizar a conta." });
     if (novoEmail) await plataforma.salvarMaster({ email: novoEmail }); // allowlist segue o e-mail
+    const oQue = (updates.password && novoEmail) ? "Sua senha e e-mail" : updates.password ? "Sua senha" : "Seu e-mail de acesso";
+    mail.avisoSeguranca(novoEmail || alvo, oQue).catch((e) => console.error("email aviso master:", e.message));
     res.json({ ok: true, email: novoEmail || alvo });
   } catch (e) {
     console.error("admin conta:", e.message);
@@ -1177,6 +1182,8 @@ app.patch("/api/conta/senha", exigeAuth, async (req, res) => {
   try {
     const { senhaAtual, novaSenha } = req.body || {};
     await empresas.trocarSenha(req.slug, senhaAtual, novaSenha);
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (emp) mail.avisoSeguranca(emp.email, "Sua senha").catch((e) => console.error("email aviso senha:", e.message));
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });
@@ -1187,6 +1194,7 @@ app.patch("/api/conta/email", exigeAuth, async (req, res) => {
   try {
     const { senhaAtual, novoEmail } = req.body || {};
     const email = await empresas.trocarEmail(req.slug, senhaAtual, novoEmail);
+    mail.avisoSeguranca(email, "Seu e-mail de acesso").catch((e) => console.error("email aviso email:", e.message));
     res.json({ ok: true, email });
   } catch (e) {
     res.status(400).json({ erro: e.message });
@@ -1251,7 +1259,9 @@ app.delete("/api/conta", exigeAuth, async (req, res) => {
     }
 
     await multiBot.desconectar(req.slug).catch(() => {});
+    const contato = emp ? { email: emp.email, nome: emp.nome } : null;
     await empresas.excluir(req.slug);
+    if (contato) mail.contaExcluida(contato.email, contato.nome).catch((e) => console.error("email exclusao:", e.message));
     limparSessaoCookies(req, res); // conta apagada → derruba a sessão
     res.json({ ok: true });
   } catch (e) {

@@ -15,6 +15,7 @@
 const Stripe = require("stripe");
 const empresas = require("./empresas");
 const multiBot = require("./multi-bot");
+const mail = require("./email");
 const { PLANO_INFO, planoDoPrice } = require("./planos");
 
 const SECRET = process.env.STRIPE_SECRET_KEY || "";
@@ -337,7 +338,13 @@ async function tratarEvento(event) {
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const slug = (obj.metadata && obj.metadata.slug) || (await slugDoCustomer(obj.customer));
-      if (slug) await aplicarSubscription(slug, obj, obj.customer);
+      if (slug) {
+        await aplicarSubscription(slug, obj, obj.customer);
+        if (event.type === "customer.subscription.deleted") {
+          const emp = await empresas.buscarPorSlug(slug).catch(() => null);
+          if (emp && emp.email) mail.cancelamento(emp.email, emp.nome).catch((e) => console.error("email cancelamento:", e.message));
+        }
+      }
       break;
     }
 

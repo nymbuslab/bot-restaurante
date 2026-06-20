@@ -68,6 +68,10 @@ Para **planos e frete por raio**: `STRIPE_PRICE_ID_COMPLETO` (preço do **Plano 
 `STRIPE_PRICE_ID` do Essencial) e `GEOAPIFY_API_KEY` (geocodificação do frete por raio). Detalhe em
 [docs/planos-e-frete.md](docs/planos-e-frete.md).
 
+Para **e-mail transacional** (boas-vindas, "esqueci a senha", confirmação de assinatura, avisos):
+`RESEND_API_KEY` + `EMAIL_FROM` (remetente de domínio verificado no Resend). Sem isso, os e-mails
+viram no-op (não quebram o fluxo). Módulo em `src/email.js`.
+
 Schema: `npx supabase db push` aplica as migrações de `supabase/migrations/`.
 
 No **primeiro acesso**, crie a primeira empresa pelo onboarding público em `/cadastro.html`
@@ -98,6 +102,7 @@ src/
   cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, token HMAC do link)
   frete.js            -> frete por raio (Plano Completo): Haversine + faixas (puros) + geocodificar() Geoapify c/ cache (tabela geo_cache)
   cep.js              -> busca de CEP (ViaCEP) com cache no banco (tabela ceps)
+  email.js            -> e-mail transacional via Resend (boas-vindas, reset de senha, assinatura, avisos)
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
   pedidos.js          -> tabela `pedidos` no Postgres, isolada por empresa_id (async)

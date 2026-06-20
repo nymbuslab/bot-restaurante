@@ -306,3 +306,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Correção:** o checkout não abria após o cadastro (ficava "piscando") — corrigido (a sessão agora é lida do cookie seguro).
 
 > Requer os secrets `STRIPE_PRICE_ID_COMPLETO` e `GEOAPIFY_API_KEY` no servidor (geocodificação via Geoapify, com cache).
+
+## [0.28.0] — "Esqueci a senha" + e-mails (Resend) e login do master pelo Supabase
+
+- **"Esqueci minha senha"** na tela de login: você informa o e-mail e recebe um **link** para definir uma nova senha (expira em 1 hora). Vale para o restaurante **e** para o administrador.
+- **E-mails automáticos** (via Resend): **boas-vindas** no cadastro, **confirmação de assinatura**, **aviso ao trocar senha ou e-mail**, **cancelamento** e **exclusão de conta**.
+- **Login do administrador (master) modernizado:** agora usa a mesma base de login segura do sistema (Supabase) — por isso também ganhou o "esqueci a senha". Nada muda no dia a dia: mesmo e-mail e senha.
+
+> Requer os secrets `RESEND_API_KEY` (+ `EMAIL_FROM` do domínio verificado) e `SUPERADMIN_EMAIL` (e-mail do administrador) no servidor.
