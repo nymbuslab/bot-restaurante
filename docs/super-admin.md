@@ -2,22 +2,19 @@
 
 Área de gestão de **todos** os tenants, separada do painel de restaurante.
 
-- **Conta master fixa**, via variáveis de ambiente (nunca hardcoded/commitada):
-  `SUPERADMIN_EMAIL` e `SUPERADMIN_SENHA_HASH`. O hash usa a **mesma** `hashSenha`
-  (**bcrypt**, `bcryptjs`) do `empresas.js` — gere com `npm run gerar-hash-admin -- "senha"`
-  (script `scripts/gerar-hash.js` importa a função real). **Migração graciosa:** hashes
-  **SHA-256+salt legados ainda verificam** (via `verificarSenhaMaster`, que detecta o formato)
-  até a senha master ser trocada pelo painel → aí passa a bcrypt.
-  Sem as duas envs, as rotas `/api/admin/*` ficam desativadas (login responde **503**;
-  nunca há credencial default). Carregamento de `.env` via `dotenv` (ver `.env.example`).
-  Em produção (Fly.io): `fly secrets set SUPERADMIN_EMAIL=... SUPERADMIN_SENHA_HASH=...`.
-- **Isolamento total de auth:** o super-admin usa um Map `tokensAdmin` próprio (token opaco
-  via `crypto.randomBytes`, em memória, com **TTL de 12h**) — **separado e diferente** do JWT
-  do Supabase usado pelo restaurante. `exigeSuperAdmin` valida só o token master (e rejeita
-  expirado); `exigeAuth` só o JWT de restaurante. Um token nunca cruza para o outro lado.
-  Login master: `POST /api/admin/login { email, senha }` → `{ token }`. Verificação de senha
-  via `empresas.verificarSenhaMaster` (bcrypt; SHA-256 legado timing-safe). (O super-admin **não** migrou
-  para o Supabase Auth — segue env-based, por ser conta única e isolada.)
+- **Master é um usuário do Supabase Auth** (a senha vive lá; herda "esqueci a senha" + MFA).
+  O que o torna super-admin é uma **allowlist de e-mail**: `master_email` (`plataforma_config`,
+  editável) com **bootstrap na env `SUPERADMIN_EMAIL`**. Quem loga com esse e-mail vira
+  super-admin; qualquer outro usuário Supabase (restaurante) **não** entra no `/api/admin/*`.
+  Sem `SUPERADMIN_EMAIL`, as rotas `/api/admin/*` ficam desativadas (login **503**). Em produção:
+  `fly secrets set SUPERADMIN_EMAIL=...`; o usuário master é criado/gerenciado no Supabase Auth.
+- **Auth (sem token em memória):** login `POST /api/admin/login { email, senha }` →
+  `signInWithPassword` (Supabase) + checa o e-mail == master → devolve **`{ token, refresh }`**
+  (JWT do Supabase). `exigeSuperAdmin` **valida o JWT localmente** (jose/JWKS, via
+  `empresas.emailDoToken`) e exige `email == master`. `POST /api/admin/refresh { refresh }`
+  renova (o JWT dura ~1h). **Isolamento mantido pela allowlist** — um restaurante logado, mesmo
+  com JWT válido, é rejeitado no `/api/admin/*`. Trocar e-mail/senha do master: `PATCH
+  /api/admin/conta` (Supabase `updateUserById`; e-mail novo atualiza a allowlist em `master_email`).
 - **Rotas** (todas sob `exigeSuperAdmin`):
   `GET /api/admin/tenants` (lista) · `POST /api/admin/tenants` (cria, reusa `empresas.cadastrar`) ·
   `PATCH /api/admin/tenants/:slug/suspender` · `PATCH .../reativar` ·
@@ -75,11 +72,10 @@
   (dados empresa) · `PATCH /api/admin/conta` (troca e-mail/senha do master, **exige senha atual**) ·
   `GET /api/plataforma` (cliente — suporte WhatsApp, DB→env) · **público** `GET /api/plataforma/publico`
   (footer da landing, sem auth, nada sensível). `telefone`/`suporteWhatsapp` guardam só dígitos.
-- **Credenciais do master migraram pro banco (editáveis):** o login master agora lê
-  `master_email`/`master_senha_hash` de `plataforma_config` (`credenciaisMaster()` em `servidor.js`),
-  caindo na env `SUPERADMIN_EMAIL`/`SUPERADMIN_SENHA_HASH` só como **bootstrap** (a env ainda é o
-  gate que habilita `/api/admin/*`). Senha em hash (mesma `hashSenha` bcrypt); troca exige a
-  senha atual. `exigeSuperAdmin` (token opaco) inalterado.
+- **Master no Supabase Auth (allowlist):** a **senha vive no Supabase** (não há mais hash em env/DB).
+  A allowlist é `plataforma_config.master_email` (editável via `PATCH /api/admin/conta`) com bootstrap
+  na env `SUPERADMIN_EMAIL` (`masterEmail()` em `servidor.js`). Trocar e-mail/senha = `updateUserById`
+  no Supabase (+ atualiza `master_email`). O `master_senha_hash` foi aposentado.
 - **Footer da landing** (`index.html`) consome `GET /api/plataforma/publico` e exibe Nome Fantasia,
   Razão Social, CNPJ, Endereço, Telefone e ícones Facebook/Instagram **quando preenchidos** (vazio =
   footer padrão, sem placeholder falso).

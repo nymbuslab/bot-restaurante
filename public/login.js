@@ -69,8 +69,9 @@ async function entrar() {
       body: JSON.stringify({ email, senha }),
     });
     if (ra.ok) {
-      const { token } = await ra.json();
+      const { token, refresh } = await ra.json();
       sessionStorage.setItem("tokenAdmin", token);
+      if (refresh) sessionStorage.setItem("tokenAdminRefresh", refresh);
       location.href = "admin-master.html";
       return;
     }

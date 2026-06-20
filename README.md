@@ -60,9 +60,9 @@ SUPABASE_URL=...                 # Settings → API
 SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...    # secreto, só backend
 
-# Super-admin (/admin-master) — sem isto as rotas /api/admin/* ficam off (503)
+# Super-admin (/admin-master): e-mail do master (allowlist). O master é um usuário do
+# Supabase Auth — a senha vive lá. Sem esta env, /api/admin/* fica off (503).
 SUPERADMIN_EMAIL=...
-SUPERADMIN_SENHA_HASH=...        # gere com: npm run gerar-hash-admin -- "suaSenha"  (bcrypt)
 
 # Stripe (assinatura paga) — STRIPE_PRICE_ID = Essencial, STRIPE_PRICE_ID_COMPLETO = Completo
 STRIPE_SECRET_KEY=...
@@ -138,7 +138,7 @@ fly launch --no-deploy
 
 # 4. Configurar os secrets (os mesmos do .env: Supabase + super-admin + Stripe + Geoapify)
 fly secrets set DATABASE_URL="..." SUPABASE_URL="..." SUPABASE_ANON_KEY="..." \
-  SUPABASE_SERVICE_ROLE_KEY="..." SUPERADMIN_EMAIL="..." SUPERADMIN_SENHA_HASH="..." \
+  SUPABASE_SERVICE_ROLE_KEY="..." SUPERADMIN_EMAIL="..." \
   STRIPE_SECRET_KEY="..." STRIPE_PUBLISHABLE_KEY="..." STRIPE_PRICE_ID="..." \
   STRIPE_PRICE_ID_COMPLETO="..." STRIPE_WEBHOOK_SECRET="..." GEOAPIFY_API_KEY="..."
 
@@ -239,7 +239,7 @@ sair        → despedida e encerra a sessão (o próximo "oi" recomeça)
 ```text
 bot-restaurante/
 ├── index.js                  → sobe o painel + jobs (higiene de sessão, retenção LGPD)
-├── package.json              → scripts: start, test, check, setup-storage, gerar-hash-admin
+├── package.json              → scripts: start, test, check, setup-storage
 ├── testar-bot.js             → simulador de conversa no terminal
 ├── Dockerfile, fly.toml      → deploy no Fly.io (Node 22, stateless, sem volume)
 ├── .github/workflows/        → CI: test.yml (npm run check + npm test a cada push)
@@ -249,7 +249,6 @@ bot-restaurante/
 │   └── migrations/           → schema do banco (npx supabase db push)
 ├── scripts/
 │   ├── setup-storage.js      → cria o bucket de imagens (npm run setup-storage)
-│   ├── gerar-hash.js         → gera o hash bcrypt da senha master
 │   └── check-syntax.js       → varredura de sintaxe (npm run check)
 ├── public/                   → painel web (HTML/CSS/JS puro, sem framework)
 │   ├── index.html            → landing pública (apresentação + preço)

@@ -75,7 +75,7 @@ No **primeiro acesso**, crie a primeira empresa pelo onboarding público em `/ca
 Depois faça login e, na aba **Conexão**, clique em "Conectar ao WhatsApp".
 
 **Testes:** `npm test` (runner nativo `node:test`, sem dep — testa a lógica pura crítica em
-`test/`: validação de payload, magic bytes, hash master bcrypt/legado, slug) e `npm run check`
+`test/`: validação de payload, magic bytes, slug, planos e frete por raio) e `npm run check`
 (varredura de sintaxe). Os testes usam **env dummy** → rodam sem segredos (e no CI, ver
 `.github/workflows/test.yml`). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
 ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).

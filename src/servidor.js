@@ -18,7 +18,7 @@ const clientes = require("./clientes");
 const cep = require("./cep");
 const frete = require("./frete");
 const multiBot = require("./multi-bot");
-const { supabaseAdmin } = require("./supabase");
+const { supabaseAdmin, supabaseAnon } = require("./supabase");
 const stripeBilling = require("./stripe");
 const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("./validacao");
 const { getSessao, resetSessao } = require("./sessoes");
@@ -144,18 +144,22 @@ async function exigeAssinatura(req, res, next) {
   }
 }
 
-// ---- Autenticação SUPER-ADMIN (conta master, isolada dos restaurantes) ----
-// Token próprio em memória, separado do JWT de restaurante.
-const tokensAdmin = new Map(); // token → expira_em (epoch ms)
-const TOKEN_ADMIN_TTL_MS = 12 * 60 * 60 * 1000; // 12h de validade
+// ---- Autenticação SUPER-ADMIN (conta master) ----
+// O master é um usuário do Supabase Auth (como os restaurantes), reconhecido
+// como super-admin por uma ALLOWLIST de e-mail: `master_email` (plataforma_config,
+// editável) com bootstrap na env SUPERADMIN_EMAIL. Quem loga com esse e-mail vira
+// super-admin; qualquer outro usuário Supabase (restaurante) NÃO entra no /api/admin/*.
+// Sem token em memória — o JWT do Supabase é validado localmente (jose/JWKS).
+const SUPERADMIN_EMAIL       = (process.env.SUPERADMIN_EMAIL || "").trim().toLowerCase();
+const SUPERADMIN_CONFIGURADO = Boolean(SUPERADMIN_EMAIL);
 
-function gerarToken() {
-  return crypto.randomBytes(32).toString("hex"); // CSPRNG (256 bits)
+// E-mail do master (allowlist): banco tem prioridade; env é o bootstrap.
+async function masterEmail() {
+  let email = SUPERADMIN_EMAIL;
+  try { const m = await plataforma.obterMaster(); if (m && m.email) email = m.email.trim().toLowerCase(); }
+  catch (_) { /* sem banco → usa env */ }
+  return email;
 }
-
-const SUPERADMIN_EMAIL      = process.env.SUPERADMIN_EMAIL || "";
-const SUPERADMIN_SENHA_HASH = process.env.SUPERADMIN_SENHA_HASH || "";
-const SUPERADMIN_CONFIGURADO = Boolean(SUPERADMIN_EMAIL && SUPERADMIN_SENHA_HASH);
 
 // Informações da plataforma (Nymbus) expostas ao painel do cliente.
 // Por ora vêm de env; no futuro, a aba "Nymbus" do painel master alimenta isto.
@@ -163,17 +167,22 @@ const SUPERADMIN_CONFIGURADO = Boolean(SUPERADMIN_EMAIL && SUPERADMIN_SENHA_HASH
 const SUPORTE_WHATSAPP = (process.env.SUPORTE_WHATSAPP || "").replace(/\D/g, "");
 
 if (!SUPERADMIN_CONFIGURADO) {
-  console.warn("⚠️  Super-admin não configurado (defina SUPERADMIN_EMAIL e SUPERADMIN_SENHA_HASH). Rotas /api/admin/* desativadas até configurar.");
+  console.warn("⚠️  Super-admin não configurado (defina SUPERADMIN_EMAIL = e-mail do master). Rotas /api/admin/* desativadas até configurar.");
 }
 
-function exigeSuperAdmin(req, res, next) {
-  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
-  const expira = tokensAdmin.get(token);
-  if (!expira || expira < Date.now()) {
-    if (expira) tokensAdmin.delete(token); // token expirado → descarta
-    return res.status(401).json({ erro: "Não autorizado" });
+// Valida o JWT do Supabase e exige que o e-mail seja o do master (allowlist).
+async function exigeSuperAdmin(req, res, next) {
+  try {
+    const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+    const info = await empresas.emailDoToken(token);
+    const alvo = await masterEmail();
+    if (!info || !alvo || info.email !== alvo) return res.status(401).json({ erro: "Não autorizado" });
+    req.adminEmail = info.email;
+    req.adminUserId = info.id;
+    next();
+  } catch (e) {
+    res.status(401).json({ erro: "Não autorizado" });
   }
-  next();
 }
 
 // ---- Rotas públicas ----
@@ -693,38 +702,40 @@ app.delete("/api/assinatura/cartoes/:id", exigeAuth, async (req, res) => {
 
 // ---- Super-admin: autenticação master ----
 
-// Credenciais efetivas do master: o banco (editável no painel) tem prioridade;
-// a env (SUPERADMIN_*) é o BOOTSTRAP inicial (e o gate "feature habilitada").
-async function credenciaisMaster() {
-  let email = SUPERADMIN_EMAIL, hash = SUPERADMIN_SENHA_HASH;
-  try {
-    const m = await plataforma.obterMaster();
-    if (m && m.email) email = m.email;
-    if (m && m.senhaHash) hash = m.senhaHash;
-  } catch (e) { /* sem banco → usa env */ }
-  return { email, hash };
-}
-
 app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
   if (!SUPERADMIN_CONFIGURADO) return res.status(503).json({ erro: "Super-admin não configurado no servidor." });
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ erro: "Preencha e-mail e senha." });
-
-  const cred = await credenciaisMaster();
-  const emailOk = email === cred.email;
-  const senhaOk = empresas.verificarSenhaMaster(senha, cred.hash);
-  if (!emailOk || !senhaOk) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
-
-  const token = gerarToken();
-  tokensAdmin.set(token, Date.now() + TOKEN_ADMIN_TTL_MS);
-  res.json({ token });
+  const alvo = await masterEmail();
+  // Só o e-mail do master pode tentar — e a senha é validada pelo Supabase Auth.
+  if (String(email).trim().toLowerCase() !== alvo) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+  try {
+    const { data, error } = await supabaseAnon.auth.signInWithPassword({ email: alvo, password: senha });
+    if (error || !data || !data.session) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+    if ((data.user.email || "").toLowerCase() !== alvo) return res.status(401).json({ erro: "Não autorizado" });
+    res.json({ token: data.session.access_token, refresh: data.session.refresh_token });
+  } catch (e) {
+    console.error("admin login:", e.message);
+    res.status(401).json({ erro: "E-mail ou senha incorretos." });
+  }
 });
 
-app.post("/api/admin/logout", (req, res) => {
-  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
-  tokensAdmin.delete(token);
-  res.json({ ok: true });
+// Renova a sessão do master (o JWT do Supabase dura ~1h) usando o refresh token.
+app.post("/api/admin/refresh", async (req, res) => {
+  const { refresh } = req.body || {};
+  if (!refresh) return res.status(401).json({ erro: "Sessão expirada" });
+  try {
+    const { data, error } = await supabaseAnon.auth.refreshSession({ refresh_token: refresh });
+    if (error || !data || !data.session) return res.status(401).json({ erro: "Sessão expirada" });
+    if ((data.user.email || "").toLowerCase() !== (await masterEmail())) return res.status(401).json({ erro: "Não autorizado" });
+    res.json({ token: data.session.access_token, refresh: data.session.refresh_token });
+  } catch (e) {
+    res.status(401).json({ erro: "Sessão expirada" });
+  }
 });
+
+// Logout do master é stateless (o cliente descarta o token). No-op no servidor.
+app.post("/api/admin/logout", (_req, res) => res.json({ ok: true }));
 
 // ---- Super-admin: gestão de tenants ----
 
@@ -786,7 +797,7 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
 app.get("/api/admin/plataforma", exigeSuperAdmin, async (_req, res) => {
   try {
     const cfg = await plataforma.obter();
-    const cred = await credenciaisMaster();
+    const emailMaster = await masterEmail();
     res.json({
       razaoSocial: cfg.razaoSocial || "",
       nomeFantasia: cfg.nomeFantasia || "",
@@ -797,7 +808,7 @@ app.get("/api/admin/plataforma", exigeSuperAdmin, async (_req, res) => {
       instagram: cfg.instagram || "",
       suporteWhatsapp: cfg.suporteWhatsapp || "",
       envFallback: SUPORTE_WHATSAPP || "",
-      masterEmail: cred.email || "",
+      masterEmail: emailMaster || "",
       atualizadoEm: cfg.atualizadoEm || null,
     });
   } catch (e) {
@@ -820,28 +831,35 @@ app.put("/api/admin/plataforma", exigeSuperAdmin, async (req, res) => {
   }
 });
 
-// Altera as credenciais do master (e-mail e/ou senha). Exige a SENHA ATUAL.
+// Altera as credenciais do master (e-mail e/ou senha) no Supabase Auth. Exige a
+// SENHA ATUAL. Trocar o e-mail também atualiza a allowlist (master_email no banco).
 app.patch("/api/admin/conta", exigeSuperAdmin, async (req, res) => {
   try {
     const { senhaAtual, email, novaSenha } = req.body || {};
-    const cred = await credenciaisMaster();
-    if (!senhaAtual || !empresas.verificarSenhaMaster(senhaAtual, cred.hash)) {
-      return res.status(400).json({ erro: "Senha atual incorreta." });
-    }
-    const dados = {};
-    if (email && email.trim()) {
+    const alvo = await masterEmail();
+    const chk = await supabaseAnon.auth.signInWithPassword({ email: alvo, password: senhaAtual || "" });
+    if (chk.error || !chk.data || !chk.data.session) return res.status(400).json({ erro: "Senha atual incorreta." });
+
+    const updates = {};
+    let novoEmail = null;
+    if (email && email.trim() && email.trim().toLowerCase() !== alvo) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return res.status(400).json({ erro: "E-mail inválido." });
-      dados.email = email.trim();
+      novoEmail = email.trim().toLowerCase();
+      updates.email = novoEmail;
     }
     if (novaSenha) {
       if (String(novaSenha).length < 6) return res.status(400).json({ erro: "A nova senha deve ter ao menos 6 caracteres." });
-      dados.senhaHash = empresas.hashSenha(novaSenha);
+      updates.password = novaSenha;
     }
-    if (!dados.email && !dados.senhaHash) return res.status(400).json({ erro: "Nada para alterar." });
-    await plataforma.salvarMaster(dados);
-    res.json({ ok: true, email: dados.email || cred.email });
+    if (!Object.keys(updates).length) return res.status(400).json({ erro: "Nada para alterar." });
+
+    const upd = await supabaseAdmin.auth.updateUserById(req.adminUserId, updates);
+    if (upd.error) return res.status(400).json({ erro: "Não foi possível atualizar a conta." });
+    if (novoEmail) await plataforma.salvarMaster({ email: novoEmail }); // allowlist segue o e-mail
+    res.json({ ok: true, email: novoEmail || alvo });
   } catch (e) {
-    res.status(400).json({ erro: e.message });
+    console.error("admin conta:", e.message);
+    res.status(400).json({ erro: "Falha ao atualizar a conta." });
   }
 });
 

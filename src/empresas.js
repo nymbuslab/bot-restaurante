@@ -7,8 +7,6 @@
 
 const path = require("path");
 const fs = require("fs");
-const crypto = require("crypto");
-const bcrypt = require("bcryptjs");
 const db = require("./db");
 const store = require("./store");
 const pedidos = require("./pedidos");
@@ -19,26 +17,6 @@ const DATA_DIR = path.join(__dirname, "..", "data");
 const TENANTS_DIR = path.join(DATA_DIR, "tenants");
 // App stateless: nada é gravado em disco (sessões → Postgres, imagens → Storage).
 // `tenantDir(slug)` ainda existe só como CHAVE do tenant (seu basename é o slug).
-
-// Senha da conta super-admin (env/DB-based). NOVOS hashes são bcrypt;
-// a verificação aceita o formato legado (SHA-256+salt) durante a migração.
-// O login de restaurante usa o Supabase Auth, não estas funções.
-const SALT = "nymbus-lab-bot-v2";
-const BCRYPT_COST = 12;
-function hashSenha(senha) {
-  return bcrypt.hashSync(String(senha), BCRYPT_COST);
-}
-// Verifica `senha` contra `hashArmazenado`, detectando o formato: bcrypt
-// ($2…) → bcrypt.compare; senão → SHA-256+salt legado (timing-safe). Assim
-// o hash antigo (env/DB) segue válido até a senha master ser trocada (→ bcrypt).
-function verificarSenhaMaster(senha, hashArmazenado) {
-  if (typeof hashArmazenado !== "string" || !hashArmazenado) return false;
-  if (hashArmazenado.startsWith("$2")) return bcrypt.compareSync(String(senha), hashArmazenado);
-  const legado = crypto.createHash("sha256").update(senha + SALT).digest("hex");
-  const a = Buffer.from(legado);
-  const b = Buffer.from(hashArmazenado);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
 
 function slugBase(nome) {
   return nome
@@ -225,6 +203,24 @@ async function resolverPorToken(token) {
   return r.rows[0] || null;
 }
 
+// Verifica o JWT do Supabase e devolve { id, email } (claim), ou null se inválido.
+// Usado pelo gate do super-admin (allowlist por e-mail) — NÃO resolve tenant.
+async function emailDoToken(token) {
+  if (!token) return null;
+  try {
+    const { jose, jwks } = await getJWKS();
+    const { payload } = await jose.jwtVerify(token, jwks, {
+      issuer: `${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1`,
+      audience: "authenticated",
+    });
+    return { id: payload.sub, email: String(payload.email || "").toLowerCase() };
+  } catch (_) {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data || !data.user) return null;
+    return { id: data.user.id, email: String(data.user.email || "").toLowerCase() };
+  }
+}
+
 async function buscarPorSlug(slug) {
   const r = await db.query(
     `SELECT id, user_id, slug, nome, email, ativo, criado_em, plano,
@@ -401,8 +397,8 @@ async function excluir(slug) {
 }
 
 module.exports = {
-  cadastrar, autenticar, renovarSessao, resolverPorToken, buscarPorSlug, buscarPorStripeCustomer, listar,
-  tenantDir, setAtivo, excluir, hashSenha, verificarSenhaMaster, slugBase,
+  cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, buscarPorSlug, buscarPorStripeCustomer, listar,
+  tenantDir, setAtivo, excluir, slugBase,
   atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio,
   trocarSenha, trocarEmail, conferirSenha,
 };

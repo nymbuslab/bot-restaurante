@@ -9,25 +9,56 @@
 //     Não "lembra" a sessão master indefinidamente (escolha de segurança).
 // ============================================================
 
-const TKEY = "tokenAdmin";
+const TKEY = "tokenAdmin";          // access token (JWT do Supabase, ~1h)
+const RKEY = "tokenAdminRefresh";   // refresh token (renova o access sem relogar)
 const $ = (id) => document.getElementById(id);
+
+// Renova o access token do master via refresh token (coalescido). false se falhar.
+let _renovandoAdmin = null;
+function renovarAdmin() {
+  if (!_renovandoAdmin) {
+    _renovandoAdmin = (async () => {
+      const refresh = sessionStorage.getItem(RKEY);
+      if (!refresh) return false;
+      try {
+        const r = await fetch("/api/admin/refresh", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh }),
+        });
+        if (!r.ok) return false;
+        const d = await r.json();
+        sessionStorage.setItem(TKEY, d.token);
+        if (d.refresh) sessionStorage.setItem(RKEY, d.refresh);
+        return true;
+      } catch (e) { return false; }
+    })().finally(() => { _renovandoAdmin = null; });
+  }
+  return _renovandoAdmin;
+}
 
 // ---- Helper de API (sempre com o token master) ----
 async function apiAdmin(metodo, url, corpo) {
-  const opc = {
-    method: metodo,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + (sessionStorage.getItem(TKEY) || ""),
-    },
+  const fazer = () => {
+    const opc = {
+      method: metodo,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (sessionStorage.getItem(TKEY) || ""),
+      },
+    };
+    if (corpo) opc.body = JSON.stringify(corpo);
+    return fetch(url, opc);
   };
-  if (corpo) opc.body = JSON.stringify(corpo);
-  const r = await fetch(url, opc);
+  let r = await fazer();
   if (r.status === 401) {
-    // Sessão master expirou/inválida → volta ao login.
-    sessionStorage.removeItem(TKEY);
-    mostrarLogin();
-    throw new Error("Sessão expirada");
+    // JWT expirou → renova uma vez e repete; se não der, volta ao login.
+    if (await renovarAdmin()) r = await fazer();
+    if (r.status === 401) {
+      sessionStorage.removeItem(TKEY);
+      sessionStorage.removeItem(RKEY);
+      mostrarLogin();
+      throw new Error("Sessão expirada");
+    }
   }
   return r;
 }
@@ -154,6 +185,7 @@ async function entrar() {
 async function sair() {
   try { await apiAdmin("POST", "/api/admin/logout"); } catch (e) { /* ignora */ }
   sessionStorage.removeItem(TKEY);
+  sessionStorage.removeItem(RKEY);
   mostrarLogin();
 }
 
