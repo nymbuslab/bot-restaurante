@@ -1475,6 +1475,8 @@ function resumirHorarios(horarios) {
 
 function preencherConfig() {
   const c = configAtual;
+  const cortar = $("cfgCortarVias");
+  if (cortar) cortar.checked = !!(c.impressao && c.impressao.cortarEntreVias);
   $("cfgNome").value = c.restaurante.nome || "";
   $("cfgTelefone").value = c.restaurante.telefone || "";
   // Texto de horário é gerado automaticamente da tabela (campo read-only).
@@ -1671,6 +1673,8 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
     configAtual.frete.raio.foraDaArea = (($("freteForaArea") || {}).value === "bloqueia") ? "bloqueia" : "retirada";
   }
   configAtual.horarios = lerHorariosDoDOM();
+  if (!configAtual.impressao) configAtual.impressao = {};
+  configAtual.impressao.cortarEntreVias = ($("cfgCortarVias") || {}).checked === true;
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
   configAtual.mensagens.boasVindasRetorno = $("cfgBoasVindasRetorno").value;
   configAtual.mensagens.fechado = $("cfgFechado").value;
@@ -1729,6 +1733,22 @@ function renderEntregaModo() {
 document.querySelectorAll('input[name="freteModo"]').forEach((r) => {
   r.addEventListener("change", renderEntregaModo);
 });
+
+// ---- Sub-aba Impressora: Completo vê a config; Essencial vê o cadeado/upsell ----
+function renderImpressoraGate() {
+  const completo = planoAtual === "completo";
+  const lock = $("impressoraLock");
+  const cfg = $("impressoraConfig");
+  if (lock) lock.hidden = completo;
+  if (cfg) cfg.hidden = !completo;
+}
+
+if ($("btnVerPlanosImpressora")) {
+  $("btnVerPlanosImpressora").addEventListener("click", () => {
+    const btnAssin = document.querySelector('.sidebar [data-aba="assinatura"]');
+    if (btnAssin) btnAssin.click();
+  });
+}
 
 if ($("btnVerPlanos")) {
   $("btnVerPlanos").addEventListener("click", () => {
@@ -1795,6 +1815,7 @@ async function carregarConta() {
     $("contaEmail").textContent = c.email || "—";
     planoAtual = c.plano || "essencial";
     renderEntregaModo(); // re-renderiza o gating do frete por raio com o plano já conhecido
+    renderImpressoraGate(); // gating da sub-aba Impressora
   }
 }
 
