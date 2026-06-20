@@ -4169,3 +4169,6 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .caixa-ped { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; }
 .caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }
+
+/* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
+.tag svg, .cfg-frete-lock svg, .np-som-pill svg { vertical-align: -2px; }

@@ -226,10 +226,14 @@ function tocarSomPedido() {
   try { audioPedido.currentTime = 0; audioPedido.play().catch(() => {}); } catch (_) {}
 }
 
+// Ícones Lucide (sino ligado/desligado) usados no botão e na pill de som.
+const ICON_SINO = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+const ICON_SINO_OFF = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
 function atualizarBotaoSom() {
   const b = $("btnSomPedido");
   if (!b) return;
-  b.textContent = somHabilitado ? "🔔" : "🔕";
+  b.innerHTML = somHabilitado ? ICON_SINO : ICON_SINO_OFF;
   b.title = somHabilitado ? "Som de novo pedido: ligado" : "Som de novo pedido: desligado";
   b.setAttribute("aria-pressed", String(somHabilitado));
 }
@@ -270,7 +274,7 @@ function abrirNovoPedido(d) {
   $("np-cliente").textContent = d.cliente || "Cliente";
   $("np-numero").textContent = "#" + d.numero;
   const pill = $("np-som-pill");
-  pill.textContent = somHabilitado ? "🔔 Som de alerta ativo" : "🔕 Som desligado";
+  pill.innerHTML = (somHabilitado ? ICON_SINO : ICON_SINO_OFF) + " " + (somHabilitado ? "Som de alerta ativo" : "Som desligado");
   pill.classList.toggle("off", !somHabilitado);
   const itens = Array.isArray(d.itens) ? d.itens : [];
   $("np-itens").innerHTML = itens.length
@@ -2250,8 +2254,8 @@ function telefoneFmt(p) {
 
 function tagTipo(p) {
   return p.tipoEntrega === "Entrega"
-    ? `<span class="tag tag-entrega">🛵 Entrega</span>`
-    : `<span class="tag tag-retirada">🏃 Retirada</span>`;
+    ? `<span class="tag tag-entrega"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg> Entrega</span>`
+    : `<span class="tag tag-retirada"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Retirada</span>`;
 }
 
 // Data/hora relativa: "Hoje, HH:MM" / "Ontem, HH:MM" / "DD/MM/AAAA, HH:MM" (sem segundos)
@@ -2526,8 +2530,8 @@ function abrirModalPedido(p) {
   }
 
   const tipoTag = p.tipoEntrega === "Entrega"
-    ? `<span class="tag tag-entrega">🛵 Entrega</span>`
-    : `<span class="tag tag-retirada">🏃 Retirada</span>`;
+    ? `<span class="tag tag-entrega"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg> Entrega</span>`
+    : `<span class="tag tag-retirada"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Retirada</span>`;
 
   // Entrega: endereço em texto (sem mapa). Retirada: local do restaurante (config) ou balcão.
   let entregaTexto;
@@ -2935,7 +2939,7 @@ async function inicial() {
       await new Promise((r) => setTimeout(r, 1500));
       await carregarAssinatura();
     }
-    toast("Assinatura iniciada! Aproveite seu teste grátis. 🎉");
+    toast("Assinatura iniciada! Aproveite seu teste grátis.");
     history.replaceState(null, "", location.pathname);
   } else if (ret === "cancelado") {
     toast("Pagamento não concluído. Você pode tentar de novo quando quiser.", "erro");
