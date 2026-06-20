@@ -117,6 +117,8 @@ public/
   app.js, app-admin.js, footer.js, style.css -> lógica dos painéis, footer e estilos
   endereco-cep.js     -> util: máscara/busca de CEP (ViaCEP) + composição de endereço
   dinheiro.js         -> util: máscara monetária (centavos primeiro) + formatação BR
+  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar/histórico, isolado por empresa_id
+  caixa-calc.js       -> PURO: cálculos do caixa (resumo por forma, esperado em espécie, diferença) — testado em test/caixa-calc.test.js
   comanda.js          -> PURO (dual-mode Node/browser): monta as 2 vias de impressão (cozinha/cupom) — testado em test/comanda.test.js
   impressao.js        -> orquestra a impressão térmica (window.print + container oculto; 1 ou 2 trabalhos p/ corte) — Plano Completo
   cardapio.html/.js/.css -> cardápio web público (/c/:slug): monta o pedido (carrinho/checkout) e envia ao backend
@@ -176,7 +178,7 @@ relevante ao mexer na área):
 
 - [docs/super-admin.md](docs/super-admin.md) — painel master: auth isolada, rotas, métricas, suspender/excluir (reflexo no Stripe), Configurações Master, footer da landing.
 - [docs/assinatura-stripe.md](docs/assinatura-stripe.md) — monetização: **dois planos** (Essencial/Completo), eixos de acesso, checkout próprio, webhook, gate, upgrade/downgrade (proration), faturas, gestão de cartões.
-- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo): frete por raio + impressão térmica**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, escolha no checkout + upgrade na Assinatura + troca no master; **impressão de pedido na térmica 80mm** (Plano Completo): botão Imprimir comanda, 2 vias, sub-aba Impressora + toggle de corte (`config.impressao`), `public/comanda.js`/`impressao.js`.
+- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo): frete por raio + impressão térmica**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, escolha no checkout + upgrade na Assinatura + troca no master; **impressão de pedido na térmica 80mm** (Plano Completo): botão Imprimir comanda, 2 vias, sub-aba Impressora + toggle de corte (`config.impressao`), `public/comanda.js`/`impressao.js`; **caixa do dia** (Plano Completo): abrir/receber/sangria/fechar com conferência, gate `temCaixa` (front+back), tabelas `caixas`/`caixa_movimentos` + `pedidos.recebido_em`, `src/caixa.js`/`caixa-calc.js`.
 - [docs/lgpd-e-conta.md](docs/lgpd-e-conta.md) — conta de acesso (trocar e-mail/senha) + LGPD (exportar/excluir conta, retenção, páginas Termos/Privacidade, aceite no cadastro).
 - [docs/modelo-dados.md](docs/modelo-dados.md) — schema (`empresas` + coluna `plano`, `pedidos`, item do cardápio, `config.frete`, `geo_cache`) + **cardápio web** (API pública, recálculo no servidor, frete por raio, token de link) + estados enxutos do bot (`fluxo.js`).
 - [docs/features.md](docs/features.md) — onboarding (wizard 4 etapas), utils de formulário (`endereco-cep.js`/`dinheiro.js`) e horário de funcionamento.

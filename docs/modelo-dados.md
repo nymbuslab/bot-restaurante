@@ -16,7 +16,8 @@
 ```text
 id (bigint), empresa_id (uuid→empresas), numero (sequencial por empresa),
 status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
-taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz), avisado_em
+taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
+avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa)
 ```
 Colunas em snake_case no banco; `pedidos.js` mapeia para camelCase (`tipoEntrega`,
 `criadoEm`, etc.) que o painel/bot esperam. `avisado_em` = timestamp do aviso
@@ -71,3 +72,32 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
   `chatId`, com fallback no telefone). Helpers puros em `src/cardapio-web.js` (`projetarCardapio`,
   `recalcularItens`, `assinarToken`/`verificarToken`).
 - Página vanilla `public/cardapio.{html,js,css}` (CSP-safe, reusa `dinheiro.js`/`endereco-cep.js`).
+
+## Caixa do dia (Plano Completo)
+
+**Tabela `caixas`** (isolada por `empresa_id`):
+
+```text
+id (bigint), empresa_id (uuid→empresas), aberto_em, fechado_em,
+fundo_troco (numeric), status ('aberto'|'fechado'), contado_dinheiro,
+diferenca (contado − esperado_em_espécie), observacao
+```
+
+Índice único parcial `caixas_um_aberto_por_empresa` (empresa_id WHERE status='aberto') →
+**no máximo 1 caixa aberto por empresa**.
+
+**Tabela `caixa_movimentos`**:
+
+```text
+id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'sangria'|'suprimento'),
+forma_pagamento (só recebimento), valor (numeric), pedido_id (→pedidos, null),
+descricao (motivo de sangria/suprimento), criado_em
+```
+
+- **Recebimento por pedido:** marcar *Receber* cria um movimento `recebimento` (com `pedido_id`) e
+  seta `pedidos.recebido_em = now()`; estornar apaga o movimento e zera `recebido_em` (só antes do
+  fechamento). Pedido "a receber" = `recebido_em IS NULL`.
+- **Fechamento:** `esperado_em_espécie = fundo + recebido em dinheiro + suprimentos − sangrias`
+  (só forma "Dinheiro" entra; Pix/cartão só no relatório). `diferenca = contado − esperado`.
+- Cálculos puros em `src/caixa-calc.js`; orquestração em `src/caixa.js`. Migration
+  `20260620120000_caixa.sql`. RLS no padrão (revoke anon/authenticated).

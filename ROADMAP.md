@@ -113,7 +113,11 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 - [ ] **KDS / tela de cozinha** (M) — depende do status; polling no início, pub-sub ao escalar.
 - [ ] **Estoque simples** (M) — quantidade + baixa no pedido + alerta (item é jsonb, sem migração pesada).
-- [ ] **Caixa / fechamento** (M) — nova tabela de movimentos; reusa o total do pedido.
+- [x] **Caixa / fechamento** — ✅ **entregue** (Plano Completo): abrir caixa com fundo de troco,
+  **recebimento por pedido** (estornável), sangria/suprimento, e **fechamento com conferência de
+  dinheiro físico** (esperado em espécie × contado → diferença). Tabelas `caixas`/`caixa_movimentos`
+  e coluna `pedidos.recebido_em`; cálculos puros em `src/caixa-calc.js`. Ver `CHANGELOG.md` 0.30.0 e
+  [docs/planos-e-frete.md](docs/planos-e-frete.md).
 
 ### Fase 2 — Venda presencial e dinheiro
 

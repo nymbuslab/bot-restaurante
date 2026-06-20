@@ -321,3 +321,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Exclusivo do Plano Completo:** no Plano Essencial o botão não aparece e a aba mostra o aviso de upgrade.
 - **Cortar entre as vias:** em **Configurações → Impressora** dá para imprimir as duas vias **juntas** (padrão, separadas por um tracejado para destacar à mão) ou em **2 cupons separados** (a guilhotina corta entre eles).
 - Impressão pelo próprio navegador (sem instalar nada). Para sair automático/sem caixa de diálogo, dá para rodar o Chrome em modo *kiosk-printing* (passo a passo em `docs/planos-e-frete.md`).
+
+## [0.30.0] — Caixa do dia (Plano Completo)
+
+- **Caixa / fechamento:** nova aba **Caixa** no painel para controlar o dinheiro do dia. Você **abre o caixa** informando o fundo de troco, **recebe** cada pedido conforme o dinheiro entra (a forma e o valor já vêm preenchidos do pedido) e, no fim, **fecha conferindo a gaveta**.
+- **Recebimento por pedido:** o pedido do WhatsApp nasce "a receber" e só entra no caixa quando você marca **Receber** (na aba Caixa ou no próprio pedido). Dá para **estornar** antes de fechar. Pix e cartão entram no resumo; **só o dinheiro** conta na conferência física.
+- **Sangria e suprimento:** registre retiradas e reforços de dinheiro na gaveta durante o dia.
+- **Fechamento com conferência:** o sistema calcula o **esperado em dinheiro** (fundo + recebido em dinheiro + suprimentos − sangrias), você conta a gaveta e informa o valor, e ele mostra a **diferença** (sobra ou falta). Fica um **histórico** dos caixas fechados.
+- **Exclusivo do Plano Completo:** no Essencial a aba mostra o aviso de upgrade.

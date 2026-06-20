@@ -225,3 +225,34 @@ cheia). Nesse modo, o `window.print()` imprime na hora — e o modo "cortar entr
 - ESC/POS via agente local (QZ Tray): corte fino/silencioso e impressão disparada pelo servidor
   (sem painel aberto).
 - Auto-impressão ao chegar o pedido; largura 58mm; escolher quais vias; KDS (tela de cozinha).
+
+---
+
+## 3º benefício do Completo — Caixa do dia / fechamento
+
+> ✅ **implementado** (CHANGELOG 0.30.0). Spec/plano: `docs/superpowers/specs/2026-06-20-caixa-fechamento-design.md`
+> e `docs/superpowers/plans/2026-06-20-caixa-fechamento.md`.
+
+Aba **Caixa** no painel (Plano Completo) para controlar o dinheiro do dia, reconciliando os pedidos
+que vêm do WhatsApp.
+
+- **Recebimento por pedido (explícito):** o pedido nasce **"a receber"** (`pedidos.recebido_em` null) e
+  só entra no caixa quando o operador marca **Receber** (forma/valor pré-preenchidos do pedido,
+  editáveis); **estornável** antes do fechamento. Botão também no modal de detalhe do pedido.
+- **Conferência de dinheiro físico:** abrir com **fundo de troco**; **sangria/suprimento** (só espécie);
+  no fechamento o sistema calcula o **esperado em espécie** = `fundo + recebido em dinheiro +
+  suprimentos − sangrias`, o operador conta a gaveta → **diferença** (sobra/falta). **Só "Dinheiro"**
+  (case-insensitive) entra na conferência; Pix/cartão só no relatório. **Histórico** de caixas fechados.
+- **Regras:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);
+  receber exige caixa aberto; estorno só antes do fechamento; 1 operador (a conta do tenant).
+- **Gate:** `empresas.temCaixa(emp)` (= acesso liberado + plano completo), aplicado **no front
+  (cadeado/upsell) e no backend (403)** — diferente da impressão (local), o caixa é recurso de servidor.
+- **Dados:** tabelas `caixas` e `caixa_movimentos` (`recebimento|sangria|suprimento`) + coluna
+  `pedidos.recebido_em`. Cálculos puros em `src/caixa-calc.js` (`resumoCaixa`/`calcularDiferenca`),
+  orquestração em `src/caixa.js`. Migration `20260620120000_caixa.sql`.
+
+### Fora do v1 do caixa (futuro)
+
+- PDV de balcão / venda presencial / mesas (feature à parte).
+- Gaveta física, impressão do relatório de fechamento, TEF — dependem do **agente local** (ver ROADMAP).
+- Múltiplos operadores/turnos; "caixa do entregador" (float em poder do entregador).
