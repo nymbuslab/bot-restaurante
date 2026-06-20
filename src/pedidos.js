@@ -40,6 +40,7 @@ function mapRow(r) {
     observacao: r.observacao || "",
     criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
     avisadoEm: r.avisado_em ? new Date(r.avisado_em).toISOString() : null,
+    recebidoEm: r.recebido_em ? new Date(r.recebido_em).toISOString() : null,
   };
 }
 
