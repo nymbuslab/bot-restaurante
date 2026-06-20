@@ -4168,3 +4168,4 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-linha.caixa-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; }
 .caixa-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .caixa-ped { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; }
+.caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }

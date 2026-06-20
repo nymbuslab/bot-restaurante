@@ -1754,6 +1754,61 @@ if ($("btnVerPlanosImpressora")) {
 // ================= Caixa (Plano Completo) =================
 function fmtBRn(n) { return (Number(n) || 0).toFixed(2).replace(".", ","); }
 
+// Modal acessível com campos (substitui window.prompt). Resolve com um objeto
+// { id: valor } ou null se cancelar. Campos `dinheiro` usam a máscara e devolvem
+// número; `texto` devolve string. `live(valores)` → texto atualizado a cada tecla.
+function modalCaixa({ titulo, info, campos, txtConfirmar = "Confirmar", live }) {
+  return new Promise((resolve) => {
+    const overlay = $("caixa-modal-overlay");
+    $("caixa-modal-titulo").textContent = titulo;
+    const infoEl = $("caixa-modal-info");
+    infoEl.hidden = !info; if (info) infoEl.textContent = info;
+    const liveEl = $("caixa-modal-live"); liveEl.hidden = true; liveEl.textContent = "";
+    const cont = $("caixa-modal-campos");
+    cont.innerHTML = campos.map((c) =>
+      `<div class="campo"><label for="${c.id}">${escapar(c.label)}</label>
+        <input id="${c.id}" inputmode="${c.tipo === "dinheiro" ? "numeric" : "text"}" placeholder="${escapar(c.placeholder || "")}" value="${c.tipo === "dinheiro" ? "0,00" : ""}"></div>`
+    ).join("");
+    campos.forEach((c) => { if (c.tipo === "dinheiro" && window.Dinheiro) Dinheiro.mascarar(c.id); });
+    $("caixa-modal-confirmar").textContent = txtConfirmar;
+
+    const lerValores = () => {
+      const v = {};
+      campos.forEach((c) => { v[c.id] = c.tipo === "dinheiro" ? (window.Dinheiro ? Dinheiro.valor(c.id) : 0) : ($(c.id).value || "").trim(); });
+      return v;
+    };
+    const atualizarLive = () => {
+      if (!live) return;
+      const txt = live(lerValores());
+      liveEl.hidden = !txt; liveEl.textContent = txt || "";
+    };
+    if (live) cont.querySelectorAll("input").forEach((i) => i.addEventListener("input", atualizarLive));
+    atualizarLive();
+
+    overlay.style.display = "flex";
+    overlay.classList.remove("saindo");
+    const primeiro = cont.querySelector("input"); if (primeiro) primeiro.focus();
+
+    function fechar(resultado) {
+      overlay.classList.add("saindo");
+      overlay.addEventListener("animationend", () => { overlay.style.display = "none"; overlay.classList.remove("saindo"); }, { once: true });
+      document.removeEventListener("keydown", onKey);
+      $("caixa-modal-cancelar").removeEventListener("click", onCancelar);
+      $("caixa-modal-confirmar").removeEventListener("click", onConfirmar);
+      overlay.removeEventListener("mousedown", onOverlay);
+      resolve(resultado);
+    }
+    function onCancelar() { fechar(null); }
+    function onConfirmar() { fechar(lerValores()); }
+    function onKey(e) { if (e.key === "Escape") fechar(null); else if (e.key === "Enter") { e.preventDefault(); fechar(lerValores()); } }
+    function onOverlay(e) { if (e.target === overlay) fechar(null); }
+    $("caixa-modal-cancelar").addEventListener("click", onCancelar);
+    $("caixa-modal-confirmar").addEventListener("click", onConfirmar);
+    document.addEventListener("keydown", onKey);
+    overlay.addEventListener("mousedown", onOverlay);
+  });
+}
+
 async function carregarCaixa() {
   const completo = planoAtual === "completo";
   $("caixaLock").hidden = completo;
@@ -1845,22 +1900,35 @@ async function estornarCaixa(id) {
 
 async function movimentoCaixa(tipo) {
   const titulo = tipo === "sangria" ? "Sangria (retirar dinheiro)" : "Suprimento (reforçar dinheiro)";
-  const valorStr = window.prompt(titulo + "\nValor (ex.: 50,00):", "");
-  if (valorStr == null) return;
-  const valor = parseFloat(valorStr.replace(".", "").replace(",", ".")) || 0;
-  if (valor <= 0) { toast("Valor inválido."); return; }
-  const descricao = window.prompt("Motivo (opcional):", "") || "";
-  const r = await api("POST", "/api/caixa/movimento", { tipo, valor, descricao });
+  const vals = await modalCaixa({
+    titulo,
+    campos: [
+      { id: "cxMovValor", label: "Valor", tipo: "dinheiro", placeholder: "0,00" },
+      { id: "cxMovMotivo", label: "Motivo (opcional)", tipo: "texto", placeholder: tipo === "sangria" ? "ex.: pagamento de fornecedor" : "ex.: reforço de troco" },
+    ],
+    txtConfirmar: tipo === "sangria" ? "Registrar sangria" : "Registrar suprimento",
+  });
+  if (!vals) return;
+  if (vals.cxMovValor <= 0) { toast("Informe um valor maior que zero."); return; }
+  const r = await api("POST", "/api/caixa/movimento", { tipo, valor: vals.cxMovValor, descricao: vals.cxMovMotivo });
   if (r && r.ok) { toast("✓ Registrado."); carregarCaixa(); }
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha."); }
 }
 
 async function fecharCaixaUI(esperado) {
-  const contadoStr = window.prompt(
-    "Fechar caixa\nEsperado em dinheiro: R$ " + fmtBRn(esperado) + "\n\nConte a gaveta e informe o valor (ex.: 165,00):", "");
-  if (contadoStr == null) return;
-  const contado = parseFloat(contadoStr.replace(".", "").replace(",", ".")) || 0;
-  const r = await api("POST", "/api/caixa/fechar", { contadoDinheiro: contado, observacao: "" });
+  const vals = await modalCaixa({
+    titulo: "Fechar caixa",
+    info: "Esperado em dinheiro na gaveta: R$ " + fmtBRn(esperado),
+    campos: [{ id: "cxContado", label: "Quanto há na gaveta? (conte o dinheiro)", tipo: "dinheiro", placeholder: "0,00" }],
+    txtConfirmar: "Fechar caixa",
+    live: (v) => {
+      if (!v.cxContado) return "";
+      const dif = v.cxContado - esperado;
+      return dif === 0 ? "Bate certinho." : (dif > 0 ? "Sobra de R$ " + fmtBRn(dif) : "Falta de R$ " + fmtBRn(-dif));
+    },
+  });
+  if (!vals) return;
+  const r = await api("POST", "/api/caixa/fechar", { contadoDinheiro: vals.cxContado, observacao: "" });
   if (r && r.ok) {
     const d = await r.json();
     const dif = d.diferenca;
