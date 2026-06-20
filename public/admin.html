@@ -471,11 +471,8 @@
           </div>
 
           <div class="card" id="impressoraConfig" hidden>
-            <label class="cfg-status-toggle">
-              <span class="cfg-status-toggle-label">Cortar entre a via da cozinha e o cupom</span>
-              <span class="switch"><input type="checkbox" id="cfgCortarVias" /></span>
-            </label>
-            <p class="sub">Desligado (padrão): as duas vias saem juntas no mesmo papel, separadas por um tracejado para destacar à mão. Ligado: sai em <strong>2 cupons separados</strong> (a guilhotina corta entre eles; no modo manual isso gera 2 caixas de impressão por clique).</p>
+            <p class="sub">Para imprimir: abra um pedido (aba <strong>Pedidos</strong> ou o aviso de novo pedido), clique em <strong>Imprimir comanda</strong> e escolha a via na pré-visualização — <strong>Cozinha</strong> (sem preços) ou <strong>Cupom</strong> (cliente, endereço, pagamento e total). Cada via sai numa impressão e a impressora corta no fim de cada.</p>
+            <p class="sub">Para imprimir <strong>automático, sem a caixa de diálogo</strong> (útil num PC dedicado), inicie o Chrome com <code>--kiosk-printing</code> e deixe a térmica como impressora padrão do Windows.</p>
           </div>
         </div>
       </div>
@@ -695,6 +692,29 @@
       <div class="modal-acoes">
         <button class="secundario" id="modal-cancelar">Cancelar</button>
         <button class="modal-confirmar" id="modal-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de pré-visualização de impressão (cozinha / cupom) -->
+  <div id="impressao-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="impressao-titulo">
+    <div class="modal-caixa impressao-caixa">
+      <h3 id="impressao-titulo">Imprimir pedido</h3>
+      <p class="sub">Confira e escolha a via. Cada uma sai numa impressão — a impressora corta no fim de cada.</p>
+      <div class="impressao-previews">
+        <div class="impressao-via">
+          <span class="impressao-via-rotulo">Cozinha (sem preços)</span>
+          <pre class="cupom-preview" id="impressao-prev-cozinha"></pre>
+        </div>
+        <div class="impressao-via">
+          <span class="impressao-via-rotulo">Cupom (cliente, endereço, total)</span>
+          <pre class="cupom-preview" id="impressao-prev-cupom"></pre>
+        </div>
+      </div>
+      <div class="modal-acoes">
+        <button class="secundario" id="impressao-fechar">Fechar</button>
+        <button id="impressao-btn-cozinha">Imprimir cozinha</button>
+        <button id="impressao-btn-cupom">Imprimir cupom</button>
       </div>
     </div>
   </div>

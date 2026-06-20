@@ -315,7 +315,7 @@ if ($("np-imprimir")) {
   $("np-imprimir").addEventListener("click", async () => {
     await carregarPedidos();
     const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
-    if (p && window.Impressao) window.Impressao.imprimir(p, configAtual);
+    if (p && window.Impressao) window.Impressao.abrirPreview(p, configAtual);
   });
 }
 
@@ -1480,8 +1480,6 @@ function resumirHorarios(horarios) {
 
 function preencherConfig() {
   const c = configAtual;
-  const cortar = $("cfgCortarVias");
-  if (cortar) cortar.checked = !!(c.impressao && c.impressao.cortarEntreVias);
   $("cfgNome").value = c.restaurante.nome || "";
   $("cfgTelefone").value = c.restaurante.telefone || "";
   // Texto de horário é gerado automaticamente da tabela (campo read-only).
@@ -1678,8 +1676,6 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
     configAtual.frete.raio.foraDaArea = (($("freteForaArea") || {}).value === "bloqueia") ? "bloqueia" : "retirada";
   }
   configAtual.horarios = lerHorariosDoDOM();
-  if (!configAtual.impressao) configAtual.impressao = {};
-  configAtual.impressao.cortarEntreVias = ($("cfgCortarVias") || {}).checked === true;
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
   configAtual.mensagens.boasVindasRetorno = $("cfgBoasVindasRetorno").value;
   configAtual.mensagens.fechado = $("cfgFechado").value;
@@ -2694,7 +2690,7 @@ $("pedido-overlay").addEventListener("click", (e) => {
 });
 if ($("btnImprimirPedido")) {
   $("btnImprimirPedido").addEventListener("click", () => {
-    if (pedidoModalAtual && window.Impressao) window.Impressao.imprimir(pedidoModalAtual, configAtual);
+    if (pedidoModalAtual && window.Impressao) window.Impressao.abrirPreview(pedidoModalAtual, configAtual);
   });
 }
 
