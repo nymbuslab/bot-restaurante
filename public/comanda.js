@@ -18,9 +18,13 @@
     return " ".repeat(esq) + t;
   }
   // "Rótulo" à esquerda + "valor" à direita, preenchendo a largura.
+  // Trunca o rótulo se o conjunto passar de LARGURA, para não quebrar a linha
+  // (o que jogaria o valor pra linha de baixo, desalinhando) com nomes longos.
   function linhaValor(rotulo, valor) {
-    const r = String(rotulo || "");
+    let r = String(rotulo || "");
     const v = String(valor || "");
+    const maxR = Math.max(1, LARGURA - v.length - 1);
+    if (r.length > maxR) r = r.slice(0, maxR);
     const espaco = Math.max(1, LARGURA - r.length - v.length);
     return r + " ".repeat(espaco) + v;
   }
@@ -48,7 +52,9 @@
     linhas.push(linhaValor("Pedido #" + pedido.numero, dataHoraBR(pedido.criadoEm)));
     linhas.push("Tipo: " + (pedido.tipoEntrega || "").toUpperCase());
     linhas.push(sep("-"));
-    (pedido.itens || []).forEach((i) => {
+    const itensCoz = pedido.itens || [];
+    if (!itensCoz.length) linhas.push("(sem itens)");
+    itensCoz.forEach((i) => {
       linhas.push((i.qtd || 1) + "x " + (i.nome || ""));
       opcionaisLinhas(i.opcionais).forEach((l) => linhas.push(l));
       if (i.observacao && i.observacao.trim()) linhas.push("   Obs: " + i.observacao.trim());
@@ -80,7 +86,9 @@
       linhas.push("End: " + pedido.endereco.trim());
     }
     linhas.push(sep("-"));
-    (pedido.itens || []).forEach((i) => {
+    const itensCup = pedido.itens || [];
+    if (!itensCup.length) linhas.push("(sem itens)");
+    itensCup.forEach((i) => {
       const sub = ((i.preco || 0) + extrasDe(i)) * (i.qtd || 1);
       linhas.push(linhaValor((i.qtd || 1) + "x " + (i.nome || ""), fmtBR(sub)));
       const op = (i.opcionais || []).map((o) => (o.qtd > 1 ? o.qtd + "x " : "") + o.nome).join(" / ");

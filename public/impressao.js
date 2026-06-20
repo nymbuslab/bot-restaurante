@@ -15,7 +15,10 @@
   }
 
   // Imprime as 2 vias. cortarEntreVias=false → 1 trabalho (vias juntas com tracejado).
-  // cortarEntreVias=true → 2 trabalhos encadeados (guilhotina corta entre elas).
+  // cortarEntreVias=true → 2 trabalhos (guilhotina corta entre elas).
+  // window.print() é SÍNCRONO/bloqueante (retorna só quando o diálogo fecha), então
+  // chamamos em sequência — sem depender de `afterprint` (que também dispara no
+  // cancelamento e acumularia listeners em cliques repetidos).
   function imprimir(pedido, config) {
     if (!global.Comanda) return;
     const { cozinha, cupom } = global.Comanda.montarComanda(pedido, config);
@@ -25,13 +28,8 @@
       imprimirTexto(cozinha + tracejado + cupom);
       return;
     }
-    // 2 trabalhos: imprime a cozinha; ao terminar, imprime o cupom.
-    const aoTerminar = () => {
-      window.removeEventListener("afterprint", aoTerminar);
-      imprimirTexto(cupom);
-    };
-    window.addEventListener("afterprint", aoTerminar);
     imprimirTexto(cozinha);
+    imprimirTexto(cupom);
   }
 
   global.Impressao = { imprimir };

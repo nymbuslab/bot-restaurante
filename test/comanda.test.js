@@ -66,3 +66,17 @@ test("item sem opcionais/observação: 1 linha, sem 'Obs'", () => {
   assert.match(cozinha, /1x Coca/);
   assert.equal(/Obs:/.test(cozinha), false);
 });
+
+test("nome de item muito longo: a linha do preço não passa de 48 colunas (alinhamento preservado)", () => {
+  const ped = { ...pedidoBase, itens: [{ nome: "X".repeat(60), preco: 10, qtd: 1, opcionais: [], observacao: "" }] };
+  const { cupom } = montarComanda(ped, config);
+  const linha = cupom.split("\n").find((l) => /10,00/.test(l));
+  assert.ok(linha && linha.length <= 48, "linha do preço passou de 48: " + (linha && linha.length));
+});
+
+test("pedido sem itens: não gera dois separadores colados (mostra '(sem itens)')", () => {
+  const ped = { ...pedidoBase, itens: [] };
+  const { cozinha, cupom } = montarComanda(ped, config);
+  assert.match(cozinha, /\(sem itens\)/);
+  assert.match(cupom, /\(sem itens\)/);
+});
