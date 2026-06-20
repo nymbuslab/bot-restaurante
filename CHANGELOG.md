@@ -329,3 +329,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Sangria e suprimento:** registre retiradas e reforços de dinheiro na gaveta durante o dia.
 - **Fechamento com conferência:** o sistema calcula o **esperado em dinheiro** (fundo + recebido em dinheiro + suprimentos − sangrias), você conta a gaveta e informa o valor, e ele mostra a **diferença** (sobra ou falta). Fica um **histórico** dos caixas fechados.
 - **Exclusivo do Plano Completo:** no Essencial a aba mostra o aviso de upgrade.
+
+## [0.31.0] — Pré-visualização de impressão + ícones
+
+- **Impressão com pré-visualização:** **Imprimir comanda** agora abre uma **janela com a prévia das duas vias** (cozinha e cupom) e botões **Imprimir cozinha** e **Imprimir cupom**. Você vê o que vai sair e imprime cada via separada — **sem risco de fechar uma sem querer**. (Saiu o antigo ajuste "cortar entre as vias": como cada via é uma impressão, a impressora já corta no fim de cada uma.)
+- **Ícones no lugar de emojis:** botões e marcações do painel (som, cadeado, tipo de entrega/retirada, retirada no cardápio) passaram a usar **ícones** em vez de emojis, deixando a interface mais profissional.
+- **Caixa mais amigável:** sangria, suprimento e fechamento deixaram de usar a caixinha de texto do navegador e agora abrem um **modal próprio** — no fechamento, a **diferença (sobra/falta) aparece em tempo real** enquanto você digita o valor contado.

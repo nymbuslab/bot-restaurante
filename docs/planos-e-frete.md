@@ -197,14 +197,14 @@ térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x e similares — qualquer uma 
   sem agente local nem ESC/POS. A montagem do texto é pura e testada (`public/comanda.js`); a
   orquestração fica em `public/impressao.js`. Largura amarrada ao físico via `font-size: 2.5mm`
   (≈ 48 colunas em ~72mm, sem quebra de linha).
-- **Disparo:** botão **🖨️ Imprimir comanda** no modal de detalhe do pedido **e** no modal de novo
-  pedido. Saem **2 vias**: cozinha (itens/opcionais/observações, **sem preços**) + cupom (cliente,
-  endereço, pagamento, total).
+- **Disparo:** botão **Imprimir comanda** no modal de detalhe do pedido **e** no modal de novo
+  pedido abre um **modal de pré-visualização** com as **2 vias** renderizadas em 80mm e os botões
+  **Imprimir cozinha** (itens/opcionais/observações, **sem preços**) e **Imprimir cupom** (cliente,
+  endereço, pagamento, total). Cada via é **uma impressão própria** → a guilhotina corta no fim de
+  cada (sem toggle de corte; a pessoa vê a prévia e escolhe, sem perder via por distração).
 - **Gating:** front, por `planoAtual === "completo"` (impressão é ação **local**, sem recurso de
-  servidor a proteger). Essencial vê a sub-aba **Configurações → Impressora** com cadeado/upsell.
-- **Toggle de corte:** `config.impressao.cortarEntreVias` (jsonb, salvo pelo `PUT /api/config`
-  existente; **sem migração**). Desligado (padrão) = 1 trabalho, vias juntas com tracejado.
-  Ligado = 2 trabalhos encadeados (guilhotina corta entre as vias).
+  servidor a proteger). Essencial vê a sub-aba **Configurações → Impressora** com cadeado/upsell
+  (a sub-aba é só informativa — não há mais configuração de impressão).
 
 ### Impressão silenciosa/automática (opcional) — Chrome em *kiosk-printing*
 
@@ -217,8 +217,8 @@ chrome.exe --kiosk-printing
 ```
 
 (defina a térmica como **impressora padrão** do Windows; opcionalmente adicione `--kiosk` para tela
-cheia). Nesse modo, o `window.print()` imprime na hora — e o modo "cortar entre as vias" sai com os
-2 cortes **silenciosos**. Sem a flag, segue funcionando no modo manual (1 ou 2 diálogos).
+cheia). Nesse modo, ao clicar **Imprimir cozinha**/**Imprimir cupom** a via sai na hora, sem caixa de
+diálogo. Sem a flag, segue funcionando no modo manual (uma caixa de impressão por via).
 
 ### Fora do v1 (futuro)
 
