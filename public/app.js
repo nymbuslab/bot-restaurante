@@ -1851,12 +1851,12 @@ function renderCaixaAberto(data) {
   const linhasForma = formas.length
     ? formas.map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f])}</span></div>`).join("")
     : "<p class='sub'>Nenhum recebimento ainda.</p>";
-  const aReceber = data.aReceber.map((p) =>
-    `<div class="caixa-ped"><span>#${p.numero} · ${escapar(p.cliente || "")} · ${escapar(p.pagamento || "")}</span>
-      <button class="secundario mini caixa-receber" data-id="${p.id}" data-forma="${escapar(p.pagamento || "")}" data-valor="${p.total}">Receber R$ ${fmtBRn(p.total)}</button></div>`).join("") || "<p class='sub'>Tudo recebido.</p>";
-  const recebidos = data.recebidos.map((p) =>
-    `<div class="caixa-ped"><span>#${p.numero} · ${escapar(p.cliente || "")}</span>
-      <button class="secundario mini caixa-estornar" data-id="${p.id}">Estornar</button></div>`).join("") || "";
+  // O recebimento acontece no Pedido; aqui o Caixa lista o que ENTROU neste caixa
+  // e permite estornar (corrigir). Sem lista de "a receber".
+  const recebimentos = (data.recebimentos || []).map((m) =>
+    `<div class="caixa-ped"><span>#${m.numero} · ${escapar(m.cliente || "")} · ${escapar(m.forma || "")} · R$ ${fmtBRn(m.valor)}</span>
+      <button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button></div>`).join("")
+    || "<p class='sub'>Nenhum recebimento neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
 
   cont.innerHTML = `
     <div class="caixa-topo">
@@ -1874,23 +1874,14 @@ function renderCaixaAberto(data) {
       <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(r.sangrias)}</span></div>
       <div class="caixa-linha caixa-total"><span>Esperado em dinheiro</span><span>R$ ${fmtBRn(r.esperadoEspecie)}</span></div>
     </div>
-    <h4>A receber</h4><div class="caixa-lista">${aReceber}</div>
-    <h4>Recebidos</h4><div class="caixa-lista">${recebidos}</div>`;
+    <h4>Recebimentos deste caixa</h4><div class="caixa-lista">${recebimentos}</div>`;
 
-  cont.querySelectorAll(".caixa-receber").forEach((b) =>
-    b.addEventListener("click", () => receberPedidoCaixa(b.dataset.id, b.dataset.forma, Number(b.dataset.valor))));
   cont.querySelectorAll(".caixa-estornar").forEach((b) =>
     b.addEventListener("click", () => estornarCaixa(b.dataset.id)));
   $("btnSangria").addEventListener("click", () => movimentoCaixa("sangria"));
   $("btnSuprimento").addEventListener("click", () => movimentoCaixa("suprimento"));
   $("btnHistCaixa").addEventListener("click", verHistoricoCaixa);
   $("btnFecharCaixa").addEventListener("click", () => fecharCaixaUI(r.esperadoEspecie));
-}
-
-async function receberPedidoCaixa(id, forma, valor) {
-  const r = await api("POST", "/api/caixa/receber/" + id, { forma, valor });
-  if (r && r.ok) { toast("✓ Recebido!"); carregarCaixa(); }
-  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao receber."); }
 }
 
 async function estornarCaixa(id) {
@@ -2023,6 +2014,9 @@ async function carregarConta() {
     planoAtual = c.plano || "essencial";
     renderEntregaModo(); // re-renderiza o gating do frete por raio com o plano já conhecido
     renderImpressoraGate(); // gating da sub-aba Impressora
+    // Filtro de pagamento na lista de Pedidos só faz sentido no Completo (tem Caixa).
+    const fpag = $("filtroPagamento");
+    if (fpag) fpag.hidden = planoAtual !== "completo";
   }
 }
 
@@ -2161,7 +2155,7 @@ $("formExcluir").addEventListener("submit", async (e) => {
 // PEDIDOS
 // ============================================================
 let pedidosCache = [];
-const filtros = { periodo: "hoje", tipo: "todos", busca: "", dataIni: "", dataFim: "" };
+const filtros = { periodo: "hoje", tipo: "todos", busca: "", dataIni: "", dataFim: "", pagamento: "todos" };
 
 // Paginação da lista
 const PEDIDOS_POR_PAGINA = 10;
@@ -2252,6 +2246,14 @@ function tagTipo(p) {
   return p.tipoEntrega === "Entrega"
     ? `<span class="tag tag-entrega"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg> Entrega</span>`
     : `<span class="tag tag-retirada"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Retirada</span>`;
+}
+
+// Selo de pagamento (só Plano Completo): mostra se o pedido já foi recebido no caixa.
+function seloPagamento(p) {
+  if (planoAtual !== "completo") return "";
+  return p.recebidoEm
+    ? '<span class="selo-pag selo-pago">Recebido</span>'
+    : '<span class="selo-pag selo-areceber">A receber</span>';
 }
 
 // Data/hora relativa: "Hoje, HH:MM" / "Ontem, HH:MM" / "DD/MM/AAAA, HH:MM" (sem segundos)
@@ -2360,7 +2362,7 @@ function renderPedidos(animar = false) {
   // Lista exibida = base + busca (nome / telefone / nº do pedido).
   const termo = filtros.busca.trim().toLowerCase();
   const digitos = termo.replace(/\D/g, "");
-  const lista = !termo ? base : base.filter((p) => {
+  let lista = !termo ? base : base.filter((p) => {
     if ((p.cliente || "").toLowerCase().includes(termo)) return true;
     if (digitos) {
       if ((p.telefone || "").replace(/\D/g, "").includes(digitos)) return true;
@@ -2368,6 +2370,10 @@ function renderPedidos(animar = false) {
     }
     return false;
   });
+  // Filtro de pagamento (só Plano Completo) — não afeta as métricas acima.
+  if (planoAtual === "completo" && filtros.pagamento !== "todos") {
+    lista = lista.filter((p) => filtros.pagamento === "recebidos" ? !!p.recebidoEm : !p.recebidoEm);
+  }
 
   listaPedidosAtual = lista;
   renderListaPedidos(lista);
@@ -2411,7 +2417,7 @@ function renderListaPedidos(lista) {
     tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}" data-id="${p.id}">
       <td class="ped-num">#${p.numero}${novo}</td>
       <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
-      <td>${escapar(p.cliente)}</td>
+      <td>${escapar(p.cliente)} ${seloPagamento(p)}</td>
       <td>${escapar(telefoneFmt(p))}</td>
       <td>${tagTipo(p)}</td>
       <td class="ped-total">R$ ${moedaBR(p.total)}</td>
@@ -2429,7 +2435,7 @@ function renderListaPedidos(lista) {
         <span class="pedido-card-num">#${p.numero}${novoC} • ${hora}</span>
         ${tagTipo(p)}
       </div>
-      <div class="pedido-card-cliente">${escapar(p.cliente)}</div>
+      <div class="pedido-card-cliente">${escapar(p.cliente)} ${seloPagamento(p)}</div>
       <div class="pedido-card-rodape">
         <span class="sub">${escapar(telefoneFmt(p))}</span>
         <span class="pedido-card-total">R$ ${moedaBR(p.total)}</span>
@@ -2472,6 +2478,7 @@ $("filtroPeriodo").addEventListener("click", (e) => {
 $("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; paginaPedidos = 1; renderPedidos(true); });
 $("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; paginaPedidos = 1; renderPedidos(true); });
 $("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; paginaPedidos = 1; renderPedidos(true); });
+$("filtroPagamento").addEventListener("change", (e) => { filtros.pagamento = e.target.value; paginaPedidos = 1; renderPedidos(true); });
 $("buscaPedido").addEventListener("input", (e) => { filtros.busca = e.target.value; paginaPedidos = 1; renderPedidos(); });
 
 // Ícones neutros (Lucide) para o detalhe
@@ -2623,17 +2630,25 @@ function montarAcoes(p) {
   const btn = $("btn-avisar");
   if (btn) btn.addEventListener("click", () => avisarCliente(p));
 
-  // Recebimento no caixa (Plano Completo): só se ainda não recebido.
-  if (planoAtual === "completo" && !p.recebidoEm) {
-    const extra = document.createElement("button");
-    extra.className = "secundario";
-    extra.textContent = "Receber pagamento (R$ " + fmtBRn(p.total) + ")";
-    extra.addEventListener("click", async () => {
-      const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
-      if (r && r.ok) { p.recebidoEm = new Date().toISOString(); toast("✓ Recebido no caixa!"); montarAcoes(p); }
-      else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Abra o caixa primeiro."); }
-    });
-    cont.appendChild(extra);
+  // Recebimento no caixa (Plano Completo). É AQUI (no pedido) que se recebe o
+  // pagamento; o estorno fica na aba Caixa.
+  if (planoAtual === "completo") {
+    if (p.recebidoEm) {
+      const sel = document.createElement("span");
+      sel.className = "pedido-avisado";
+      sel.textContent = "Pagamento recebido";
+      cont.appendChild(sel);
+    } else {
+      const extra = document.createElement("button");
+      extra.className = "secundario";
+      extra.textContent = "Receber pagamento (R$ " + fmtBRn(p.total) + ")";
+      extra.addEventListener("click", async () => {
+        const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
+        if (r && r.ok) { p.recebidoEm = new Date().toISOString(); toast("✓ Recebido no caixa!"); montarAcoes(p); }
+        else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Abra o caixa primeiro."); }
+      });
+      cont.appendChild(extra);
+    }
   }
 }
 

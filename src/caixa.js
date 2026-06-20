@@ -127,26 +127,21 @@ async function _movimentos(caixaId) {
   return r.rows;
 }
 
-// Pedidos do tenant com/sem recebimento (para as listas da aba).
-async function _pedidosCaixa(empId) {
-  const r = await db.query(
-    `SELECT id, numero, cliente, pagamento, total, recebido_em
-       FROM pedidos WHERE empresa_id = $1 ORDER BY id DESC LIMIT 200`,
-    [empId]
-  );
-  return r.rows.map((p) => ({
-    id: p.id, numero: p.numero, cliente: p.cliente, pagamento: p.pagamento,
-    total: p.total == null ? 0 : Number(p.total),
-    recebidoEm: p.recebido_em ? new Date(p.recebido_em).toISOString() : null,
-  }));
-}
-
 async function resumo(dir) {
-  const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
   if (!caixa) return { caixa: null };
   const movimentos = await _movimentos(caixa.id);
-  const peds = await _pedidosCaixa(empId);
+  // Recebimentos DESTE caixa (com nº/cliente do pedido) — base do estorno.
+  // O ato de "receber" acontece no Pedido; aqui o Caixa só mostra o que entrou
+  // e permite estornar correções.
+  const rec = await db.query(
+    `SELECT m.pedido_id, m.forma_pagamento, m.valor, p.numero, p.cliente
+       FROM caixa_movimentos m
+       LEFT JOIN pedidos p ON p.id = m.pedido_id
+      WHERE m.caixa_id = $1 AND m.tipo = 'recebimento'
+      ORDER BY m.id DESC`,
+    [caixa.id]
+  );
   return {
     caixa: {
       id: caixa.id,
@@ -154,8 +149,10 @@ async function resumo(dir) {
       fundoTroco: Number(caixa.fundo_troco) || 0,
     },
     resumo: calc.resumoCaixa(caixa, movimentos),
-    aReceber: peds.filter((p) => !p.recebidoEm),
-    recebidos: peds.filter((p) => p.recebidoEm),
+    recebimentos: rec.rows.map((r) => ({
+      pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
+      forma: r.forma_pagamento, valor: Number(r.valor) || 0,
+    })),
   };
 }
 
