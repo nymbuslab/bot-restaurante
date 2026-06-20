@@ -4138,17 +4138,21 @@ html.embed, html.embed body { background: var(--bg-primary); }
 }
 
 /* ---- Impressão térmica (80mm) ---- */
+/* Largura física: 48 colunas monoespaçadas em ~72mm → font-size em mm amarra
+   o tamanho ao papel (1 char ≈ 0.6em → 2.5mm ⇒ ~1.5mm/char ⇒ 48×1.5 = 72mm).
+   Isso impede a quebra de linha dos separadores e do alinhamento rótulo→valor. */
 #area-impressao { display: none; }
 .cupom-print {
   font-family: "Courier New", monospace;
-  font-size: 12px;
-  line-height: 1.25;
+  font-size: 2.5mm;
+  line-height: 1.3;
   white-space: pre-wrap;
   margin: 0;
+  width: 80mm;
 }
 @media print {
   body > *:not(#area-impressao) { display: none !important; }
   #area-impressao { display: block; }
-  .cupom-print { font-size: 12px; color: #000; }
+  .cupom-print { color: #000; }
 }
 @page { size: 80mm auto; margin: 0; }
