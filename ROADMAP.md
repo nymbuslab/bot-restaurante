@@ -26,11 +26,12 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   escopo**. O valor real (comunicar o cliente) já é entregue pelo botão **"Avisar cliente"**
   (pedido pronto — entrega/retirada). Gerenciar o ciclo do pedido contradiz a premissa do
   produto: o bot é **porta de entrada**, o andamento fica no sistema próprio do restaurante.
-- **Taxa de entrega por bairro/CEP** — **fora de escopo (por ora)**. Opções avaliadas e
-  descartadas: (a) **por bairro cadastrado** — manutenção infinita por tenant; (b) **por
-  raio/km via geocoding** — API paga e lida mal com endereço solto digitado no WhatsApp; (c)
-  **geolocalização por IP** — inviável, não há IP do cliente numa conversa de WhatsApp.
-  Conclusão: a **taxa única por tenant** atende; reavaliar só se um cliente pagante pedir.
+- **Taxa de entrega por bairro/CEP** — **parcialmente revertido.** A opção **(b) por raio/km
+  via geocoding foi IMPLEMENTADA** no **Plano Completo** (frete por raio: Geoapify +
+  Haversine + faixas por km; CEP+número no checkout) — ver `CHANGELOG.md` v0.27.0 e
+  [docs/planos-e-frete.md](docs/planos-e-frete.md). Seguem **fora de escopo**: (a) **por bairro
+  cadastrado** — manutenção infinita por tenant; (c) **geolocalização por IP** — inviável, não
+  há IP do cliente numa conversa de WhatsApp. O **Essencial** mantém **taxa única por tenant**.
 
 ---
 
