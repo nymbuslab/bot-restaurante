@@ -283,6 +283,8 @@ function abrirNovoPedido(d) {
       }).join("")
     : `<div class="np-item np-item-vazio">Veja os detalhes no pedido.</div>`;
   $("np-total").textContent = "R$ " + moedaBR(d.total || 0);
+  const btnNpImp = $("np-imprimir");
+  if (btnNpImp) btnNpImp.hidden = planoAtual !== "completo";
   overlay.style.display = "flex";
 }
 
@@ -302,6 +304,15 @@ async function visualizarNovoPedido() {
 
 if ($("np-fechar")) $("np-fechar").addEventListener("click", fecharNovoPedido);
 if ($("np-visualizar")) $("np-visualizar").addEventListener("click", visualizarNovoPedido);
+// Imprimir comanda a partir do modal de novo pedido: o objeto do poll é leve
+// (só nº/cliente/itens/total), então resolve o pedido completo no cache antes.
+if ($("np-imprimir")) {
+  $("np-imprimir").addEventListener("click", async () => {
+    await carregarPedidos();
+    const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
+    if (p && window.Impressao) window.Impressao.imprimir(p, configAtual);
+  });
+}
 
 async function checarPedidoNovo() {
   const r = await api("GET", "/api/pedidos/ultimo");
@@ -353,6 +364,7 @@ document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click"
 // ============================================================
 let assinaturaAtual = null;
 let planoAtual = "essencial"; // plano do tenant (essencial|completo) — gating de features no painel
+let pedidoModalAtual = null; // pedido aberto no modal de detalhe (p/ impressão)
 const PLANOS_INFO = { essencial: { nome: "Plano Essencial", valor: 79 }, completo: { nome: "Plano Completo", valor: 99 } };
 
 // Upgrade/downgrade de plano (assinatura viva). Confirma, troca no Stripe (proration)
@@ -2240,6 +2252,9 @@ const ICO_LOCAL = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18
 const ICO_PAG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
 
 function abrirModalPedido(p) {
+  pedidoModalAtual = p;
+  const btnImp = $("btnImprimirPedido");
+  if (btnImp) btnImp.hidden = planoAtual !== "completo";
   $("pedido-numero").textContent = `Pedido #${p.numero}`;
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 
@@ -2431,6 +2446,11 @@ $("pedido-fechar-rodape").addEventListener("click", fecharModalPedido);
 $("pedido-overlay").addEventListener("click", (e) => {
   if (e.target === $("pedido-overlay")) fecharModalPedido();
 });
+if ($("btnImprimirPedido")) {
+  $("btnImprimirPedido").addEventListener("click", () => {
+    if (pedidoModalAtual && window.Impressao) window.Impressao.imprimir(pedidoModalAtual, configAtual);
+  });
+}
 
 $("btnAtualizarPedidos").addEventListener("click", carregarPedidos);
 $("btnExportarPedidos").addEventListener("click", exportarPedidosCSV);
