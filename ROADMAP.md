@@ -127,10 +127,24 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   **térmica 80mm** via `window.print()` + CSS `@page 80mm`, compatível com qualquer impressora com
   driver (Elgin i7/i8, Epson T20x…). Exclusivo do **Plano Completo**; toggle "cortar entre as vias"
   em Configurações → Impressora. Ver `CHANGELOG.md` 0.29.0 e [docs/planos-e-frete.md](docs/planos-e-frete.md).
-  **Futuro:** ESC/POS via agente local (QZ Tray) para corte fino/silencioso e impressão sem painel
-  aberto (decisão de arquitetura adiada — o caminho navegador atende o uso atual).
-- [ ] **Fiscal (NFC-e/SAT)** (G + regulatório) — via parceiro fiscal (PlugNotas/Focus NFe/Tecnospeed);
-  praticamente um produto à parte.
+  **Futuro:** ESC/POS via agente local para corte fino/silencioso, **gaveta** e impressão sem painel
+  aberto — ver *"Agente local"* abaixo.
+- [ ] **Agente local (impressora + gaveta + TEF)** (G + decisão de arquitetura) — **adiado; implementar
+  só sob demanda** (cliente pagante pedindo gaveta/cartão/impressão silenciosa). Levantado com colegas
+  de dev (2026-06-20). Diretrizes travadas para quando for a hora:
+  - **Engine: ACBr** (não reinventar) — `ACBrPosPrinter` (ESC/POS + corte + **gaveta**), `ACBrTEF`,
+    `ACBrSAT`/`ACBrNFCe`. Via **ACBrMonitor** (executável controlado por socket/arquivo — sem escrever
+    Delphi) ou **ACBrLib** (DLLs chamáveis, inclusive de Node via FFI). O valor do ACBr é **TEF + fiscal**;
+    para ESC/POS+gaveta puros, raw ESC/POS já resolve.
+  - **Distribuição: NÃO** gerar um `.exe` por cliente (cada um exigiria assinatura → antivírus/SmartScreen
+    barra). Em vez disso: **um agente único, assinado uma vez** (code-signing ~US$200–500/ano), que o
+    cliente instala, **pareia por token** do painel e **puxa a config da API**. Roda na bandeja/serviço.
+  - **Conexão: agente conecta de saída** ao servidor (WebSocket/long-poll) e **recebe os trabalhos de lá**
+    → imprime mesmo com o painel fechado (modelo iFood) e evita a dor de browser→`localhost` https.
+  - **Gaveta:** fora de escopo por ora (sugestão dos colegas). Muitos drivers abrem a gaveta "ao imprimir"
+    (de graça, como o corte); controle fino da gaveta só com o agente.
+- [ ] **Fiscal (NFC-e/SAT)** (G + regulatório) — via **ACBr** (`ACBrNFCe`/`ACBrSAT`) no agente local **ou**
+  parceiro fiscal por API (PlugNotas/Focus NFe/Tecnospeed); praticamente um produto à parte.
 
 ### Transversal (quando houver tração)
 
