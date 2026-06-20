@@ -30,61 +30,91 @@ async function caixaAberto(dir) {
 
 async function abrirCaixa(dir, { fundoTroco }) {
   const empId = await empresaId(dir);
+  const fundo = Number(fundoTroco) || 0;
+  if (fundo < 0) throw new Error("Fundo de troco inválido.");
   const aberto = await caixaAberto(dir);
   if (aberto) throw new Error("Já existe um caixa aberto.");
   const r = await db.query(
     "INSERT INTO caixas (empresa_id, fundo_troco) VALUES ($1, $2) RETURNING *",
-    [empId, Number(fundoTroco) || 0]
+    [empId, fundo]
   );
   return r.rows[0];
 }
 
 async function receberPedido(dir, pedidoId, { forma, valor }) {
   const empId = await empresaId(dir);
+  const v = Number(valor) || 0;
+  if (v <= 0) throw new Error("Valor deve ser positivo.");
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa antes de receber.");
-  const ped = await db.query(
-    "SELECT id, recebido_em FROM pedidos WHERE empresa_id = $1 AND id = $2",
-    [empId, pedidoId]
-  );
-  if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
-  if (ped.rows[0].recebido_em) throw new Error("Pedido já recebido.");
-  await db.query(
-    `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
-     VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
-    [caixa.id, empId, forma || "Outros", Number(valor) || 0, pedidoId]
-  );
-  await db.query(
-    "UPDATE pedidos SET recebido_em = now() WHERE empresa_id = $1 AND id = $2",
-    [empId, pedidoId]
-  );
-  return { ok: true };
+  // Transação + FOR UPDATE: evita duplo recebimento em caso de corrida/falha
+  // (o INSERT do movimento e o UPDATE do pedido viram tudo-ou-nada).
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const ped = await client.query(
+      "SELECT id, recebido_em FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, pedidoId]
+    );
+    if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
+    if (ped.rows[0].recebido_em) throw new Error("Pedido já recebido.");
+    await client.query(
+      `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
+       VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
+      [caixa.id, empId, forma || "Outros", v, pedidoId]
+    );
+    await client.query(
+      "UPDATE pedidos SET recebido_em = now() WHERE empresa_id = $1 AND id = $2",
+      [empId, pedidoId]
+    );
+    await client.query("COMMIT");
+    return { ok: true };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 async function estornarRecebimento(dir, pedidoId) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Sem caixa aberto para estornar.");
-  await db.query(
-    "DELETE FROM caixa_movimentos WHERE caixa_id = $1 AND pedido_id = $2 AND tipo = 'recebimento'",
-    [caixa.id, pedidoId]
-  );
-  await db.query(
-    "UPDATE pedidos SET recebido_em = NULL WHERE empresa_id = $1 AND id = $2",
-    [empId, pedidoId]
-  );
-  return { ok: true };
+  // Transação: DELETE do movimento (com empresa_id — defesa em profundidade) +
+  // UPDATE do pedido viram tudo-ou-nada.
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "DELETE FROM caixa_movimentos WHERE caixa_id = $1 AND pedido_id = $2 AND tipo = 'recebimento' AND empresa_id = $3",
+      [caixa.id, pedidoId, empId]
+    );
+    await client.query(
+      "UPDATE pedidos SET recebido_em = NULL WHERE empresa_id = $1 AND id = $2",
+      [empId, pedidoId]
+    );
+    await client.query("COMMIT");
+    return { ok: true };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 async function registrarMovimento(dir, { tipo, valor, descricao }) {
   const empId = await empresaId(dir);
   if (tipo !== "sangria" && tipo !== "suprimento") throw new Error("Tipo inválido.");
+  const v = Number(valor) || 0;
+  if (v <= 0) throw new Error("Valor deve ser positivo.");
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa primeiro.");
   const r = await db.query(
     `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, valor, descricao)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [caixa.id, empId, tipo, Number(valor) || 0, descricao || ""]
+    [caixa.id, empId, tipo, v, descricao || ""]
   );
   return r.rows[0];
 }
