@@ -331,6 +331,11 @@ function temFreteRaio(emp) {
   return acessoLiberado(emp) && planoDe(emp) === "completo";
 }
 
+// Porteiro do Caixa (feature do Plano Completo). Mesma regra do frete por raio.
+function temCaixa(emp) {
+  return acessoLiberado(emp) && planoDe(emp) === "completo";
+}
+
 // ---- Conta de acesso (e-mail/senha no Supabase Auth) ----
 // Toda troca exige a SENHA ATUAL: validamos via signInWithPassword antes de
 // aplicar a mudança (admin.updateUserById com a service_role). Assim ninguém
@@ -416,6 +421,6 @@ async function excluir(slug) {
 module.exports = {
   cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, slugBase,
-  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio,
+  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa,
   trocarSenha, trocarEmail, conferirSenha,
 };

@@ -14,6 +14,7 @@ const empresas = require("./empresas");
 const plataforma = require("./plataforma");
 const store = require("./store");
 const pedidos = require("./pedidos");
+const caixa = require("./caixa");
 const clientes = require("./clientes");
 const cep = require("./cep");
 const frete = require("./frete");
@@ -1362,6 +1363,66 @@ app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ erro: "Falha ao consultar pedidos." });
   }
+});
+
+// ---- Caixa (Plano Completo) ----
+// Gate: caixa é recurso de servidor → barra no backend (não só no front).
+async function exigeCaixa(req, res) {
+  const emp = await empresas.buscarPorSlug(req.slug);
+  if (!empresas.temCaixa(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
+  return true;
+}
+
+app.get("/api/caixa", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.resumo(req.tenantDir)); }
+  catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }
+});
+
+app.post("/api/caixa/abrir", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.abrirCaixa(req.tenantDir, { fundoTroco: req.body.fundoTroco })); }
+  catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+app.post("/api/caixa/receber/:pedidoId", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.receberPedido(req.tenantDir, Number(req.params.pedidoId), { forma: req.body.forma, valor: req.body.valor })); }
+  catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+app.post("/api/caixa/estornar/:pedidoId", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.estornarRecebimento(req.tenantDir, Number(req.params.pedidoId))); }
+  catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.registrarMovimento(req.tenantDir, { tipo: req.body.tipo, valor: req.body.valor, descricao: req.body.descricao })); }
+  catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.fecharCaixa(req.tenantDir, { contadoDinheiro: req.body.contadoDinheiro, observacao: req.body.observacao })); }
+  catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+// "historico" ANTES de ":id" (senão cairia no parâmetro).
+app.get("/api/caixa/historico", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try { res.json(await caixa.listarCaixas(req.tenantDir)); }
+  catch (e) { res.status(500).json({ erro: "Falha ao listar caixas." }); }
+});
+
+app.get("/api/caixa/:id", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  try {
+    const d = await caixa.detalheCaixa(req.tenantDir, Number(req.params.id));
+    if (!d) return res.status(404).json({ erro: "Caixa não encontrado." });
+    res.json(d);
+  } catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }
 });
 
 const MSG_PRONTO_PADRAO = {
