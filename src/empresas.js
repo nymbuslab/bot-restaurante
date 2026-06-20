@@ -221,6 +221,23 @@ async function emailDoToken(token) {
   }
 }
 
+// Acha um usuário do Supabase Auth pelo e-mail (cliente ou master). Pagina a
+// listagem do admin (ok p/ a escala atual; revisar com cache se crescer p/ milhares).
+// Retorna { id, email } ou null.
+async function acharAuthUserPorEmail(email) {
+  const alvo = String(email || "").trim().toLowerCase();
+  if (!alvo) return null;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) return null;
+    const us = (data && data.users) || [];
+    const u = us.find((x) => (x.email || "").toLowerCase() === alvo);
+    if (u) return { id: u.id, email: (u.email || "").toLowerCase() };
+    if (us.length < 1000) break;
+  }
+  return null;
+}
+
 async function buscarPorSlug(slug) {
   const r = await db.query(
     `SELECT id, user_id, slug, nome, email, ativo, criado_em, plano,
@@ -397,7 +414,7 @@ async function excluir(slug) {
 }
 
 module.exports = {
-  cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, buscarPorSlug, buscarPorStripeCustomer, listar,
+  cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, slugBase,
   atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio,
   trocarSenha, trocarEmail, conferirSenha,

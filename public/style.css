@@ -260,6 +260,21 @@ h3 {
   cursor: pointer;
 }
 
+/* Linha: "manter conectado" + "esqueci minha senha" */
+.auth-linha-extra {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin: 14px 0 4px; flex-wrap: wrap;
+}
+.auth-linha-extra .auth-lembrar { margin: 0; }
+.auth-esqueci-link { font-size: 13px; color: var(--accent-fg); text-decoration: none; }
+.auth-esqueci-link:hover { text-decoration: underline; }
+/* Aviso de sucesso (link de reset enviado / senha redefinida) */
+.auth-aviso-ok {
+  font-size: 13px; color: var(--success, #22C55E); line-height: 1.5;
+  background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 8px; padding: 10px 12px; margin: 10px 0 0;
+}
+
 .auth-footer {
   margin-top: 24px;
   text-align: center;

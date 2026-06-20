@@ -17,6 +17,8 @@ const pedidos = require("./pedidos");
 const clientes = require("./clientes");
 const cep = require("./cep");
 const frete = require("./frete");
+const email = require("./email");
+const db = require("./db");
 const multiBot = require("./multi-bot");
 const { supabaseAdmin, supabaseAnon } = require("./supabase");
 const stripeBilling = require("./stripe");
@@ -87,6 +89,7 @@ const cadastroLimiter   = limitador(60, 5,  "Muitos cadastros a partir deste IP.
 const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / checkout
 const refreshLimiter    = limitador(15, 60, TENTE_DEPOIS); // renovação de sessão (~1x/h por usuário)
 const publicoLimiter    = limitador(15, 60, "Muitas requisições. Aguarde um momento e tente novamente."); // cardápio web público
+const esqueciLimiter    = limitador(60, 5,  "Muitas solicitações de redefinição. Tente novamente mais tarde."); // esqueci a senha
 
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
 // A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
@@ -471,6 +474,11 @@ app.get("/c/:slug", (_req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "cardapio.html"));
 });
 
+// Página de redefinição de senha (link do e-mail: /redefinir-senha?token=...).
+app.get("/redefinir-senha", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "redefinir-senha.html"));
+});
+
 // Busca de CEP com cache no banco (substitui a chamada direta do front ao ViaCEP).
 // Público (usado no checkout, onboarding e painel) e rate-limited.
 app.get("/api/cep/:cep", publicoLimiter, async (req, res) => {
@@ -481,6 +489,54 @@ app.get("/api/cep/:cep", publicoLimiter, async (req, res) => {
   } catch (e) {
     console.error("GET /api/cep:", e.message);
     res.json({ erro: true }); // front cai no preenchimento manual
+  }
+});
+
+// ---- "Esqueci a senha" (cliente e master — ambos usuários do Supabase Auth) ----
+// Resposta SEMPRE genérica (anti-enumeração). Se o usuário existir, gera um token
+// (guarda só o HASH, expira em 1h, uso único) e manda o link pelo Resend.
+const RESET_TTL_MS = 60 * 60 * 1000; // 1h
+const hashToken = (t) => crypto.createHash("sha256").update(String(t)).digest("hex");
+
+app.post("/api/esqueci-senha", esqueciLimiter, async (req, res) => {
+  const email_ = String((req.body && req.body.email) || "").trim().toLowerCase();
+  res.json({ ok: true }); // responde já, genérico (não revela se o e-mail existe)
+  try {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email_)) return;
+    const user = await empresas.acharAuthUserPorEmail(email_);
+    if (!user) return; // usuário não existe → não manda nada (resposta já foi genérica)
+    const token = crypto.randomBytes(32).toString("hex");
+    const expira = new Date(Date.now() + RESET_TTL_MS).toISOString();
+    await db.query(
+      "INSERT INTO password_resets (token_hash, email, expira_em) VALUES ($1, $2, $3)",
+      [hashToken(token), email_, expira]
+    );
+    const link = `${baseUrlDe(req)}/redefinir-senha?token=${token}`;
+    await email.resetSenha(email_, link).catch((e) => console.error("email reset:", e.message));
+  } catch (e) {
+    console.error("esqueci-senha:", e.message);
+  }
+});
+
+app.post("/api/redefinir-senha", esqueciLimiter, async (req, res) => {
+  const { token, novaSenha } = req.body || {};
+  if (!token) return res.status(400).json({ erro: "Link inválido." });
+  if (!novaSenha || String(novaSenha).length < 6) return res.status(400).json({ erro: "A nova senha deve ter ao menos 6 caracteres." });
+  try {
+    const r = await db.query(
+      "SELECT email FROM password_resets WHERE token_hash = $1 AND usado = false AND expira_em > now()",
+      [hashToken(token)]
+    );
+    if (!r.rows[0]) return res.status(400).json({ erro: "Link inválido ou expirado. Solicite um novo." });
+    const user = await empresas.acharAuthUserPorEmail(r.rows[0].email);
+    if (!user) return res.status(400).json({ erro: "Link inválido." });
+    const upd = await supabaseAdmin.auth.updateUserById(user.id, { password: String(novaSenha) });
+    if (upd.error) return res.status(400).json({ erro: "Não foi possível redefinir a senha." });
+    await db.query("UPDATE password_resets SET usado = true WHERE token_hash = $1", [hashToken(token)]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("redefinir-senha:", e.message);
+    res.status(500).json({ erro: "Falha ao redefinir a senha." });
   }
 });
 

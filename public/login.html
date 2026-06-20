@@ -57,14 +57,17 @@
             </div>
           </div>
 
-          <label class="auth-lembrar">
-            <input type="checkbox" id="lembrar" checked />
-            <span>Manter conectado neste dispositivo</span>
-          </label>
-          <!-- TODO: recuperação de senha — não implementada -->
+          <div class="auth-linha-extra">
+            <label class="auth-lembrar">
+              <input type="checkbox" id="lembrar" checked />
+              <span>Manter conectado</span>
+            </label>
+            <a href="#" id="linkEsqueci" class="auth-esqueci-link">Esqueci minha senha</a>
+          </div>
 
           <button id="btnEntrar" class="auth-btn" type="submit">Entrar</button>
           <p id="erro" class="erro"></p>
+          <p id="avisoEsqueci" class="auth-aviso-ok" hidden></p>
         </form>
 
         <div class="auth-footer">

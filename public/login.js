@@ -88,3 +88,19 @@ btn.addEventListener("click", entrar);
 document.getElementById("formLogin").addEventListener("submit", (e) => { e.preventDefault(); entrar(); });
 // Botão de mostrar/ocultar senha (sem onclick inline, por CSP).
 document.getElementById("olhoSenha").addEventListener("click", () => toggleSenha("senha", "olhoSenha"));
+
+// "Esqueci minha senha": usa o e-mail do campo; pede o link de redefinição.
+// Resposta sempre genérica (anti-enumeração) — vale p/ cliente e master.
+document.getElementById("linkEsqueci").addEventListener("click", async (e) => {
+  e.preventDefault();
+  erro.textContent = "";
+  const aviso = document.getElementById("avisoEsqueci");
+  aviso.hidden = true;
+  const email = document.getElementById("email").value.trim();
+  if (!email) { erro.textContent = "Digite seu e-mail acima para receber o link."; document.getElementById("email").focus(); return; }
+  try {
+    await fetch("/api/esqueci-senha", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+  } catch (_) { /* resposta é genérica de qualquer forma */ }
+  aviso.textContent = "Se houver uma conta com esse e-mail, enviamos um link para redefinir a senha. Confira sua caixa de entrada.";
+  aviso.hidden = false;
+});
