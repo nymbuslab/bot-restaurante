@@ -1381,7 +1381,7 @@ app.get("/api/caixa", exigeAuth, async (req, res) => {
 
 app.post("/api/caixa/abrir", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.abrirCaixa(req.tenantDir, { fundoTroco: req.body.fundoTroco })); }
+  try { res.json(await caixa.abrirCaixa(req.tenantDir, { fundoTroco: req.body.fundoTroco, operador: req.body.operador, obsAbertura: req.body.obsAbertura })); }
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 

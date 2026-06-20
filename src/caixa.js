@@ -28,15 +28,15 @@ async function caixaAberto(dir) {
   return r.rows[0] || null;
 }
 
-async function abrirCaixa(dir, { fundoTroco }) {
+async function abrirCaixa(dir, { fundoTroco, operador, obsAbertura }) {
   const empId = await empresaId(dir);
   const fundo = Number(fundoTroco) || 0;
   if (fundo < 0) throw new Error("Fundo de troco inválido.");
   const aberto = await caixaAberto(dir);
   if (aberto) throw new Error("Já existe um caixa aberto.");
   const r = await db.query(
-    "INSERT INTO caixas (empresa_id, fundo_troco) VALUES ($1, $2) RETURNING *",
-    [empId, fundo]
+    "INSERT INTO caixas (empresa_id, fundo_troco, operador, obs_abertura) VALUES ($1, $2, $3, $4) RETURNING *",
+    [empId, fundo, (operador || "").trim() || null, (obsAbertura || "").trim() || null]
   );
   return r.rows[0];
 }
@@ -147,6 +147,8 @@ async function resumo(dir) {
       id: caixa.id,
       abertoEm: new Date(caixa.aberto_em).toISOString(),
       fundoTroco: Number(caixa.fundo_troco) || 0,
+      operador: caixa.operador || null,
+      obsAbertura: caixa.obs_abertura || null,
     },
     resumo: calc.resumoCaixa(caixa, movimentos),
     recebimentos: rec.rows.map((r) => ({

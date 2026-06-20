@@ -1754,6 +1754,9 @@ if ($("btnVerPlanosImpressora")) {
 // ================= Caixa (Plano Completo) =================
 function fmtBRn(n) { return (Number(n) || 0).toFixed(2).replace(".", ","); }
 
+const SVG_CAIXA_REGISTRADORA = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M5 10V6a2 2 0 0 1 2-2h7l3 3v3"/><line x1="7" y1="14" x2="9" y2="14"/><line x1="11.5" y1="14" x2="13.5" y2="14"/><line x1="16" y1="14" x2="18" y2="14"/><line x1="7" y1="17.5" x2="9" y2="17.5"/><line x1="11.5" y1="17.5" x2="13.5" y2="17.5"/><line x1="16" y1="17.5" x2="18" y2="17.5"/></svg>`;
+const SVG_OPERADOR = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+
 // Modal acessível com campos (substitui window.prompt). Resolve com um objeto
 // { id: valor } ou null se cancelar. Campos `dinheiro` usam a máscara e devolvem
 // número; `texto` devolve string. `live(valores)` → texto atualizado a cada tecla.
@@ -1823,15 +1826,42 @@ function renderCaixa(data) {
   const cont = $("caixaConteudo");
   if (!data.caixa) {
     cont.innerHTML = `
-      <div class="caixa-card">
-        <h3>Abrir caixa</h3>
-        <p class="sub">Informe o fundo de troco (dinheiro inicial na gaveta).</p>
-        <div class="campo"><label for="caixaFundo">Fundo de troco</label>
-          <input id="caixaFundo" inputmode="numeric" value="0,00"></div>
-        <button id="btnAbrirCaixa">Abrir caixa</button>
-      </div>`;
+      <form class="caixa-abertura" id="formAbrirCaixa" autocomplete="off">
+        <div class="caixa-abertura-cab">
+          <span class="caixa-abertura-icone">${SVG_CAIXA_REGISTRADORA}</span>
+          <h3>Abertura de Caixa</h3>
+          <p class="sub">Inicie seu turno informando os detalhes abaixo.</p>
+        </div>
+
+        <div class="campo">
+          <label for="caixaOperador">Operador</label>
+          <div class="campo-prefixo">
+            <span class="campo-prefixo-icone">${SVG_OPERADOR}</span>
+            <input id="caixaOperador" type="text" placeholder="Nome de quem abre o turno" value="${escapar(painelNome || "")}">
+          </div>
+        </div>
+
+        <div class="campo">
+          <label for="caixaFundo">Saldo inicial (R$)</label>
+          <div class="campo-prefixo">
+            <span class="campo-prefixo-moeda">R$</span>
+            <input id="caixaFundo" inputmode="numeric" value="0,00">
+          </div>
+          <p class="campo-ajuda">Insira o valor físico disponível em notas e moedas.</p>
+        </div>
+
+        <div class="campo">
+          <label for="caixaObs">Observações <span class="campo-opcional">(opcional)</span></label>
+          <textarea id="caixaObs" rows="3" placeholder="Ex: Problemas com a impressora, troco reduzido..."></textarea>
+        </div>
+
+        <button type="submit" id="btnAbrirCaixa" class="caixa-abertura-btn">
+          Abrir Caixa
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </form>`;
     if (window.Dinheiro) Dinheiro.mascarar("caixaFundo");
-    $("btnAbrirCaixa").addEventListener("click", abrirCaixa);
+    $("formAbrirCaixa").addEventListener("submit", (e) => { e.preventDefault(); abrirCaixa(); });
     return;
   }
   renderCaixaAberto(data);
@@ -1839,7 +1869,9 @@ function renderCaixa(data) {
 
 async function abrirCaixa() {
   const fundo = window.Dinheiro ? Dinheiro.valor("caixaFundo") : 0;
-  const r = await api("POST", "/api/caixa/abrir", { fundoTroco: fundo });
+  const operador = ($("caixaOperador").value || "").trim();
+  const obsAbertura = ($("caixaObs").value || "").trim();
+  const r = await api("POST", "/api/caixa/abrir", { fundoTroco: fundo, operador, obsAbertura });
   if (r && r.ok) { toast("✓ Caixa aberto!"); carregarCaixa(); }
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao abrir caixa."); }
 }

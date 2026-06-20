@@ -4159,6 +4159,23 @@ html.embed, html.embed body { background: var(--bg-primary); }
 @page { size: 80mm auto; margin: 0; }
 
 /* ---- Caixa (Plano Completo) ---- */
+/* Abertura de caixa — cartão centralizado (espelha o protótipo) */
+.caixa-abertura { max-width: 480px; margin: 24px auto; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-md); }
+.caixa-abertura-cab { text-align: center; margin-bottom: 24px; }
+.caixa-abertura-icone { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: var(--radius); background: var(--accent-subtle); color: var(--accent-fg); margin-bottom: 14px; }
+.caixa-abertura-cab h3 { margin: 0 0 4px; font-size: 19px; }
+.caixa-abertura-cab .sub { margin: 0; }
+.caixa-abertura .campo label { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+.campo-opcional { color: var(--text-secondary); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.campo-ajuda { margin: 6px 0 0; font-size: 12px; font-style: italic; color: var(--text-secondary); }
+/* Campo com prefixo (ícone de operador / "R$") */
+.campo-prefixo { display: flex; align-items: center; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: border-color .15s; }
+.campo-prefixo:focus-within { border-color: var(--accent); }
+.campo-prefixo input { border: none; background: transparent; flex: 1; min-width: 0; }
+.campo-prefixo input:focus { border: none; box-shadow: none; outline: none; }
+.campo-prefixo-icone { display: inline-flex; align-items: center; padding-left: 12px; color: var(--text-secondary); }
+.campo-prefixo-moeda { padding: 0 4px 0 14px; color: var(--accent-fg); font-weight: 700; }
+.caixa-abertura-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 8px; }
 .caixa-card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-width: 420px; }
 .caixa-lock { text-align: center; padding: 40px 16px; color: var(--text-secondary); }
 .caixa-lock h3 { margin: 10px 0 4px; }
