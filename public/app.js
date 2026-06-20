@@ -373,8 +373,8 @@ async function trocarPlanoAcao(novoPlano) {
   const info = PLANOS_INFO[novoPlano] || PLANOS_INFO.essencial;
   const ehUpgrade = novoPlano === "completo";
   const msg = ehUpgrade
-    ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter o frete por raio.`
-    : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter o frete por raio.`;
+    ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter o frete por raio e a impressão de pedidos.`
+    : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter o frete por raio e a impressão de pedidos.`;
   if (!window.confirm(msg)) return;
   const r = await api("POST", "/api/assinatura/plano", { plano: novoPlano });
   if (r && r.ok) {

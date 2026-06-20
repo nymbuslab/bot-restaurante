@@ -24,7 +24,7 @@
     const { cozinha, cupom } = global.Comanda.montarComanda(pedido, config);
     const cortar = !!(config && config.impressao && config.impressao.cortarEntreVias);
     if (!cortar) {
-      const tracejado = "\n\n   ✂- - - - - - - - - - - - - -\n\n";
+      const tracejado = "\n\n        - - - - - -  CORTE  - - - - - -\n\n";
       imprimirTexto(cozinha + tracejado + cupom);
       return;
     }
