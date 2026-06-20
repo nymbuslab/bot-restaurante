@@ -2521,11 +2521,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .pedido-acoes button.mini { width: auto; }
 .ped-rodape #pedido-fechar-rodape { flex-shrink: 0; }
 .pedido-avisado {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 100%;
   font-size: 13px;
   font-weight: 600;
   color: var(--success);
