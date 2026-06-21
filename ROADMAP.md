@@ -79,6 +79,14 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - [x] Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
 - [x] Redesign visual completo (Nymbus Pedidos) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
 - [ ] Integração com sistemas de PDV / impressora de cupom
+- [ ] **Formas de Pagamento configuráveis + taxa por forma (recebimento líquido)** — aba dedicada em
+  Configurações pra gerir as formas (hoje editáveis como lista simples em `config.pagamentos`),
+  com **granularidade Crédito/Débito/Pix** e **taxa (%) por forma** que a administradora cobra.
+  Habilita **relatórios de recebimento líquido** (bruto − taxa = base de recebimento). Separar a
+  forma **grossa** que o cliente escolhe no cardápio (Dinheiro/Cartão/Pix) da forma **detalhada +
+  taxa** usada pelo operador/relatório. Levantado em 2026-06-20, durante o fechamento de caixa
+  (contador de cédulas) — o fechamento v1 usa as formas já configuradas; esta feature vem depois,
+  junto do relatório que consome a taxa.
 - [ ] App mobile para o atendente receber pedidos
 - [x] **Limpeza ativa de sessões abandonadas (bot)** — ✅ **concluído**: `sessoes.limparExpiradas()` varre o Map e descarta as sessões inativas há +30min, agendada a cada 10min no `index.js` (no lugar da expiração só-lazy, que nunca limpava conversa abandonada). Sem mudança de comportamento; só libera RAM. Ver `CHANGELOG.md` v0.24.0.
 - [x] **Resiliência: sair de processo/máquina única** — ✅ **encerrado (2026-06-18)**. Segue como **um processo Node numa máquina só**, por decisão — coberto pela auto-cura abaixo. Redundância real fica como nota de arquitetura, **fora de escopo** (sem plano de mexer).
