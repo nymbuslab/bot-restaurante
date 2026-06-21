@@ -1927,7 +1927,7 @@ function renderCaixaAberto(data) {
       <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(r.sangrias)}</span></div>
       <div class="caixa-linha caixa-total"><span>Esperado em dinheiro</span><span>R$ ${fmtBRn(r.esperadoEspecie)}</span></div>
     </div>
-    <h4>Movimentação do caixa</h4><div class="caixa-lista">${tabelaMov}</div>`;
+    <h4>Movimentação do caixa</h4><div class="caixa-resumo caixa-mov">${tabelaMov}</div>`;
 
   cont.querySelectorAll(".caixa-estornar").forEach((b) =>
     b.addEventListener("click", () => estornarCaixa(b.dataset.id)));
