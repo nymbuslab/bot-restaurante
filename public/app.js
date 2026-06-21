@@ -1931,6 +1931,7 @@ function renderCaixaAberto(data) {
       <div>
         <span class="cx-badge">Caixa aberto</span>
         <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
+        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
@@ -1960,11 +1961,6 @@ function renderCaixaAberto(data) {
         <div class="caixa-linha"><span>Valor inicial (troco)</span><span>R$ ${fmtBRn(fundo)}</span></div>
         <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(suprimentos)}</span></div>
         <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
-        <div class="cx-box">
-          <span class="cx-box-rotulo">Total em Caixa (gaveta)</span>
-          <span class="cx-box-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias</span>
-          <span class="cx-box-valor">R$ ${fmtBRn(totalEmCaixa)}</span>
-        </div>
         <div class="cx-box">
           <span class="cx-box-rotulo">Total Faturamento</span>
           <span class="cx-box-formula">Total de vendas (todas as formas)</span>
@@ -2173,6 +2169,10 @@ async function fecharCaixaFinal(data, contagem, lancamentos) {
 }
 
 async function verHistoricoCaixa() {
+  const box = $("caixaConteudo");
+  // Toggle: se já está aberto, fecha (segundo clique).
+  const existente = box.querySelector("#caixaHistBox");
+  if (existente) { existente.remove(); return; }
   const r = await api("GET", "/api/caixa/historico");
   if (!r || !r.ok) return;
   const lista = await r.json();
@@ -2200,10 +2200,10 @@ async function verHistoricoCaixa() {
         </div>`;
       }).join("")
     : "<p class='sub'>Nenhum caixa fechado ainda.</p>";
-  const box = $("caixaConteudo");
-  // Substitui (não empilha) a caixa de histórico a cada clique.
-  let sec = box.querySelector("#caixaHistBox");
-  if (!sec) { sec = document.createElement("div"); sec.id = "caixaHistBox"; sec.className = "caixa-resumo"; box.appendChild(sec); }
+  const sec = document.createElement("div");
+  sec.id = "caixaHistBox";
+  sec.className = "caixa-resumo";
+  box.appendChild(sec);
   sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Os 3 últimos fechamentos — toque para reabrir o relatório.</p>" : ""}${html}`;
   sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
     const item = lista.find((c) => String(c.id) === el.dataset.id);

@@ -4186,20 +4186,21 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-tab-acao { text-align: right; width: 1%; white-space: nowrap; }
 
 /* ---- Caixa aberto — layout estilo PDV (dark) ---- */
-.cx-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 14px; }
+.cx-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 20px; margin-bottom: 12px; }
 .cx-badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--success); background: var(--success-subtle); padding: 3px 10px; border-radius: 999px; }
-.cx-total { margin: 10px 0 0; font-size: 26px; }
+.cx-total { margin: 8px 0 2px; font-size: 24px; }
+.cx-formula { font-size: 11px; color: var(--text-disabled); }
 .cx-header-meta { display: flex; flex-direction: column; gap: 4px; text-align: right; font-size: 13px; color: var(--text-secondary); }
 .cx-header-meta b { color: var(--text-primary); font-weight: 600; }
-.cx-acoes { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.cx-acoes { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .cx-acoes-esq { display: flex; gap: 8px; flex-wrap: wrap; }
-.cx-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-.cx-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
-.cx-card-titulo { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
-.cx-box { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+.cx-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; align-items: start; }
+.cx-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
+.cx-card-titulo { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.cx-box { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 1px; }
 .cx-box-rotulo { font-size: 13px; color: var(--text-secondary); }
 .cx-box-formula { font-size: 11px; color: var(--text-disabled); }
-.cx-box-valor { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.cx-box-valor { font-size: 18px; font-weight: 700; margin-top: 3px; }
 .cx-tabela-card { padding: 4px 18px 8px; overflow-x: auto; }
 .cx-tabela { width: 100%; border-collapse: collapse; min-width: 540px; }
 .cx-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding: 8px 12px 8px 0; font-weight: 600; }
