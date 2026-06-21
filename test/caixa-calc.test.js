@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { resumoCaixa, calcularDiferenca, ehDinheiro } = require("../src/caixa-calc");
+const { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa } = require("../src/caixa-calc");
 
 const caixa = { fundo_troco: 100 };
 const movs = [
@@ -40,4 +40,24 @@ test("ehDinheiro: case-insensitive, ignora espaços", () => {
   assert.equal(ehDinheiro("DINHEIRO"), true);
   assert.equal(ehDinheiro("Pix"), false);
   assert.equal(ehDinheiro(null), false);
+});
+
+test("totalContagem: soma cédulas×qtd (centavos→reais), sem erro de float", () => {
+  const c = { "10000": 1, "2000": 2, "100": 3, "5": 3 }; // 100 + 40 + 3 + 0,15
+  assert.equal(totalContagem(c), 143.15);
+});
+
+test("totalContagem: vazio/sem qtd = 0", () => {
+  assert.equal(totalContagem({}), 0);
+  assert.equal(totalContagem({ "10000": 0 }), 0);
+});
+
+test("esperadoEletronico: total recebido menos o que entrou em dinheiro", () => {
+  assert.equal(esperadoEletronico({ totalRecebido: 180, recebidoDinheiro: 100 }), 80);
+});
+
+test("totalEmCaixa: fundo + suprimento + vendas - sangria", () => {
+  const c = { fundo_troco: 50 };
+  const r = { totalRecebido: 180, suprimentos: 20, sangrias: 10 };
+  assert.equal(totalEmCaixa(c, r), 240);
 });

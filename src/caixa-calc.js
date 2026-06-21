@@ -29,4 +29,28 @@ function calcularDiferenca(esperadoEspecie, contadoDinheiro) {
   return (Number(contadoDinheiro) || 0) - (Number(esperadoEspecie) || 0);
 }
 
-module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro };
+// Total contado em cédulas/moedas. `contagem`: { "<centavos>": quantidade }.
+// Soma em centavos inteiros p/ evitar imprecisão de ponto flutuante.
+function totalContagem(contagem) {
+  let centavos = 0;
+  for (const chave in contagem || {}) {
+    centavos += (Number(chave) || 0) * (Number(contagem[chave]) || 0);
+  }
+  return centavos / 100;
+}
+
+// Esperado em cartão/pix = tudo que foi recebido menos o que entrou em dinheiro.
+function esperadoEletronico(resumo) {
+  const r = resumo || {};
+  return (Number(r.totalRecebido) || 0) - (Number(r.recebidoDinheiro) || 0);
+}
+
+// Total que deveria estar no caixa (espécie + eletrônico):
+// saldo inicial + suprimento + vendas (todas as formas) - sangria.
+function totalEmCaixa(caixa, resumo) {
+  const fundo = Number(caixa && caixa.fundo_troco) || 0;
+  const r = resumo || {};
+  return fundo + (Number(r.suprimentos) || 0) + (Number(r.totalRecebido) || 0) - (Number(r.sangrias) || 0);
+}
+
+module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa };
