@@ -20,6 +20,20 @@
     if (overlay) overlay.style.display = "none";
   }
 
+  // Prévia de DOCUMENTO ÚNICO (ex.: relatório de fechamento de caixa).
+  function abrirRelatorio(titulo, texto) {
+    const overlay = document.getElementById("relatorio-overlay");
+    const tEl = document.getElementById("relatorio-titulo");
+    const prev = document.getElementById("relatorio-prev");
+    if (tEl && titulo) tEl.textContent = titulo;
+    if (prev) prev.textContent = texto || "";
+    if (overlay) overlay.style.display = "flex";
+  }
+  function fecharRelatorio() {
+    const o = document.getElementById("relatorio-overlay");
+    if (o) o.style.display = "none";
+  }
+
   // Abre o modal mostrando as 2 vias renderizadas (prévia legível na tela).
   function abrirPreview(pedido, config) {
     if (!global.Comanda) return;
@@ -46,9 +60,20 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && ov && ov.style.display === "flex") fecharPreview();
     });
+
+    const rImp = document.getElementById("relatorio-imprimir");
+    const rX = document.getElementById("relatorio-fechar");
+    const rOv = document.getElementById("relatorio-overlay");
+    const rPrev = document.getElementById("relatorio-prev");
+    if (rImp) rImp.addEventListener("click", () => imprimirTexto(rPrev ? rPrev.textContent : ""));
+    if (rX) rX.addEventListener("click", fecharRelatorio);
+    if (rOv) rOv.addEventListener("mousedown", (e) => { if (e.target === rOv) fecharRelatorio(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && rOv && rOv.style.display === "flex") fecharRelatorio();
+    });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ligar);
   else ligar();
 
-  global.Impressao = { abrirPreview };
+  global.Impressao = { abrirPreview, abrirRelatorio };
 })(window);

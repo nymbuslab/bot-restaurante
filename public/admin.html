@@ -724,6 +724,23 @@
     </div>
   </div>
 
+  <!-- Prévia do relatório de fechamento (documento único, 80mm) -->
+  <div id="relatorio-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="relatorio-titulo">
+    <div class="modal-caixa impressao-caixa">
+      <h3 id="relatorio-titulo">Relatório de fechamento</h3>
+      <p class="sub">Confira o relatório e imprima na térmica 80mm.</p>
+      <div class="impressao-previews">
+        <div class="impressao-via">
+          <pre class="cupom-preview" id="relatorio-prev"></pre>
+        </div>
+      </div>
+      <div class="modal-acoes">
+        <button class="secundario" id="relatorio-fechar">Fechar</button>
+        <button id="relatorio-imprimir">Imprimir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal de ações do Caixa (sangria/suprimento/fechar) -->
   <div id="caixa-modal-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="caixa-modal-titulo">
     <div class="modal-caixa">
@@ -907,6 +924,7 @@
   <script src="endereco-cep.js"></script>
   <script src="dinheiro.js"></script>
   <script src="comanda.js"></script>
+  <script src="relatorio-caixa.js"></script>
   <script src="impressao.js"></script>
   <script src="app.js"></script>
 </body>

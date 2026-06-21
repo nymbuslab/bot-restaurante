@@ -4188,6 +4188,34 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-ped { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; }
 .caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }
 
+/* Fechamento de caixa — contador + lançamentos */
+.fc-wrap { max-width: 920px; }
+.fc-cab { margin-bottom: 16px; }
+.fc-cab h3 { margin: 0 0 4px; }
+.fc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.fc-col { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.fc-col h4 { margin: 0 0 12px; }
+.fc-tabela { width: 100%; border-collapse: collapse; }
+.fc-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-bottom: 6px; }
+.fc-tabela th:nth-child(2), .fc-tabela th:nth-child(3), .fc-tabela .fc-tot { text-align: right; }
+.fc-tabela td { padding: 3px 0; }
+.fc-ced { white-space: nowrap; }
+.fc-qtd { width: 72px; text-align: right; padding: 6px 8px; }
+.fc-tot { white-space: nowrap; color: var(--text-secondary); padding-left: 10px; }
+.fc-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.fc-add select { flex: 0 0 40%; }
+.fc-add input { flex: 1; min-width: 0; }
+.fc-lista { display: flex; flex-direction: column; gap: 6px; min-height: 40px; margin-bottom: 12px; }
+.fc-lanc { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.fc-lanc span:first-child { flex: 1; }
+.fc-del { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 6px; width: auto; }
+.fc-del:hover { color: var(--error); }
+.fc-rodape { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.fc-dif.fc-sobra { color: var(--success); }
+.fc-dif.fc-falta { color: var(--error); }
+.fc-acoes { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; }
+@media (max-width: 720px) { .fc-cols { grid-template-columns: 1fr; } }
+
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
 .tag svg, .cfg-frete-lock svg, .np-som-pill svg { vertical-align: -2px; }
 
