@@ -1883,15 +1883,33 @@ function renderCaixaAberto(data) {
   const linhasForma = formas.length
     ? formas.map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f])}</span></div>`).join("")
     : "<p class='sub'>Nenhum recebimento ainda.</p>";
-  // O recebimento acontece no Pedido; aqui o Caixa lista o que ENTROU neste caixa
-  // e permite estornar (corrigir). Sem lista de "a receber".
+  // Extrato do turno: recebimentos (estornáveis) + sangrias/suprimentos, com
+  // valor, forma e data/hora — é o que o dono confere ao olhar o caixa.
   const dataHoraCurta = (iso) => iso
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "";
-  const recebimentos = (data.recebimentos || []).map((m) =>
-    `<div class="caixa-ped"><span>#${m.numero} · ${escapar(m.cliente || "")} · ${escapar(m.forma || "")} · R$ ${fmtBRn(m.valor)}${m.quando ? " · " + dataHoraCurta(m.quando) : ""}</span>
-      <button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button></div>`).join("")
-    || "<p class='sub'>Nenhum recebimento neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
+  const rotuloMov = (m) => {
+    if (m.tipo === "recebimento") return "Pedido #" + (m.numero != null ? m.numero : "—") + (m.cliente ? " · " + escapar(m.cliente) : "");
+    const base = m.tipo === "sangria" ? "Sangria" : "Suprimento";
+    return base + (m.descricao ? " · " + escapar(m.descricao) : "");
+  };
+  const linhasMov = (data.movimentos || []).map((m) => {
+    const ehSangria = m.tipo === "sangria";
+    const valorTxt = (ehSangria ? "−R$ " : "R$ ") + fmtBRn(m.valor);
+    const forma = m.tipo === "recebimento" ? escapar(m.forma || "") : "—";
+    const acao = m.tipo === "recebimento"
+      ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
+    return `<tr>
+      <td>${rotuloMov(m)}</td>
+      <td>${forma}</td>
+      <td class="caixa-tab-valor${ehSangria ? " caixa-tab-neg" : ""}">${valorTxt}</td>
+      <td class="caixa-tab-data">${dataHoraCurta(m.quando)}</td>
+      <td class="caixa-tab-acao">${acao}</td>
+    </tr>`;
+  }).join("");
+  const tabelaMov = (data.movimentos && data.movimentos.length)
+    ? `<table class="caixa-tabela"><thead><tr><th>Movimento</th><th>Forma</th><th>Valor</th><th>Data/hora</th><th></th></tr></thead><tbody>${linhasMov}</tbody></table>`
+    : "<p class='sub'>Nenhuma movimentação neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
 
   cont.innerHTML = `
     <div class="caixa-topo">
@@ -1909,7 +1927,7 @@ function renderCaixaAberto(data) {
       <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(r.sangrias)}</span></div>
       <div class="caixa-linha caixa-total"><span>Esperado em dinheiro</span><span>R$ ${fmtBRn(r.esperadoEspecie)}</span></div>
     </div>
-    <h4>Recebimentos deste caixa</h4><div class="caixa-lista">${recebimentos}</div>`;
+    <h4>Movimentação do caixa</h4><div class="caixa-lista">${tabelaMov}</div>`;
 
   cont.querySelectorAll(".caixa-estornar").forEach((b) =>
     b.addEventListener("click", () => estornarCaixa(b.dataset.id)));
@@ -2831,7 +2849,7 @@ function montarAcoes(p) {
       extra.textContent = "Receber pagamento (R$ " + fmtBRn(p.total) + ")";
       extra.addEventListener("click", async () => {
         const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
-        if (r && r.ok) { p.recebidoEm = new Date().toISOString(); toast("✓ Recebido no caixa!"); montarAcoes(p); }
+        if (r && r.ok) { p.recebidoEm = new Date().toISOString(); toast("✓ Recebido no caixa!"); montarAcoes(p); carregarCaixa(); }
         else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Abra o caixa primeiro."); }
       });
       cont.appendChild(extra);

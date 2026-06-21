@@ -146,11 +146,14 @@ async function resumo(dir) {
   // Recebimentos DESTE caixa (com nº/cliente do pedido) — base do estorno.
   // O ato de "receber" acontece no Pedido; aqui o Caixa só mostra o que entrou
   // e permite estornar correções.
-  const rec = await db.query(
-    `SELECT m.pedido_id, m.forma_pagamento, m.valor, m.criado_em, p.numero, p.cliente
+  // Extrato do turno: TODOS os movimentos (recebimento/sangria/suprimento) com
+  // nº/cliente do pedido (recebimentos) — é o que o dono confere ao olhar o caixa.
+  const mov = await db.query(
+    `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.descricao, m.criado_em,
+            p.numero, p.cliente
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
-      WHERE m.caixa_id = $1 AND m.tipo = 'recebimento'
+      WHERE m.caixa_id = $1
       ORDER BY m.id DESC`,
     [caixa.id]
   );
@@ -166,9 +169,9 @@ async function resumo(dir) {
     },
     pedidosAReceber,
     resumo: calc.resumoCaixa(caixa, movimentos),
-    recebimentos: rec.rows.map((r) => ({
-      pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
-      forma: r.forma_pagamento, valor: Number(r.valor) || 0,
+    movimentos: mov.rows.map((r) => ({
+      tipo: r.tipo, pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
+      forma: r.forma_pagamento, valor: Number(r.valor) || 0, descricao: r.descricao || "",
       quando: r.criado_em ? new Date(r.criado_em).toISOString() : null,
     })),
   };
