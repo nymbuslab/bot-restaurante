@@ -4176,26 +4176,39 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .campo-prefixo-icone { display: inline-flex; align-items: center; padding-left: 12px; color: var(--text-secondary); }
 .campo-prefixo-moeda { padding: 0 4px 0 14px; color: var(--accent-fg); font-weight: 700; }
 .caixa-abertura-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 8px; }
-.caixa-card { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-width: 420px; }
 .caixa-lock { text-align: center; padding: 40px 16px; color: var(--text-secondary); }
 .caixa-lock h3 { margin: 10px 0 4px; }
-.caixa-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.caixa-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .caixa-resumo { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
 .caixa-linha { display: flex; justify-content: space-between; padding: 4px 0; }
 .caixa-linha.caixa-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; }
-.caixa-ped { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; }
-.caixa-tabela { width: 100%; border-collapse: collapse; }
-.caixa-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding: 0 10px 8px 0; font-weight: 600; }
-.caixa-tabela th:nth-child(3), .caixa-tabela .caixa-tab-valor { text-align: right; }
-.caixa-tabela td { padding: 8px 10px 8px 0; border-top: 1px solid var(--border-subtle); vertical-align: middle; }
 .caixa-tab-valor { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .caixa-tab-neg { color: var(--error); }
-.caixa-tab-data { white-space: nowrap; color: var(--text-secondary); font-size: 13px; }
 .caixa-tab-acao { text-align: right; width: 1%; white-space: nowrap; }
-.caixa-mov { padding: 6px 16px 10px; }
-.caixa-mov .caixa-tabela th:last-child, .caixa-mov .caixa-tabela td:last-child { padding-right: 0; }
-.caixa-mov .caixa-tabela tr:first-child td { border-top: none; }
+
+/* ---- Caixa aberto — layout estilo PDV (dark) ---- */
+.cx-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 14px; }
+.cx-badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--success); background: var(--success-subtle); padding: 3px 10px; border-radius: 999px; }
+.cx-total { margin: 10px 0 0; font-size: 26px; }
+.cx-header-meta { display: flex; flex-direction: column; gap: 4px; text-align: right; font-size: 13px; color: var(--text-secondary); }
+.cx-header-meta b { color: var(--text-primary); font-weight: 600; }
+.cx-acoes { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.cx-acoes-esq { display: flex; gap: 8px; flex-wrap: wrap; }
+.cx-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.cx-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.cx-card-titulo { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.cx-box { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+.cx-box-rotulo { font-size: 13px; color: var(--text-secondary); }
+.cx-box-formula { font-size: 11px; color: var(--text-disabled); }
+.cx-box-valor { font-size: 20px; font-weight: 700; margin-top: 4px; }
+.cx-tabela-card { padding: 4px 18px 8px; overflow-x: auto; }
+.cx-tabela { width: 100%; border-collapse: collapse; min-width: 540px; }
+.cx-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding: 8px 12px 8px 0; font-weight: 600; }
+.cx-tabela td { padding: 9px 12px 9px 0; border-top: 1px solid var(--border-subtle); }
+.cx-tabela th:last-child, .cx-tabela td:last-child { padding-right: 0; }
+.cx-tabela th:nth-child(5), .cx-tabela .caixa-tab-valor { text-align: right; }
+.cx-td-hora { white-space: nowrap; color: var(--text-secondary); }
+.cx-row-sangria td { color: var(--accent-fg); }
+@media (max-width: 760px) { .cx-cards { grid-template-columns: 1fr; } }
 .caixa-hist-item { display: flex; justify-content: space-between; align-items: center; gap: 12px 16px; flex-wrap: wrap; padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--border-subtle); transition: color .15s; }
 .caixa-hist-item:last-child { border-bottom: none; }
 .caixa-hist-item:hover { color: var(--accent-fg); }

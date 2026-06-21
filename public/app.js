@@ -1882,55 +1882,98 @@ async function abrirCaixa() {
 function renderCaixaAberto(data) {
   const cont = $("caixaConteudo");
   const r = data.resumo;
-  const formas = Object.keys(r.recebidoPorForma);
-  const linhasForma = formas.length
-    ? formas.map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f])}</span></div>`).join("")
-    : "<p class='sub'>Nenhum recebimento ainda.</p>";
-  // Extrato do turno: recebimentos (estornáveis) + sangrias/suprimentos, com
-  // valor, forma e data/hora — é o que o dono confere ao olhar o caixa.
+  const fundo = Number(data.caixa.fundoTroco) || 0;
+  const totalRecebido = Number(r.totalRecebido) || 0;
+  const recebidoDinheiro = Number(r.recebidoDinheiro) || 0;
+  const totalCartaoPix = totalRecebido - recebidoDinheiro;
+  const suprimentos = Number(r.suprimentos) || 0;
+  const sangrias = Number(r.sangrias) || 0;
+  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias; // gaveta (esperado geral)
+  const totalFaturamento = totalRecebido;
+
   const dataHoraCurta = (iso) => iso
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-    : "";
-  const rotuloMov = (m) => {
-    if (m.tipo === "recebimento") return "Pedido #" + (m.numero != null ? m.numero : "—") + (m.cliente ? " · " + escapar(m.cliente) : "");
-    const base = m.tipo === "sangria" ? "Sangria" : "Suprimento";
-    return base + (m.descricao ? " · " + escapar(m.descricao) : "");
-  };
+    : "—";
+
+  // Vendas por forma: eletrônicas (cada uma) + subtotal cartão/Pix + dinheiro.
+  const formasElet = Object.keys(r.recebidoPorForma).filter((f) => !ehFormaDinheiro(f));
+  const linhasElet = formasElet
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f])}</span></div>`)
+    .join("");
+
+  // Extrato do turno: recebimentos (estornáveis) + sangrias/suprimentos.
+  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento" };
   const linhasMov = (data.movimentos || []).map((m) => {
     const ehSangria = m.tipo === "sangria";
+    const rowCls = m.tipo === "recebimento" ? "" : (ehSangria ? "cx-row-mov cx-row-sangria" : "cx-row-mov");
+    const num = m.tipo === "recebimento" ? "#" + (m.numero != null ? m.numero : "—") : "—";
+    const cliente = m.tipo === "recebimento" ? escapar(m.cliente || "—") : (m.descricao ? escapar(m.descricao) : "—");
     const valorTxt = (ehSangria ? "−R$ " : "R$ ") + fmtBRn(m.valor);
-    const forma = m.tipo === "recebimento" ? escapar(m.forma || "") : "—";
+    const forma = m.tipo === "recebimento" ? escapar(m.forma || "—") : "—";
     const acao = m.tipo === "recebimento"
       ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
-    return `<tr>
-      <td>${rotuloMov(m)}</td>
-      <td>${forma}</td>
+    return `<tr class="${rowCls}">
+      <td class="cx-td-hora">${dataHoraCurta(m.quando)}</td>
+      <td>${num}</td>
+      <td>${tipoLabel[m.tipo] || m.tipo}</td>
+      <td>${cliente}</td>
       <td class="caixa-tab-valor${ehSangria ? " caixa-tab-neg" : ""}">${valorTxt}</td>
-      <td class="caixa-tab-data">${dataHoraCurta(m.quando)}</td>
+      <td>${forma}</td>
       <td class="caixa-tab-acao">${acao}</td>
     </tr>`;
   }).join("");
   const tabelaMov = (data.movimentos && data.movimentos.length)
-    ? `<table class="caixa-tabela"><thead><tr><th>Movimento</th><th>Forma</th><th>Valor</th><th>Data/hora</th><th></th></tr></thead><tbody>${linhasMov}</tbody></table>`
+    ? `<table class="cx-tabela"><thead><tr><th>Hora</th><th>Nº</th><th>Tipo</th><th>Cliente</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>${linhasMov}</tbody></table>`
     : "<p class='sub'>Nenhuma movimentação neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
 
   cont.innerHTML = `
-    <div class="caixa-topo">
-      <div><h3>Caixa aberto</h3><span class="sub">Fundo de troco: R$ ${fmtBRn(data.caixa.fundoTroco)}</span></div>
-      <div class="caixa-acoes">
-        <button class="secundario" id="btnSangria">Sangria</button>
-        <button class="secundario" id="btnSuprimento">Suprimento</button>
-        <button class="secundario" id="btnHistCaixa">Caixas anteriores</button>
-        <button id="btnFecharCaixa">Fechar caixa</button>
+    <div class="cx-header">
+      <div>
+        <span class="cx-badge">Caixa aberto</span>
+        <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
+      </div>
+      <div class="cx-header-meta">
+        <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
+        <span>Aberto em: ${dataHoraCurta(data.caixa.abertoEm)}</span>
       </div>
     </div>
-    <div class="caixa-resumo">
-      ${linhasForma}
-      <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(r.suprimentos)}</span></div>
-      <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(r.sangrias)}</span></div>
-      <div class="caixa-linha caixa-total"><span>Esperado em dinheiro</span><span>R$ ${fmtBRn(r.esperadoEspecie)}</span></div>
+
+    <div class="cx-acoes">
+      <div class="cx-acoes-esq">
+        <button class="secundario" id="btnSuprimento">Suprimento</button>
+        <button class="secundario" id="btnSangria">Sangria</button>
+        <button class="secundario" id="btnHistCaixa">Caixas anteriores</button>
+      </div>
+      <button id="btnFecharCaixa">Fechar caixa</button>
     </div>
-    <h4>Movimentação do caixa</h4><div class="caixa-resumo caixa-mov">${tabelaMov}</div>`;
+
+    <div class="cx-cards">
+      <div class="cx-card">
+        <h4 class="cx-card-titulo">Vendas por forma</h4>
+        ${totalRecebido === 0 ? "<p class='sub'>Nenhuma venda ainda.</p>" : `
+        ${linhasElet}
+        <div class="caixa-linha caixa-total"><span>Total cartão/Pix</span><span>R$ ${fmtBRn(totalCartaoPix)}</span></div>
+        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(recebidoDinheiro)}</span></div>`}
+      </div>
+      <div class="cx-card">
+        <h4 class="cx-card-titulo">Movimentação do caixa</h4>
+        <div class="caixa-linha"><span>Valor inicial (troco)</span><span>R$ ${fmtBRn(fundo)}</span></div>
+        <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(suprimentos)}</span></div>
+        <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
+        <div class="cx-box">
+          <span class="cx-box-rotulo">Total em Caixa (gaveta)</span>
+          <span class="cx-box-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias</span>
+          <span class="cx-box-valor">R$ ${fmtBRn(totalEmCaixa)}</span>
+        </div>
+        <div class="cx-box">
+          <span class="cx-box-rotulo">Total Faturamento</span>
+          <span class="cx-box-formula">Total de vendas (todas as formas)</span>
+          <span class="cx-box-valor">R$ ${fmtBRn(totalFaturamento)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cx-card cx-tabela-card">${tabelaMov}</div>`;
 
   cont.querySelectorAll(".caixa-estornar").forEach((b) =>
     b.addEventListener("click", () => estornarCaixa(b.dataset.id)));
