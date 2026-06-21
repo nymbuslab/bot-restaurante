@@ -145,7 +145,7 @@ async function resumo(dir) {
   // O ato de "receber" acontece no Pedido; aqui o Caixa só mostra o que entrou
   // e permite estornar correções.
   const rec = await db.query(
-    `SELECT m.pedido_id, m.forma_pagamento, m.valor, p.numero, p.cliente
+    `SELECT m.pedido_id, m.forma_pagamento, m.valor, m.criado_em, p.numero, p.cliente
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
       WHERE m.caixa_id = $1 AND m.tipo = 'recebimento'
@@ -167,12 +167,14 @@ async function resumo(dir) {
     recebimentos: rec.rows.map((r) => ({
       pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
       forma: r.forma_pagamento, valor: Number(r.valor) || 0,
+      quando: r.criado_em ? new Date(r.criado_em).toISOString() : null,
     })),
   };
 }
 
 // eletronico: [{ forma, valor }] informado pelo operador na conferência.
-async function fecharCaixa(dir, { contagem, eletronico }) {
+// relatorio: texto do relatório 80mm (montado no front), guardado p/ reimpressão.
+async function fecharCaixa(dir, { contagem, eletronico, relatorio }) {
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Não há caixa aberto.");
 
@@ -204,6 +206,7 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     eletronicoPorForma,
     esperado: { totalEmCaixa: totalCaixa, especie: resumo.esperadoEspecie, eletronico: calc.esperadoEletronico(resumo) },
     contado: { dinheiro: contadoDinheiro, eletronico: contadoEletronico },
+    relatorio: relatorio || "",
   };
 
   await db.query(
@@ -218,7 +221,8 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
 async function listarCaixas(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    `SELECT id, aberto_em, fechado_em, fundo_troco, contado_dinheiro, diferenca
+    `SELECT id, aberto_em, fechado_em, fundo_troco, contado_dinheiro, diferenca,
+            detalhe_fechamento->>'relatorio' AS relatorio
        FROM caixas WHERE empresa_id = $1 AND status='fechado'
        ORDER BY id DESC LIMIT 50`,
     [empId]
@@ -230,6 +234,7 @@ async function listarCaixas(dir) {
     fundoTroco: Number(c.fundo_troco) || 0,
     contadoDinheiro: c.contado_dinheiro == null ? null : Number(c.contado_dinheiro),
     diferenca: c.diferenca == null ? null : Number(c.diferenca),
+    relatorio: c.relatorio || null,
   }));
 }
 

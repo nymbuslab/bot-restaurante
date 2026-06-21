@@ -1885,8 +1885,11 @@ function renderCaixaAberto(data) {
     : "<p class='sub'>Nenhum recebimento ainda.</p>";
   // O recebimento acontece no Pedido; aqui o Caixa lista o que ENTROU neste caixa
   // e permite estornar (corrigir). Sem lista de "a receber".
+  const dataHoraCurta = (iso) => iso
+    ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "";
   const recebimentos = (data.recebimentos || []).map((m) =>
-    `<div class="caixa-ped"><span>#${m.numero} · ${escapar(m.cliente || "")} · ${escapar(m.forma || "")} · R$ ${fmtBRn(m.valor)}</span>
+    `<div class="caixa-ped"><span>#${m.numero} · ${escapar(m.cliente || "")} · ${escapar(m.forma || "")} · R$ ${fmtBRn(m.valor)}${m.quando ? " · " + dataHoraCurta(m.quando) : ""}</span>
       <button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button></div>`).join("")
     || "<p class='sub'>Nenhum recebimento neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
 
@@ -1896,7 +1899,7 @@ function renderCaixaAberto(data) {
       <div class="caixa-acoes">
         <button class="secundario" id="btnSangria">Sangria</button>
         <button class="secundario" id="btnSuprimento">Suprimento</button>
-        <button class="secundario" id="btnHistCaixa">Histórico</button>
+        <button class="secundario" id="btnHistCaixa">Caixas anteriores</button>
         <button id="btnFecharCaixa">Fechar caixa</button>
       </div>
     </div>
@@ -1961,7 +1964,13 @@ function renderFechamentoCaixa(data) {
   const esperadoElet = (Number(resumo.totalRecebido) || 0) - (Number(resumo.recebidoDinheiro) || 0);
   const formas = data.formasPagamento || [];
   const formaDin = formas.find(ehFormaDinheiro) || "Dinheiro";
+  // Formas eletrônicas = união das configuradas + as que de fato tiveram recebimento
+  // neste caixa (ex.: Pix recebido mas fora da config) — evita "Outros" e oferece a
+  // forma certa no dropdown.
   const eletronicas = formas.filter((f) => !ehFormaDinheiro(f));
+  Object.keys((data.resumo && data.resumo.recebidoPorForma) || {}).forEach((f) => {
+    if (!ehFormaDinheiro(f) && !eletronicas.includes(f)) eletronicas.push(f);
+  });
   const lancamentos = []; // { forma, valor }
   const pendentes = Number(data.pedidosAReceber) || 0; // pedidos do turno ainda a receber
 
@@ -2082,13 +2091,8 @@ function renderFechamentoCaixa(data) {
 }
 
 async function fecharCaixaFinal(data, contagem, lancamentos, formaDin, eletronicas) {
-  const r = await api("POST", "/api/caixa/fechar", { contagem, eletronico: lancamentos });
-  if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao fechar."); return; }
-  const res = await r.json();
-  const dif = res.diferenca;
-  toast(dif === 0 ? "✓ Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
-
-  // Monta o relatório com os dados conferidos e abre a prévia de impressão.
+  // Monta o relatório com os dados conferidos ANTES de fechar — o mesmo texto vai
+  // pra prévia, é guardado no banco (reimpressão) e é a fonte única do relatório.
   const resumo = data.resumo || {};
   const eletronicoPorForma = {};
   lancamentos.forEach((l) => { eletronicoPorForma[l.forma] = (eletronicoPorForma[l.forma] || 0) + l.valor; });
@@ -2108,8 +2112,15 @@ async function fecharCaixaFinal(data, contagem, lancamentos, formaDin, eletronic
     contadoDinheiro: contado,
     eletronicoPorForma,
   };
-  if (window.Relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
-    window.Impressao.abrirRelatorio("Relatório de fechamento", window.Relatorio.montarRelatorioFechamento(dados));
+  const relatorio = window.Relatorio ? window.Relatorio.montarRelatorioFechamento(dados) : "";
+
+  const r = await api("POST", "/api/caixa/fechar", { contagem, eletronico: lancamentos, relatorio });
+  if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao fechar."); return; }
+  const res = await r.json();
+  const dif = res.diferenca;
+  toast(dif === 0 ? "✓ Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
+  if (relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
+    window.Impressao.abrirRelatorio("Relatório de fechamento", relatorio);
   }
   carregarCaixa();
 }
@@ -2118,14 +2129,26 @@ async function verHistoricoCaixa() {
   const r = await api("GET", "/api/caixa/historico");
   if (!r || !r.ok) return;
   const lista = await r.json();
+  const resultado = (c) => c.diferenca === 0 ? "ok" : (c.diferenca > 0 ? "sobra R$ " + fmtBRn(c.diferenca) : "falta R$ " + fmtBRn(-c.diferenca));
   const html = lista.length
-    ? lista.map((c) => `<div class="caixa-linha"><span>${new Date(c.fechadoEm).toLocaleString("pt-BR")}</span><span>${c.diferenca === 0 ? "ok" : (c.diferenca > 0 ? "sobra R$ " + fmtBRn(c.diferenca) : "falta R$ " + fmtBRn(-c.diferenca))}</span></div>`).join("")
+    ? lista.map((c) => `<div class="caixa-hist-item" data-id="${c.id}"><span>${new Date(c.fechadoEm).toLocaleString("pt-BR")}</span><span>${resultado(c)}</span></div>`).join("")
     : "<p class='sub'>Nenhum caixa fechado ainda.</p>";
   const box = $("caixaConteudo");
-  const sec = document.createElement("div");
-  sec.className = "caixa-resumo";
-  sec.innerHTML = "<h4>Histórico</h4>" + html;
-  box.appendChild(sec);
+  // Substitui (não empilha) a caixa de histórico a cada clique.
+  let sec = box.querySelector("#caixaHistBox");
+  if (!sec) { sec = document.createElement("div"); sec.id = "caixaHistBox"; sec.className = "caixa-resumo"; box.appendChild(sec); }
+  sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Toque num fechamento para reabrir o relatório.</p>" : ""}${html}`;
+  sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
+    const item = lista.find((c) => String(c.id) === el.dataset.id);
+    el.addEventListener("click", () => {
+      if (item && item.relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
+        window.Impressao.abrirRelatorio("Relatório — " + new Date(item.fechadoEm).toLocaleString("pt-BR"), item.relatorio);
+      } else {
+        toast("Relatório indisponível para este fechamento.");
+      }
+    });
+  });
+  sec.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 if ($("btnVerPlanosCaixa")) {

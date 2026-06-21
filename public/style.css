@@ -4186,6 +4186,9 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-linha.caixa-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; }
 .caixa-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .caixa-ped { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; }
+.caixa-hist-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; cursor: pointer; border-bottom: 1px solid var(--border-subtle); transition: color .15s; }
+.caixa-hist-item:last-child { border-bottom: none; }
+.caixa-hist-item:hover { color: var(--accent-fg); }
 .caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }
 
 /* Fechamento de caixa — contador + lançamentos */
@@ -4197,10 +4200,11 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-col h4 { margin: 0 0 12px; }
 .fc-tabela { width: 100%; border-collapse: collapse; }
 .fc-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-bottom: 6px; }
-.fc-tabela th:nth-child(2), .fc-tabela th:nth-child(3), .fc-tabela .fc-tot { text-align: right; }
+.fc-tabela th:nth-child(3), .fc-tabela .fc-tot { text-align: right; }
+.fc-tabela th:nth-child(2), .fc-tabela td:nth-child(2) { text-align: center; }
 .fc-tabela td { padding: 3px 0; }
 .fc-ced { white-space: nowrap; }
-.fc-qtd { width: 72px; text-align: right; padding: 6px 8px; }
+.fc-qtd { width: 72px; text-align: center; padding: 6px 8px; }
 .fc-tot { white-space: nowrap; color: var(--text-secondary); padding-left: 10px; }
 .fc-add { display: flex; gap: 8px; margin-bottom: 12px; }
 .fc-add select { flex: 0 0 40%; }
