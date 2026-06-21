@@ -4208,14 +4208,15 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .fc-col { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .fc-col h4 { margin: 0 0 12px; }
-.fc-tabela { width: 100%; border-collapse: collapse; }
+.fc-tabela { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .fc-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-bottom: 6px; }
-.fc-tabela th:nth-child(3), .fc-tabela .fc-tot { text-align: right; }
-.fc-tabela th:nth-child(2), .fc-tabela td:nth-child(2) { text-align: center; }
-.fc-tabela td { padding: 3px 0; }
+.fc-tabela th:first-child, .fc-tabela td:first-child { width: 34%; }
+.fc-tabela th:nth-child(2), .fc-tabela td:nth-child(2) { width: 33%; text-align: center; }
+.fc-tabela th:nth-child(3), .fc-tabela .fc-tot { width: 33%; text-align: right; }
+.fc-tabela td { padding: 4px 0; }
 .fc-ced { white-space: nowrap; }
-.fc-qtd { width: 72px; text-align: center; padding: 6px 8px; }
-.fc-tot { white-space: nowrap; color: var(--text-secondary); padding-left: 10px; }
+.fc-qtd { width: 90px; text-align: center; padding: 6px 8px; }
+.fc-tot { white-space: nowrap; color: var(--text-secondary); }
 .fc-add { display: flex; gap: 8px; margin-bottom: 12px; }
 .fc-add select { flex: 0 0 40%; }
 .fc-add input { flex: 1; min-width: 0; }

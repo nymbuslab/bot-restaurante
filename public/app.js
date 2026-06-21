@@ -1813,12 +1813,15 @@ function modalCaixa({ titulo, info, campos, txtConfirmar = "Confirmar", live }) 
 }
 
 async function carregarCaixa() {
-  const completo = planoAtual === "completo";
-  $("caixaLock").hidden = completo;
-  $("caixaConteudo").hidden = !completo;
-  if (!completo) return;
+  // O gate é decidido pela RESPOSTA da API (autoritativa), não pelo `planoAtual`
+  // — que pode ainda não ter carregado na navegação inicial (evita cadeado falso).
+  $("caixaLock").hidden = true;
+  $("caixaConteudo").hidden = true;
   const r = await api("GET", "/api/caixa");
-  if (!r || !r.ok) { $("caixaConteudo").innerHTML = "<p class='sub'>Falha ao carregar o caixa.</p>"; return; }
+  if (!r) return; // 401 já redirecionou
+  if (r.status === 403) { $("caixaLock").hidden = false; return; } // sem Plano Completo
+  $("caixaConteudo").hidden = false;
+  if (!r.ok) { $("caixaConteudo").innerHTML = "<p class='sub'>Falha ao carregar o caixa.</p>"; return; }
   renderCaixa(await r.json());
 }
 
@@ -2089,14 +2092,19 @@ function renderFechamentoCaixa(data) {
   }
 
   cont.querySelectorAll(".fc-qtd").forEach((i) => i.addEventListener("input", recalcDinheiro));
-  $("fcAdd").addEventListener("click", () => {
+  // Lança o valor e mantém o foco no campo: o operador digita valor + Enter,
+  // valor + Enter… sem precisar clicar "Adicionar" nem tirar a mão do teclado.
+  function adicionarLancamento() {
     const forma = $("fcForma").value;
     const valor = window.Dinheiro ? Dinheiro.valor("fcValor") : 0;
     if (valor <= 0) { toast("Informe um valor maior que zero."); return; }
     lancamentos.push({ forma, valor });
     if (window.Dinheiro) Dinheiro.setValor("fcValor", 0); else $("fcValor").value = "0,00";
     renderLista(); recalcEletronico();
-  });
+    $("fcValor").focus();
+  }
+  $("fcAdd").addEventListener("click", adicionarLancamento);
+  $("fcValor").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); adicionarLancamento(); } });
   $("fcCancelar").addEventListener("click", () => carregarCaixa());
   $("fcFechar").addEventListener("click", () => {
     if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
