@@ -158,19 +158,41 @@ async function resumo(dir) {
   };
 }
 
-async function fecharCaixa(dir, { contadoDinheiro, observacao }) {
+// eletronico: [{ forma, valor }] informado pelo operador na conferência.
+async function fecharCaixa(dir, { contagem, eletronico }) {
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Não há caixa aberto.");
   const movimentos = await _movimentos(caixa.id);
-  const { esperadoEspecie } = calc.resumoCaixa(caixa, movimentos);
-  const diferenca = calc.calcularDiferenca(esperadoEspecie, contadoDinheiro);
+  const resumo = calc.resumoCaixa(caixa, movimentos);
+
+  // Recalcula no servidor a partir do detalhamento (não confia no total do cliente).
+  const contadoDinheiro = calc.totalContagem(contagem || {});
+  const lancs = Array.isArray(eletronico) ? eletronico : [];
+  const contadoEletronico = lancs.reduce((s, l) => s + (Number(l && l.valor) || 0), 0);
+  const totalCaixa = calc.totalEmCaixa(caixa, resumo);
+  const diferenca = (contadoDinheiro + contadoEletronico) - totalCaixa;
+
+  // Agrega lançamentos por forma p/ o snapshot.
+  const eletronicoPorForma = {};
+  for (const l of lancs) {
+    const f = (l && l.forma) || "Outros";
+    eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + (Number(l.valor) || 0);
+  }
+  const detalhe = {
+    cedulas: contagem || {},
+    eletronico: lancs,
+    eletronicoPorForma,
+    esperado: { totalEmCaixa: totalCaixa, especie: resumo.esperadoEspecie, eletronico: calc.esperadoEletronico(resumo) },
+    contado: { dinheiro: contadoDinheiro, eletronico: contadoEletronico },
+  };
+
   await db.query(
     `UPDATE caixas SET status='fechado', fechado_em=now(),
-            contado_dinheiro=$2, diferenca=$3, observacao=$4
+            contado_dinheiro=$2, contado_eletronico=$3, diferenca=$4, detalhe_fechamento=$5
        WHERE id=$1`,
-    [caixa.id, Number(contadoDinheiro) || 0, diferenca, observacao || ""]
+    [caixa.id, contadoDinheiro, contadoEletronico, diferenca, JSON.stringify(detalhe)]
   );
-  return { diferenca, esperadoEspecie };
+  return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico };
 }
 
 async function listarCaixas(dir) {

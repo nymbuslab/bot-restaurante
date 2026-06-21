@@ -1375,8 +1375,14 @@ async function exigeCaixa(req, res) {
 
 app.get("/api/caixa", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.resumo(req.tenantDir)); }
-  catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }
+  try {
+    const data = await caixa.resumo(req.tenantDir);
+    await store.ensure(req.tenantDir);
+    const cfg = store.getConfig(req.tenantDir) || {};
+    data.formasPagamento = Array.isArray(cfg.pagamentos) ? cfg.pagamentos : [];
+    data.restaurante = (cfg.restaurante && cfg.restaurante.nome) || "";
+    res.json(data);
+  } catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }
 });
 
 app.post("/api/caixa/abrir", exigeAuth, async (req, res) => {
@@ -1405,7 +1411,7 @@ app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
 
 app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.fecharCaixa(req.tenantDir, { contadoDinheiro: req.body.contadoDinheiro, observacao: req.body.observacao })); }
+  try { res.json(await caixa.fecharCaixa(req.tenantDir, { contagem: req.body.contagem, eletronico: req.body.eletronico })); }
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
