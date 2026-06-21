@@ -1895,10 +1895,14 @@ function renderCaixaAberto(data) {
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
     : "—";
 
-  // Vendas por forma: eletrônicas (cada uma) + subtotal cartão/Pix + dinheiro.
-  const formasElet = Object.keys(r.recebidoPorForma).filter((f) => !ehFormaDinheiro(f));
+  // Vendas por forma: TODAS as formas configuradas (zeradas se não houve venda) +
+  // qualquer forma que tenha tido recebimento fora da config + subtotal + dinheiro.
+  const formasElet = (data.formasPagamento || []).filter((f) => !ehFormaDinheiro(f));
+  Object.keys(r.recebidoPorForma).forEach((f) => {
+    if (!ehFormaDinheiro(f) && !formasElet.includes(f)) formasElet.push(f);
+  });
   const linhasElet = formasElet
-    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f])}</span></div>`)
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f] || 0)}</span></div>`)
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + sangrias/suprimentos.
@@ -1951,10 +1955,9 @@ function renderCaixaAberto(data) {
     <div class="cx-cards">
       <div class="cx-card">
         <h4 class="cx-card-titulo">Vendas por forma</h4>
-        ${totalRecebido === 0 ? "<p class='sub'>Nenhuma venda ainda.</p>" : `
         ${linhasElet}
         <div class="caixa-linha caixa-total"><span>Total cartão/Pix</span><span>R$ ${fmtBRn(totalCartaoPix)}</span></div>
-        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(recebidoDinheiro)}</span></div>`}
+        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(recebidoDinheiro)}</span></div>
       </div>
       <div class="cx-card">
         <h4 class="cx-card-titulo">Movimentação do caixa</h4>
@@ -2202,7 +2205,7 @@ async function verHistoricoCaixa() {
     : "<p class='sub'>Nenhum caixa fechado ainda.</p>";
   const sec = document.createElement("div");
   sec.id = "caixaHistBox";
-  sec.className = "caixa-resumo";
+  sec.className = "caixa-resumo cx-hist";
   box.appendChild(sec);
   sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Os 3 últimos fechamentos — toque para reabrir o relatório.</p>" : ""}${html}`;
   sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
