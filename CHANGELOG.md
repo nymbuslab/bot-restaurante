@@ -341,3 +341,13 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Receber pagamento agora é no pedido:** você abre o pedido e clica em **Receber pagamento**. A aba **Pedidos** ganhou um **selo** "A receber"/"Recebido" e um **filtro** por pagamento, pra achar rapidinho o que falta receber.
 - **Caixa focado na função dele:** abrir, sangria/suprimento, fechar e conferir o dinheiro. Ele mostra os **"Recebimentos deste caixa"** com a opção de **Estornar** (corrigir um recebimento errado) — sem mais a lista de "a receber" duplicada lá dentro.
 - **Pré-visualização de impressão mais fiel:** a prévia na tela agora mostra as linhas **exatamente como saem no papel** (não quebra linha onde a impressora não quebra).
+
+## [0.33.0] — Caixa do dia: contagem de cédulas, relatório e tela estilo PDV
+
+- **Fechamento com contagem de cédulas:** ao fechar o caixa, você conta a gaveta **nota por nota** (de R$ 200 a R$ 0,05) e confere os recebimentos em **cartão/Pix** no mesmo lugar; o sistema mostra a **diferença** (sobra/falta) de cada lado.
+- **Relatório de fechamento impresso (80mm):** ao fechar, sai um **relatório** com as vendas por forma, os movimentos do dia (saldo inicial, suprimentos, sangrias), o **Total em Caixa** e o **Faturamento**, mais a diferença. Fica salvo para **reimprimir** depois.
+- **Não fecha com pagamento a receber:** se ainda houver pedidos do dia sem receber, o caixa **avisa e bloqueia** o fechamento, com um **atalho** para a lista de "a receber".
+- **Tela do caixa repaginada:** **Total em Caixa** em destaque no topo, cartões de **Vendas por forma** (todas as formas, zeradas quando não houve venda) e **Movimentação do caixa**, e um **extrato** do turno (hora, nº, cliente, valor, forma) com botão **Estornar**.
+- **Caixas anteriores:** mostra os **3 últimos** fechamentos com um resumo direto na linha (operador, Total em Caixa, Fechado, diferença) e **abre o relatório** ao tocar.
+- **Abertura repaginada:** ao abrir o caixa você informa **operador**, **saldo inicial** e **observações**.
+- **Lançamento mais rápido na conferência:** em cartão/Pix, digite o valor e aperte **Enter** — ele lança e o foco fica no campo para o próximo, sem precisar clicar.

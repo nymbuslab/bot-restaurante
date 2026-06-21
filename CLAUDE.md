@@ -106,6 +106,8 @@ src/
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
   pedidos.js          -> tabela `pedidos` no Postgres, isolada por empresa_id (async)
+  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar; fechamento com contagem de cédulas + conferência cartão/Pix; NÃO fecha com vendas do turno a receber; monta o relatório 80mm no servidor (via relatorio-caixa.js); isolado por empresa_id
+  caixa-calc.js       -> PURO: cálculos do caixa (resumo por forma, esperado em espécie/eletrônico, total em caixa, total da contagem de cédulas, diferença) — testado em test/caixa-calc.test.js
 public/
   index.html          -> landing (apresentação + preço + CTAs) · footer institucional (footer.js)
   login.html          -> login (e-mail + senha; roteia restaurante x master)
@@ -117,8 +119,7 @@ public/
   app.js, app-admin.js, footer.js, style.css -> lógica dos painéis, footer e estilos
   endereco-cep.js     -> util: máscara/busca de CEP (ViaCEP) + composição de endereço
   dinheiro.js         -> util: máscara monetária (centavos primeiro) + formatação BR
-  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar/histórico, isolado por empresa_id
-  caixa-calc.js       -> PURO: cálculos do caixa (resumo por forma, esperado em espécie, diferença) — testado em test/caixa-calc.test.js
+  relatorio-caixa.js  -> PURO (dual-mode Node/browser): monta o relatório de fechamento de caixa 80mm — usado NO SERVIDOR por src/caixa.js — testado em test/relatorio-caixa.test.js
   comanda.js          -> PURO (dual-mode Node/browser): monta as 2 vias de impressão (cozinha/cupom) — testado em test/comanda.test.js
   impressao.js        -> orquestra a impressão térmica (window.print + container oculto; 1 ou 2 trabalhos p/ corte) — Plano Completo
   cardapio.html/.js/.css -> cardápio web público (/c/:slug): monta o pedido (carrinho/checkout) e envia ao backend
@@ -178,7 +179,7 @@ relevante ao mexer na área):
 
 - [docs/super-admin.md](docs/super-admin.md) — painel master: auth isolada, rotas, métricas, suspender/excluir (reflexo no Stripe), Configurações Master, footer da landing.
 - [docs/assinatura-stripe.md](docs/assinatura-stripe.md) — monetização: **dois planos** (Essencial/Completo), eixos de acesso, checkout próprio, webhook, gate, upgrade/downgrade (proration), faturas, gestão de cartões.
-- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo): frete por raio + impressão térmica**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, escolha no checkout + upgrade na Assinatura + troca no master; **impressão de pedido na térmica 80mm** (Plano Completo): botão Imprimir comanda → modal de pré-visualização com 2 vias (Imprimir cozinha/Imprimir cupom; cada via = 1 impressão), `public/comanda.js`/`impressao.js`; **caixa do dia** (Plano Completo): **receber é no Pedido** (selo/filtro de pagamento na aba Pedidos); o Caixa faz abrir/sangria/suprimento/fechar com conferência + "Recebimentos deste caixa" com estorno; gate `temCaixa` (front+back), tabelas `caixas`/`caixa_movimentos` + `pedidos.recebido_em`, `src/caixa.js`/`caixa-calc.js`.
+- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo): frete por raio + impressão térmica**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, escolha no checkout + upgrade na Assinatura + troca no master; **impressão de pedido na térmica 80mm** (Plano Completo): botão Imprimir comanda → modal de pré-visualização com 2 vias (Imprimir cozinha/Imprimir cupom; cada via = 1 impressão), `public/comanda.js`/`impressao.js`; **caixa do dia** (Plano Completo): **receber é no Pedido** (selo/filtro de pagamento na aba Pedidos); tela do caixa aberto estilo PDV (Total em Caixa, Vendas por forma, Movimentação, **extrato** do turno com estorno); **fechamento** = contagem de cédulas + conferência cartão/Pix → **relatório 80mm montado no servidor** e guardado p/ reimpressão; **não fecha com vendas a receber**; **Caixas anteriores** com resumo por linha (3 últimos, reabre relatório); gate `temCaixa` (front+back), tabelas `caixas` (+ `operador`/`obs_abertura`/`contado_eletronico`/`detalhe_fechamento`)/`caixa_movimentos` + `pedidos.recebido_em`, `src/caixa.js`/`caixa-calc.js`/`public/relatorio-caixa.js`.
 - [docs/lgpd-e-conta.md](docs/lgpd-e-conta.md) — conta de acesso (trocar e-mail/senha) + LGPD (exportar/excluir conta, retenção, páginas Termos/Privacidade, aceite no cadastro).
 - [docs/modelo-dados.md](docs/modelo-dados.md) — schema (`empresas` + coluna `plano`, `pedidos`, item do cardápio, `config.frete`, `geo_cache`) + **cardápio web** (API pública, recálculo no servidor, frete por raio, token de link) + estados enxutos do bot (`fluxo.js`).
 - [docs/features.md](docs/features.md) — onboarding (wizard 4 etapas), utils de formulário (`endereco-cep.js`/`dinheiro.js`) e horário de funcionamento.

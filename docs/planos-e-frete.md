@@ -230,8 +230,7 @@ diálogo. Sem a flag, segue funcionando no modo manual (uma caixa de impressão 
 
 ## 3º benefício do Completo — Caixa do dia / fechamento
 
-> ✅ **implementado** (CHANGELOG 0.30.0). Spec/plano: `docs/superpowers/specs/2026-06-20-caixa-fechamento-design.md`
-> e `docs/superpowers/plans/2026-06-20-caixa-fechamento.md`.
+> ✅ **implementado** (CHANGELOG 0.30.0; evoluído na 0.33.0). Specs/planos em `docs/superpowers/`.
 
 Aba **Caixa** no painel (Plano Completo) para controlar o dinheiro do dia, reconciliando os pedidos
 que vêm do WhatsApp.
@@ -240,23 +239,36 @@ que vêm do WhatsApp.
   (`pedidos.recebido_em` null) e o operador marca **Receber pagamento** no **modal de detalhe do
   pedido** (exige caixa aberto; cria o movimento de recebimento no caixa). A aba **Pedidos** mostra um
   **selo** "A receber"/"Recebido" + **filtro** por pagamento (só no Completo) pra achar os pendentes.
-- **Caixa = controle do dinheiro** (responsabilidade única): abrir, **sangria/suprimento**, **fechar/
-  conferir** e **Histórico**. Lista **"Recebimentos deste caixa"** (os movimentos que entraram) com
-  **Estornar** para corrigir — a única ação de recebimento que vive no Caixa.
-- **Conferência de dinheiro físico:** abrir com **fundo de troco**; no fechamento o sistema calcula o
-  **esperado em espécie** = `fundo + recebido em dinheiro + suprimentos − sangrias`, o operador conta a
-  gaveta → **diferença** (sobra/falta). **Só "Dinheiro"** (case-insensitive) entra na conferência;
-  Pix/cartão só no relatório.
-- **Regras:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);
-  receber exige caixa aberto; estorno só com caixa aberto; 1 operador (a conta do tenant).
-- **Gate:** `empresas.temCaixa(emp)` (= acesso liberado + plano completo), aplicado **no front
-  (cadeado/upsell) e no backend (403)** — diferente da impressão (local), o caixa é recurso de servidor.
-- **Dados:** tabelas `caixas` e `caixa_movimentos` (`recebimento|sangria|suprimento`) + coluna
-  `pedidos.recebido_em`. Cálculos puros em `src/caixa-calc.js` (`resumoCaixa`/`calcularDiferenca`),
-  orquestração em `src/caixa.js`. Migration `20260620120000_caixa.sql`.
+- **Abertura:** informa **operador** (pré-preenchido com o nome do painel, editável), **saldo inicial**
+  (fundo de troco) e **observações** (`caixas.operador`/`obs_abertura`).
+- **Tela do caixa aberto (estilo PDV):** **Total em Caixa** em destaque (= saldo + suprimentos +
+  vendas − sangrias), cards **Vendas por forma** (todas as formas configuradas, zeradas se sem venda;
+  subtotal cartão/Pix + dinheiro) e **Movimentação do caixa** (valor inicial, suprimentos, sangrias +
+  box **Total Faturamento**), e o **extrato do turno** em tabela (Hora/Nº/Tipo/Cliente/Valor/Forma;
+  sangria destacada; **Estornar** nos recebimentos). Ações: **sangria/suprimento** (com motivo),
+  **Caixas anteriores** e **Fechar caixa**.
+- **Fechamento = conferência:** tela com **contador de 12 cédulas/moedas** (R$200→R$0,05) para o
+  dinheiro + **lançamentos de cartão/Pix** por forma, com **diferença** (sobra/falta) por coluna (digitar
+  valor + **Enter** lança e mantém o foco). Ao fechar, **monta o relatório 80mm no servidor** (fonte
+  única; vendas por forma, movimentos, Total em Caixa, Faturamento, diferença global) e abre a **prévia
+  para imprimir** (guardado em `detalhe_fechamento` p/ reimpressão).
+- **Regra:** **não fecha com pedidos do turno (criados desde a abertura) ainda a receber** — avisa,
+  bloqueia e oferece atalho pra aba Pedidos filtrada em "A receber" (guarda no servidor).
+- **Caixas anteriores:** os **3 últimos** fechamentos com resumo na linha (operador · Total em Caixa ·
+  Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
+- **Regras gerais:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);
+  receber/estornar exigem caixa aberto; **1 operador** (a conta do tenant); sangria/suprimento imutáveis.
+- **Gate:** `empresas.temCaixa(emp)` (= acesso liberado + plano completo) no front (cadeado/upsell) e no
+  backend (403); o gate do front decide pela **resposta da API** (evita cadeado falso na navegação inicial).
+- **Dados:** tabelas `caixas` (+ `operador`, `obs_abertura`, `contado_eletronico`, `detalhe_fechamento`
+  jsonb) e `caixa_movimentos` (`recebimento|sangria|suprimento`) + coluna `pedidos.recebido_em`. Puros em
+  `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`. Migrations
+  `20260620120000`/`20260620130000`/`20260620140000`.
 
 ### Fora do v1 do caixa (futuro)
 
 - PDV de balcão / venda presencial / mesas (feature à parte).
-- Gaveta física, impressão do relatório de fechamento, TEF — dependem do **agente local** (ver ROADMAP).
-- Múltiplos operadores/turnos; "caixa do entregador" (float em poder do entregador).
+- **Formas de pagamento detalhadas + taxa** (Crédito/Débito/PIX maquininha/conta; recebimento líquido) — ROADMAP P3.
+- **Conferência cega, justificativa de diferença, limite de gaveta, comprovante de sangria/suprimento,
+  tolerância de divergência, múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.
+- Gaveta física, corte ESC/POS fino, TEF — dependem do **agente local** (ver ROADMAP).

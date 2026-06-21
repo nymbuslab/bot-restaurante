@@ -79,8 +79,11 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
 
 ```text
 id (bigint), empresa_id (uuid→empresas), aberto_em, fechado_em,
-fundo_troco (numeric), status ('aberto'|'fechado'), contado_dinheiro,
-diferenca (contado − esperado_em_espécie), observacao
+fundo_troco (numeric), operador (text), obs_abertura (text),
+status ('aberto'|'fechado'), contado_dinheiro, contado_eletronico,
+diferenca (GLOBAL: contado total − total em caixa),
+detalhe_fechamento (jsonb: cédulas contadas, lançamentos eletrônicos,
+  esperado, contado e o texto do relatório 80mm), observacao
 ```
 
 Índice único parcial `caixas_um_aberto_por_empresa` (empresa_id WHERE status='aberto') →
@@ -97,7 +100,12 @@ descricao (motivo de sangria/suprimento), criado_em
 - **Recebimento por pedido:** marcar *Receber* cria um movimento `recebimento` (com `pedido_id`) e
   seta `pedidos.recebido_em = now()`; estornar apaga o movimento e zera `recebido_em` (só antes do
   fechamento). Pedido "a receber" = `recebido_em IS NULL`.
-- **Fechamento:** `esperado_em_espécie = fundo + recebido em dinheiro + suprimentos − sangrias`
-  (só forma "Dinheiro" entra; Pix/cartão só no relatório). `diferenca = contado − esperado`.
-- Cálculos puros em `src/caixa-calc.js`; orquestração em `src/caixa.js`. Migration
-  `20260620120000_caixa.sql`. RLS no padrão (revoke anon/authenticated).
+- **Fechamento (conferência):** o operador conta a gaveta no **contador de cédulas** (dinheiro) e
+  informa **cartão/Pix** por forma. `total_em_caixa = fundo + suprimentos + vendas (todas as formas) −
+  sangrias`; `diferenca = (contado_dinheiro + contado_eletronico) − total_em_caixa` (GLOBAL). O
+  **relatório 80mm é montado no servidor** (`public/relatorio-caixa.js`) e guardado em
+  `detalhe_fechamento.relatorio` p/ reimpressão. **Não fecha** se houver pedidos do turno (criados desde
+  a abertura) ainda a receber.
+- Cálculos puros em `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`.
+  Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
+  `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).
