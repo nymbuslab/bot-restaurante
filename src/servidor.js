@@ -1411,7 +1411,7 @@ app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
 
 app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.fecharCaixa(req.tenantDir, { contagem: req.body.contagem, eletronico: req.body.eletronico, relatorio: req.body.relatorio })); }
+  try { res.json(await caixa.fecharCaixa(req.tenantDir, { contagem: req.body.contagem, eletronico: req.body.eletronico })); }
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 

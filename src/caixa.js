@@ -6,6 +6,8 @@
 const path = require("path");
 const db = require("./db");
 const calc = require("./caixa-calc");
+const store = require("./store");
+const relatorioCaixa = require("../public/relatorio-caixa"); // dual-mode Node/browser
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {};
@@ -172,9 +174,21 @@ async function resumo(dir) {
   };
 }
 
+// Formas eletrônicas do relatório = união das configuradas (menos dinheiro) com as
+// que de fato tiveram recebimento — espelha a regra do front (corrige Pix fora da
+// config) e mantém a montagem do relatório com dados do servidor.
+function _formasEletronicas(pagamentos, recebidoPorForma) {
+  const formas = (pagamentos || []).filter((f) => !calc.ehDinheiro(f));
+  for (const f in (recebidoPorForma || {})) {
+    if (!calc.ehDinheiro(f) && !formas.includes(f)) formas.push(f);
+  }
+  return formas;
+}
+
 // eletronico: [{ forma, valor }] informado pelo operador na conferência.
-// relatorio: texto do relatório 80mm (montado no front), guardado p/ reimpressão.
-async function fecharCaixa(dir, { contagem, eletronico, relatorio }) {
+// O relatório é montado AQUI (servidor), nunca recebido do cliente — fonte única
+// e autoritativa; guardado em detalhe_fechamento.relatorio p/ reimpressão.
+async function fecharCaixa(dir, { contagem, eletronico }) {
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Não há caixa aberto.");
 
@@ -194,19 +208,39 @@ async function fecharCaixa(dir, { contagem, eletronico, relatorio }) {
   const totalCaixa = calc.totalEmCaixa(caixa, resumo);
   const diferenca = (contadoDinheiro + contadoEletronico) - totalCaixa;
 
-  // Agrega lançamentos por forma p/ o snapshot.
+  // Agrega lançamentos por forma p/ o snapshot e o relatório.
   const eletronicoPorForma = {};
   for (const l of lancs) {
     const f = (l && l.forma) || "Outros";
     eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + (Number(l.valor) || 0);
   }
+
+  // Monta o relatório 80mm no servidor, com os dados autoritativos.
+  await store.ensure(dir);
+  const cfg = store.getConfig(dir) || {};
+  const formaDinheiro = (cfg.pagamentos || []).find((f) => calc.ehDinheiro(f)) || "Dinheiro";
+  const relatorio = relatorioCaixa.montarRelatorioFechamento({
+    restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
+    abertoEm: new Date(caixa.aberto_em).toISOString(),
+    fechadoEm: new Date().toISOString(),
+    operador: caixa.operador || "",
+    formaDinheiro,
+    formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma),
+    recebidoPorForma: resumo.recebidoPorForma || {},
+    fundoTroco: Number(caixa.fundo_troco) || 0,
+    suprimentos: resumo.suprimentos || 0,
+    sangrias: resumo.sangrias || 0,
+    contadoDinheiro,
+    eletronicoPorForma,
+  });
+
   const detalhe = {
     cedulas: contagem || {},
     eletronico: lancs,
     eletronicoPorForma,
     esperado: { totalEmCaixa: totalCaixa, especie: resumo.esperadoEspecie, eletronico: calc.esperadoEletronico(resumo) },
     contado: { dinheiro: contadoDinheiro, eletronico: contadoEletronico },
-    relatorio: relatorio || "",
+    relatorio,
   };
 
   await db.query(
@@ -215,7 +249,7 @@ async function fecharCaixa(dir, { contagem, eletronico, relatorio }) {
        WHERE id=$1`,
     [caixa.id, contadoDinheiro, contadoEletronico, diferenca, JSON.stringify(detalhe)]
   );
-  return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico };
+  return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico, relatorio };
 }
 
 async function listarCaixas(dir) {

@@ -1963,10 +1963,9 @@ function renderFechamentoCaixa(data) {
   const esperadoEspecie = Number(resumo.esperadoEspecie) || 0;
   const esperadoElet = (Number(resumo.totalRecebido) || 0) - (Number(resumo.recebidoDinheiro) || 0);
   const formas = data.formasPagamento || [];
-  const formaDin = formas.find(ehFormaDinheiro) || "Dinheiro";
   // Formas eletrônicas = união das configuradas + as que de fato tiveram recebimento
   // neste caixa (ex.: Pix recebido mas fora da config) — evita "Outros" e oferece a
-  // forma certa no dropdown.
+  // forma certa no dropdown. (O relatório usa a mesma regra, no servidor.)
   const eletronicas = formas.filter((f) => !ehFormaDinheiro(f));
   Object.keys((data.resumo && data.resumo.recebidoPorForma) || {}).forEach((f) => {
     if (!ehFormaDinheiro(f) && !eletronicas.includes(f)) eletronicas.push(f);
@@ -2083,44 +2082,23 @@ function renderFechamentoCaixa(data) {
   $("fcCancelar").addEventListener("click", () => carregarCaixa());
   $("fcFechar").addEventListener("click", () => {
     if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
-    fecharCaixaFinal(data, contagemAtual(), lancamentos, formaDin, eletronicas);
+    fecharCaixaFinal(data, contagemAtual(), lancamentos);
   });
   if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", irParaPedidosAReceber);
 
   renderLista(); recalcDinheiro(); recalcEletronico();
 }
 
-async function fecharCaixaFinal(data, contagem, lancamentos, formaDin, eletronicas) {
-  // Monta o relatório com os dados conferidos ANTES de fechar — o mesmo texto vai
-  // pra prévia, é guardado no banco (reimpressão) e é a fonte única do relatório.
-  const resumo = data.resumo || {};
-  const eletronicoPorForma = {};
-  lancamentos.forEach((l) => { eletronicoPorForma[l.forma] = (eletronicoPorForma[l.forma] || 0) + l.valor; });
-  let contado = 0;
-  for (const cent in contagem) contado += Number(cent) * contagem[cent] / 100;
-  const dados = {
-    restaurante: data.restaurante || painelNome,
-    abertoEm: data.caixa && data.caixa.abertoEm,
-    fechadoEm: new Date().toISOString(),
-    operador: (data.caixa && data.caixa.operador) || "",
-    formaDinheiro: formaDin,
-    formas: eletronicas,
-    recebidoPorForma: resumo.recebidoPorForma || {},
-    fundoTroco: (data.caixa && data.caixa.fundoTroco) || 0,
-    suprimentos: resumo.suprimentos || 0,
-    sangrias: resumo.sangrias || 0,
-    contadoDinheiro: contado,
-    eletronicoPorForma,
-  };
-  const relatorio = window.Relatorio ? window.Relatorio.montarRelatorioFechamento(dados) : "";
-
-  const r = await api("POST", "/api/caixa/fechar", { contagem, eletronico: lancamentos, relatorio });
+async function fecharCaixaFinal(data, contagem, lancamentos) {
+  // O relatório é montado no SERVIDOR (fonte única e autoritativa); o front só
+  // envia a conferência e recebe o texto pronto pra prévia/impressão.
+  const r = await api("POST", "/api/caixa/fechar", { contagem, eletronico: lancamentos });
   if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao fechar."); return; }
   const res = await r.json();
   const dif = res.diferenca;
   toast(dif === 0 ? "✓ Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
-  if (relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
-    window.Impressao.abrirRelatorio("Relatório de fechamento", relatorio);
+  if (res.relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
+    window.Impressao.abrirRelatorio("Relatório de fechamento", res.relatorio);
   }
   carregarCaixa();
 }
