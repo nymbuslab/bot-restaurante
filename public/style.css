@@ -4196,9 +4196,18 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-mov { padding: 6px 16px 10px; }
 .caixa-mov .caixa-tabela th:last-child, .caixa-mov .caixa-tabela td:last-child { padding-right: 0; }
 .caixa-mov .caixa-tabela tr:first-child td { border-top: none; }
-.caixa-hist-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; cursor: pointer; border-bottom: 1px solid var(--border-subtle); transition: color .15s; }
+.caixa-hist-item { display: flex; justify-content: space-between; align-items: center; gap: 12px 16px; flex-wrap: wrap; padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--border-subtle); transition: color .15s; }
 .caixa-hist-item:last-child { border-bottom: none; }
 .caixa-hist-item:hover { color: var(--accent-fg); }
+.chi-info { display: flex; flex-direction: column; gap: 1px; }
+.chi-data { font-weight: 600; }
+.chi-op { font-size: 12px; color: var(--text-secondary); }
+.chi-nums { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); }
+.chi-nums b { color: var(--text-primary); font-weight: 600; }
+.chi-dif { font-weight: 600; white-space: nowrap; }
+.chi-dif.chi-ok { color: var(--text-secondary); }
+.chi-dif.chi-sobra { color: var(--success); }
+.chi-dif.chi-falta { color: var(--error); }
 .caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }
 
 /* Fechamento de caixa — contador + lançamentos */

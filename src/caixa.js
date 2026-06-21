@@ -258,21 +258,35 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
 async function listarCaixas(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    `SELECT id, aberto_em, fechado_em, fundo_troco, contado_dinheiro, diferenca,
+    `SELECT id, aberto_em, fechado_em, fundo_troco, contado_dinheiro, contado_eletronico,
+            diferenca, operador,
+            (detalhe_fechamento->'esperado'->>'totalEmCaixa')::numeric AS total_caixa,
             detalhe_fechamento->>'relatorio' AS relatorio
        FROM caixas WHERE empresa_id = $1 AND status='fechado'
-       ORDER BY id DESC LIMIT 50`,
+       ORDER BY id DESC LIMIT 3`,
     [empId]
   );
-  return r.rows.map((c) => ({
-    id: c.id,
-    abertoEm: new Date(c.aberto_em).toISOString(),
-    fechadoEm: c.fechado_em ? new Date(c.fechado_em).toISOString() : null,
-    fundoTroco: Number(c.fundo_troco) || 0,
-    contadoDinheiro: c.contado_dinheiro == null ? null : Number(c.contado_dinheiro),
-    diferenca: c.diferenca == null ? null : Number(c.diferenca),
-    relatorio: c.relatorio || null,
-  }));
+  return r.rows.map((c) => {
+    const contadoDinheiro = c.contado_dinheiro == null ? 0 : Number(c.contado_dinheiro);
+    const contadoEletronico = c.contado_eletronico == null ? 0 : Number(c.contado_eletronico);
+    const contadoTotal = contadoDinheiro + contadoEletronico;
+    const diferenca = c.diferenca == null ? null : Number(c.diferenca);
+    // Total esperado: do snapshot quando houver; senão deriva (contado − diferença).
+    const totalEmCaixa = c.total_caixa != null
+      ? Number(c.total_caixa)
+      : (diferenca == null ? null : contadoTotal - diferenca);
+    return {
+      id: c.id,
+      abertoEm: new Date(c.aberto_em).toISOString(),
+      fechadoEm: c.fechado_em ? new Date(c.fechado_em).toISOString() : null,
+      fundoTroco: Number(c.fundo_troco) || 0,
+      operador: c.operador || null,
+      contadoDinheiro, contadoEletronico, contadoTotal,
+      totalEmCaixa,
+      diferenca,
+      relatorio: c.relatorio || null,
+    };
+  });
 }
 
 async function detalheCaixa(dir, id) {

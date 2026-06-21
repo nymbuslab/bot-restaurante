@@ -2133,15 +2133,35 @@ async function verHistoricoCaixa() {
   const r = await api("GET", "/api/caixa/historico");
   if (!r || !r.ok) return;
   const lista = await r.json();
-  const resultado = (c) => c.diferenca === 0 ? "ok" : (c.diferenca > 0 ? "sobra R$ " + fmtBRn(c.diferenca) : "falta R$ " + fmtBRn(-c.diferenca));
+  const difTxt = (c) => {
+    if (c.diferenca == null) return { txt: "—", cls: "" };
+    if (c.diferenca === 0) return { txt: "✓ ok", cls: "chi-ok" };
+    return c.diferenca > 0
+      ? { txt: "▲ +R$ " + fmtBRn(c.diferenca), cls: "chi-sobra" }
+      : { txt: "▼ −R$ " + fmtBRn(-c.diferenca), cls: "chi-falta" };
+  };
+  const dataHora = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const html = lista.length
-    ? lista.map((c) => `<div class="caixa-hist-item" data-id="${c.id}"><span>${new Date(c.fechadoEm).toLocaleString("pt-BR")}</span><span>${resultado(c)}</span></div>`).join("")
+    ? lista.slice(0, 3).map((c) => {
+        const d = difTxt(c);
+        return `<div class="caixa-hist-item" data-id="${c.id}">
+          <div class="chi-info">
+            <span class="chi-data">${dataHora(c.fechadoEm)}</span>
+            <span class="chi-op">${c.operador ? escapar(c.operador) : "—"}</span>
+          </div>
+          <div class="chi-nums">
+            <span>Caixa <b>R$ ${fmtBRn(c.totalEmCaixa || 0)}</b></span>
+            <span>Fechado <b>R$ ${fmtBRn(c.contadoTotal || 0)}</b></span>
+            <span class="chi-dif ${d.cls}">${d.txt}</span>
+          </div>
+        </div>`;
+      }).join("")
     : "<p class='sub'>Nenhum caixa fechado ainda.</p>";
   const box = $("caixaConteudo");
   // Substitui (não empilha) a caixa de histórico a cada clique.
   let sec = box.querySelector("#caixaHistBox");
   if (!sec) { sec = document.createElement("div"); sec.id = "caixaHistBox"; sec.className = "caixa-resumo"; box.appendChild(sec); }
-  sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Toque num fechamento para reabrir o relatório.</p>" : ""}${html}`;
+  sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Os 3 últimos fechamentos — toque para reabrir o relatório.</p>" : ""}${html}`;
   sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
     const item = lista.find((c) => String(c.id) === el.dataset.id);
     el.addEventListener("click", () => {
