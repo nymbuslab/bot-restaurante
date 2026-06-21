@@ -87,6 +87,28 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   taxa** usada pelo operador/relatório. Levantado em 2026-06-20, durante o fechamento de caixa
   (contador de cédulas) — o fechamento v1 usa as formas já configuradas; esta feature vem depois,
   junto do relatório que consome a taxa.
+- [ ] **Caixa do dia — evolução (gaps de mercado)** — levantado em 2026-06-21 (pesquisa de boas
+  práticas de PDV/frente de caixa BR). O que **já temos**: abertura com fundo+operador+observações,
+  sangria/suprimento com motivo e imutáveis, recebimento por forma com estorno, fechamento com
+  contagem de cédulas, **bloqueio de fechar com vendas a receber**, relatório + histórico reabrível.
+  **Gaps priorizados:**
+  - **P0 (segurança/integridade, baixo esforço):**
+    - **Conferência cega (opcional):** no fechamento, esconder "Esperado"/"Diferença" até o operador
+      confirmar a contagem (anti-fraude/anti-viés). Toggle em Configurações.
+    - **Justificativa obrigatória quando há diferença** no fechamento (reusa a coluna `caixas.observacao`,
+      hoje ociosa) — toda quebra documentada para auditoria.
+    - **Limite de gaveta + alerta de sangria de segurança:** config `limiteGaveta`; aviso no painel
+      quando o dinheiro em caixa passa do teto.
+  - **P1:** comprovante de sangria/suprimento (impressão térmica); **tolerância de divergência**
+    configurável (não acusa falta/sobra abaixo de X); **fundo de troco no fechamento** (quanto fica de
+    troco, sangra o resto); **relatório de quebras por período** (consolidado, hoje é por caixa).
+  - **P2 (dependem de multi-usuário):** **múltiplos operadores + permissões/supervisor** (quem pode
+    sangria/estorno/fechar; aprovação de divergência) — exige usuários/perfis por tenant (hoje 1 conta);
+    **reabertura de caixa** com trilha de auditoria.
+  - **Fora de escopo** (premissa: bot é porta de entrada): NFC-e/fiscal (SAT), controle de estoque,
+    mesas/comandas, venda a prazo/fiado e cancelamento de venda — ficam no sistema próprio do restaurante.
+  - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
+    Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
 - [ ] App mobile para o atendente receber pedidos
 - [x] **Limpeza ativa de sessões abandonadas (bot)** — ✅ **concluído**: `sessoes.limparExpiradas()` varre o Map e descarta as sessões inativas há +30min, agendada a cada 10min no `index.js` (no lugar da expiração só-lazy, que nunca limpava conversa abandonada). Sem mudança de comportamento; só libera RAM. Ver `CHANGELOG.md` v0.24.0.
 - [x] **Resiliência: sair de processo/máquina única** — ✅ **encerrado (2026-06-18)**. Segue como **um processo Node numa máquina só**, por decisão — coberto pela auto-cura abaixo. Redundância real fica como nota de arquitetura, **fora de escopo** (sem plano de mexer).
