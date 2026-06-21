@@ -1943,6 +1943,16 @@ const DENOMINACOES = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 10,
 
 function ehFormaDinheiro(f) { return /dinheiro/i.test(String(f || "")); }
 
+// Leva à aba Pedidos já filtrada em "A receber" (atalho do bloqueio de fechamento).
+function irParaPedidosAReceber() {
+  const sel = $("filtroPagamento");
+  if (sel) sel.value = "areceber";
+  filtros.pagamento = "areceber";
+  paginaPedidos = 1;
+  const btn = document.querySelector('.sidebar [data-aba="pedidos"]');
+  if (btn) btn.click();
+}
+
 // Tela de fechamento: contador de cédulas (dinheiro) + lançamentos de cartão/pix.
 function renderFechamentoCaixa(data) {
   const cont = $("caixaConteudo");
@@ -1953,6 +1963,7 @@ function renderFechamentoCaixa(data) {
   const formaDin = formas.find(ehFormaDinheiro) || "Dinheiro";
   const eletronicas = formas.filter((f) => !ehFormaDinheiro(f));
   const lancamentos = []; // { forma, valor }
+  const pendentes = Number(data.pedidosAReceber) || 0; // pedidos do turno ainda a receber
 
   const linhasCedula = DENOMINACOES.map((c) => `
     <tr>
@@ -1971,6 +1982,14 @@ function renderFechamentoCaixa(data) {
         <h3>Fechamento de Caixa</h3>
         <span class="sub">Confira o dinheiro da gaveta e os recebimentos eletrônicos do dia${data.caixa && data.caixa.operador ? " · Operador: " + escapar(data.caixa.operador) : ""}</span>
       </div>
+      ${pendentes > 0 ? `
+      <div class="fc-bloqueio">
+        <div class="fc-bloqueio-txt">
+          <strong>${pendentes} pedido${pendentes > 1 ? "s" : ""} com pagamento a receber.</strong>
+          <span>Receba todos os pedidos do dia antes de fechar o caixa.</span>
+        </div>
+        <button type="button" id="fcVerPedidos" class="secundario">Ver pedido${pendentes > 1 ? "s" : ""} a receber</button>
+      </div>` : ""}
       <div class="fc-cols">
         <section class="fc-col">
           <h4>Dinheiro (contagem da gaveta)</h4>
@@ -1999,7 +2018,7 @@ function renderFechamentoCaixa(data) {
       </div>
       <div class="fc-acoes">
         <button class="secundario" id="fcCancelar">Cancelar</button>
-        <button id="fcFechar">Fechar caixa e imprimir →</button>
+        <button id="fcFechar"${pendentes > 0 ? " disabled" : ""}>Fechar caixa e imprimir →</button>
       </div>
     </div>`;
 
@@ -2053,7 +2072,11 @@ function renderFechamentoCaixa(data) {
     renderLista(); recalcEletronico();
   });
   $("fcCancelar").addEventListener("click", () => carregarCaixa());
-  $("fcFechar").addEventListener("click", () => fecharCaixaFinal(data, contagemAtual(), lancamentos, formaDin, eletronicas));
+  $("fcFechar").addEventListener("click", () => {
+    if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
+    fecharCaixaFinal(data, contagemAtual(), lancamentos, formaDin, eletronicas);
+  });
+  if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", irParaPedidosAReceber);
 
   renderLista(); recalcDinheiro(); recalcEletronico();
 }

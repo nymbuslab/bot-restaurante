@@ -4214,6 +4214,11 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-dif.fc-sobra { color: var(--success); }
 .fc-dif.fc-falta { color: var(--error); }
 .fc-acoes { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.fc-bloqueio { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px; background: var(--warning-subtle); border: 1px solid var(--warning); border-radius: var(--radius); }
+.fc-bloqueio-txt { display: flex; flex-direction: column; gap: 2px; }
+.fc-bloqueio-txt strong { color: var(--warning); }
+.fc-bloqueio-txt span { font-size: 13px; color: var(--text-secondary); }
+.fc-bloqueio button { flex-shrink: 0; }
 @media (max-width: 720px) { .fc-cols { grid-template-columns: 1fr; } }
 
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */

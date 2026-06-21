@@ -19,6 +19,16 @@ async function empresaId(dir) {
   return idCache[slug];
 }
 
+// Conta pedidos do turno (criados desde a abertura do caixa) ainda NÃO recebidos.
+// Base da regra "todos os pedidos precisam ser recebidos antes de fechar".
+async function _contarAReceber(empId, abertoEm) {
+  const r = await db.query(
+    "SELECT COUNT(*)::int AS n FROM pedidos WHERE empresa_id = $1 AND recebido_em IS NULL AND criado_em >= $2",
+    [empId, abertoEm]
+  );
+  return r.rows[0].n;
+}
+
 async function caixaAberto(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
@@ -142,6 +152,8 @@ async function resumo(dir) {
       ORDER BY m.id DESC`,
     [caixa.id]
   );
+  const empId = await empresaId(dir);
+  const pedidosAReceber = await _contarAReceber(empId, caixa.aberto_em);
   return {
     caixa: {
       id: caixa.id,
@@ -150,6 +162,7 @@ async function resumo(dir) {
       operador: caixa.operador || null,
       obsAbertura: caixa.obs_abertura || null,
     },
+    pedidosAReceber,
     resumo: calc.resumoCaixa(caixa, movimentos),
     recebimentos: rec.rows.map((r) => ({
       pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
@@ -162,6 +175,13 @@ async function resumo(dir) {
 async function fecharCaixa(dir, { contagem, eletronico }) {
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Não há caixa aberto.");
+
+  // Regra de negócio: não fecha com pedidos do turno ainda a receber.
+  const aReceber = await _contarAReceber(caixa.empresa_id, caixa.aberto_em);
+  if (aReceber > 0) {
+    throw new Error(`Há ${aReceber} pedido(s) com pagamento a receber. Receba todos antes de fechar o caixa.`);
+  }
+
   const movimentos = await _movimentos(caixa.id);
   const resumo = calc.resumoCaixa(caixa, movimentos);
 
