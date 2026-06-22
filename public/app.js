@@ -969,12 +969,14 @@ function renderCardapio() {
   const termo = cardapioBusca.trim();
   let totalMostrado = 0;
   cardapioAtual.categorias.forEach((cat, ci) => {
+    const ativos = cat.itens.filter((it) => !it.arquivado).length;
     const itensCat = cat.itens
       .map((item, ii) => ({ item, ii }))
+      .filter(({ item }) => mostrarArquivados || !item.arquivado)
       .filter(({ item }) => Busca.itemCasaBusca(item.nome, termo));
-    if (termo && itensCat.length === 0) return; // categoria sem match some na busca
+    if (cat.itens.length > 0 && itensCat.length === 0) return; // tem itens mas todos filtrados → some
     totalMostrado += itensCat.length;
-    const n = cat.itens.length;
+    const n = ativos;
     const badge = n === 1 ? "1 item" : `${n} itens`;
     const div = document.createElement("div");
     div.className = "categoria";
@@ -997,7 +999,7 @@ function renderCardapio() {
     const grid = div.querySelector(`[data-itens="${ci}"]`);
     itensCat.forEach(({ item, ii }) => {
       const linha = document.createElement("div");
-      linha.className = "il-grid item-linha" + (item.disponivel ? "" : " item-linha--indisp");
+      linha.className = "il-grid item-linha" + (item.disponivel ? "" : " item-linha--indisp") + (item.arquivado ? " item-linha--arquivado" : "");
       const temFoto = item.imagem && item.imagem !== "";
       const est = Estoque.statusEstoque(item);
       const celEst = !est.controlado
@@ -1015,18 +1017,22 @@ function renderCardapio() {
             }
           </div>
           <div class="il-corpo">
-            <span class="il-nome">${escapar(item.nome) || "(sem nome)"}${item.apenasLocal ? ` <span class="il-tag-local">Só no local</span>` : ""}</span>
+            <span class="il-nome">${escapar(item.nome) || "(sem nome)"}${item.apenasLocal ? ` <span class="il-tag-local">Só no local</span>` : ""}${item.arquivado ? ` <span class="il-tag-arq">Arquivado</span>` : ""}</span>
             ${item.desc ? `<span class="il-desc">${escapar(item.desc)}</span>` : ""}
           </div>
         </div>
         <span class="il-preco il-cel" data-label="Preço"><span class="il-cel-val">R$ ${moedaBR(item.preco)}</span></span>
         <span class="il-num il-cel" data-label="Estoque"><span class="il-cel-val">${celEst}</span></span>
         <span class="il-num il-cel" data-label="Mínimo"><span class="il-cel-val">${celMin}</span></span>
-        <span class="il-disp il-cel" data-label="Disponível"><span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span></span>
+        <span class="il-disp il-cel" data-label="Disponível"><span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} ${item.arquivado ? "disabled" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span></span>
         <span class="il-acoes">
-          <button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
+          ${item.arquivado
+            ? `<button class="mini" data-restore-item="${ci}-${ii}" aria-label="Restaurar item" title="Restaurar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>`
+            : `<button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>`}
           <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
