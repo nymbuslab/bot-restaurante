@@ -658,6 +658,14 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     }
     if (!recalc.itens.length) return res.status(400).json({ erro: "Carrinho vazio." });
 
+    // Item "só no local" não sai para entrega (defesa real — o front também barra).
+    if (tipoEntrega === "Entrega") {
+      const soLocal = cardapioWeb.itensSoLocal(store.getCardapio(dir), b.itens);
+      if (soLocal.length) {
+        return res.status(400).json({ erro: "Estes itens são vendidos só no local e não saem para entrega: " + soLocal.join(", ") + ". Troque para Retirada ou remova-os." });
+      }
+    }
+
     // Frete: o servidor é a fonte de verdade. Fixo = taxa única; Raio = recalcula
     // do endereço (geocode + Haversine + faixa) e barra se estiver fora da área.
     const f = frete.freteDeConfig(config);

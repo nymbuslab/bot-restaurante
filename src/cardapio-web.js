@@ -87,6 +87,23 @@ function recalcularItens(cardapio, itensPayload) {
   return { itens: itens, subtotal: subtotal };
 }
 
+// Nomes (sem repetição) dos itens do payload que são "só no local" (apenasLocal).
+// Usado pelo servidor para barrar pedido de Entrega com item só-local.
+function itensSoLocal(cardapio, itensPayload) {
+  const mapa = {};
+  ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+    ((c && c.itens) || []).forEach(function (it) { if (it) mapa[it.id] = it; });
+  });
+  const nomes = [];
+  (itensPayload || []).forEach(function (p) {
+    const base = mapa[p && p.id];
+    if (base && base.apenasLocal === true && nomes.indexOf(base.nome) === -1) {
+      nomes.push(base.nome);
+    }
+  });
+  return nomes;
+}
+
 // ---- Token de link (HMAC-SHA256, stateless) ----
 // Liga o link `/c/:slug?p=<token>` ao chatId do cliente, pra confirmar o pedido
 // no WhatsApp depois. Formato: base64url(JSON) + "." + assinatura. Sem token
@@ -115,4 +132,4 @@ function verificarToken(secret, token, slug, agoraMs) {
   return { chatId: dados.chatId };
 }
 
-module.exports = { parseOpcionais, projetarCardapio, recalcularItens, assinarToken, verificarToken, TOKEN_TTL_MS };
+module.exports = { parseOpcionais, projetarCardapio, recalcularItens, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS };

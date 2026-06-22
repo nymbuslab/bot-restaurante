@@ -102,3 +102,30 @@ test("token: sem segredo ou sem chatId → string vazia", () => {
   assert.equal(cw.assinarToken("", "sabor", "x"), "");
   assert.equal(cw.assinarToken(SECRET, "sabor", ""), "");
 });
+
+// ---- itensSoLocal ----
+const cardapioSoLocal = {
+  categorias: [
+    { nome: "Pratos", itens: [
+      { id: 1, nome: "Marmitex P", preco: 18, apenasLocal: false },
+      { id: 2, nome: "Buffet por kg", preco: 60, apenasLocal: true },
+      { id: 3, nome: "Sobremesa local", preco: 9, apenasLocal: true },
+    ] },
+  ],
+};
+test("itensSoLocal: retorna os nomes dos itens só-local presentes no payload", () => {
+  assert.deepEqual(cw.itensSoLocal(cardapioSoLocal, [{ id: 1 }, { id: 2 }]), ["Buffet por kg"]);
+});
+test("itensSoLocal: vazio quando o payload não tem item só-local", () => {
+  assert.deepEqual(cw.itensSoLocal(cardapioSoLocal, [{ id: 1 }]), []);
+});
+test("itensSoLocal: ignora id inexistente e não repete nomes", () => {
+  assert.deepEqual(
+    cw.itensSoLocal(cardapioSoLocal, [{ id: 2 }, { id: 2 }, { id: 99 }, { id: 3 }]),
+    ["Buffet por kg", "Sobremesa local"]
+  );
+});
+test("itensSoLocal: payload/cardápio vazios → []", () => {
+  assert.deepEqual(cw.itensSoLocal(null, null), []);
+  assert.deepEqual(cw.itensSoLocal(cardapioSoLocal, []), []);
+});
