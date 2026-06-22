@@ -1051,6 +1051,8 @@ function abrirEditorItem(ci, ii) {
     $("editor-desc").value = "";
     $("editor-disponivel").checked = true;
     $("editor-entrega").checked = true;
+    $("editor-estoque").value = "";
+    $("editor-estoque-min").value = "";
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
@@ -1061,6 +1063,8 @@ function abrirEditorItem(ci, ii) {
     $("editor-desc").value = it.desc || "";
     $("editor-disponivel").checked = it.disponivel !== false;
     $("editor-entrega").checked = it.apenasLocal !== true;
+    $("editor-estoque").value = it.estoque != null ? it.estoque : "";
+    $("editor-estoque-min").value = it.estoqueMinimo != null ? it.estoqueMinimo : "";
     editorFotoUrl = it.imagem || "";
     editorComposicao = parsearComposicao(it.composicao || "");
     editorOpcionais = parsearOpcionais(it.opcionais || "");
@@ -1135,6 +1139,11 @@ async function salvarEditorItem() {
     opcionais:   serializarOpcionais(editorOpcionais),
     imagem:      editorFotoUrl,
   };
+
+  const estoqueRaw = $("editor-estoque").value.trim();
+  const estoqueMinRaw = $("editor-estoque-min").value.trim();
+  if (estoqueRaw !== "") novoItem.estoque = Math.max(0, parseInt(estoqueRaw, 10) || 0);
+  if (estoqueMinRaw !== "") novoItem.estoqueMinimo = Math.max(0, parseInt(estoqueMinRaw, 10) || 0);
 
   if (editorIi === -1) {
     cardapioAtual.categorias[novoCi].itens.push(novoItem);
