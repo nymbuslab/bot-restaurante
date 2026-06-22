@@ -478,7 +478,18 @@
           <div class="card" id="impressoraConfig" hidden>
             <p class="sub">Para imprimir: abra um pedido (aba <strong>Pedidos</strong> ou o aviso de novo pedido), clique em <strong>Imprimir comanda</strong> e escolha a via na pré-visualização — <strong>Cozinha</strong> (sem preços) ou <strong>Cupom</strong> (cliente, endereço, pagamento e total). Cada via sai numa impressão e a impressora corta no fim de cada.</p>
             <p class="sub">Para imprimir <strong>automático, sem a caixa de diálogo</strong> (útil num PC dedicado), inicie o Chrome com <code>--kiosk-printing</code> e deixe a térmica como impressora padrão do Windows.</p>
-          </div>
+            <div class="campo"><label for="cfgImprMetodo">Método de impressão</label>
+              <select id="cfgImprMetodo"><option value="navegador">Navegador (USB / impressora com driver)</option><option value="serial">Porta serial (COM)</option></select>
+            </div>
+            <div id="cfgImprSerial" hidden>
+              <div class="linha">
+                <div class="campo"><label for="cfgImprBaud">Baud rate</label><input type="text" inputmode="numeric" id="cfgImprBaud" value="9600" /></div>
+                <div class="campo toggle"><input type="checkbox" id="cfgImprSemAcento" /><label for="cfgImprSemAcento">Sem acento (se a impressora trocar os caracteres)</label></div>
+              </div>
+              <button type="button" class="secundario mini" id="cfgImprConectar">Conectar impressora</button>
+              <span class="cfg-impr-status" id="cfgImprStatus"></span>
+              <p class="editor-dica" id="cfgImprAviso" hidden>Este navegador não suporta impressão serial — use o Chrome ou Edge no computador.</p>
+            </div>
         </div>
       </div>
 
@@ -961,6 +972,8 @@
   <script src="busca.js"></script>
   <script src="estoque.js"></script>
   <script src="comanda.js"></script>
+  <script src="serial-escpos.js"></script>
+  <script src="serial.js"></script>
   <script src="impressao.js"></script>
   <script src="app.js"></script>
 </body>

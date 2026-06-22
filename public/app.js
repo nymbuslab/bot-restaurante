@@ -1671,6 +1671,11 @@ function preencherConfig() {
   atualizarChipStatus(realAberto);
   renderHorarios();
   renderPagamentos();
+  const imp = c.impressao || {};
+  $("cfgImprMetodo").value = imp.metodo === "serial" ? "serial" : "navegador";
+  $("cfgImprBaud").value = imp.baud || 9600;
+  $("cfgImprSemAcento").checked = imp.semAcento === true;
+  aplicarMetodoImpr();
 }
 
 // Rótulo da chave (ABERTO/FECHADO PARA PEDIDOS) — reflete só a posição do toggle manual.
@@ -1784,6 +1789,28 @@ $("btnDescartarConfig").addEventListener("click", async () => {
   toast("Alterações descartadas.");
 });
 
+// Sub-aba Impressora: mostra/oculta os campos serial + status.
+function aplicarMetodoImpr() {
+  const serial = $("cfgImprMetodo").value === "serial";
+  $("cfgImprSerial").hidden = !serial;
+  if (serial && window.Serial) {
+    $("cfgImprAviso").hidden = window.Serial.suportado();
+    const st = window.Serial.status();
+    $("cfgImprStatus").textContent = st.conectada ? "Conectada" : "";
+  }
+}
+$("cfgImprMetodo").addEventListener("change", aplicarMetodoImpr);
+$("cfgImprConectar").addEventListener("click", async () => {
+  try {
+    await window.Serial.conectar(parseInt($("cfgImprBaud").value, 10) || 9600);
+    $("cfgImprStatus").textContent = "Conectada";
+    toast("Impressora conectada.");
+  } catch (e) {
+    $("cfgImprStatus").textContent = "";
+    toast(e.message || "Falha ao conectar.", "erro");
+  }
+});
+
 $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.restaurante.nome = $("cfgNome").value;
   configAtual.restaurante.telefone = $("cfgTelefone").value;
@@ -1826,6 +1853,10 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (!configAtual.mensagens.pedidoPronto) configAtual.mensagens.pedidoPronto = {};
   configAtual.mensagens.pedidoPronto.entrega  = $("cfgMsgProntoEntrega").value;
   configAtual.mensagens.pedidoPronto.retirada = $("cfgMsgProntoRetirada").value;
+  if (!configAtual.impressao) configAtual.impressao = {};
+  configAtual.impressao.metodo = $("cfgImprMetodo").value === "serial" ? "serial" : "navegador";
+  configAtual.impressao.baud = parseInt($("cfgImprBaud").value, 10) || 9600;
+  configAtual.impressao.semAcento = $("cfgImprSemAcento").checked;
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
