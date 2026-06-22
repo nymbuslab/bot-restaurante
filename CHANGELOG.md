@@ -370,3 +370,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Tabela de produtos:** a tela de itens virou uma tabela com colunas de **Estoque** e **Mínimo**, mais fácil de ler e gerenciar.
 - **Exclusão segura:** excluir um item que já teve vendas pede confirmação e **recomenda arquivar** — ele some do cardápio, mas o histórico e o estoque são preservados. Itens arquivados aparecem em "Mostrar arquivados" e podem ser **restaurados**.
+
+## [0.38.0] — Itens vendidos por quilo
+
+- Marque um item como vendido por **kg**: ele mostra "R$ X/kg" no cardápio, com aviso de "pesado no balcão", e não entra em pedido online (é vendido no local). O estoque de itens por kg aceita casas decimais.
+
+## [0.39.0] — Produto em destaque
+
+- Marque produtos como **destaque**: eles aparecem numa seção "Destaques" no topo do cardápio digital, com um selo de estrela, para o cliente ver logo de cara.
