@@ -136,7 +136,14 @@
       });
       return [{ nome: null, itens: achados }];
     }
-    if (catAtiva === null) return cats; // aba "Todos": todas as categorias empilhadas
+    if (catAtiva === null) {
+      // aba "Todos": seção "Destaques" no topo + todas as categorias empilhadas.
+      var destaques = [];
+      cats.forEach(function (c) { c.itens.forEach(function (it) { if (it.destaque) destaques.push(it); }); });
+      var grupos = cats.slice();
+      if (destaques.length) grupos.unshift({ nome: "Destaques", itens: destaques });
+      return grupos;
+    }
     var cat = cats.filter(function (c) { return c.nome === catAtiva; })[0] || cats[0];
     return cat ? [cat] : [];
   }
@@ -176,6 +183,7 @@
       img +
       '<div class="cd-card-corpo">' +
         '<h3 class="cd-card-nome">' + esc(it.nome) + "</h3>" +
+        (it.destaque ? '<span class="cd-card-destaque"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Destaque</span>' : "") +
         nota +
         (it.apenasLocal ? '<span class="cd-card-local">Só no local</span>' : "") +
         (it.desc ? '<p class="cd-card-desc">' + esc(it.desc) + "</p>" : "") +

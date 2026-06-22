@@ -149,6 +149,13 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--warning, #EAB308);
   background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.30);
 }
+.cd-card-destaque {
+  align-self: flex-start; margin-top: 4px;
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 700; line-height: 1;
+  padding: 3px 8px; border-radius: 999px;
+  color: var(--accent-fg); background: var(--accent-subtle); border: 1px solid rgba(var(--accent-rgb, 99,68,188),0.30);
+}
 .cd-card-kg { cursor: default; }
 .cd-card-balcao-tag {
   align-self: flex-start; margin-top: 4px;
