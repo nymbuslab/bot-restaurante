@@ -161,25 +161,30 @@
   }
 
   function cardItem(it) {
-    var card = document.createElement(it.esgotado ? "div" : "button");
-    if (!it.esgotado) card.type = "button";
-    card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "");
+    var kg = it.unidade === "kg";
+    var naoAdd = it.esgotado || kg;
+    var card = document.createElement(naoAdd ? "div" : "button");
+    if (!naoAdd) card.type = "button";
+    card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "") + (kg && !it.esgotado ? " cd-card-kg" : "");
     var img = it.imagem
       ? '<img class="cd-card-img" src="' + esc(it.imagem) + '" alt="" loading="lazy" />'
       : '<div class="cd-card-img vazia" aria-hidden="true"></div>';
+    var nota = it.esgotado
+      ? '<span class="cd-card-esgotado-tag">Esgotado</span>'
+      : (kg ? '<span class="cd-card-balcao-tag">Pesado no balcão</span>' : "");
     card.innerHTML =
       img +
       '<div class="cd-card-corpo">' +
         '<h3 class="cd-card-nome">' + esc(it.nome) + "</h3>" +
-        (it.esgotado ? '<span class="cd-card-esgotado-tag">Esgotado</span>' : "") +
+        nota +
         (it.apenasLocal ? '<span class="cd-card-local">Só no local</span>' : "") +
         (it.desc ? '<p class="cd-card-desc">' + esc(it.desc) + "</p>" : "") +
         '<div class="cd-card-rodape">' +
-          '<span class="cd-card-preco">' + money(it.preco) + "</span>" +
-          (it.esgotado ? "" : '<span class="cd-add">+ Adicionar</span>') +
+          '<span class="cd-card-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
+          (naoAdd ? "" : '<span class="cd-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
-    if (!it.esgotado) card.addEventListener("click", function () { abrirModal(it); });
+    if (!naoAdd) card.addEventListener("click", function () { abrirModal(it); });
     return card;
   }
 
