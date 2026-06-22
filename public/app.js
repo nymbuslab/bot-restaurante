@@ -912,58 +912,52 @@ function renderCardapio() {
         </div>
         <button class="perigo mini" data-del-cat="${ci}">Excluir</button>
       </div>
-      <div class="cards-grid" data-itens="${ci}"></div>
+      <div class="itens-lista" data-itens="${ci}"></div>
     `;
     c.appendChild(div);
     const grid = div.querySelector(`[data-itens="${ci}"]`);
     cat.itens.forEach((item, ii) => {
-      const card = document.createElement("div");
-      card.className = "item-card" + (item.disponivel ? "" : " item-indisp");
+      const linha = document.createElement("div");
+      linha.className = "item-linha" + (item.disponivel ? "" : " item-linha--indisp");
       const temFoto = item.imagem && item.imagem !== "";
-      const dispTxt = item.disponivel ? "Disponível" : "Indisponível";
-      card.innerHTML = `
-        <div class="item-card-foto">
+      const dispTxt = item.disponivel ? "Disp." : "Indisp.";
+      linha.innerHTML = `
+        <div class="item-linha-foto">
           ${temFoto
             ? `<img src="${escapar(item.imagem)}" alt="${escapar(item.nome)}" loading="lazy" />`
-            : `<div class="item-card-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              </div>`
+            : `<span class="item-linha-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </span>`
           }
         </div>
-        <div class="item-card-info">
-          <div class="item-card-meta">
-            <div class="item-card-linha1">
-              <span class="item-card-nome">${escapar(item.nome) || "(sem nome)"}</span>
-              <span class="item-card-preco">R$ ${moedaBR(item.preco)}</span>
-            </div>
-            ${item.desc ? `<p class="item-card-desc">${escapar(item.desc)}</p>` : ""}
-          </div>
-          <div class="item-card-bottom">
-            <label class="item-card-disp">
-              <span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span>
-              <span class="item-card-disp-txt">${dispTxt}</span>
-            </label>
-            <div class="item-card-acoes">
-              <button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              </button>
-            </div>
-          </div>
+        <div class="item-linha-corpo">
+          <span class="item-linha-nome">${escapar(item.nome) || "(sem nome)"}</span>
+          ${item.desc ? `<span class="item-linha-desc">${escapar(item.desc)}</span>` : ""}
+        </div>
+        <span class="item-linha-preco">R$ ${moedaBR(item.preco)}</span>
+        <label class="item-linha-disp">
+          <span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span>
+          <span class="item-linha-disp-txt">${dispTxt}</span>
+        </label>
+        <div class="item-linha-acoes">
+          <button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
         </div>
       `;
-      grid.appendChild(card);
+      grid.appendChild(linha);
     });
-    const addCard = document.createElement("button");
-    addCard.className = "item-card-add";
-    addCard.setAttribute("data-add-item", ci);
-    addCard.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <span>Adicionar item</span>
+    const addLinha = document.createElement("button");
+    addLinha.className = "item-add-linha";
+    addLinha.setAttribute("data-add-item", ci);
+    addLinha.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Adicionar item nesta categoria</span>
     `;
-    grid.appendChild(addCard);
+    grid.appendChild(addLinha);
   });
   ligarEventosCardapio();
 }

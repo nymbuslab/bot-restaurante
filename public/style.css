@@ -1001,6 +1001,77 @@ button:disabled {
   background: var(--accent-subtle);
 }
 
+/* ---------- Cardápio: lista de itens (Gestão de Itens) ---------- */
+.itens-lista { display: flex; flex-direction: column; gap: 8px; }
+
+.item-linha {
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.15s;
+}
+.item-linha:hover { border-color: var(--accent-fg); }
+.item-linha--indisp { opacity: 0.55; }
+
+.item-linha-foto {
+  width: 44px; height: 44px; border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--bg-elevated);
+  display: flex; align-items: center; justify-content: center;
+  flex: none;
+}
+.item-linha-foto img { width: 100%; height: 100%; object-fit: cover; }
+.item-linha-placeholder { color: var(--text-disabled); display: flex; }
+
+.item-linha-corpo { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item-linha-nome {
+  font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.item-linha-desc {
+  font-size: 12px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.item-linha-preco { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+
+.item-linha-disp { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.item-linha-disp-txt { font-size: 12px; color: var(--text-secondary); }
+
+.item-linha-acoes { display: flex; gap: 6px; }
+
+.item-add-linha {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 10px; margin-top: 2px;
+  background: transparent; color: var(--accent-fg);
+  border: 1.5px dashed var(--border); border-radius: var(--radius);
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.item-add-linha:hover {
+  border-color: var(--accent-fg);
+  background: var(--accent-subtle);
+}
+
+@media (max-width: 640px) {
+  .item-linha {
+    grid-template-columns: 44px 1fr auto;
+    grid-template-areas:
+      "foto corpo preco"
+      "foto disp  acoes";
+    row-gap: 6px;
+  }
+  .item-linha-foto  { grid-area: foto; }
+  .item-linha-corpo { grid-area: corpo; }
+  .item-linha-preco { grid-area: preco; text-align: right; }
+  .item-linha-disp  { grid-area: disp; }
+  .item-linha-acoes { grid-area: acoes; justify-content: flex-end; }
+}
+
 /* ---------- Conexão ---------- */
 .conexao-topo { margin-bottom: 22px; }
 .conexao-titulo {
