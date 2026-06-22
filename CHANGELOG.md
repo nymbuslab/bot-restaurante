@@ -356,3 +356,17 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Tela de itens em lista:** a Gestão de Itens deixou de ser uma grade de cards e virou uma **lista** — cada item numa linha (foto, nome, preço, disponível, editar e excluir), agrupada por categoria. Mais fácil de varrer quando o cardápio é grande.
 - **Busca por nome:** uma barra no topo filtra os itens conforme você digita, **ignorando acento** (procurar "cafe" acha "Café"). Categoria sem resultado some, `Esc` limpa a busca e, quando nada bate, aparece um aviso de "nenhum item encontrado".
+
+## [0.35.0] — Item vendido só no local
+
+- **Só no local:** marque um item como "só no local" — ele aparece no cardápio com o aviso e **não pode ser pedido para entrega** (só retirada). No checkout, se houver um item assim no carrinho, a entrega fica indisponível e o pedido vai como retirada.
+
+## [0.36.0] — Controle de estoque
+
+- **Estoque por item:** defina **estoque** e **estoque mínimo** no cadastro do item. A lista avisa "Baixo" e "Esgotado".
+- **Cardápio respeita o estoque:** item esgotado aparece como "Esgotado" e não pode ser pedido; cada pedido **baixa o estoque** automaticamente, e o sistema barra quem tentar pedir mais do que tem.
+
+## [0.37.0] — Cardápio em tabela + exclusão segura
+
+- **Tabela de produtos:** a tela de itens virou uma tabela com colunas de **Estoque** e **Mínimo**, mais fácil de ler e gerenciar.
+- **Exclusão segura:** excluir um item que já teve vendas pede confirmação e **recomenda arquivar** — ele some do cardápio, mas o histórico e o estoque são preservados. Itens arquivados aparecem em "Mostrar arquivados" e podem ser **restaurados**.
