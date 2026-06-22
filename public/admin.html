@@ -146,6 +146,7 @@
       <div class="cardapio-busca">
         <svg class="cardapio-busca-ico" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="cardapioBusca" type="search" placeholder="Buscar item…" aria-label="Buscar item no cardápio" autocomplete="off" />
+        <label class="cardapio-arq-toggle"><input type="checkbox" id="cardapioMostrarArq" /> Mostrar arquivados</label>
       </div>
       <div id="cardapioContainer"></div>
       <div class="barra-salvar">
@@ -701,6 +702,19 @@
       <div class="modal-acoes">
         <button class="secundario" id="modal-cancelar">Cancelar</button>
         <button class="modal-confirmar" id="modal-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: excluir item que já tem vendas (recomenda arquivar) -->
+  <div id="item-del-overlay" class="modal-overlay" style="display:none">
+    <div class="modal-caixa">
+      <h3 id="idel-titulo">Este item tem vendas</h3>
+      <p><strong id="idel-nome"></strong> tem <strong id="idel-vendas"></strong> registrada(s). Excluir pode afetar relatórios e faturamento. Recomendamos <strong>arquivar</strong> — ele some do cardápio, mas o histórico e o estoque são preservados.</p>
+      <div class="modal-acoes">
+        <button class="secundario" id="idel-cancelar">Cancelar</button>
+        <button class="perigo" id="idel-excluir">Excluir mesmo assim</button>
+        <button id="idel-arquivar">Arquivar</button>
       </div>
     </div>
   </div>
