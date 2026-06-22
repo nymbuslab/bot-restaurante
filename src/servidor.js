@@ -27,6 +27,7 @@ const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("./v
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
+const estoque = require("../public/estoque"); // dual-mode Node/browser
 
 const app = express();
 
@@ -666,6 +667,10 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
       }
     }
 
+    // Estoque ativo: rejeita esgotado / pedido maior que o disponível (fonte de verdade).
+    const estCheck = estoque.validarEstoque(store.getCardapio(dir), b.itens);
+    if (!estCheck.ok) return res.status(400).json({ erro: estCheck.erro });
+
     // Frete: o servidor é a fonte de verdade. Fixo = taxa única; Raio = recalcula
     // do endereço (geocode + Haversine + faixa) e barra se estiver fora da área.
     const f = frete.freteDeConfig(config);
@@ -696,6 +701,11 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     });
 
     confirmarPedidoWeb(emp.slug, dir, pedido).catch((e) => console.error("confirmar pedido web:", e.message));
+
+    // Baixa de estoque (best-effort: relê o cardápio fresco, desconta e persiste).
+    try {
+      await store.setCardapio(dir, estoque.aplicarBaixa(store.getCardapio(dir), b.itens));
+    } catch (e) { console.error("baixa de estoque:", e.message); }
 
     // Cadastro do cliente + endereço (best-effort: o pedido já foi salvo acima).
     const enderecoCampos = tipoEntrega === "Entrega" ? sanitizarEnderecoCampos(b.enderecoCampos) : null;
