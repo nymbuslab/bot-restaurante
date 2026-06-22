@@ -1674,6 +1674,7 @@ function preencherConfig() {
   const imp = c.impressao || {};
   $("cfgImprMetodo").value = imp.metodo === "serial" ? "serial" : "navegador";
   $("cfgImprBaud").value = imp.baud || 9600;
+  $("cfgImprCorte").value = imp.corte === "total" || imp.corte === "nenhum" ? imp.corte : "parcial";
   $("cfgImprSemAcento").checked = imp.semAcento === true;
   aplicarMetodoImpr();
 }
@@ -1856,6 +1857,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (!configAtual.impressao) configAtual.impressao = {};
   configAtual.impressao.metodo = $("cfgImprMetodo").value === "serial" ? "serial" : "navegador";
   configAtual.impressao.baud = parseInt($("cfgImprBaud").value, 10) || 9600;
+  configAtual.impressao.corte = $("cfgImprCorte").value;
   configAtual.impressao.semAcento = $("cfgImprSemAcento").checked;
   const btn = e.currentTarget;
   btn.disabled = true;

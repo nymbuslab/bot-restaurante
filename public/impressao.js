@@ -7,7 +7,7 @@
   // Roteia: serial (Web Serial) se configurado e suportado; senão window.print.
   function imprimirTexto(texto) {
     if (impCfg.metodo === "serial" && global.Serial && global.Serial.suportado()) {
-      global.Serial.imprimir(texto, { semAcento: impCfg.semAcento === true, baud: impCfg.baud || 9600 })
+      global.Serial.imprimir(texto, { semAcento: impCfg.semAcento === true, baud: impCfg.baud || 9600, corte: impCfg.corte || "parcial" })
         .catch(function (e) {
           if (typeof global.toast === "function") global.toast((e && e.message) || "Falha na impressão serial — usando o navegador.", "erro");
           else console.warn("impressão serial:", e && e.message);

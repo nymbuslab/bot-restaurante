@@ -484,6 +484,9 @@
             <div id="cfgImprSerial" hidden>
               <div class="linha">
                 <div class="campo"><label for="cfgImprBaud">Baud rate</label><input type="text" inputmode="numeric" id="cfgImprBaud" value="9600" /></div>
+                <div class="campo"><label for="cfgImprCorte">Corte do papel</label>
+                  <select id="cfgImprCorte"><option value="parcial">Parcial (picote)</option><option value="total">Total</option><option value="nenhum">Não cortar</option></select>
+                </div>
                 <div class="campo toggle"><input type="checkbox" id="cfgImprSemAcento" /><label for="cfgImprSemAcento">Sem acento (se a impressora trocar os caracteres)</label></div>
               </div>
               <button type="button" class="secundario mini" id="cfgImprConectar">Conectar impressora</button>

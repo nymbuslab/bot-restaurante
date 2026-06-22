@@ -1,5 +1,6 @@
 // ESC/POS: monta os bytes de impressão a partir do texto da comanda (puro/testável).
-// init (ESC @) + codepage CP850 (ESC t 2) + texto + avanço + corte (GS V 0).
+// init (ESC @) + codepage CP850 (ESC t 2) + texto + avanço + corte (GS V m).
+// Corte: "parcial" (GS V 1, lâmina de picote — padrão), "total" (GS V 0) ou "nenhum".
 // Dual-mode: window.SerialEscpos no browser, module.exports no Node (testes).
 (function (root, factory) {
   const api = factory();
@@ -27,7 +28,9 @@
       else out.push(0x3F); // "?" p/ desconhecido
     }
     out.push(0x0A, 0x0A, 0x0A); // avanço de papel
-    out.push(0x1D, 0x56, 0x00); // GS V 0 (corte total)
+    const corte = opts.corte || "parcial";
+    if (corte === "total") out.push(0x1D, 0x56, 0x00);       // GS V 0 (corte total)
+    else if (corte !== "nenhum") out.push(0x1D, 0x56, 0x01);  // GS V 1 (corte parcial/picote)
     return new Uint8Array(out);
   }
   return { montarEscPos: montarEscPos };
