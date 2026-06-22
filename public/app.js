@@ -869,6 +869,71 @@ function moedaBR(v) { return Dinheiro.formatar(v); }
 
 // Termo da busca da Gestão de Itens (estado de view efêmero — não persistido).
 let cardapioBusca = "";
+let mostrarArquivados = false;
+
+// Modal de item COM vendas (3 botões) → resolve "arquivar" | "excluir" | null.
+function modalItemComVendas(nome, vendas) {
+  return new Promise((resolve) => {
+    const overlay = $("item-del-overlay");
+    $("idel-nome").textContent = nome || "(sem nome)";
+    $("idel-vendas").textContent = vendas > 0 ? `${vendas} venda${vendas > 1 ? "s" : ""}` : "vendas";
+    overlay.style.display = "flex";
+    overlay.classList.remove("saindo");
+    function fechar(r) {
+      overlay.classList.add("saindo");
+      overlay.addEventListener("animationend", () => { overlay.style.display = "none"; overlay.classList.remove("saindo"); }, { once: true });
+      $("idel-cancelar").removeEventListener("click", onCancel);
+      $("idel-excluir").removeEventListener("click", onExcluir);
+      $("idel-arquivar").removeEventListener("click", onArquivar);
+      resolve(r);
+    }
+    function onCancel() { fechar(null); }
+    function onExcluir() { fechar("excluir"); }
+    function onArquivar() { fechar("arquivar"); }
+    $("idel-cancelar").addEventListener("click", onCancel);
+    $("idel-excluir").addEventListener("click", onExcluir);
+    $("idel-arquivar").addEventListener("click", onArquivar);
+  });
+}
+
+async function salvarCardapioRemoto() {
+  const r = await api("PUT", "/api/cardapio", cardapioAtual);
+  return !!(r && r.ok);
+}
+
+async function excluirItem(ci, ii) {
+  const removido = cardapioAtual.categorias[ci].itens.splice(ii, 1)[0];
+  renderCardapio();
+  if (await salvarCardapioRemoto()) toast("Item excluído.");
+  else { cardapioAtual.categorias[ci].itens.splice(ii, 0, removido); renderCardapio(); toast("Erro ao excluir. Tente novamente.", "erro"); }
+}
+
+async function arquivarItem(ci, ii, valor) {
+  const item = cardapioAtual.categorias[ci].itens[ii];
+  const antes = item.arquivado;
+  item.arquivado = valor;
+  renderCardapio();
+  if (await salvarCardapioRemoto()) toast(valor ? "Item arquivado." : "Item restaurado.");
+  else { item.arquivado = antes; renderCardapio(); toast("Erro ao salvar. Tente novamente.", "erro"); }
+}
+
+async function fluxoExcluirItem(ci, ii) {
+  const item = cardapioAtual.categorias[ci].itens[ii];
+  let vendas = 0;
+  if (item.id != null) {
+    const r = await api("GET", `/api/cardapio/item/${item.id}/vendas`);
+    if (r && r.ok) { const d = await r.json(); vendas = d.vendas || 0; }
+    else vendas = -1; // falha → trata como "com vendas" (mais seguro)
+  }
+  if (vendas === 0) {
+    const ok = await confirmar("Excluir item?", "Esta ação não pode ser desfeita.", "Excluir");
+    if (ok) await excluirItem(ci, ii);
+    return;
+  }
+  const escolha = await modalItemComVendas(item.nome, vendas);
+  if (escolha === "arquivar") await arquivarItem(ci, ii, true);
+  else if (escolha === "excluir") await excluirItem(ci, ii);
+}
 
 function renderCardapioMetricas() {
   const el = $("cardapioMetricas");
@@ -1003,8 +1068,13 @@ function ligarEventosCardapio() {
   document.querySelectorAll("[data-del-item]").forEach((el) =>
     el.addEventListener("click", (e) => {
       const [ci, ii] = e.currentTarget.dataset.delItem.split("-").map(Number);
-      cardapioAtual.categorias[ci].itens.splice(ii, 1);
-      renderCardapio();
+      fluxoExcluirItem(ci, ii);
+    })
+  );
+  document.querySelectorAll("[data-restore-item]").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      const [ci, ii] = e.currentTarget.dataset.restoreItem.split("-").map(Number);
+      arquivarItem(ci, ii, false);
     })
   );
   document.querySelectorAll("[data-edit-item]").forEach((el) =>
@@ -1190,6 +1260,10 @@ $("cardapioBusca").addEventListener("keydown", (e) => {
     cardapioBusca = "";
     renderCardapio();
   }
+});
+$("cardapioMostrarArq").addEventListener("change", (e) => {
+  mostrarArquivados = e.target.checked;
+  renderCardapio();
 });
 
 // Listeners do editor (fixos — não precisam ser re-ligados a cada render)
