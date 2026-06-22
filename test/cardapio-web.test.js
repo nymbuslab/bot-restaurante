@@ -34,9 +34,21 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   assert.equal(it.length, 1); // item indisponível some
   assert.deepEqual(it[0], {
     id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: "c",
-    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false,
+    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false, esgotado: false,
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
+});
+test("projetarCardapio: expõe esgotado e NÃO expõe a contagem de estoque", () => {
+  const cru = { categorias: [ { nome: "P", itens: [
+    { id: 1, nome: "Z", preco: 10, disponivel: true, estoque: 0 },
+    { id: 2, nome: "C", preco: 10, disponivel: true, estoque: 5 },
+    { id: 3, nome: "L", preco: 10, disponivel: true },
+  ] } ] };
+  const itens = cw.projetarCardapio(cru).categorias[0].itens;
+  assert.equal(itens[0].esgotado, true);
+  assert.equal(itens[1].esgotado, false);
+  assert.equal(itens[2].esgotado, false);
+  assert.equal("estoque" in itens[0], false); // não vaza a contagem
 });
 test("projetarCardapio: expõe apenasLocal normalizado", () => {
   const cru = { categorias: [ { nome: "P", itens: [

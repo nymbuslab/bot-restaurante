@@ -6,6 +6,7 @@
 // ============================================================
 
 const crypto = require("crypto");
+const estoque = require("../public/estoque"); // dual-mode Node/browser
 
 // Validade do link enviado pelo bot (liga o pedido feito na web ao chatId).
 const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // 6h
@@ -45,6 +46,7 @@ function projetarCardapio(cardapio) {
         composicao: item.composicao || "",
         opcionais: parseOpcionais(item.opcionais),
         apenasLocal: item.apenasLocal === true,
+        esgotado: estoque.statusEstoque(item).esgotado,
       });
     }
     if (itens.length) categorias.push({ nome: cat.nome, itens });

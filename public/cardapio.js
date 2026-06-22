@@ -161,24 +161,25 @@
   }
 
   function cardItem(it) {
-    var card = document.createElement("button");
-    card.type = "button";
-    card.className = "cd-card";
+    var card = document.createElement(it.esgotado ? "div" : "button");
+    if (!it.esgotado) card.type = "button";
+    card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "");
     var img = it.imagem
       ? '<img class="cd-card-img" src="' + esc(it.imagem) + '" alt="" loading="lazy" />'
-      : '<div class="cd-card-img vazia" aria-hidden="true">🍽</div>';
+      : '<div class="cd-card-img vazia" aria-hidden="true"></div>';
     card.innerHTML =
       img +
       '<div class="cd-card-corpo">' +
         '<h3 class="cd-card-nome">' + esc(it.nome) + "</h3>" +
+        (it.esgotado ? '<span class="cd-card-esgotado-tag">Esgotado</span>' : "") +
         (it.apenasLocal ? '<span class="cd-card-local">Só no local</span>' : "") +
         (it.desc ? '<p class="cd-card-desc">' + esc(it.desc) + "</p>" : "") +
         '<div class="cd-card-rodape">' +
           '<span class="cd-card-preco">' + money(it.preco) + "</span>" +
-          '<span class="cd-add">+ Adicionar</span>' +
+          (it.esgotado ? "" : '<span class="cd-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
-    card.addEventListener("click", function () { abrirModal(it); });
+    if (!it.esgotado) card.addEventListener("click", function () { abrirModal(it); });
     return card;
   }
 
