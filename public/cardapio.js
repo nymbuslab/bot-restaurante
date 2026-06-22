@@ -40,6 +40,20 @@
   function precoLinha(l) { return precoUnit(l) * l.qtd; }
   function subtotal() { return carrinho.reduce(function (s, l) { return s + precoLinha(l); }, 0); }
   function totalItens() { return carrinho.reduce(function (s, l) { return s + l.qtd; }, 0); }
+  // Item "só no local" (apenasLocal) — não sai para entrega.
+  function itemEhSoLocal(id) {
+    var cats = (DADOS.cardapio && DADOS.cardapio.categorias) || [];
+    for (var i = 0; i < cats.length; i++) {
+      var its = cats[i].itens || [];
+      for (var j = 0; j < its.length; j++) {
+        if (its[j].id === id && its[j].apenasLocal) return true;
+      }
+    }
+    return false;
+  }
+  function carrinhoTemSoLocal() {
+    return carrinho.some(function (l) { return itemEhSoLocal(l.id); });
+  }
 
   function addLinha(nova) {
     var sig = assinatura(nova);
@@ -367,6 +381,9 @@
       "</div>";
     }).join("");
 
+    var soLocal = carrinhoTemSoLocal();
+    if (soLocal) tipoEntrega = "Retirada"; // item só-local força Retirada
+
     v.innerHTML =
       '<button id="cdVoltar" class="cd-voltar" type="button">← Voltar ao cardápio</button>' +
       '<h1 class="cd-title">Finalizar pedido</h1>' +
@@ -378,9 +395,10 @@
       "</div>" +
       '<form id="cdForm" class="cd-form" novalidate>' +
         '<div class="cd-tipo">' +
-          '<button type="button" data-tipo="Entrega" class="ativo">Entrega</button>' +
-          '<button type="button" data-tipo="Retirada">Retirada</button>' +
+          '<button type="button" data-tipo="Entrega"' + (soLocal ? ' class="cd-tipo-off" disabled' : (tipoEntrega === "Entrega" ? ' class="ativo"' : "")) + ">Entrega</button>" +
+          '<button type="button" data-tipo="Retirada"' + (tipoEntrega === "Retirada" ? ' class="ativo"' : "") + ">Retirada</button>" +
         "</div>" +
+        (soLocal ? '<p class="cd-tipo-nota">Seu carrinho tem itens vendidos só no local — disponível apenas para <strong>Retirada</strong>.</p>' : "") +
         '<label class="cd-campo"><span>Nome</span><input id="cdNomeCli" type="text" placeholder="Seu nome" autocomplete="name" /><p class="cd-erro-campo" id="cdErrNome" hidden></p></label>' +
         '<label class="cd-campo"><span>Telefone (WhatsApp)</span><input id="cdTel" type="tel" inputmode="tel" placeholder="(11) 99999-9999" autocomplete="tel" /><p class="cd-erro-campo" id="cdErrTel" hidden></p></label>' +
         '<div id="cdBlocoEndereco"></div>' +
@@ -397,6 +415,7 @@
     $("cdVoltar").addEventListener("click", function () { mostrarView("cardapio"); });
     v.querySelectorAll("[data-tipo]").forEach(function (b) {
       b.addEventListener("click", function () {
+        if (b.disabled) return; // Entrega bloqueada por item só-local
         tipoEntrega = b.getAttribute("data-tipo");
         v.querySelectorAll("[data-tipo]").forEach(function (x) { x.classList.toggle("ativo", x === b); });
         renderEndereco();

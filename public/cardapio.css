@@ -276,6 +276,8 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-secondary); font-weight: 700; font-size: 14px;
 }
 .cd-tipo button.ativo { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent-fg); }
+.cd-tipo button.cd-tipo-off { opacity: 0.45; cursor: not-allowed; }
+.cd-tipo-nota { font-size: 12px; color: var(--text-secondary); margin: 8px 0 0; line-height: 1.4; }
 .cd-pags { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (min-width: 480px) { .cd-pags { grid-template-columns: 1fr 1fr 1fr; } }
 .cd-pag {
