@@ -351,3 +351,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Caixas anteriores:** mostra os **3 últimos** fechamentos com um resumo direto na linha (operador, Total em Caixa, Fechado, diferença) e **abre o relatório** ao tocar.
 - **Abertura repaginada:** ao abrir o caixa você informa **operador**, **saldo inicial** e **observações**.
 - **Lançamento mais rápido na conferência:** em cartão/Pix, digite o valor e aperte **Enter** — ele lança e o foco fica no campo para o próximo, sem precisar clicar.
+
+## [0.34.0] — Cardápio em lista com busca
+
+- **Tela de itens em lista:** a Gestão de Itens deixou de ser uma grade de cards e virou uma **lista** — cada item numa linha (foto, nome, preço, disponível, editar e excluir), agrupada por categoria. Mais fácil de varrer quando o cardápio é grande.
+- **Busca por nome:** uma barra no topo filtra os itens conforme você digita, **ignorando acento** (procurar "cafe" acha "Café"). Categoria sem resultado some, `Esc` limpa a busca e, quando nada bate, aparece um aviso de "nenhum item encontrado".
