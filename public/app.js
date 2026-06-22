@@ -870,6 +870,7 @@ function moedaBR(v) { return Dinheiro.formatar(v); }
 // Termo da busca da Gestão de Itens (estado de view efêmero — não persistido).
 let cardapioBusca = "";
 let mostrarArquivados = false;
+const SVG_ESTRELA = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> `;
 
 // Modal de item COM vendas (3 botões) → resolve "arquivar" | "excluir" | null.
 function modalItemComVendas(nome, vendas) {
@@ -1018,7 +1019,7 @@ function renderCardapio() {
             }
           </div>
           <div class="il-corpo">
-            <span class="il-nome">${escapar(item.nome) || "(sem nome)"}${item.apenasLocal ? ` <span class="il-tag-local">Só no local</span>` : ""}${item.arquivado ? ` <span class="il-tag-arq">Arquivado</span>` : ""}</span>
+            <span class="il-nome">${escapar(item.nome) || "(sem nome)"}${item.destaque ? ` <span class="il-tag-destaque">${SVG_ESTRELA}Destaque</span>` : ""}${item.apenasLocal ? ` <span class="il-tag-local">Só no local</span>` : ""}${item.arquivado ? ` <span class="il-tag-arq">Arquivado</span>` : ""}</span>
             ${item.desc ? `<span class="il-desc">${escapar(item.desc)}</span>` : ""}
           </div>
         </div>
@@ -1137,6 +1138,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-estoque").value = "";
     $("editor-estoque-min").value = "";
     $("editor-unidade").value = "un";
+    $("editor-destaque").checked = false;
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
@@ -1150,6 +1152,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-estoque").value = it.estoque != null ? it.estoque : "";
     $("editor-estoque-min").value = it.estoqueMinimo != null ? it.estoqueMinimo : "";
     $("editor-unidade").value = it.unidade === "kg" ? "kg" : "un";
+    $("editor-destaque").checked = it.destaque === true;
     editorFotoUrl = it.imagem || "";
     editorComposicao = parsearComposicao(it.composicao || "");
     editorOpcionais = parsearOpcionais(it.opcionais || "");
@@ -1235,6 +1238,7 @@ async function salvarEditorItem() {
 
   const unidade = $("editor-unidade").value === "kg" ? "kg" : "un";
   if (unidade === "kg") novoItem.unidade = "kg";
+  if ($("editor-destaque").checked) novoItem.destaque = true;
   const estoqueRaw = $("editor-estoque").value.trim();
   const estoqueMinRaw = $("editor-estoque-min").value.trim();
   const parseEst = (s) => unidade === "kg" ? (parseFloat(s.replace(",", ".")) || 0) : (parseInt(s, 10) || 0);
