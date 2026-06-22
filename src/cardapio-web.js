@@ -47,6 +47,7 @@ function projetarCardapio(cardapio) {
         opcionais: parseOpcionais(item.opcionais),
         apenasLocal: item.apenasLocal === true,
         esgotado: estoque.statusEstoque(item).esgotado,
+        unidade: item.unidade === "kg" ? "kg" : "un",
       });
     }
     if (itens.length) categorias.push({ nome: cat.nome, itens });
@@ -61,7 +62,7 @@ function recalcularItens(cardapio, itensPayload) {
   const mapa = {};
   ((cardapio && cardapio.categorias) || []).forEach(function (c) {
     ((c && c.itens) || []).forEach(function (it) {
-      if (it && it.disponivel !== false && it.arquivado !== true) mapa[it.id] = it;
+      if (it && it.disponivel !== false && it.arquivado !== true && it.unidade !== "kg") mapa[it.id] = it;
     });
   });
   const itens = [];

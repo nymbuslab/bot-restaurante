@@ -34,7 +34,7 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   assert.equal(it.length, 1); // item indisponível some
   assert.deepEqual(it[0], {
     id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: "c",
-    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false, esgotado: false,
+    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false, esgotado: false, unidade: "un",
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
 });
@@ -46,6 +46,22 @@ test("projetarCardapio: item arquivado fica fora da projeção", () => {
   const itens = cw.projetarCardapio(cru).categorias[0].itens;
   assert.equal(itens.length, 1);
   assert.equal(itens[0].id, 1);
+});
+test("recalcularItens: item por kg não é pedível", () => {
+  const card = { categorias: [ { nome: "P", itens: [
+    { id: 7, nome: "Buffet", preco: 60, disponivel: true, unidade: "kg" },
+  ] } ] };
+  assert.throws(() => cw.recalcularItens(card, [{ id: 7, qtd: 1 }]), /indispon/i);
+});
+test("projetarCardapio: item kg fica na projeção e expõe unidade", () => {
+  const cru = { categorias: [ { nome: "P", itens: [
+    { id: 1, nome: "Kg", preco: 60, disponivel: true, unidade: "kg" },
+    { id: 2, nome: "Un", preco: 10, disponivel: true },
+  ] } ] };
+  const itens = cw.projetarCardapio(cru).categorias[0].itens;
+  assert.equal(itens.length, 2);
+  assert.equal(itens[0].unidade, "kg");
+  assert.equal(itens[1].unidade, "un");
 });
 test("recalcularItens: item arquivado não é pedível", () => {
   const card = { categorias: [ { nome: "P", itens: [
