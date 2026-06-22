@@ -911,6 +911,7 @@ button:disabled {
 }
 
 .il-preco { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.il-un-preco { font-weight: 500; color: var(--text-secondary); font-size: 12px; }
 .il-num { white-space: nowrap; }
 .il-est { font-weight: 700; }
 .il-est .un, .il-min .un { font-weight: 500; color: var(--text-secondary); font-size: 12px; margin-left: 2px; }

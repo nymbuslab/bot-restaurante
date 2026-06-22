@@ -1002,12 +1002,13 @@ function renderCardapio() {
       linha.className = "il-grid item-linha" + (item.disponivel ? "" : " item-linha--indisp") + (item.arquivado ? " item-linha--arquivado" : "");
       const temFoto = item.imagem && item.imagem !== "";
       const est = Estoque.statusEstoque(item);
+      const un = est.unidade;
       const celEst = !est.controlado
         ? `<span class="il-vazio">—</span>`
-        : `<span class="il-est ${est.esgotado ? "il-est--zero" : est.baixo ? "il-est--baixo" : "il-est--ok"}">${est.quantidade}<span class="un">un</span></span>${est.esgotado ? `<span class="il-chip il-chip--zero">Esgotado</span>` : est.baixo ? `<span class="il-chip il-chip--baixo">Baixo</span>` : ""}`;
+        : `<span class="il-est ${est.esgotado ? "il-est--zero" : est.baixo ? "il-est--baixo" : "il-est--ok"}">${Estoque.formatarQtd(est.quantidade, un)}<span class="un">${un}</span></span>${est.esgotado ? `<span class="il-chip il-chip--zero">Esgotado</span>` : est.baixo ? `<span class="il-chip il-chip--baixo">Baixo</span>` : ""}`;
       const celMin = !est.controlado
         ? `<span class="il-vazio">—</span>`
-        : `<span class="il-min">${Math.max(0, parseInt(item.estoqueMinimo, 10) || 0)}<span class="un">un</span></span>`;
+        : `<span class="il-min">${Estoque.formatarQtd(est.minimo, un)}<span class="un">${un}</span></span>`;
       linha.innerHTML = `
         <div class="il-produto">
           <div class="il-foto">
@@ -1021,7 +1022,7 @@ function renderCardapio() {
             ${item.desc ? `<span class="il-desc">${escapar(item.desc)}</span>` : ""}
           </div>
         </div>
-        <span class="il-preco il-cel" data-label="Preço"><span class="il-cel-val">R$ ${moedaBR(item.preco)}</span></span>
+        <span class="il-preco il-cel" data-label="Preço"><span class="il-cel-val">R$ ${moedaBR(item.preco)}${item.unidade === "kg" ? `<span class="il-un-preco">/kg</span>` : ""}</span></span>
         <span class="il-num il-cel" data-label="Estoque"><span class="il-cel-val">${celEst}</span></span>
         <span class="il-num il-cel" data-label="Mínimo"><span class="il-cel-val">${celMin}</span></span>
         <span class="il-disp il-cel" data-label="Disponível"><span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} ${item.arquivado ? "disabled" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span></span>
