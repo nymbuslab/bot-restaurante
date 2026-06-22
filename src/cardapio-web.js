@@ -48,6 +48,7 @@ function projetarCardapio(cardapio) {
         apenasLocal: item.apenasLocal === true,
         esgotado: estoque.statusEstoque(item).esgotado,
         unidade: item.unidade === "kg" ? "kg" : "un",
+        destaque: item.destaque === true,
       });
     }
     if (itens.length) categorias.push({ nome: cat.nome, itens });
