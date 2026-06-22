@@ -941,7 +941,10 @@ function renderCardapio() {
           }
         </div>
         <div class="item-linha-corpo">
-          <span class="item-linha-nome">${escapar(item.nome) || "(sem nome)"}</span>
+          <span class="item-linha-titulo">
+            <span class="item-linha-nome">${escapar(item.nome) || "(sem nome)"}</span>
+            ${item.apenasLocal ? `<span class="item-linha-tag">Só no local</span>` : ""}
+          </span>
           ${item.desc ? `<span class="item-linha-desc">${escapar(item.desc)}</span>` : ""}
         </div>
         <span class="item-linha-preco">R$ ${moedaBR(item.preco)}</span>
@@ -1047,6 +1050,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-preco").value = "";
     $("editor-desc").value = "";
     $("editor-disponivel").checked = true;
+    $("editor-entrega").checked = true;
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
@@ -1056,6 +1060,7 @@ function abrirEditorItem(ci, ii) {
     Dinheiro.setValor("editor-preco", it.preco);
     $("editor-desc").value = it.desc || "";
     $("editor-disponivel").checked = it.disponivel !== false;
+    $("editor-entrega").checked = it.apenasLocal !== true;
     editorFotoUrl = it.imagem || "";
     editorComposicao = parsearComposicao(it.composicao || "");
     editorOpcionais = parsearOpcionais(it.opcionais || "");
@@ -1125,6 +1130,7 @@ async function salvarEditorItem() {
     preco,
     desc:        $("editor-desc").value,
     disponivel:  $("editor-disponivel").checked,
+    apenasLocal: !$("editor-entrega").checked,
     composicao:  serializarComposicao(editorComposicao),
     opcionais:   serializarOpcionais(editorOpcionais),
     imagem:      editorFotoUrl,

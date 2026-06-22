@@ -858,6 +858,16 @@ button:disabled {
 /* ---------- Cardápio: lista de itens (Gestão de Itens) ---------- */
 .itens-lista { display: flex; flex-direction: column; gap: 8px; }
 
+.editor-dica { font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.4; }
+
+.item-linha-titulo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.item-linha-tag {
+  flex: none; font-size: 11px; font-weight: 600; line-height: 1;
+  padding: 3px 8px; border-radius: 999px;
+  color: var(--accent-fg); background: var(--accent-subtle);
+  border: 1px solid var(--border);
+}
+
 .item-linha {
   display: grid;
   grid-template-columns: 44px 1fr auto auto auto;
