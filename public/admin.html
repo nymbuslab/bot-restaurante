@@ -899,9 +899,11 @@
           </div>
           <p class="editor-dica" id="editor-entrega-dica">Desligado: o item aparece no cardápio com o aviso "Só no local" e não pode ser pedido para entrega.</p>
           <div class="linha">
-            <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="numeric" id="editor-estoque" placeholder="ilimitado" /></div>
-            <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="numeric" id="editor-estoque-min" placeholder="0" /></div>
+            <div class="campo"><label for="editor-unidade">Unidade</label><select id="editor-unidade"><option value="un">Unidade (un)</option><option value="kg">Peso (kg)</option></select></div>
+            <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /></div>
+            <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
           </div>
+          <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local (pesado no balcão) — não entra em pedido online.</p>
         </div>
       </div>
       <div class="editor-textareas">

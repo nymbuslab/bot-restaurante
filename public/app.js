@@ -1135,6 +1135,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-entrega").checked = true;
     $("editor-estoque").value = "";
     $("editor-estoque-min").value = "";
+    $("editor-unidade").value = "un";
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
@@ -1147,12 +1148,14 @@ function abrirEditorItem(ci, ii) {
     $("editor-entrega").checked = it.apenasLocal !== true;
     $("editor-estoque").value = it.estoque != null ? it.estoque : "";
     $("editor-estoque-min").value = it.estoqueMinimo != null ? it.estoqueMinimo : "";
+    $("editor-unidade").value = it.unidade === "kg" ? "kg" : "un";
     editorFotoUrl = it.imagem || "";
     editorComposicao = parsearComposicao(it.composicao || "");
     editorOpcionais = parsearOpcionais(it.opcionais || "");
   }
   renderEditorComposicao();
   renderEditorOpcionais();
+  aplicarUnidadeEditor();
 
   atualizarPreviewFoto();
 
@@ -1160,6 +1163,13 @@ function abrirEditorItem(ci, ii) {
   overlay.style.display = "flex";
   overlay.classList.remove("saindo");
   setTimeout(() => $("editor-nome").focus(), 80);
+}
+
+// Item por kg: mostra a dica e desabilita "Disponível para entrega" (não é pedível).
+function aplicarUnidadeEditor() {
+  const kg = $("editor-unidade").value === "kg";
+  $("editor-kg-dica").hidden = !kg;
+  $("editor-entrega").disabled = kg;
 }
 
 function fecharEditorItem() {
@@ -1222,10 +1232,13 @@ async function salvarEditorItem() {
     imagem:      editorFotoUrl,
   };
 
+  const unidade = $("editor-unidade").value === "kg" ? "kg" : "un";
+  if (unidade === "kg") novoItem.unidade = "kg";
   const estoqueRaw = $("editor-estoque").value.trim();
   const estoqueMinRaw = $("editor-estoque-min").value.trim();
-  if (estoqueRaw !== "") novoItem.estoque = Math.max(0, parseInt(estoqueRaw, 10) || 0);
-  if (estoqueMinRaw !== "") novoItem.estoqueMinimo = Math.max(0, parseInt(estoqueMinRaw, 10) || 0);
+  const parseEst = (s) => unidade === "kg" ? (parseFloat(s.replace(",", ".")) || 0) : (parseInt(s, 10) || 0);
+  if (estoqueRaw !== "") novoItem.estoque = Math.max(0, parseEst(estoqueRaw));
+  if (estoqueMinRaw !== "") novoItem.estoqueMinimo = Math.max(0, parseEst(estoqueMinRaw));
 
   if (editorIi === -1) {
     cardapioAtual.categorias[novoCi].itens.push(novoItem);
@@ -1276,6 +1289,7 @@ $("cardapioMostrarArq").addEventListener("change", (e) => {
 $("editor-fechar").addEventListener("click", fecharEditorItem);
 $("editor-cancelar").addEventListener("click", fecharEditorItem);
 $("editor-salvar").addEventListener("click", salvarEditorItem);
+$("editor-unidade").addEventListener("change", aplicarUnidadeEditor);
 $("editor-overlay").addEventListener("click", (e) => {
   if (e.target === $("editor-overlay")) fecharEditorItem();
 });
