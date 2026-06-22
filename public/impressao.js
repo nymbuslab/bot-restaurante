@@ -2,10 +2,25 @@
 // e imprime UMA via por vez (1 via = 1 trabalho → a impressora corta no fim de cada).
 (function (global) {
   let vias = { cozinha: "", cupom: "" };
+  let impCfg = {}; // config.impressao do tenant (metodo/baud/semAcento)
+
+  // Roteia: serial (Web Serial) se configurado e suportado; senão window.print.
+  function imprimirTexto(texto) {
+    if (impCfg.metodo === "serial" && global.Serial && global.Serial.suportado()) {
+      global.Serial.imprimir(texto, { semAcento: impCfg.semAcento === true, baud: impCfg.baud || 9600 })
+        .catch(function (e) {
+          if (typeof global.toast === "function") global.toast((e && e.message) || "Falha na impressão serial — usando o navegador.", "erro");
+          else console.warn("impressão serial:", e && e.message);
+          imprimirNavegador(texto);
+        });
+      return;
+    }
+    imprimirNavegador(texto);
+  }
 
   // Renderiza o texto da via no container oculto e dispara o diálogo de impressão.
   // O @media print esconde tudo (inclusive o modal) e imprime só #area-impressao.
-  function imprimirTexto(texto) {
+  function imprimirNavegador(texto) {
     const area = document.getElementById("area-impressao");
     if (!area) return;
     const pre = document.createElement("pre");
@@ -37,6 +52,7 @@
   // Abre o modal mostrando as 2 vias renderizadas (prévia legível na tela).
   function abrirPreview(pedido, config) {
     if (!global.Comanda) return;
+    impCfg = (config && config.impressao) || {};
     vias = global.Comanda.montarComanda(pedido, config);
     const overlay = document.getElementById("impressao-overlay");
     const titulo = document.getElementById("impressao-titulo");
