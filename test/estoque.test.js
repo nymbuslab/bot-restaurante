@@ -15,9 +15,21 @@ test("statusEstoque: não controlado quando estoque ausente/vazio", () => {
   assert.equal(E.statusEstoque({ id: 1, estoque: null }).controlado, false);
 });
 test("statusEstoque: esgotado / baixo / normal", () => {
-  assert.deepEqual(E.statusEstoque({ estoque: 0, estoqueMinimo: 3 }), { controlado: true, esgotado: true, baixo: false, quantidade: 0 });
-  assert.deepEqual(E.statusEstoque({ estoque: 2, estoqueMinimo: 3 }), { controlado: true, esgotado: false, baixo: true, quantidade: 2 });
-  assert.deepEqual(E.statusEstoque({ estoque: 10, estoqueMinimo: 3 }), { controlado: true, esgotado: false, baixo: false, quantidade: 10 });
+  assert.deepEqual(E.statusEstoque({ estoque: 0, estoqueMinimo: 3 }), { controlado: true, esgotado: true, baixo: false, quantidade: 0, minimo: 3, unidade: "un" });
+  assert.deepEqual(E.statusEstoque({ estoque: 2, estoqueMinimo: 3 }), { controlado: true, esgotado: false, baixo: true, quantidade: 2, minimo: 3, unidade: "un" });
+  assert.deepEqual(E.statusEstoque({ estoque: 10, estoqueMinimo: 3 }), { controlado: true, esgotado: false, baixo: false, quantidade: 10, minimo: 3, unidade: "un" });
+});
+test("statusEstoque: kg parseia decimal e devolve unidade kg", () => {
+  const s = E.statusEstoque({ estoque: "12,5", estoqueMinimo: "2", unidade: "kg" });
+  assert.equal(s.unidade, "kg");
+  assert.equal(s.quantidade, 12.5);
+  assert.equal(s.minimo, 2);
+  assert.equal(s.baixo, false);
+});
+test("formatarQtd: un inteiro, kg decimal BR", () => {
+  assert.equal(E.formatarQtd(120, "un"), "120");
+  assert.equal(E.formatarQtd(12.5, "kg"), "12,5");
+  assert.equal(E.formatarQtd(12, "kg"), "12");
 });
 test("validarEstoque: esgotado e over-order rejeitam; agrega linhas", () => {
   assert.equal(E.validarEstoque(card, [{ id: 4, qtd: 1 }]).ok, false);          // esgotado

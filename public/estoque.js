@@ -15,10 +15,20 @@
     return !!item && item.estoque !== undefined && item.estoque !== null && item.estoque !== "";
   }
   function statusEstoque(item) {
-    if (!temControle(item)) return { controlado: false, esgotado: false, baixo: false, quantidade: null };
-    const q = Math.max(0, parseInt(item.estoque, 10) || 0);
-    const min = Math.max(0, parseInt(item.estoqueMinimo, 10) || 0);
-    return { controlado: true, esgotado: q === 0, baixo: q > 0 && q <= min, quantidade: q };
+    if (!temControle(item)) return { controlado: false, esgotado: false, baixo: false, quantidade: null, minimo: 0, unidade: "un" };
+    const ehKg = item.unidade === "kg";
+    const num = function (v) {
+      return ehKg ? (parseFloat(String(v).replace(",", ".")) || 0) : (parseInt(v, 10) || 0);
+    };
+    const q = Math.max(0, num(item.estoque));
+    const min = Math.max(0, num(item.estoqueMinimo));
+    return { controlado: true, esgotado: q === 0, baixo: q > 0 && q <= min, quantidade: q, minimo: min, unidade: ehKg ? "kg" : "un" };
+  }
+  // Formata uma quantidade para exibição: un = inteiro, kg = decimal BR (vírgula).
+  function formatarQtd(q, unidade) {
+    const n = Number(q) || 0;
+    if (unidade === "kg") return String(Math.round(n * 1000) / 1000).replace(".", ",");
+    return String(Math.round(n));
   }
   // Soma a quantidade pedida por id (mesmo item em linhas diferentes do carrinho).
   function _agregar(itensPayload) {
@@ -61,5 +71,5 @@
     });
     return Object.assign({}, cardapio, { categorias: categorias });
   }
-  return { temControle: temControle, statusEstoque: statusEstoque, validarEstoque: validarEstoque, aplicarBaixa: aplicarBaixa };
+  return { temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque, aplicarBaixa: aplicarBaixa };
 });
