@@ -170,4 +170,14 @@ function esquecer(slug) {
   delete idCache[slug];
 }
 
-module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, contarNoMes, anonimizarAntigos, fecharConexao, esquecer };
+// Quantos pedidos da empresa contêm o item (por id) no jsonb `itens`.
+async function contarVendasDoItem(dir, itemId) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "SELECT count(*)::int AS n FROM pedidos WHERE empresa_id = $1 AND itens @> $2::jsonb",
+    [empId, JSON.stringify([{ id: itemId }])]
+  );
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+
+module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem };

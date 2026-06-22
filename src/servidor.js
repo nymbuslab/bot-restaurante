@@ -1322,6 +1322,19 @@ app.get("/api/cardapio/link", exigeAuth, async (req, res) => {
   }
 });
 
+// Quantas vendas o item já teve (decide o modal de exclusão no painel).
+app.get("/api/cardapio/item/:id/vendas", exigeAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ erro: "id inválido" });
+    const vendas = await pedidos.contarVendasDoItem(req.tenantDir, id);
+    res.json({ vendas });
+  } catch (e) {
+    console.error("GET item vendas:", e.message);
+    res.status(500).json({ erro: "Falha ao checar vendas." });
+  }
+});
+
 // ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----
 
 const MIME_TO_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
