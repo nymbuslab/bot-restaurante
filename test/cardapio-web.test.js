@@ -38,6 +38,21 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
 });
+test("projetarCardapio: item arquivado fica fora da projeção", () => {
+  const cru = { categorias: [ { nome: "P", itens: [
+    { id: 1, nome: "A", preco: 10, disponivel: true },
+    { id: 2, nome: "Arq", preco: 10, disponivel: true, arquivado: true },
+  ] } ] };
+  const itens = cw.projetarCardapio(cru).categorias[0].itens;
+  assert.equal(itens.length, 1);
+  assert.equal(itens[0].id, 1);
+});
+test("recalcularItens: item arquivado não é pedível", () => {
+  const card = { categorias: [ { nome: "P", itens: [
+    { id: 9, nome: "Arq", preco: 10, disponivel: true, arquivado: true },
+  ] } ] };
+  assert.throws(() => cw.recalcularItens(card, [{ id: 9, qtd: 1 }]), /indispon/i);
+});
 test("projetarCardapio: expõe esgotado e NÃO expõe a contagem de estoque", () => {
   const cru = { categorias: [ { nome: "P", itens: [
     { id: 1, nome: "Z", preco: 10, disponivel: true, estoque: 0 },

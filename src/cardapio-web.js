@@ -36,7 +36,7 @@ function projetarCardapio(cardapio) {
   for (const cat of (cardapio && cardapio.categorias) || []) {
     const itens = [];
     for (const item of (cat && cat.itens) || []) {
-      if (!item || item.disponivel === false) continue;
+      if (!item || item.disponivel === false || item.arquivado === true) continue;
       itens.push({
         id: item.id,
         nome: item.nome,
@@ -61,7 +61,7 @@ function recalcularItens(cardapio, itensPayload) {
   const mapa = {};
   ((cardapio && cardapio.categorias) || []).forEach(function (c) {
     ((c && c.itens) || []).forEach(function (it) {
-      if (it && it.disponivel !== false) mapa[it.id] = it;
+      if (it && it.disponivel !== false && it.arquivado !== true) mapa[it.id] = it;
     });
   });
   const itens = [];
