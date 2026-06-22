@@ -444,6 +444,12 @@ h3 {
   padding: 2px 0 2px 11px;
   margin-top: 12px;
 }
+.faq-sub-t {
+  margin: 16px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
 .faq-code {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   font-size: 12.5px;
@@ -452,6 +458,19 @@ h3 {
   border-radius: 5px;
   padding: 1px 6px;
   color: var(--secondary);
+}
+.faq-code-bloco {
+  display: block;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  margin: 8px 0;
+  color: var(--secondary);
+  white-space: nowrap;
+  overflow-x: auto;
 }
 @keyframes faqReveal {
   from { opacity: 0; transform: translateY(-4px); }

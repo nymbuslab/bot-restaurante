@@ -755,13 +755,32 @@
         <details class="faq-item">
           <summary><span class="faq-q">Imprimir direto pelo USB, sem a janela do navegador</span><svg class="faq-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
           <div class="faq-a">
-            <p>Útil num computador dedicado ao caixa. É uma configuração única no Windows:</p>
+            <p>Útil num computador dedicado ao caixa, pra não confirmar a janela de impressão a cada pedido.</p>
+
+            <p class="faq-sub-t">Como funciona</p>
+            <p>Normalmente, quando o sistema manda imprimir, o Chrome abre o diálogo (escolher impressora, etc.). Com o sinalizador <code class="faq-code">--kiosk-printing</code> ligado, o Chrome <strong>pula esse diálogo</strong> e imprime sozinho na impressora marcada como <strong>padrão</strong> no Windows.</p>
+
+            <p class="faq-sub-t">Passo a passo (uma vez só, no PC do caixa)</p>
             <ol class="faq-passos">
-              <li><strong>Deixe a térmica como impressora padrão</strong> do Windows: <em>Configurações → Bluetooth e dispositivos → Impressoras e scanners → sua impressora → Definir como padrão</em>. Desligue a opção <em>“Deixar o Windows gerenciar minha impressora padrão”</em>.</li>
-              <li><strong>Edite o atalho do Chrome:</strong> clique com o botão direito no atalho → <em>Propriedades</em>. No campo <strong>Destino</strong>, vá até o fim do texto, dê um espaço e acrescente: <code class="faq-code">--kiosk-printing</code>. Clique em OK.</li>
-              <li><strong>Use sempre esse atalho:</strong> feche todas as janelas do Chrome e abra o painel por ele. Agora a impressão sai <strong>direto</strong>, sem a janela.</li>
+              <li><strong>Deixe a térmica como impressora padrão</strong><br>
+                Windows → <em>Configurações → Bluetooth e dispositivos → Impressoras e scanners</em> → clique na sua impressora → <strong>Definir como padrão</strong>.<br>
+                Desligue também <em>“Deixar o Windows gerenciar minha impressora padrão”</em>, senão ele troca sozinho.</li>
+              <li><strong>Edite o atalho do Chrome</strong><br>
+                Clique com o botão direito no atalho do Chrome (na área de trabalho) → <em>Propriedades</em>. No campo <strong>Destino</strong>, vá até o fim do texto, dê um espaço e cole <code class="faq-code">--kiosk-printing</code>. Vai ficar mais ou menos assim:
+                <code class="faq-code-bloco">"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing</code>
+                Clique em <strong>OK</strong>.</li>
+              <li><strong>Use sempre esse atalho</strong><br>
+                Feche todas as janelas do Chrome e abra o painel <strong>por esse atalho</strong>. Mande imprimir um pedido → deve sair <strong>direto</strong>, sem o diálogo.</li>
             </ol>
-            <p class="faq-nota">Só funciona abrindo o Chrome por esse atalho. Como ele imprime na impressora <strong>padrão</strong>, mantenha a térmica como padrão do Windows.</p>
+
+            <p class="faq-sub-t">Detalhes importantes</p>
+            <ul class="faq-lista">
+              <li>Só funciona abrindo o Chrome <strong>por esse atalho</strong>. Pelo menu Iniciar ou pela barra de tarefas, o sinalizador não vale.</li>
+              <li>O método no sistema continua em <strong>Navegador (USB)</strong> — não precisa mexer.</li>
+              <li>Como ele imprime na impressora <strong>padrão</strong>, mantenha a térmica como padrão, senão pode sair na impressora errada.</li>
+            </ul>
+
+            <p class="faq-nota">A <strong>serial (COM)</strong> não precisa disso — já sai direto por natureza. O <code class="faq-code">--kiosk-printing</code> é a saída pro <strong>USB</strong> sair direto, já que o navegador não deixa pular o diálogo de outro jeito.</p>
           </div>
         </details>
       </div>
