@@ -931,6 +931,11 @@ function renderCardapio() {
       linha.className = "item-linha" + (item.disponivel ? "" : " item-linha--indisp");
       const temFoto = item.imagem && item.imagem !== "";
       const dispTxt = item.disponivel ? "Disp." : "Indisp.";
+      const est = Estoque.statusEstoque(item);
+      const estTag = !est.controlado ? ""
+        : est.esgotado ? `<span class="item-linha-tag tag-esgotado">Esgotado</span>`
+        : est.baixo ? `<span class="item-linha-tag tag-baixo">Baixo</span>`
+        : `<span class="item-linha-est">Est. ${est.quantidade}</span>`;
       linha.innerHTML = `
         <div class="item-linha-foto">
           ${temFoto
@@ -944,6 +949,7 @@ function renderCardapio() {
           <span class="item-linha-titulo">
             <span class="item-linha-nome">${escapar(item.nome) || "(sem nome)"}</span>
             ${item.apenasLocal ? `<span class="item-linha-tag">Só no local</span>` : ""}
+            ${estTag}
           </span>
           ${item.desc ? `<span class="item-linha-desc">${escapar(item.desc)}</span>` : ""}
         </div>
