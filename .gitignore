@@ -11,3 +11,6 @@ baileys-*/
 .env.*
 .mcp.json
 *.tmp
+
+# Artefatos de validação visual (Playwright MCP)
+.playwright-mcp/
