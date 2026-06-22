@@ -34,9 +34,18 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   assert.equal(it.length, 1); // item indisponível some
   assert.deepEqual(it[0], {
     id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: "c",
-    opcionais: [{ nome: "Bacon", preco: 3 }],
+    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false,
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
+});
+test("projetarCardapio: expõe apenasLocal normalizado", () => {
+  const cru = { categorias: [ { nome: "P", itens: [
+    { id: 1, nome: "A", preco: 10, disponivel: true, apenasLocal: true },
+    { id: 2, nome: "B", preco: 10, disponivel: true },
+  ] } ] };
+  const itens = cw.projetarCardapio(cru).categorias[0].itens;
+  assert.equal(itens[0].apenasLocal, true);
+  assert.equal(itens[1].apenasLocal, false);
 });
 test("projetarCardapio: cardápio vazio/sem categorias → { categorias: [] }", () => {
   assert.deepEqual(cw.projetarCardapio(null), { categorias: [] });

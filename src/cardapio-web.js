@@ -44,6 +44,7 @@ function projetarCardapio(cardapio) {
         imagem: item.imagem || "",
         composicao: item.composicao || "",
         opcionais: parseOpcionais(item.opcionais),
+        apenasLocal: item.apenasLocal === true,
       });
     }
     if (itens.length) categorias.push({ nome: cat.nome, itens });

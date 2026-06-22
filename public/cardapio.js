@@ -157,6 +157,7 @@
       img +
       '<div class="cd-card-corpo">' +
         '<h3 class="cd-card-nome">' + esc(it.nome) + "</h3>" +
+        (it.apenasLocal ? '<span class="cd-card-local">Só no local</span>' : "") +
         (it.desc ? '<p class="cd-card-desc">' + esc(it.desc) + "</p>" : "") +
         '<div class="cd-card-rodape">' +
           '<span class="cd-card-preco">' + money(it.preco) + "</span>" +
