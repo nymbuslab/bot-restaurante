@@ -993,20 +993,20 @@ function ligarEventosCardapio() {
   );
   document.querySelectorAll("[data-del-item]").forEach((el) =>
     el.addEventListener("click", (e) => {
-      const [ci, ii] = e.target.dataset.delItem.split("-").map(Number);
+      const [ci, ii] = e.currentTarget.dataset.delItem.split("-").map(Number);
       cardapioAtual.categorias[ci].itens.splice(ii, 1);
       renderCardapio();
     })
   );
   document.querySelectorAll("[data-edit-item]").forEach((el) =>
     el.addEventListener("click", (e) => {
-      const [ci, ii] = e.target.dataset.editItem.split("-").map(Number);
+      const [ci, ii] = e.currentTarget.dataset.editItem.split("-").map(Number);
       abrirEditorItem(ci, ii);
     })
   );
   document.querySelectorAll("[data-add-item]").forEach((el) =>
     el.addEventListener("click", (e) => {
-      abrirEditorItem(+e.target.dataset.addItem, -1);
+      abrirEditorItem(+e.currentTarget.dataset.addItem, -1);
     })
   );
 }
