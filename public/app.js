@@ -867,6 +867,9 @@ setInterval(() => {
 // Exibição monetária pt-BR unificada (ver public/dinheiro.js) — "1.234,56".
 function moedaBR(v) { return Dinheiro.formatar(v); }
 
+// Termo da busca da Gestão de Itens (estado de view efêmero — não persistido).
+let cardapioBusca = "";
+
 function renderCardapioMetricas() {
   const el = $("cardapioMetricas");
   if (!el) return;
@@ -898,7 +901,14 @@ function renderCardapio() {
   renderCardapioMetricas();
   const c = $("cardapioContainer");
   c.innerHTML = "";
+  const termo = cardapioBusca.trim();
+  let totalMostrado = 0;
   cardapioAtual.categorias.forEach((cat, ci) => {
+    const itensCat = cat.itens
+      .map((item, ii) => ({ item, ii }))
+      .filter(({ item }) => Busca.itemCasaBusca(item.nome, termo));
+    if (termo && itensCat.length === 0) return; // categoria sem match some na busca
+    totalMostrado += itensCat.length;
     const n = cat.itens.length;
     const badge = n === 1 ? "1 item" : `${n} itens`;
     const div = document.createElement("div");
@@ -916,7 +926,7 @@ function renderCardapio() {
     `;
     c.appendChild(div);
     const grid = div.querySelector(`[data-itens="${ci}"]`);
-    cat.itens.forEach((item, ii) => {
+    itensCat.forEach(({ item, ii }) => {
       const linha = document.createElement("div");
       linha.className = "item-linha" + (item.disponivel ? "" : " item-linha--indisp");
       const temFoto = item.imagem && item.imagem !== "";
@@ -959,6 +969,9 @@ function renderCardapio() {
     `;
     grid.appendChild(addLinha);
   });
+  if (termo && totalMostrado === 0) {
+    c.innerHTML = `<p class="cardapio-vazio-busca">Nenhum item encontrado para "<strong>${escapar(termo)}</strong>".</p>`;
+  }
   ligarEventosCardapio();
 }
 
@@ -1143,6 +1156,20 @@ async function salvarEditorItem() {
     $("editor-erro").textContent = "Erro ao salvar. Tente novamente.";
   }
 }
+
+// Busca do cardápio (fixo — o campo é estático, fora do container re-renderizado,
+// por isso o foco não se perde ao digitar).
+$("cardapioBusca").addEventListener("input", (e) => {
+  cardapioBusca = e.target.value;
+  renderCardapio();
+});
+$("cardapioBusca").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    e.target.value = "";
+    cardapioBusca = "";
+    renderCardapio();
+  }
+});
 
 // Listeners do editor (fixos — não precisam ser re-ligados a cada render)
 $("editor-fechar").addEventListener("click", fecharEditorItem);

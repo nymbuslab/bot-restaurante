@@ -1001,6 +1001,22 @@ button:disabled {
   background: var(--accent-subtle);
 }
 
+/* ---------- Cardápio: barra de busca ---------- */
+.cardapio-busca {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 12px; margin-bottom: 14px;
+}
+.cardapio-busca-ico { color: var(--text-secondary); flex: none; }
+.cardapio-busca input {
+  flex: 1; background: transparent; border: 0; outline: none;
+  color: var(--text-primary); font-size: 14px;
+}
+.cardapio-busca input::placeholder { color: var(--text-disabled); }
+.cardapio-vazio-busca {
+  text-align: center; color: var(--text-secondary); padding: 28px 12px; font-size: 14px;
+}
+
 /* ---------- Cardápio: lista de itens (Gestão de Itens) ---------- */
 .itens-lista { display: flex; flex-direction: column; gap: 8px; }
 
