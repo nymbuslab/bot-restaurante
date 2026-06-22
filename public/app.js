@@ -185,6 +185,8 @@ document.querySelectorAll("nav button").forEach((btn) => {
 
     document.querySelectorAll("nav button").forEach((b) => b.classList.remove("ativo"));
     document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
+    const aj = $("btnAjuda");
+    if (aj) aj.classList.remove("ativo");
     btn.classList.add("ativo");
     $("aba-" + btn.dataset.aba).classList.add("ativa");
     if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
@@ -193,6 +195,17 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "caixa") carregarCaixa();
   });
 });
+
+// Central de Ajuda (FAQ): botão no rodapé da sidebar + atalho no topo (mobile).
+function abrirAjuda() {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.remove("ativo"));
+  document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
+  const aj = $("btnAjuda");
+  if (aj) aj.classList.add("ativo");
+  $("aba-ajuda").classList.add("ativa");
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll(".abre-ajuda").forEach((b) => b.addEventListener("click", abrirAjuda));
 
 // ============================================================
 // NOTIFICAÇÃO DE PEDIDO NOVO (polling 15s + som + badge + modal)

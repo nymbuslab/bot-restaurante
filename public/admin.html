@@ -58,6 +58,10 @@
       </nav>
 
       <div class="sidebar-rodape">
+        <button type="button" class="ajuda-btn abre-ajuda" id="btnAjuda">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Ajuda</span>
+        </button>
         <button class="secundario mini btn-sair" id="btnSair">Sair</button>
       </div>
     </aside>
@@ -74,6 +78,7 @@
         <div class="header-direita">
           <button type="button" class="btn-som" id="btnSomPedido" title="Som de novo pedido" aria-pressed="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
           <button type="button" class="header-trial" id="headerTrial" style="display:none" title="Ver assinatura"></button>
+          <button type="button" class="btn-som abre-ajuda" id="btnAjudaTopo" title="Ajuda" aria-label="Ajuda"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
           <button class="secundario mini btn-sair header-sair" id="btnSairTopo">Sair</button>
         </div>
       </header>
@@ -687,6 +692,79 @@
       </div>
 
       <p class="sub assin-rodape">7 dias grátis no primeiro acesso. Cancele quando quiser pelo portal de pagamento.</p>
+    </section>
+
+    <!-- AJUDA / FAQ -->
+    <section class="aba" id="aba-ajuda">
+      <div class="cfg-topo">
+        <h2 class="cfg-titulo">Central de Ajuda</h2>
+      </div>
+      <p class="sub">Dúvidas comuns sobre o uso do painel. Clique numa pergunta para ver a resposta.</p>
+
+      <div class="faq-cat">
+        <div class="faq-cat-cab">
+          <span class="faq-cat-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
+          <h3 class="faq-cat-titulo">Impressão de comandas</h3>
+        </div>
+
+        <details class="faq-item">
+          <summary><span class="faq-q">Quais impressoras funcionam?</span><svg class="faq-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <div class="faq-a">
+            <p>Impressoras térmicas de <strong>80mm</strong> no padrão ESC/POS — a grande maioria das de cupom. Exemplos: Elgin i7/i8/i9, Epson TM-T20x, Bematech, e modelos genéricos. Funciona por <strong>USB</strong> ou por <strong>porta serial (COM)</strong>.</p>
+            <p class="faq-nota">A impressão de comandas faz parte do <strong>Plano Completo</strong>.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary><span class="faq-q">USB ou Serial (COM): qual eu escolho?</span><svg class="faq-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <div class="faq-a">
+            <p>Depende de como sua impressora liga no computador. Você escolhe em <strong>Configurações → Impressora → Método de impressão</strong>.</p>
+            <ul class="faq-lista">
+              <li><strong>Navegador (USB):</strong> ao imprimir, o Chrome abre a janela de impressão para você confirmar. Para sair <em>direto</em>, sem a janela, veja <em>“Imprimir direto pelo USB”</em> abaixo.</li>
+              <li><strong>Porta serial (COM):</strong> imprime <strong>direto</strong>, sem janela. Precisa do <strong>Chrome ou Edge no computador</strong> (não funciona no celular). Use se a impressora aparece como uma porta COM no Windows.</li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary><span class="faq-q">A impressora não corta o papel sozinha</span><svg class="faq-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <div class="faq-a">
+            <p>A maioria das térmicas usa <strong>corte parcial</strong> (deixa o papel preso por um pontinho — o “picote”) e ignora o comando de corte total. Em <strong>Configurações → Impressora → Corte do papel</strong>, escolha:</p>
+            <ul class="faq-lista">
+              <li><strong>Parcial (picote):</strong> padrão, funciona na maioria.</li>
+              <li><strong>Total:</strong> se a sua tem lâmina de corte total.</li>
+              <li><strong>Não cortar:</strong> se preferir cortar à mão.</li>
+            </ul>
+            <p class="faq-nota">Essa opção vale para o método <strong>Serial (COM)</strong>. No USB, o corte segue o que a impressora estiver configurada.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary><span class="faq-q">Como conectar a impressora serial (COM)</span><svg class="faq-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <div class="faq-a">
+            <ol class="faq-passos">
+              <li>Em <strong>Configurações → Impressora</strong>, escolha o método <strong>Porta serial (COM)</strong>.</li>
+              <li>Deixe o <strong>Baud rate</strong> em 9600 (só mude se o manual da impressora pedir outro valor).</li>
+              <li>Clique em <strong>Conectar impressora</strong> e selecione a porta COM na janela do navegador — ele lembra a porta nas próximas vezes.</li>
+              <li>Se os acentos saírem trocados, marque <strong>Sem acento</strong>.</li>
+            </ol>
+            <p>Pronto: ao abrir um pedido e clicar em <strong>Imprimir comanda</strong>, sai direto na impressora.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary><span class="faq-q">Imprimir direto pelo USB, sem a janela do navegador</span><svg class="faq-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <div class="faq-a">
+            <p>Útil num computador dedicado ao caixa. É uma configuração única no Windows:</p>
+            <ol class="faq-passos">
+              <li><strong>Deixe a térmica como impressora padrão</strong> do Windows: <em>Configurações → Bluetooth e dispositivos → Impressoras e scanners → sua impressora → Definir como padrão</em>. Desligue a opção <em>“Deixar o Windows gerenciar minha impressora padrão”</em>.</li>
+              <li><strong>Edite o atalho do Chrome:</strong> clique com o botão direito no atalho → <em>Propriedades</em>. No campo <strong>Destino</strong>, vá até o fim do texto, dê um espaço e acrescente: <code class="faq-code">--kiosk-printing</code>. Clique em OK.</li>
+              <li><strong>Use sempre esse atalho:</strong> feche todas as janelas do Chrome e abra o painel por ele. Agora a impressão sai <strong>direto</strong>, sem a janela.</li>
+            </ol>
+            <p class="faq-nota">Só funciona abrindo o Chrome por esse atalho. Como ele imprime na impressora <strong>padrão</strong>, mantenha a térmica como padrão do Windows.</p>
+          </div>
+        </details>
+      </div>
     </section>
       </main>
     </div>
