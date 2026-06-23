@@ -507,7 +507,11 @@ function renderAssinatura(a) {
   } else if (a.status === "past_due") {
     acoes.appendChild(botaoAssin("Atualizar pagamento", abrirPortal));
   } else if (a.status === "cortesia") {
-    // Cortesia é gerenciada pela equipe Nymbus — sem ações de pagamento aqui.
+    // Cortesia é gerenciada pela equipe (sem assinatura no Stripe). Quem está no
+    // Essencial pode assinar o Completo por autoatendimento (checkout) → vira pagante.
+    if (a.plano !== "completo") {
+      acoes.appendChild(botaoAssin("Assinar o Plano Completo (R$ 99/mês)", () => { location.href = "checkout.html?plano=completo"; }));
+    }
   } else {
     acoes.appendChild(botaoAssin("Gerenciar assinatura", abrirPortal, "secundario"));
   }
