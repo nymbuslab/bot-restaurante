@@ -2146,6 +2146,78 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   margin: 0 0 24px;
 }
 
+/* ---------- Botão "Imprimir comanda" bloqueado (Essencial) ---------- */
+.bloqueado-impr { color: var(--text-disabled); border-color: var(--border-subtle); }
+.bloqueado-impr > svg { opacity: 0.55; }
+.bloqueado-impr .impr-lock { display: inline-flex; align-items: center; margin-left: 5px; }
+
+/* ---------- Modal de upsell: impressão de comandas (Plano Completo) ---------- */
+.upsell-caixa {
+  max-width: 400px;
+  padding: 0;
+  overflow: hidden;
+  text-align: center;
+  position: relative;
+}
+.upsell-x {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  width: 30px; height: 30px; padding: 0;
+  border: none; border-radius: 8px;
+  background: rgba(0,0,0,0.22); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+}
+.upsell-x:hover { background: rgba(0,0,0,0.4); }
+.upsell-cabeca {
+  height: 116px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 120%);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.upsell-cabeca::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at 28% 18%, rgba(255,255,255,0.30), transparent 55%);
+}
+.upsell-ico {
+  position: relative;
+  width: 66px; height: 66px; border-radius: 50%;
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.4);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.28);
+}
+.upsell-corpo { padding: 22px 26px; }
+.upsell-caixa .upsell-titulo {
+  margin: 0 0 8px; padding: 0; border: none;
+  font-size: 19px; font-weight: 700; letter-spacing: -0.3px;
+  text-transform: none; color: var(--text-primary);
+}
+.upsell-caixa .upsell-sub { font-size: 13.5px; color: var(--text-secondary); line-height: 1.55; margin: 0 0 18px; }
+.upsell-lista { list-style: none; padding: 0; margin: 0 0 20px; text-align: left; display: flex; flex-direction: column; gap: 11px; }
+.upsell-lista li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.4; }
+.upsell-lista li strong { color: var(--text-primary); font-weight: 600; }
+.upsell-lista li svg { color: var(--success); flex-shrink: 0; margin-top: 1px; }
+.upsell-cta {
+  width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 13px 16px; border: none; border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 8px 22px rgba(var(--accent-rgb), 0.42);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.upsell-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(var(--accent-rgb), 0.55); }
+.upsell-cta:active { transform: translateY(0); }
+.upsell-caixa .upsell-preco { font-size: 12.5px; color: var(--text-secondary); margin: 11px 0 0; }
+.upsell-caixa .upsell-preco strong { color: var(--text-primary); font-size: 14px; }
+.upsell-agora-nao {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 13px; cursor: pointer; margin-top: 12px; padding: 4px 8px;
+  transition: color 0.15s;
+}
+.upsell-agora-nao:hover { color: var(--text-primary); }
+@media (prefers-reduced-motion: reduce) { .upsell-cta { transition: none; } }
+
 .modal-acoes {
   display: flex;
   justify-content: flex-end;

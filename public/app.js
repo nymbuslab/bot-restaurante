@@ -302,7 +302,7 @@ function abrirNovoPedido(d) {
     : `<div class="np-item np-item-vazio">Veja os detalhes no pedido.</div>`;
   $("np-total").textContent = "R$ " + moedaBR(d.total || 0);
   const btnNpImp = $("np-imprimir");
-  if (btnNpImp) btnNpImp.hidden = planoAtual !== "completo";
+  if (btnNpImp) { btnNpImp.hidden = false; marcarImprBloqueado(btnNpImp, planoAtual !== "completo"); }
   overlay.style.display = "flex";
 }
 
@@ -326,6 +326,7 @@ if ($("np-visualizar")) $("np-visualizar").addEventListener("click", visualizarN
 // (só nº/cliente/itens/total), então resolve o pedido completo no cache antes.
 if ($("np-imprimir")) {
   $("np-imprimir").addEventListener("click", async () => {
+    if (planoAtual !== "completo") { abrirUpsellImpressao(); return; }
     await carregarPedidos();
     const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
     if (p && window.Impressao) window.Impressao.abrirPreview(p, configAtual);
@@ -2955,7 +2956,7 @@ const ICO_PAG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" 
 function abrirModalPedido(p) {
   pedidoModalAtual = p;
   const btnImp = $("btnImprimirPedido");
-  if (btnImp) btnImp.hidden = planoAtual !== "completo";
+  if (btnImp) { btnImp.hidden = false; marcarImprBloqueado(btnImp, planoAtual !== "completo"); }
   $("pedido-numero").textContent = `Pedido #${p.numero}`;
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 
@@ -3171,9 +3172,56 @@ $("pedido-overlay").addEventListener("click", (e) => {
 });
 if ($("btnImprimirPedido")) {
   $("btnImprimirPedido").addEventListener("click", () => {
+    if (planoAtual !== "completo") { abrirUpsellImpressao(); return; }
     if (pedidoModalAtual && window.Impressao) window.Impressao.abrirPreview(pedidoModalAtual, configAtual);
   });
 }
+
+// ============================================================
+// UPSELL DE IMPRESSÃO (Plano Completo)
+// No Essencial o botão "Imprimir comanda" aparece bloqueado (cadeado); ao clicar,
+// abre o modal de upgrade em vez de imprimir.
+// ============================================================
+const SVG_CADEADO_MINI = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
+function marcarImprBloqueado(btn, bloqueado) {
+  if (!btn) return;
+  btn.classList.toggle("bloqueado-impr", bloqueado);
+  const existente = btn.querySelector(".impr-lock");
+  if (bloqueado && !existente) {
+    const s = document.createElement("span");
+    s.className = "impr-lock";
+    s.innerHTML = SVG_CADEADO_MINI;
+    btn.appendChild(s);
+  } else if (!bloqueado && existente) {
+    existente.remove();
+  }
+}
+
+function abrirUpsellImpressao() {
+  const o = $("upsell-overlay");
+  if (o) o.style.display = "flex";
+}
+function fecharUpsell() {
+  const o = $("upsell-overlay");
+  if (o) o.style.display = "none";
+}
+
+if ($("upsell-fechar")) $("upsell-fechar").addEventListener("click", fecharUpsell);
+if ($("upsell-agora-nao")) $("upsell-agora-nao").addEventListener("click", fecharUpsell);
+if ($("upsell-overlay")) $("upsell-overlay").addEventListener("click", (e) => {
+  if (e.target === $("upsell-overlay")) fecharUpsell();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("upsell-overlay") && $("upsell-overlay").style.display === "flex") fecharUpsell();
+});
+if ($("upsell-cta")) $("upsell-cta").addEventListener("click", () => {
+  fecharUpsell();
+  fecharModalPedido();
+  fecharNovoPedido();
+  const b = document.querySelector("nav button[data-aba='assinatura']");
+  if (b) b.click();
+});
 
 $("btnAtualizarPedidos").addEventListener("click", carregarPedidos);
 $("btnExportarPedidos").addEventListener("click", exportarPedidosCSV);
