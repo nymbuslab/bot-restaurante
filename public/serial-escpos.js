@@ -1,6 +1,8 @@
 // ESC/POS: monta os bytes de impressão a partir do texto da comanda (puro/testável).
-// init (ESC @) + codepage CP850 (ESC t 2) + texto + avanço + corte (GS V m).
-// Corte: "parcial" (GS V 1, lâmina de picote — padrão), "total" (GS V 0) ou "nenhum".
+// init (ESC @) + codepage CP850 (ESC t 2) + texto + avanço (6 linhas) + corte.
+// Corte usa o comando LEGADO Epson, nativo na linha Daruma (DR700/DR800) e aceito
+// pela maioria das térmicas comuns: "parcial" = ESC m (picote, padrão), "total" =
+// ESC i, "nenhum" = não corta. O avanço empurra o fim do cupom pra fora da guilhotina.
 // Dual-mode: window.SerialEscpos no browser, module.exports no Node (testes).
 (function (root, factory) {
   const api = factory();
@@ -27,10 +29,10 @@
       else if (!opts.semAcento && CP850[txt[i]] != null) out.push(CP850[txt[i]]);
       else out.push(0x3F); // "?" p/ desconhecido
     }
-    out.push(0x0A, 0x0A, 0x0A); // avanço de papel
+    out.push(0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A); // avanço (6 linhas) p/ limpar a guilhotina
     const corte = opts.corte || "parcial";
-    if (corte === "total") out.push(0x1D, 0x56, 0x00);       // GS V 0 (corte total)
-    else if (corte !== "nenhum") out.push(0x1D, 0x56, 0x01);  // GS V 1 (corte parcial/picote)
+    if (corte === "total") out.push(0x1B, 0x69);       // ESC i (corte total)
+    else if (corte !== "nenhum") out.push(0x1B, 0x6D);  // ESC m (corte parcial/picote)
     return new Uint8Array(out);
   }
   return { montarEscPos: montarEscPos };

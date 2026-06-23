@@ -10,18 +10,19 @@ test("montarEscPos: começa com init + codepage CP850", () => {
   assert.equal(b[5], 0x41); // A
   assert.equal(b[6], 0x42); // B
 });
-test("montarEscPos: padrão = avanço + corte parcial GS V 1", () => {
+test("montarEscPos: padrão = avanço de 6 linhas + corte parcial ESC m", () => {
   const b = bytes(montarEscPos("X", {}));
-  assert.deepEqual(b.slice(-6), [0x0A, 0x0A, 0x0A, 0x1D, 0x56, 0x01]);
+  assert.deepEqual(b.slice(-8), [0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x1B, 0x6D]);
 });
-test("montarEscPos: corte total emite GS V 0", () => {
+test("montarEscPos: corte total emite ESC i", () => {
   const b = bytes(montarEscPos("X", { corte: "total" }));
-  assert.deepEqual(b.slice(-6), [0x0A, 0x0A, 0x0A, 0x1D, 0x56, 0x00]);
+  assert.deepEqual(b.slice(-8), [0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x1B, 0x69]);
 });
-test("montarEscPos: corte nenhum termina no avanço (sem GS V)", () => {
+test("montarEscPos: corte nenhum termina no avanço (sem comando de corte)", () => {
   const b = bytes(montarEscPos("X", { corte: "nenhum" }));
-  assert.deepEqual(b.slice(-3), [0x0A, 0x0A, 0x0A]);
-  assert.ok(!b.includes(0x56)); // sem comando de corte
+  assert.deepEqual(b.slice(-6), [0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A]);
+  assert.ok(!b.includes(0x6D)); // sem ESC m
+  assert.ok(!b.includes(0x69)); // sem ESC i
 });
 test("montarEscPos: acento mapeado em CP850 (ç=0x87, ã=0xC6)", () => {
   const b = bytes(montarEscPos("ç ã", {}));
