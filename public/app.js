@@ -326,7 +326,7 @@ if ($("np-visualizar")) $("np-visualizar").addEventListener("click", visualizarN
 // (só nº/cliente/itens/total), então resolve o pedido completo no cache antes.
 if ($("np-imprimir")) {
   $("np-imprimir").addEventListener("click", async () => {
-    if (planoAtual !== "completo") { abrirUpsellImpressao(); return; }
+    if (planoAtual !== "completo") { abrirUpsell("impressao"); return; }
     await carregarPedidos();
     const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
     if (p && window.Impressao) window.Impressao.abrirPreview(p, configAtual);
@@ -1922,6 +1922,13 @@ function renderEntregaModo() {
 document.querySelectorAll('input[name="freteModo"]').forEach((r) => {
   r.addEventListener("change", renderEntregaModo);
 });
+// Essencial: clicar na opção "Frete por raio" (bloqueada) abre o card de upgrade
+// em vez de selecionar — preventDefault impede o rádio de marcar.
+if ($("freteModoRaioLabel")) {
+  $("freteModoRaioLabel").addEventListener("click", (e) => {
+    if (planoAtual !== "completo") { e.preventDefault(); abrirUpsell("freteRaio"); }
+  });
+}
 
 // ---- Sub-aba Impressora: Completo vê a config; Essencial vê o cadeado/upsell ----
 function renderImpressoraGate() {
@@ -1934,8 +1941,7 @@ function renderImpressoraGate() {
 
 if ($("btnVerPlanosImpressora")) {
   $("btnVerPlanosImpressora").addEventListener("click", () => {
-    const btnAssin = document.querySelector('.sidebar [data-aba="assinatura"]');
-    if (btnAssin) btnAssin.click();
+    abrirUpsell("impressao");
   });
 }
 
@@ -2411,14 +2417,13 @@ async function verHistoricoCaixa() {
 
 if ($("btnVerPlanosCaixa")) {
   $("btnVerPlanosCaixa").addEventListener("click", () => {
-    const b = document.querySelector('.sidebar [data-aba="assinatura"]'); if (b) b.click();
+    abrirUpsell("caixa");
   });
 }
 
 if ($("btnVerPlanos")) {
   $("btnVerPlanos").addEventListener("click", () => {
-    const btnAssin = document.querySelector('.sidebar [data-aba="assinatura"]');
-    if (btnAssin) btnAssin.click();
+    abrirUpsell("freteRaio");
   });
 }
 
@@ -3172,7 +3177,7 @@ $("pedido-overlay").addEventListener("click", (e) => {
 });
 if ($("btnImprimirPedido")) {
   $("btnImprimirPedido").addEventListener("click", () => {
-    if (planoAtual !== "completo") { abrirUpsellImpressao(); return; }
+    if (planoAtual !== "completo") { abrirUpsell("impressao"); return; }
     if (pedidoModalAtual && window.Impressao) window.Impressao.abrirPreview(pedidoModalAtual, configAtual);
   });
 }
@@ -3198,7 +3203,53 @@ function marcarImprBloqueado(btn, bloqueado) {
   }
 }
 
-function abrirUpsellImpressao() {
+// Presets do upsell, um por feature do Plano Completo. Para uma nova feature,
+// basta adicionar um preset aqui e chamar abrirUpsell("nome") no controle bloqueado.
+const SVG_CHECK_UPSELL = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+function _svgUpsell(inner) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+}
+const UPSELL_FEATURES = {
+  impressao: {
+    icone: _svgUpsell('<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>'),
+    titulo: "Imprima seus pedidos automaticamente",
+    sub: 'A impressão de comandas faz parte do <strong>Plano Completo</strong>. Imprima a via da cozinha e o cupom do cliente direto na impressora térmica — sem digitar nada.',
+    beneficios: [
+      'Via da <strong>cozinha</strong> + <strong>cupom do cliente</strong> em um clique',
+      'Impressora térmica 80mm — <strong>USB ou serial (COM)</strong>',
+      'Corte do papel <strong>automático</strong>',
+    ],
+  },
+  caixa: {
+    icone: _svgUpsell('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/>'),
+    titulo: "Controle o caixa do seu dia",
+    sub: 'O <strong>caixa do dia</strong> faz parte do <strong>Plano Completo</strong>. Abra, receba por pedido e feche com conferência do dinheiro.',
+    beneficios: [
+      'Abertura e fechamento com <strong>conferência de cédulas</strong>',
+      '<strong>Sangria, suprimento</strong> e recebimento por pedido',
+      '<strong>Relatório</strong> do caixa e histórico do dia',
+    ],
+  },
+  freteRaio: {
+    icone: _svgUpsell('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'),
+    titulo: "Cobre frete por distância",
+    sub: 'O <strong>frete por raio</strong> faz parte do <strong>Plano Completo</strong>. O valor é calculado pela distância real do cliente até o seu restaurante.',
+    beneficios: [
+      'Frete pela <strong>distância (km)</strong> até o cliente',
+      'Faixas de preço por raio, calculadas pelo <strong>CEP</strong>',
+      'Fora da área vira <strong>retirada</strong> automaticamente',
+    ],
+  },
+};
+
+// Abre o card de upgrade preenchido com o conteúdo da feature pedida.
+function abrirUpsell(key) {
+  const f = UPSELL_FEATURES[key] || UPSELL_FEATURES.impressao;
+  const ico = $("upsell-ico"), tit = $("upsell-titulo"), sub = $("upsell-sub"), lista = $("upsell-lista");
+  if (ico) ico.innerHTML = f.icone;
+  if (tit) tit.textContent = f.titulo;
+  if (sub) sub.innerHTML = f.sub;
+  if (lista) lista.innerHTML = f.beneficios.map((b) => `<li>${SVG_CHECK_UPSELL}<span>${b}</span></li>`).join("");
   const o = $("upsell-overlay");
   if (o) o.style.display = "flex";
 }

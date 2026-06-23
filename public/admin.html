@@ -950,16 +950,12 @@
     <div class="modal-caixa upsell-caixa">
       <button class="upsell-x" id="upsell-fechar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       <div class="upsell-cabeca">
-        <span class="upsell-ico"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
+        <span class="upsell-ico" id="upsell-ico"></span>
       </div>
       <div class="upsell-corpo">
-        <h3 class="upsell-titulo">Imprima seus pedidos automaticamente</h3>
-        <p class="upsell-sub">A impressão de comandas faz parte do <strong>Plano Completo</strong>. Imprima a via da cozinha e o cupom do cliente direto na impressora térmica — sem digitar nada.</p>
-        <ul class="upsell-lista">
-          <li><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span>Via da <strong>cozinha</strong> + <strong>cupom do cliente</strong> em um clique</span></li>
-          <li><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span>Impressora térmica 80mm — <strong>USB ou serial (COM)</strong></span></li>
-          <li><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span>Corte do papel <strong>automático</strong></span></li>
-        </ul>
+        <h3 class="upsell-titulo" id="upsell-titulo"></h3>
+        <p class="upsell-sub" id="upsell-sub"></p>
+        <ul class="upsell-lista" id="upsell-lista"></ul>
         <button class="upsell-cta" id="upsell-cta">Conhecer o Plano Completo<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
         <p class="upsell-preco">a partir de <strong>R$ 99</strong>/mês</p>
         <button class="upsell-agora-nao" id="upsell-agora-nao">Agora não</button>
