@@ -2739,6 +2739,13 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   flex-direction: column;
 }
 
+/* Faixa full-width abaixo da linha foto+campos: disponibilidade + unidade/estoque.
+   Ocupa a largura inteira (inclusive sob a foto) e alinha toggles/campos em colunas. */
+.editor-extra {
+  padding: 16px 24px 4px;
+  border-top: 1px solid var(--border-subtle);
+}
+
 .editor-textareas {
   display: grid;
   grid-template-columns: 1fr 1fr;

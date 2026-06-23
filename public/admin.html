@@ -998,28 +998,30 @@
             <div class="campo"><label for="editor-categoria">Categoria</label><select id="editor-categoria"></select></div>
           </div>
           <div class="campo"><label for="editor-desc">Descrição</label><textarea id="editor-desc" rows="2" placeholder="Descrição curta do item (opcional)"></textarea></div>
-          <div class="editor-flags">
-            <div class="campo toggle">
-              <input type="checkbox" id="editor-disponivel" />
-              <label for="editor-disponivel">Disponível para pedidos</label>
-            </div>
-            <div class="campo toggle">
-              <input type="checkbox" id="editor-entrega" />
-              <label for="editor-entrega">Disponível para entrega</label>
-            </div>
-            <div class="campo toggle">
-              <input type="checkbox" id="editor-destaque" />
-              <label for="editor-destaque">Destaque no cardápio</label>
-            </div>
-          </div>
-          <p class="editor-dica" id="editor-entrega-dica">Desligado: o item aparece no cardápio com o aviso "Só no local" e não pode ser pedido para entrega.</p>
-          <div class="linha">
-            <div class="campo"><label for="editor-unidade">Unidade</label><select id="editor-unidade"><option value="un">Unidade (un)</option><option value="kg">Peso (kg)</option></select></div>
-            <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /></div>
-            <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
-          </div>
-          <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local (pesado no balcão) — não entra em pedido online.</p>
         </div>
+      </div>
+      <div class="editor-extra">
+        <div class="editor-flags">
+          <div class="campo toggle">
+            <input type="checkbox" id="editor-disponivel" />
+            <label for="editor-disponivel">Disponível para pedidos</label>
+          </div>
+          <div class="campo toggle">
+            <input type="checkbox" id="editor-entrega" />
+            <label for="editor-entrega">Disponível para entrega</label>
+          </div>
+          <div class="campo toggle">
+            <input type="checkbox" id="editor-destaque" />
+            <label for="editor-destaque">Destaque no cardápio</label>
+          </div>
+        </div>
+        <p class="editor-dica" id="editor-entrega-dica">Desligado: o item aparece no cardápio com o aviso "Só no local" e não pode ser pedido para entrega.</p>
+        <div class="linha">
+          <div class="campo"><label for="editor-unidade">Unidade</label><select id="editor-unidade"><option value="un">Unidade (un)</option><option value="kg">Peso (kg)</option></select></div>
+          <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /></div>
+          <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
+        </div>
+        <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local (pesado no balcão) — não entra em pedido online.</p>
       </div>
       <div class="editor-textareas">
         <div class="campo">
