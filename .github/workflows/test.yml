@@ -7,6 +7,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Dummy: o pg.Pool não conecta ao ser criado e nenhum teste do CI consulta
+      # o banco — só evita o db.js lançar "DATABASE_URL não definida" ao ser importado.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
