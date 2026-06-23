@@ -378,3 +378,15 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.39.0] — Produto em destaque
 
 - Marque produtos como **destaque**: eles aparecem numa seção "Destaques" no topo do cardápio digital, com um selo de estrela, para o cliente ver logo de cara.
+
+## [0.40.0] — Impressão por porta serial (COM)
+
+- Impressão da comanda direto numa impressora térmica de porta serial (COM), sem a janela do navegador (Plano Completo)
+- Configurações → Impressora: método (Navegador/USB ou Serial), baud rate, "sem acento" e tipo de corte do papel (Parcial/Total/Não cortar)
+- Corte parcial (picote) como padrão — corrige impressoras que não cortavam o papel
+- A impressão por USB (navegador) segue funcionando como antes
+
+## [0.41.0] — Central de Ajuda no painel
+
+- Novo botão "Ajuda" abrindo uma página de Perguntas Frequentes (FAQ)
+- Primeira seção com o manual completo da impressora: USB × serial, corte do papel, conectar a serial e imprimir direto pelo USB sem a janela do navegador
