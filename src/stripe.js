@@ -58,8 +58,19 @@ function paraISO(epoch) {
 }
 
 // Garante o Customer do tenant no Stripe (cria se não existir) e devolve o id.
+// Se o id salvo estiver obsoleto (criado em outra conta/modo do Stripe, ou deletado),
+// o Stripe responde "No such customer" (resource_missing) — nesse caso cria um novo
+// e regrava, em vez de quebrar o checkout. Em produção (customer válido) nada muda.
 async function garantirCustomer({ slug, nome, email, stripeCustomerId }) {
-  if (stripeCustomerId) return stripeCustomerId;
+  if (stripeCustomerId) {
+    try {
+      const c = await stripe.customers.retrieve(stripeCustomerId);
+      if (c && !c.deleted) return stripeCustomerId;
+    } catch (e) {
+      if (e && e.code !== "resource_missing") throw e; // erro real (rede/auth) → propaga
+      // resource_missing → id obsoleto; cai pro create abaixo.
+    }
+  }
   const c = await stripe.customers.create({ email, name: nome, metadata: { slug } });
   await empresas.atualizarAssinatura(slug, { stripeCustomerId: c.id });
   return c.id;
