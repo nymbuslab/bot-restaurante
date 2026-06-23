@@ -10,7 +10,7 @@ _(nada no momento)_
 
 ### Em aberto
 
-- [ ] **"Ideia diferente" para o card do link do cardápio** (aba Cardápio) — ainda não descrita pelo usuário.
+_(nada no momento)_
 
 ### Pendências operacionais (standing)
 
