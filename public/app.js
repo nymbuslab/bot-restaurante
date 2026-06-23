@@ -1907,6 +1907,12 @@ function renderEntregaModo() {
   if (label) label.classList.toggle("bloqueado", !completo);
 
   const modoVisual = (document.querySelector('input[name="freteModo"]:checked') || {}).value || "fixo";
+  // Destaque do card selecionado por classe (não :has, que reavalia o documento
+  // inteiro a cada toggle de checkbox e causava flicker no modal).
+  document.querySelectorAll(".cfg-frete-modo").forEach((el) => {
+    const r = el.querySelector('input[name="freteModo"]');
+    el.classList.toggle("selecionado", !!(r && r.checked));
+  });
   const ehRaio = modoVisual === "raio";
   const painelFixo = $("fretePainelFixo");
   const painelRaio = $("fretePainelRaio");
