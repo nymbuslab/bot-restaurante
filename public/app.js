@@ -329,7 +329,7 @@ if ($("np-imprimir")) {
     if (planoAtual !== "completo") { abrirUpsell("impressao"); return; }
     await carregarPedidos();
     const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
-    if (p && window.Impressao) window.Impressao.abrirPreview(p, configAtual);
+    if (p && window.Impressao) window.Impressao.abrirPreview(p, configAtual, { linkCardapio: _linkCardapio });
   });
 }
 
@@ -1694,6 +1694,7 @@ function preencherConfig() {
   $("cfgImprBaud").value = imp.baud || 9600;
   $("cfgImprCorte").value = imp.corte === "total" || imp.corte === "nenhum" ? imp.corte : "parcial";
   $("cfgImprSemAcento").checked = imp.semAcento === true;
+  if ($("cfgImprRodape")) $("cfgImprRodape").value = imp.rodape || "";
   aplicarMetodoImpr();
 }
 
@@ -1877,6 +1878,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.impressao.baud = parseInt($("cfgImprBaud").value, 10) || 9600;
   configAtual.impressao.corte = $("cfgImprCorte").value;
   configAtual.impressao.semAcento = $("cfgImprSemAcento").checked;
+  configAtual.impressao.rodape = $("cfgImprRodape") ? $("cfgImprRodape").value.trim() : "";
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
@@ -3188,7 +3190,7 @@ $("pedido-overlay").addEventListener("click", (e) => {
 if ($("btnImprimirPedido")) {
   $("btnImprimirPedido").addEventListener("click", () => {
     if (planoAtual !== "completo") { abrirUpsell("impressao"); return; }
-    if (pedidoModalAtual && window.Impressao) window.Impressao.abrirPreview(pedidoModalAtual, configAtual);
+    if (pedidoModalAtual && window.Impressao) window.Impressao.abrirPreview(pedidoModalAtual, configAtual, { linkCardapio: _linkCardapio });
   });
 }
 

@@ -17,6 +17,27 @@
     const esq = Math.floor((LARGURA - t.length) / 2);
     return " ".repeat(esq) + t;
   }
+  // Quebra um texto em linhas <= larg sem cortar palavra no meio. Palavra maior
+  // que a largura (ex.: URL) é fatiada em pedaços para não estourar a coluna.
+  function quebrar(txt, larg) {
+    const w = larg || LARGURA;
+    const linhas = [];
+    let atual = "";
+    String(txt || "").split(/\s+/).filter(Boolean).forEach((p) => {
+      while (p.length > w) { // palavra gigante (ex.: URL) → fatia em pedaços de w
+        if (atual) { linhas.push(atual); atual = ""; }
+        linhas.push(p.slice(0, w));
+        p = p.slice(w);
+      }
+      if (!atual) atual = p;
+      else if ((atual + " " + p).length <= w) atual += " " + p;
+      else { linhas.push(atual); atual = p; }
+    });
+    if (atual) linhas.push(atual);
+    return linhas;
+  }
+  // Mensagem padrão do rodapé do cupom quando o tenant não personaliza.
+  const RODAPE_PADRAO = "Obrigado pela preferência! Volte sempre.";
   // "Rótulo" à esquerda + "valor" à direita, preenchendo a largura.
   // Trunca o rótulo se o conjunto passar de LARGURA, para não quebrar a linha
   // (o que jogaria o valor pra linha de baixo, desalinhando) com nomes longos.
@@ -69,13 +90,22 @@
     return linhas.join("\n");
   }
 
-  function montarCupom(pedido, config) {
-    const nome = (config && config.restaurante && config.restaurante.nome) || "Pedido";
+  function montarCupom(pedido, config, extras) {
+    extras = extras || {};
+    const rest = (config && config.restaurante) || {};
+    const nome = rest.nome || "Pedido";
     const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0);
     const subtotal = (pedido.itens || []).reduce((acc, i) => acc + ((i.preco || 0) + extrasDe(i)) * (i.qtd || 1), 0);
     const taxa = Number(pedido.taxaEntrega) || 0;
     const linhas = [];
+    // Cabeçalho (branding): nome em destaque + endereço + telefone, dos dados da empresa.
     linhas.push(centro(nome.toUpperCase()));
+    if (rest.endereco && rest.endereco.trim()) {
+      quebrar(rest.endereco.trim(), LARGURA).forEach((l) => linhas.push(centro(l)));
+    }
+    if (rest.telefone && String(rest.telefone).trim()) {
+      linhas.push(centro("Tel: " + String(rest.telefone).trim()));
+    }
     linhas.push(centro("CUPOM DO PEDIDO"));
     linhas.push(sep("="));
     linhas.push(linhaValor("Pedido #" + pedido.numero, dataHoraBR(pedido.criadoEm)));
@@ -100,11 +130,21 @@
     linhas.push(linhaValor("TOTAL:", fmtBR(pedido.total)));
     if (pedido.pagamento) linhas.push("Pagamento: " + pedido.pagamento);
     linhas.push(sep("="));
+    // Rodapé (marketing): mensagem personalizável + chamada pro cardápio digital.
+    const imp = (config && config.impressao) || {};
+    const msg = imp.rodape != null && String(imp.rodape).trim() ? String(imp.rodape).trim() : RODAPE_PADRAO;
+    quebrar(msg, LARGURA).forEach((l) => linhas.push(centro(l)));
+    if (extras.linkCardapio && String(extras.linkCardapio).trim()) {
+      const link = String(extras.linkCardapio).trim().replace(/^https?:\/\//, "");
+      linhas.push("");
+      linhas.push(centro("Peça pelo cardápio digital:"));
+      quebrar(link, LARGURA).forEach((l) => linhas.push(centro(l)));
+    }
     return linhas.join("\n");
   }
 
-  function montarComanda(pedido, config) {
-    return { cozinha: montarCozinha(pedido, config), cupom: montarCupom(pedido, config) };
+  function montarComanda(pedido, config, extras) {
+    return { cozinha: montarCozinha(pedido, config), cupom: montarCupom(pedido, config, extras) };
   }
 
   return { montarComanda, montarCozinha, montarCupom, fmtBR };

@@ -50,10 +50,11 @@
   }
 
   // Abre o modal mostrando as 2 vias renderizadas (prévia legível na tela).
-  function abrirPreview(pedido, config) {
+  // extras (opcional): { linkCardapio } — usado no rodapé do cupom.
+  function abrirPreview(pedido, config, extras) {
     if (!global.Comanda) return;
     impCfg = (config && config.impressao) || {};
-    vias = global.Comanda.montarComanda(pedido, config);
+    vias = global.Comanda.montarComanda(pedido, config, extras || {});
     const overlay = document.getElementById("impressao-overlay");
     const titulo = document.getElementById("impressao-titulo");
     const prevCoz = document.getElementById("impressao-prev-cozinha");

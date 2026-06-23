@@ -46,6 +46,32 @@ test("via cupom: tem cliente, endereço, pagamento, taxa e total", () => {
   assert.match(cupom, /60,50/);  // total
 });
 
+test("cupom: cabeçalho traz endereço e telefone da empresa", () => {
+  const cfg = { restaurante: { nome: "Pizzaria do João", endereco: "Rua das Flores, 100 - Centro", telefone: "(47) 99999-9999" } };
+  const { cupom } = montarComanda(pedidoBase, cfg);
+  assert.match(cupom, /Rua das Flores, 100 - Centro/);
+  assert.match(cupom, /Tel: \(47\) 99999-9999/);
+});
+
+test("cupom: rodapé usa mensagem padrão quando não há config", () => {
+  const { cupom } = montarComanda(pedidoBase, config);
+  assert.match(cupom, /Obrigado pela preferência! Volte sempre\./);
+});
+
+test("cupom: rodapé usa a mensagem personalizada do tenant", () => {
+  const cfg = { restaurante: { nome: "X" }, impressao: { rodape: "Siga @pizzaria no Insta" } };
+  const { cupom } = montarComanda(pedidoBase, cfg);
+  assert.match(cupom, /Siga @pizzaria no Insta/);
+  assert.equal(/Volte sempre/.test(cupom), false);
+});
+
+test("cupom: inclui o link do cardápio sem o https:// quando passado em extras", () => {
+  const { cupom } = montarComanda(pedidoBase, config, { linkCardapio: "https://pedidos.exemplo.com/c/pizzaria-joao" });
+  assert.match(cupom, /cardápio digital/i);
+  assert.match(cupom, /pedidos\.exemplo\.com\/c\/pizzaria-joao/);
+  assert.equal(/https:\/\//.test(cupom), false);
+});
+
 test("retirada: via cozinha marca RETIRADA e cupom omite endereço", () => {
   const ped = { ...pedidoBase, tipoEntrega: "Retirada", endereco: "" };
   const { cozinha, cupom } = montarComanda(ped, config);
