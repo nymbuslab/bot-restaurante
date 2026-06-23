@@ -53,6 +53,16 @@ test("cupom: cabeçalho traz endereço e telefone da empresa", () => {
   assert.match(cupom, /Tel: \(47\) 99999-9999/);
 });
 
+test("cupom: CEP sai do endereço e vai pra mesma linha do telefone", () => {
+  const cfg = { restaurante: { nome: "X", endereco: "Rua das Flores, 100 - Centro - Ribeirão Preto/SP · CEP 14021-520", telefone: "16997636045" } };
+  const { cupom } = montarComanda(pedidoBase, cfg);
+  // CEP e Tel na mesma linha
+  assert.match(cupom, /CEP 14021-520 {2}Tel: 16997636045/);
+  // a linha do endereço (rua) não repete o CEP
+  const linhaRua = cupom.split("\n").find((l) => /Rua das Flores/.test(l));
+  assert.equal(/CEP/.test(linhaRua), false, "o CEP não deve ficar na linha do endereço");
+});
+
 test("cupom: rodapé usa mensagem padrão quando não há config", () => {
   const { cupom } = montarComanda(pedidoBase, config);
   assert.match(cupom, /Obrigado pela preferência! Volte sempre\./);

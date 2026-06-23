@@ -51,10 +51,11 @@
   }
   function dataHoraBR(iso) {
     try {
-      return new Date(iso).toLocaleString("pt-BR", {
-        timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit",
-        hour: "2-digit", minute: "2-digit",
-      });
+      const d = new Date(iso);
+      const tz = "America/Sao_Paulo";
+      const data = d.toLocaleDateString("pt-BR", { timeZone: tz, day: "2-digit", month: "2-digit", year: "numeric" });
+      const hora = d.toLocaleTimeString("pt-BR", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+      return data + " - " + hora; // dd/mm/yyyy - HH:MM
     } catch (_) { return ""; }
   }
   function opcionaisLinhas(op) {
@@ -98,14 +99,19 @@
     const subtotal = (pedido.itens || []).reduce((acc, i) => acc + ((i.preco || 0) + extrasDe(i)) * (i.qtd || 1), 0);
     const taxa = Number(pedido.taxaEntrega) || 0;
     const linhas = [];
-    // Cabeçalho (branding): nome em destaque + endereço + telefone, dos dados da empresa.
+    // Cabeçalho (branding): nome em destaque + endereço (sem o CEP) e, numa linha
+    // só, CEP + telefone — dos dados da empresa.
     linhas.push(centro(nome.toUpperCase()));
-    if (rest.endereco && rest.endereco.trim()) {
-      quebrar(rest.endereco.trim(), LARGURA).forEach((l) => linhas.push(centro(l)));
-    }
-    if (rest.telefone && String(rest.telefone).trim()) {
-      linhas.push(centro("Tel: " + String(rest.telefone).trim()));
-    }
+    let endStr = (rest.endereco || "").trim();
+    let cep = "";
+    const mCep = endStr.match(/·\s*CEP\s*(\S+)\s*$/i); // o endereço composto termina em " · CEP 00000-000"
+    if (mCep) { cep = mCep[1]; endStr = endStr.replace(/\s*·\s*CEP\s*\S+\s*$/i, "").trim(); }
+    if (!cep && rest.cep) cep = String(rest.cep).replace(/\D/g, "").replace(/^(\d{5})(\d{3})$/, "$1-$2");
+    if (endStr) quebrar(endStr, LARGURA).forEach((l) => linhas.push(centro(l)));
+    const cepTel = [];
+    if (cep) cepTel.push("CEP " + cep);
+    if (rest.telefone && String(rest.telefone).trim()) cepTel.push("Tel: " + String(rest.telefone).trim());
+    if (cepTel.length) linhas.push(centro(cepTel.join("  ")));
     linhas.push(centro("CUPOM DO PEDIDO"));
     linhas.push(sep("="));
     linhas.push(linhaValor("Pedido #" + pedido.numero, dataHoraBR(pedido.criadoEm)));
