@@ -55,37 +55,73 @@ button { font-family: inherit; cursor: pointer; }
 .cd-estado-box h1 { font-size: 20px; color: var(--text-primary); margin: 0 0 8px; }
 .cd-estado-box p { margin: 0; }
 
-/* ---- Header sticky ---- */
-.cd-header {
-  position: sticky; top: 0; z-index: 30;
-  background: rgba(15,17,23,0.85); backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-subtle);
+/* ---- Topo: capa (banner) + logo circular sobreposta ---- */
+.cd-topo {
+  position: relative;
+  margin-bottom: 56px; /* espaço para o overhang da logo */
 }
-.cd-header-in {
-  max-width: 1180px; margin: 0 auto; padding: 12px 16px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+.cd-capa {
+  height: 220px;
+  background: linear-gradient(135deg, var(--accent) 0%, #4B3399 45%, var(--secondary) 130%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
-.cd-marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cd-capa-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(15,17,23,0) 40%, rgba(15,17,23,0.55) 100%);
+  pointer-events: none;
+}
+.cd-logo-wrap {
+  position: absolute; left: 50%; bottom: -48px; transform: translateX(-50%);
+  z-index: 2;
+}
+.cd-logo {
+  width: 104px; height: 104px; border-radius: 50%;
+  background: var(--bg-elevated);
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  border: 4px solid var(--bg-primary);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.cd-logo:not(.tem-img) {
+  background: linear-gradient(135deg, var(--accent), var(--secondary));
+}
+#cdLogoFallback {
+  font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -1px; user-select: none;
+}
+
+/* ---- Identidade (nome + status) abaixo do hero ---- */
+.cd-ident {
+  max-width: 1180px; margin: 0 auto; padding: 0 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+}
 .cd-nome {
-  font-size: 17px; font-weight: 800; letter-spacing: -0.3px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .cd-status {
-  flex: none; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+  flex: none; font-size: 11px; font-weight: 700; padding: 3px 11px; border-radius: 20px;
   border: 1px solid transparent;
 }
 .cd-status.aberto  { background: var(--success-subtle); color: var(--success); border-color: rgba(34,197,94,0.3); }
 .cd-status.fechado { background: var(--error-subtle);   color: var(--error);   border-color: rgba(239,68,68,0.3); }
 
-.cd-cart-btn {
-  position: relative; flex: none; width: 42px; height: 42px; border-radius: var(--radius);
-  border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary);
-  display: inline-flex; align-items: center; justify-content: center; transition: border-color .15s;
+/* ---- Carrinho flutuante (sempre acessível) ---- */
+.cd-cart-fab {
+  position: fixed; top: 16px; right: 16px; z-index: 40;
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 1px solid var(--border); background: rgba(26,29,39,0.9); backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45); transition: border-color .15s, transform .15s;
 }
-.cd-cart-btn:hover { border-color: var(--accent); }
+.cd-cart-fab:hover { border-color: var(--accent); transform: translateY(-1px); }
 .cd-cart-count {
-  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px;
+  position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px;
   border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
+  border: 2px solid var(--bg-primary);
   display: inline-flex; align-items: center; justify-content: center;
 }
 
@@ -108,9 +144,10 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---- Categorias (chips roláveis, sticky) ---- */
 .cd-cats {
-  position: sticky; top: 67px; z-index: 20; display: flex; gap: 8px; overflow-x: auto;
-  padding: 10px 0; margin: 0 -16px 14px; padding-left: 16px; padding-right: 16px;
-  background: var(--bg-primary); scrollbar-width: none;
+  position: sticky; top: 0; z-index: 20; display: flex; gap: 8px; overflow-x: auto;
+  padding: 12px 16px; margin: 0 -16px 14px;
+  background: rgba(15,17,23,0.92); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle); scrollbar-width: none;
 }
 .cd-cats::-webkit-scrollbar { display: none; }
 .cd-chip {
@@ -190,6 +227,15 @@ button.cd-card { cursor: pointer; }
   .cd-card-rodape { flex-direction: column; align-items: stretch; gap: 8px; }
   .cd-card-rodape .cd-card-preco { justify-content: center; }
   .cd-card-rodape .cd-add { width: 100%; justify-content: center; }
+  .cd-capa { height: 150px; }
+  .cd-topo { margin-bottom: 48px; }
+  .cd-logo { width: 88px; height: 88px; }
+  .cd-logo-wrap { bottom: -40px; }
+  #cdLogoFallback { font-size: 34px; }
+  .cd-nome { font-size: 20px; }
+  .cd-cart-fab { width: 44px; height: 44px; }
+  /* folga à direita p/ os chips não ficarem sob o carrinho flutuante */
+  .cd-cats { padding-right: 64px; }
 }
 .cd-card-esgotado { opacity: 0.6; cursor: default; }
 .cd-card-kg { cursor: default; }
@@ -318,7 +364,7 @@ button.cd-hero { cursor: pointer; }
 @keyframes cd-slide { from { transform: translateX(20px); opacity: .6; } to { transform: none; opacity: 1; } }
 .cd-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 18px 12px; }
 .cd-sheet-head h2 { font-size: 19px; font-weight: 800; margin: 0; }
-.cd-x { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--bg-elevated); color: var(--text-secondary); font-size: 22px; line-height: 1; }
+.cd-x { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--bg-elevated); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; transition: color .15s; }
 .cd-x:hover { color: var(--text-primary); }
 .cd-sheet-itens { flex: 1; overflow-y: auto; padding: 8px 18px; }
 .cd-sheet-vazio { text-align: center; color: var(--text-secondary); padding: 48px 0; }
@@ -332,7 +378,7 @@ button.cd-hero { cursor: pointer; }
 .cd-linha-obs { font-size: 12px; color: var(--warning, #EAB308); margin: 2px 0 0; }
 .cd-linha-dir { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; }
 .cd-linha-preco { font-size: 14px; font-weight: 700; }
-.cd-lixo { border: none; background: transparent; color: var(--text-secondary); font-size: 18px; }
+.cd-lixo { border: none; background: transparent; color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; padding: 2px; transition: color .15s; }
 .cd-lixo:hover { color: var(--error); }
 .cd-sheet-rodape { padding: 16px 18px; border-top: 1px solid var(--border); }
 .cd-sheet-total { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -420,6 +466,7 @@ button.cd-hero { cursor: pointer; }
   display: flex; gap: 8px; align-items: flex-start; padding: 12px; border-radius: var(--radius);
   background: var(--error-subtle); color: var(--error); font-size: 13px; border: 1px solid rgba(239,68,68,0.3);
 }
+.cd-aviso-fechado svg { flex: none; margin-top: 1px; }
 .cd-hint { font-size: 12px; color: var(--text-secondary); margin: 4px 0 0; }
 .cd-hint.ok-hint { color: var(--success); }
 .cd-hint.erro-hint { color: var(--error); }
@@ -439,8 +486,9 @@ button.cd-hero { cursor: pointer; }
 /* ---- Frete por raio: status no checkout ---- */
 .cd-frete-status { margin: 8px 0 0; font-size: 13px; line-height: 1.45; }
 .cd-frete-calc { color: var(--text-secondary); }
-.cd-frete-ok { color: var(--success); font-weight: 600; }
-.cd-frete-fora { color: var(--error); font-weight: 600; }
+.cd-frete-ok { color: var(--success); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.cd-frete-fora { color: var(--error); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.cd-frete-ok svg, .cd-frete-fora svg { flex: none; }
 .cd-frete-erro { color: var(--error); }
 .cd-frete-retirar {
   display: inline-block; margin-left: 8px; padding: 4px 10px;

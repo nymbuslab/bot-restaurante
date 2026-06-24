@@ -417,3 +417,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - A Política ganhou o contato do Encarregado de dados (atendimento@nymbuslab.com.br), prazo de resposta de 15 dias, a lista completa de parceiros que recebem dados (envio de e-mails e cálculo de entrega) e o aviso de que o banco de dados fica nos EUA.
 - Ao criar a conta, passa a ficar registrado quando e qual versão dos termos foi aceita.
 - O cardápio digital agora tem um rodapé fixo com links para a Política de Privacidade e os Termos de Uso.
+
+## [0.46.0] — Identidade visual do cardápio (capa + logo)
+
+- Nova seção "Identidade visual" no painel (Configurações → Empresa): envie a **capa** (banner) e a **logo** do restaurante, com uma prévia de como vai ficar.
+- O cardápio digital agora abre com um **header personalizado**: capa no topo e logo circular — a página fica com a cara da sua marca. Sem capa/logo, usa um visual padrão elegante (não fica quebrado).
+- Ajustes no cardápio: a barra de categorias agora gruda corretamente no topo ao rolar (sem sobrepor o conteúdo) e os ícones de fechar e de remover item ficaram mais modernos.

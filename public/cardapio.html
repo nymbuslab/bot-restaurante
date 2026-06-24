@@ -22,18 +22,23 @@
 
     <!-- App principal -->
     <div id="cdMain" hidden>
-      <header class="cd-header">
-        <div class="cd-header-in">
-          <div class="cd-marca">
-            <span id="cdNome" class="cd-nome">Restaurante</span>
-            <span id="cdStatus" class="cd-status">—</span>
-          </div>
-          <button id="cdCartBtn" class="cd-cart-btn" type="button" aria-label="Ver carrinho">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            <span id="cdCartCount" class="cd-cart-count" hidden>0</span>
-          </button>
+      <header class="cd-topo">
+        <div id="cdCapa" class="cd-capa">
+          <div class="cd-capa-scrim"></div>
+        </div>
+        <div class="cd-logo-wrap">
+          <div id="cdLogo" class="cd-logo"><span id="cdLogoFallback" aria-hidden="true">R</span></div>
         </div>
       </header>
+      <div class="cd-ident">
+        <span id="cdNome" class="cd-nome">Restaurante</span>
+        <span id="cdStatus" class="cd-status">—</span>
+      </div>
+
+      <button id="cdCartBtn" class="cd-cart-fab" type="button" aria-label="Ver carrinho">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span id="cdCartCount" class="cd-cart-count" hidden>0</span>
+      </button>
 
       <main class="cd-main">
         <!-- View: cardápio -->
@@ -55,7 +60,7 @@
         <!-- View: sucesso -->
         <section id="cdViewSucesso" class="cd-view" hidden>
           <div class="cd-sucesso">
-            <div class="cd-sucesso-icon">✓</div>
+            <div class="cd-sucesso-icon"><svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>
             <h1>Pedido enviado!</h1>
             <p id="cdSucessoMsg">Recebemos seu pedido.</p>
             <button id="cdNovoPedido" class="cd-btn cd-btn-primary" type="button">Voltar ao cardápio</button>
@@ -75,7 +80,7 @@
       <aside class="cd-sheet-painel" role="dialog" aria-label="Seu pedido">
         <header class="cd-sheet-head">
           <h2>Seu pedido</h2>
-          <button class="cd-x" type="button" data-close="sheet" aria-label="Fechar">×</button>
+          <button class="cd-x" type="button" data-close="sheet" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </header>
         <div id="cdSheetItens" class="cd-sheet-itens"></div>
         <footer id="cdSheetRodape" class="cd-sheet-rodape" hidden>

@@ -12,6 +12,14 @@
   var money = function (reais) { return window.Dinheiro ? window.Dinheiro.comPrefixo(reais) : "R$ " + Number(reais || 0).toFixed(2); };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 
+  // Ícones SVG (Lucide-style, traço) — no padrão do resto do app, sem emojis.
+  var IC = {
+    x: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    lixo: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+    check: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+    alerta: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  };
+
   var SLUG = (location.pathname.match(/\/c\/([^/?#]+)/) || [])[1] || "";
   var TOKEN = new URLSearchParams(location.search).get("p") || "";
   var CHAVE_CART = "cd-cart:" + SLUG;
@@ -85,11 +93,31 @@
   function montar() {
     $("cdLoading").hidden = true;
     $("cdMain").hidden = false;
+    var nomeRest = DADOS.restaurante.nome || "Cardápio";
     document.title = "Cardápio · " + (DADOS.restaurante.nome || "");
-    $("cdNome").textContent = DADOS.restaurante.nome || "Cardápio";
+    $("cdNome").textContent = nomeRest;
     var st = $("cdStatus");
     st.textContent = DADOS.aberto ? "Aberto" : "Fechado";
     st.className = "cd-status " + (DADOS.aberto ? "aberto" : "fechado");
+
+    // Identidade visual: capa (fundo) + logo circular. Sem capa → gradiente da
+    // marca; sem logo → inicial do restaurante sobre o gradiente.
+    var capa = DADOS.restaurante.capa || "";
+    var capaEl = $("cdCapa");
+    if (capa) { capaEl.style.backgroundImage = 'url("' + capa + '")'; capaEl.classList.add("tem-img"); }
+    else { capaEl.style.backgroundImage = ""; capaEl.classList.remove("tem-img"); }
+    var logo = DADOS.restaurante.logo || "";
+    var logoEl = $("cdLogo"), fb = $("cdLogoFallback");
+    if (logo) {
+      logoEl.style.backgroundImage = 'url("' + logo + '")';
+      logoEl.classList.add("tem-img");
+      fb.hidden = true;
+    } else {
+      logoEl.style.backgroundImage = "";
+      logoEl.classList.remove("tem-img");
+      fb.textContent = (nomeRest.trim()[0] || "R").toUpperCase();
+      fb.hidden = false;
+    }
 
     catAtiva = null; // abre na aba "Todos"
     renderCategorias();
@@ -329,7 +357,7 @@
     var ops = it.opcionais || [];
     modalItem = it; modalQtd = 1; modalOps = ops.map(function () { return 0; });
     var html =
-      '<button class="cd-x" type="button" data-close="modal" aria-label="Fechar">×</button>' +
+      '<button class="cd-x" type="button" data-close="modal" aria-label="Fechar">' + IC.x + '</button>' +
       (it.imagem ? '<img class="cd-modal-img" src="' + esc(it.imagem) + '" alt="" />' : "") +
       "<h2>" + esc(it.nome) + "</h2>" +
       (it.desc ? '<p class="cd-modal-desc">' + esc(it.desc) + "</p>" : "") +
@@ -450,7 +478,7 @@
           "</div>" +
         "</div>" +
         '<div class="cd-linha-dir">' +
-          '<button class="cd-lixo" type="button" data-rm="' + idx + '" aria-label="Remover">🗑</button>' +
+          '<button class="cd-lixo" type="button" data-rm="' + idx + '" aria-label="Remover">' + IC.lixo + '</button>' +
           '<span class="cd-linha-preco">' + money(precoLinha(l)) + "</span>" +
         "</div>";
       cont.appendChild(div);
@@ -528,7 +556,7 @@
       '<button id="cdVoltar" class="cd-voltar" type="button">← Voltar ao cardápio</button>' +
       '<h1 class="cd-title">Finalizar pedido</h1>' +
       '<p class="cd-sub">Confirme seus dados — o pedido vai pro WhatsApp do restaurante.</p>' +
-      (DADOS.aberto ? "" : '<div class="cd-aviso-fechado" style="margin-bottom:14px">⚠ O restaurante está <strong>fechado</strong> agora — não é possível enviar o pedido.</div>') +
+      (DADOS.aberto ? "" : '<div class="cd-aviso-fechado" style="margin-bottom:14px">' + IC.alerta + ' <span>O restaurante está <strong>fechado</strong> agora — não é possível enviar o pedido.</span></div>') +
       '<div class="cd-resumo"><h2>Resumo</h2>' + resumo +
         '<div class="cd-resumo-tax" id="cdLinhaTaxa"></div>' +
         '<div class="cd-resumo-tot"><span>Total</span><span id="cdResumoTotal"></span></div>' +
@@ -634,12 +662,12 @@
     if (!st) return;
     if (j && j.entrega_disponivel) {
       var km = j.distancia_km != null ? String(j.distancia_km).replace(".", ",") : "?";
-      st.innerHTML = '<span class="cd-frete-ok">✓ Entrega disponível · ~' + km + " km · Frete " + money(Number(j.valor_frete) || 0) + "</span>";
+      st.innerHTML = '<span class="cd-frete-ok">' + IC.check + ' Entrega disponível · ~' + km + " km · Frete " + money(Number(j.valor_frete) || 0) + "</span>";
       return;
     }
     var msg = (j && j.mensagem) || "Endereço fora da área de entrega.";
     var extra = (j && j.foraDaArea === "retirada") ? ' <button type="button" class="cd-frete-retirar" id="cdBtnRetirar">Mudar para retirada</button>' : "";
-    st.innerHTML = '<span class="cd-frete-fora">⚠ ' + esc(msg) + "</span>" + extra;
+    st.innerHTML = '<span class="cd-frete-fora">' + IC.alerta + " " + esc(msg) + "</span>" + extra;
     var br = $("cdBtnRetirar");
     if (br) br.addEventListener("click", function () {
       tipoEntrega = "Retirada";

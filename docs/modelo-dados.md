@@ -73,6 +73,10 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
 
 - `GET /api/c/:slug` (público, rate-limited): **projeção whitelist** do cardápio (só itens
   disponíveis e campos públicos) + restaurante/aberto/pagamentos/taxa. Nunca o jsonb cru.
+  O objeto `restaurante` traz `nome/telefone/endereco/horario` + **`logo`/`capa`** (identidade
+  visual — URLs de imagens no Storage, definidas no painel em Configurações → Empresa); o header
+  do cardápio mostra a **capa full-width** no topo + **logo circular** centralizada (fallback:
+  gradiente da marca + inicial quando faltam).
 - `POST /api/c/:slug/pedido` (público): valida, **recalcula** itens/total a partir do cardápio
   (fonte de verdade — ignora preço/nome do cliente; opcional desconhecido é descartado; item
   indisponível rejeita), salva via `salvarPedido` e dispara a confirmação pelo bot (`token` →

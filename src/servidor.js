@@ -457,6 +457,8 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
         telefone: r.telefone || "",
         endereco: r.endereco || "",
         horario: r.horario || "",
+        logo: r.logo || "",
+        capa: r.capa || "",
       },
       // Frete: modo + taxa fixa; no raio NÃO expõe faixas/coords (privado) —
       // só o modo e a política de fora-da-área; o valor sai do POST .../frete.

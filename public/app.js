@@ -89,6 +89,10 @@ let editorFotoUrl = "";
 let editorComposicao = [];
 let editorOpcionais = [];
 
+// Identidade visual do cardápio (capa + logo) — estado das prévias
+let identCapaUrl = "";
+let identLogoUrl = "";
+
 // ============================================================
 // TOAST (substitui flash)
 // ============================================================
@@ -1367,6 +1371,66 @@ $("editor-comp-add-subgrupo").addEventListener("click", () => {
 });
 
 // ============================================================
+// IDENTIDADE VISUAL DO CARDÁPIO (capa + logo)
+// Reusa POST /api/imagem (Storage). As URLs ficam na config (restaurante.capa/logo).
+// ============================================================
+function atualizarPreviewIdentidade() {
+  const capaImg = $("identCapaImg"), capaPh = $("identCapaPh");
+  if (identCapaUrl) { capaImg.src = identCapaUrl; capaImg.hidden = false; capaPh.hidden = true; }
+  else { capaImg.removeAttribute("src"); capaImg.hidden = true; capaPh.hidden = false; }
+  $("identCapaBtn").textContent = identCapaUrl ? "Trocar capa" : "Enviar capa";
+
+  const logoImg = $("identLogoImg"), logoPh = $("identLogoPh");
+  if (identLogoUrl) { logoImg.src = identLogoUrl; logoImg.hidden = false; logoPh.hidden = true; }
+  else { logoImg.removeAttribute("src"); logoImg.hidden = true; logoPh.hidden = false; logoPh.textContent = (($("cfgNome").value || "?").trim()[0] || "?").toUpperCase(); }
+  $("identLogoBtn").textContent = identLogoUrl ? "Trocar logo" : "Enviar logo";
+}
+
+// Upload genérico de uma imagem da identidade → devolve a URL pública (ou null).
+async function enviarImagemIdentidade(file, btn, rotulo) {
+  if (!file) return null;
+  const txtOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  try {
+    const form = new FormData();
+    form.append("imagem", file);
+    const r = await fetch("/api/imagem", { method: "POST", headers: { Authorization: "Bearer " + token }, body: form });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Erro ao enviar a " + rotulo + ".", "erro");
+      return null;
+    }
+    const { url } = await r.json();
+    return url;
+  } catch {
+    toast("Erro de rede ao enviar a " + rotulo + ".", "erro");
+    return null;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txtOriginal;
+  }
+}
+
+$("identCapaBtn").addEventListener("click", () => $("identCapaInput").click());
+$("identCapaInput").addEventListener("change", async () => {
+  const file = $("identCapaInput").files[0];
+  $("identCapaInput").value = "";
+  const url = await enviarImagemIdentidade(file, $("identCapaBtn"), "capa");
+  if (url) { identCapaUrl = url; atualizarPreviewIdentidade(); }
+});
+$("identCapaRemover").addEventListener("click", () => { identCapaUrl = ""; atualizarPreviewIdentidade(); });
+
+$("identLogoBtn").addEventListener("click", () => $("identLogoInput").click());
+$("identLogoInput").addEventListener("change", async () => {
+  const file = $("identLogoInput").files[0];
+  $("identLogoInput").value = "";
+  const url = await enviarImagemIdentidade(file, $("identLogoBtn"), "logo");
+  if (url) { identLogoUrl = url; atualizarPreviewIdentidade(); }
+});
+$("identLogoRemover").addEventListener("click", () => { identLogoUrl = ""; atualizarPreviewIdentidade(); });
+
+// ============================================================
 // CONSTRUTOR DE COMPOSIÇÃO
 // ============================================================
 function parsearComposicao(texto) {
@@ -1641,6 +1705,10 @@ function preencherConfig() {
   const c = configAtual;
   $("cfgNome").value = c.restaurante.nome || "";
   $("cfgTelefone").value = c.restaurante.telefone || "";
+  // Identidade visual (capa + logo do cardápio web)
+  identCapaUrl = c.restaurante.capa || "";
+  identLogoUrl = c.restaurante.logo || "";
+  atualizarPreviewIdentidade();
   // Texto de horário é gerado automaticamente da tabela (campo read-only).
   $("cfgHorario").value = resumirHorarios(c.horarios || {}) || c.restaurante.horario || "";
   // Endereço estruturado (CEP + autofill). Tenants antigos só têm a string `endereco`.
@@ -1834,6 +1902,9 @@ $("cfgImprConectar").addEventListener("click", async () => {
 $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.restaurante.nome = $("cfgNome").value;
   configAtual.restaurante.telefone = $("cfgTelefone").value;
+  // Identidade visual (capa + logo do cardápio web)
+  configAtual.restaurante.capa = identCapaUrl || "";
+  configAtual.restaurante.logo = identLogoUrl || "";
   // Horário exibido ao cliente é sempre o gerado da tabela (auto).
   configAtual.restaurante.horario = resumirHorarios(lerHorariosDoDOM());
   // Endereço: recompõe a string a partir dos campos estruturados. Se nenhum

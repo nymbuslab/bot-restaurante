@@ -189,6 +189,48 @@
 
       <!-- ============ SUB-ABA: EMPRESA ============ -->
       <div class="cfg-sub ativa" id="cfg-sub-empresa">
+        <!-- Identidade visual (capa + logo do cardápio web) -->
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <h3>Identidade visual</h3>
+          </div>
+          <p class="sub cfg-secao-sub">A capa e a logo aparecem no topo do seu cardápio web, para o cliente. A prévia abaixo mostra como vai ficar.</p>
+          <div class="card">
+            <div class="ident-preview">
+              <div class="ident-capa" id="identCapaBox">
+                <img id="identCapaImg" alt="Capa do cardápio" hidden />
+                <div id="identCapaPh" class="ident-capa-ph">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span>Sem capa</span>
+                </div>
+              </div>
+              <div class="ident-logo" id="identLogoBox">
+                <img id="identLogoImg" alt="Logo" hidden />
+                <span id="identLogoPh" class="ident-logo-ph" aria-hidden="true">?</span>
+              </div>
+            </div>
+            <div class="ident-acoes">
+              <div class="ident-grupo">
+                <div class="ident-grupo-cab"><strong>Capa</strong><span class="ident-dica">Recomendado: 1200×400px (larga)</span></div>
+                <div class="ident-botoes">
+                  <button class="secundario mini" id="identCapaBtn" type="button">Enviar capa</button>
+                  <button class="perigo mini" id="identCapaRemover" type="button">Remover</button>
+                </div>
+                <input type="file" id="identCapaInput" accept="image/jpeg,image/png,image/webp" />
+              </div>
+              <div class="ident-grupo">
+                <div class="ident-grupo-cab"><strong>Logo</strong><span class="ident-dica">Recomendado: 500×500px (quadrada)</span></div>
+                <div class="ident-botoes">
+                  <button class="secundario mini" id="identLogoBtn" type="button">Enviar logo</button>
+                  <button class="perigo mini" id="identLogoRemover" type="button">Remover</button>
+                </div>
+                <input type="file" id="identLogoInput" accept="image/jpeg,image/png,image/webp" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Dados do Restaurante -->
         <div class="cfg-secao">
           <div class="cfg-secao-cabeca">
