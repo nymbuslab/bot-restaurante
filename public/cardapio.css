@@ -180,10 +180,15 @@ button.cd-card { cursor: pointer; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .cd-card-rodape { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cd-card-preco { font-size: 16px; font-weight: 800; color: var(--accent-fg); white-space: nowrap; }
-/* mobile 2-up: empilha preço + botão (largura total) p/ o valor nunca quebrar */
+.cd-card-preco {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 16px; font-weight: 800; color: var(--accent-fg); white-space: nowrap;
+}
+.cd-card-preco .cd-preco-ico { flex: none; opacity: 0.9; }
+/* mobile 2-up: empilha preço + botão (largura total) p/ o valor nunca quebrar; preço centralizado */
 @media (max-width: 699px) {
   .cd-card-rodape { flex-direction: column; align-items: stretch; gap: 8px; }
+  .cd-card-rodape .cd-card-preco { justify-content: center; }
   .cd-card-rodape .cd-add { width: 100%; justify-content: center; }
 }
 .cd-card-esgotado { opacity: 0.6; cursor: default; }
