@@ -37,7 +37,15 @@ _(nada no momento)_
 
 - [x] **L10 [ID-009]** IDs sequenciais avaliados: `slug` é público por design; `pedidos.numero` é sequencial só como referência, **sem rota pública de leitura por número** (toda leitura exige `exigeAuth` + isolamento por `empresa_id`). **Decisão: mantido como está** — documentado em `docs/lgpd/ropa.md` (seção "Identificadores"). — 2026-06-24
 
-> **Adequação LGPD (Fases 1–4): concluída.** Próximo passo do usuário: rodar `/lgpd-checker` para conferir o relatório. Permanece a **revisão jurídica** (pendência standing) e as **decisões operacionais**: região do Supabase (EUA→Brasil, se desejado) e confirmar DPAs/região de Resend e Geoapify.
+> **Adequação LGPD — Fases 1–4 concluídas (2026-06-24).** Reanálise do `/lgpd-checker`: de ❌ NÃO CONFORME (71) → ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Tudo que dependia de código/documentação está fechado.
+
+**Fase 5 — pendências futuras (não bloqueiam; ficam para depois)**
+
+- [ ] **R-03 (código)** Job de retenção da trilha de auditoria: apagar registros de `auditoria` com +24 meses (junto dos jobs de retenção no `index.js`). _Único item de código restante._
+- [ ] **R-01 (operacional)** Confirmar/arquivar os DPAs dos subprocessadores (Supabase, Stripe, Resend, Geoapify) e anotar em `docs/lgpd/subprocessadores.md`.
+- [ ] **R-02 (operacional)** Confirmar a região de Resend e Geoapify e registrar no doc.
+- [ ] **O-01 (jurídico)** Revisão dos textos (Termos/Privacidade) por advogado — casa com a pendência standing de revisão legal.
+- [ ] **(decisão) Região do Supabase = EUA** — migrar pra Brasil (`sa-east-1`) é opcional; hoje está legal com a divulgação na Política.
 
 ### Pendências operacionais (standing)
 
