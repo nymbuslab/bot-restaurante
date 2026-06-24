@@ -279,6 +279,15 @@ button.cd-hero { cursor: pointer; }
 
 .cd-vazio { text-align: center; color: var(--text-secondary); padding: 40px 0; }
 
+/* ---- Rodapé (links legais) ---- */
+.cd-rodape {
+  max-width: 1180px; margin: 0 auto; padding: 28px 16px calc(40px + env(safe-area-inset-bottom));
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border-subtle);
+}
+.cd-rodape a { color: var(--text-secondary); text-decoration: none; }
+.cd-rodape a:hover { color: var(--text-primary); text-decoration: underline; }
+
 /* ---- Botões genéricos ---- */
 .cd-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
