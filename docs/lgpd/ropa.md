@@ -42,3 +42,14 @@
 Senhas com hash (Supabase Auth), JWT assinado, isolamento por tenant + RLS deny-all, HTTPS,
 rate limiting, segredos em variáveis de ambiente, sem PII em logs. Detalhe técnico no relatório
 do `lgpd-checker` e em [../auditoria-seguranca.md](../auditoria-seguranca.md).
+
+## Identificadores (privacy by design)
+
+- **`slug`** (identificador do restaurante) é **público por design** (vai na URL do cardápio
+  `/c/:slug`); não é dado pessoal de consumidor.
+- **`pedidos.numero`** é **sequencial por restaurante**, para servir de referência legível
+  ("pedido #123"). **Não há risco de enumeração:** a única rota pública de pedido é a de
+  **criação** (`POST /api/c/:slug/pedido`); toda leitura de pedido exige login (`exigeAuth`) e é
+  isolada por `empresa_id`. A confirmação ao cliente vai pelo WhatsApp (vínculo por token), não por
+  URL numerada. **Decisão (2026-06-24): mantido como está** — número sequencial é adequado e não
+  expõe dados de terceiros.

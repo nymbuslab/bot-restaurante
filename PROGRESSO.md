@@ -35,7 +35,9 @@ _(nada no momento)_
 
 **Fase 4 — Observação (P3)**
 
-- [ ] **L10 [ID-009]** IDs sequenciais — avaliar e documentar a decisão (provável "aceito; `slug` é a chave pública, `numero` não é exposto sem auth").
+- [x] **L10 [ID-009]** IDs sequenciais avaliados: `slug` é público por design; `pedidos.numero` é sequencial só como referência, **sem rota pública de leitura por número** (toda leitura exige `exigeAuth` + isolamento por `empresa_id`). **Decisão: mantido como está** — documentado em `docs/lgpd/ropa.md` (seção "Identificadores"). — 2026-06-24
+
+> **Adequação LGPD (Fases 1–4): concluída.** Próximo passo do usuário: rodar `/lgpd-checker` para conferir o relatório. Permanece a **revisão jurídica** (pendência standing) e as **decisões operacionais**: região do Supabase (EUA→Brasil, se desejado) e confirmar DPAs/região de Resend e Geoapify.
 
 ### Pendências operacionais (standing)
 
