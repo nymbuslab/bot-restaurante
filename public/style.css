@@ -4564,3 +4564,158 @@ html.embed, html.embed body { background: var(--bg-primary); }
   max-height: 320px; overflow: auto;
   background: #fff; color: #000; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
 }
+
+/* ============================================================
+   PDV — vendas no local (Plano Completo)
+   ============================================================ */
+.pdv-semcaixa { text-align: center; padding: 48px 16px; color: var(--text-secondary); }
+.pdv-semcaixa h3 { margin: 10px 0 4px; }
+.pdv-semcaixa .sub { max-width: 420px; margin: 0 auto 16px; }
+
+/* Layout: produtos + carrinho */
+/* Sem a animação de entrada NESTE container: o transform do fadeSlide viraria
+   containing block do carrinho fixed (folha do mobile ancoraria errado). */
+#pdvConteudo { animation: none; }
+.pdv { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }
+.pdv-produtos { min-width: 0; }
+
+.pdv-busca { position: relative; margin-bottom: 12px; }
+.pdv-busca svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
+.pdv-busca input { width: 100%; padding: 11px 14px 11px 38px; }
+
+.pdv-cats { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 12px; scrollbar-width: none; }
+.pdv-cats::-webkit-scrollbar { display: none; }
+.pdv-chip {
+  flex: none; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border);
+}
+.pdv-chip:hover { color: var(--text-primary); background: var(--bg-elevated); }
+.pdv-chip.ativo { background: var(--accent); border-color: transparent; color: #fff; }
+
+.pdv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.pdv-tile {
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left;
+  min-height: 84px; padding: 14px; border-radius: var(--radius);
+  background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary);
+  position: relative; transition: border-color .15s, transform .08s, box-shadow .15s;
+}
+.pdv-tile:hover { background: var(--bg-surface); border-color: var(--accent); box-shadow: 0 6px 18px rgba(var(--accent-rgb), .25); }
+.pdv-tile-nome { font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+.pdv-tile-preco { margin-top: auto; font-size: 15px; font-weight: 800; color: var(--accent-fg); }
+.pdv-tile-preco small { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.pdv-tile-selo { position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700; color: var(--error); background: var(--error-subtle); padding: 2px 7px; border-radius: 20px; }
+.pdv-tile.esgotado { opacity: .55; cursor: not-allowed; }
+.pdv-tile.esgotado:hover { border-color: var(--border); box-shadow: none; }
+.pdv-vazio { color: var(--text-secondary); text-align: center; padding: 32px 0; font-size: 13px; }
+
+/* Carrinho (painel no desktop) */
+.pdv-carrinho {
+  position: sticky; top: 16px; display: flex; flex-direction: column;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+  max-height: calc(100vh - 110px); overflow: hidden;
+}
+.pdv-cart-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; }
+.pdv-cart-head h3 { margin: 0; font-size: 15px; }
+.pdv-cart-fechar { display: none; background: var(--bg-elevated); color: var(--text-secondary); border: none; width: 32px; height: 32px; border-radius: 50%; padding: 0; align-items: center; justify-content: center; }
+.pdv-cliente { display: flex; flex-direction: column; gap: 4px; padding: 0 16px 8px; }
+.pdv-cliente span { font-size: 11px; color: var(--text-secondary); }
+.pdv-cart-itens { flex: 1; overflow-y: auto; padding: 6px 16px; min-height: 80px; }
+.pdv-cart-vazio { color: var(--text-secondary); text-align: center; font-size: 13px; padding: 28px 8px; }
+
+.pdv-linha { display: flex; gap: 8px; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); background: var(--bg-elevated); margin-bottom: 8px; }
+.pdv-linha-corpo { flex: 1; min-width: 0; cursor: pointer; }
+.pdv-linha-nome { display: block; font-size: 13.5px; font-weight: 600; }
+.pdv-linha-ops, .pdv-linha-obs { display: block; font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+.pdv-linha-obs { color: var(--accent-fg); }
+.pdv-linha-dir { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.pdv-linha-preco { font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.pdv-linha-kg { font-size: 12px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; border: 1px solid var(--border); border-radius: 20px; }
+.pdv-linha-rm { background: transparent; color: var(--text-secondary); border: none; padding: 2px; }
+.pdv-linha-rm:hover { background: transparent; color: var(--error); }
+
+/* Stepper (qtd / opcionais) */
+.pdv-stepper { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+.pdv-stepper button { background: var(--bg-elevated); color: var(--text-primary); border: none; width: 32px; height: 32px; padding: 0; font-size: 16px; border-radius: 0; }
+.pdv-stepper button:hover { background: var(--bg-overlay); }
+.pdv-stepper span { min-width: 30px; text-align: center; font-size: 13.5px; font-weight: 700; }
+.pdv-stepper.sm button { width: 26px; height: 26px; font-size: 14px; }
+.pdv-stepper.sm span { min-width: 24px; font-size: 12.5px; }
+
+.pdv-cart-rodape { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
+.pdv-tot-linha { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.pdv-tot-total { font-size: 16px; color: var(--text-primary); margin: 4px 0 12px; }
+.pdv-tot-total strong { font-size: 20px; }
+.pdv-cobrar { width: 100%; padding: 13px; font-size: 15px; }
+
+/* FAB do carrinho (mobile) */
+.pdv-fab {
+  display: none; position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 45;
+  align-items: center; gap: 10px; padding: 14px 18px; border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4); font-size: 15px;
+}
+.pdv-fab.oculto { display: none !important; }
+.pdv-fab-count { background: rgba(255,255,255,.22); border-radius: 20px; padding: 2px 9px; font-size: 13px; font-weight: 800; }
+.pdv-fab strong { margin-left: auto; font-size: 16px; }
+
+/* Modais do PDV (item + pagamento) */
+.pdv-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; } /* acima do bottom-nav mobile (z 100) */
+.pdv-modal[hidden] { display: none !important; }
+@media (min-width: 600px) { .pdv-modal { align-items: center; padding: 20px; } }
+.pdv-modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+.pdv-modal-caixa {
+  position: relative; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 22px 20px;
+}
+@media (min-width: 600px) { .pdv-modal-caixa { border-radius: var(--radius-lg); } }
+.pdv-modal-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: var(--bg-elevated); color: var(--text-secondary); border: none; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.pdv-modal-x:hover { background: var(--bg-overlay); color: var(--text-primary); }
+.pdv-modal-titulo { margin: 0 36px 14px 0; font-size: 18px; }
+.pdv-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.pdv-campo > span { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.pdv-campo .pdv-stepper { align-self: flex-start; }
+.pdv-ops { margin-bottom: 14px; }
+.pdv-ops-tit { display: block; font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-bottom: 8px; }
+.pdv-op { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
+.pdv-op-nome { flex: 1; font-size: 13.5px; font-weight: 600; }
+.pdv-op-preco { font-size: 12.5px; color: var(--accent-fg); font-weight: 600; }
+.pdv-modal-add { width: 100%; padding: 13px; font-size: 15px; margin-top: 4px; }
+
+/* Modal de pagamento */
+.pdv-pagar-caixa { max-width: 480px; }
+.pdv-pg-resumo { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.pdv-pg-total { font-size: 16px; color: var(--text-primary); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+.pdv-pg-total strong { font-size: 22px; color: var(--accent-fg); }
+.pdv-desc-row { display: flex; gap: 8px; }
+.pdv-desc-tipo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.pdv-desc-tipo button { background: var(--bg-elevated); color: var(--text-secondary); border: none; width: 44px; padding: 0; border-radius: 0; font-size: 13px; }
+.pdv-desc-tipo button.ativo { background: var(--accent); color: #fff; }
+.pdv-desc-row input { flex: 1; }
+.pdv-pg-formas { margin: 14px 0 4px; }
+.pdv-pg-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.pdv-pg-row .pdv-pg-forma { flex: 1; }
+.pdv-pg-row .pdv-pg-valor { width: 120px; }
+.pdv-pg-row .pdv-pg-rm { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); width: 38px; padding: 0; font-size: 18px; }
+.pdv-pg-add { background: transparent; color: var(--accent-fg); border: 1px dashed var(--border); width: 100%; padding: 9px; font-size: 13px; }
+.pdv-pg-add:hover { background: var(--accent-subtle); }
+.pdv-pg-restante { font-size: 13px; text-align: right; margin: 6px 0; color: var(--text-secondary); }
+.pdv-pg-restante .ok { color: var(--success); font-weight: 700; }
+.pdv-pg-restante .erro { color: var(--error); font-weight: 700; }
+.pdv-troco-val { font-size: 14px; margin-top: 6px; color: var(--text-primary); }
+.pdv-pg-finalizar { width: 100%; padding: 14px; font-size: 15px; margin-top: 10px; }
+
+/* Responsivo: carrinho vira folha no mobile */
+@media (max-width: 860px) {
+  .pdv { grid-template-columns: 1fr; }
+  .pdv-carrinho {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 110; max-height: 85vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: translateY(100vh); transition: transform .25s ease; box-shadow: 0 -8px 30px rgba(0,0,0,.5);
+  }
+  .pdv-carrinho.aberto { transform: translateY(0); }
+  .pdv-cart-fechar { display: inline-flex; }
+  .pdv-fab { display: inline-flex; }
+}
+/* No bottom-nav (≤640px) o FAB sobe para não cobrir a barra de navegação */
+@media (max-width: 640px) {
+  .pdv-fab { bottom: 72px; z-index: 90; }
+}

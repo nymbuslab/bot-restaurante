@@ -89,6 +89,60 @@ async function receberPedido(dir, pedidoId, { forma, valor }) {
   }
 }
 
+// PDV — venda no local: cria o pedido (tipo "Balcão", já recebido) e lança UM
+// movimento de recebimento POR FORMA de pagamento, tudo numa transação (a venda
+// nunca fica meio-salva). Exige caixa aberto. `venda` já vem RECALCULADA pela
+// rota (src/pdv.js): { cliente, itens, total, desconto, pagamentos:[{forma,valor}],
+// pagamentoResumo }. A baixa de estoque é feita FORA daqui (best-effort, na rota,
+// igual ao cardápio web). Retorna o pedido salvo (p/ impressão).
+async function venderLocal(dir, venda) {
+  const empId = await empresaId(dir);
+  const caixa = await caixaAberto(dir);
+  if (!caixa) throw new Error("Abra o caixa antes de vender no PDV.");
+  const itens = Array.isArray(venda.itens) ? venda.itens : [];
+  if (!itens.length) throw new Error("A venda está vazia.");
+  const cliente = (venda.cliente || "").trim() || "Balcão";
+  const total = Number(venda.total) || 0;
+  const desconto = Number(venda.desconto) || 0;
+  const pagamentos = Array.isArray(venda.pagamentos) ? venda.pagamentos : [];
+
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const ped = await client.query(
+      `INSERT INTO pedidos
+         (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, recebido_em)
+       VALUES
+         ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
+          $2, '', '', 'Balcão', '', $3, 0, $4::jsonb, $5, $6, $7, now())
+       RETURNING id, numero, criado_em, recebido_em`,
+      [empId, cliente, venda.pagamentoResumo || "", JSON.stringify(itens), total, (venda.observacao || ""), desconto]
+    );
+    const row = ped.rows[0];
+    for (const p of pagamentos) {
+      await client.query(
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
+        [caixa.id, empId, (p.forma || "Outros"), Number(p.valor) || 0, row.id]
+      );
+    }
+    await client.query("COMMIT");
+    return {
+      id: row.id, numero: row.numero, status: "novo",
+      cliente, telefone: "", tipoEntrega: "Balcão", endereco: "",
+      pagamento: venda.pagamentoResumo || "", taxaEntrega: 0,
+      itens, total, desconto, observacao: venda.observacao || "",
+      criadoEm: new Date(row.criado_em).toISOString(),
+      recebidoEm: new Date(row.recebido_em).toISOString(),
+    };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 async function estornarRecebimento(dir, pedidoId) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
@@ -303,6 +357,6 @@ async function detalheCaixa(dir, id) {
 function esquecer(slug) { delete idCache[slug]; }
 
 module.exports = {
-  caixaAberto, abrirCaixa, receberPedido, estornarRecebimento, registrarMovimento,
+  caixaAberto, abrirCaixa, receberPedido, venderLocal, estornarRecebimento, registrarMovimento,
   resumo, fecharCaixa, listarCaixas, detalheCaixa, esquecer,
 };

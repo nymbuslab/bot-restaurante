@@ -31,10 +31,17 @@
     return String(Math.round(n));
   }
   // Soma a quantidade pedida por id (mesmo item em linhas diferentes do carrinho).
-  function _agregar(itensPayload) {
+  // Com `mapa` (id->item) respeita a unidade: kg soma peso decimal, un soma inteiro.
+  function _agregar(itensPayload, mapa) {
     const ped = {};
     (itensPayload || []).forEach(function (p) {
-      if (p && p.id != null) ped[p.id] = (ped[p.id] || 0) + Math.max(1, parseInt(p.qtd, 10) || 1);
+      if (!p || p.id == null) return;
+      const base = mapa && mapa[p.id];
+      const ehKg = base && base.unidade === "kg";
+      const q = ehKg
+        ? Math.max(0, parseFloat(String(p.qtd).replace(",", ".")) || 0)
+        : Math.max(1, parseInt(p.qtd, 10) || 1);
+      ped[p.id] = (ped[p.id] || 0) + q;
     });
     return ped;
   }
@@ -47,25 +54,35 @@
   }
   function validarEstoque(cardapio, itensPayload) {
     const mapa = _mapaItens(cardapio);
-    const ped = _agregar(itensPayload);
+    const ped = _agregar(itensPayload, mapa);
     for (const id in ped) {
       const base = mapa[id];
       if (!base) continue;
       const st = statusEstoque(base);
       if (!st.controlado) continue;
       if (st.quantidade === 0) return { ok: false, erro: base.nome + " está esgotado." };
-      if (ped[id] > st.quantidade) return { ok: false, erro: "Restam só " + st.quantidade + " unidades de " + base.nome + "." };
+      if (ped[id] > st.quantidade) {
+        const resta = st.unidade === "kg"
+          ? formatarQtd(st.quantidade, "kg") + " kg"
+          : st.quantidade + " unidades";
+        return { ok: false, erro: "Restam só " + resta + " de " + base.nome + "." };
+      }
     }
     return { ok: true, erro: "" };
   }
   function aplicarBaixa(cardapio, itensPayload) {
-    const ped = _agregar(itensPayload);
+    const mapa = _mapaItens(cardapio);
+    const ped = _agregar(itensPayload, mapa);
     const categorias = ((cardapio && cardapio.categorias) || []).map(function (c) {
       return Object.assign({}, c, {
         itens: ((c && c.itens) || []).map(function (it) {
           if (!it || !temControle(it) || !ped[it.id]) return it;
-          const q = Math.max(0, parseInt(it.estoque, 10) || 0);
-          return Object.assign({}, it, { estoque: Math.max(0, q - ped[it.id]) });
+          const ehKg = it.unidade === "kg";
+          const q = ehKg
+            ? Math.max(0, parseFloat(String(it.estoque).replace(",", ".")) || 0)
+            : Math.max(0, parseInt(it.estoque, 10) || 0);
+          const novo = Math.max(0, q - ped[it.id]);
+          return Object.assign({}, it, { estoque: ehKg ? Math.round(novo * 1000) / 1000 : novo });
         }),
       });
     });

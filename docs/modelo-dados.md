@@ -17,8 +17,11 @@
 id (bigint), empresa_id (uuid→empresas), numero (sequencial por empresa),
 status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
 taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
-avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa)
+avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa),
+desconto (numeric; abatido na venda — usado pelo PDV; web fica 0)
 ```
+`tipo_entrega` = `Entrega` | `Retirada` | **`Balcão`** (venda do PDV — nasce já
+`recebido_em`, sem telefone/endereço). No PDV o `total` é o líquido (subtotal − `desconto`).
 Colunas em snake_case no banco; `pedidos.js` mapeia para camelCase (`tipoEntrega`,
 `criadoEm`, etc.) que o painel/bot esperam. `avisado_em` = timestamp do aviso
 "pedido pronto" (null se não avisado). `observacao` = observação do **pedido** (informada
@@ -83,6 +86,17 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
   `chatId`, com fallback no telefone). Helpers puros em `src/cardapio-web.js` (`projetarCardapio`,
   `recalcularItens`, `assinarToken`/`verificarToken`).
 - Página vanilla `public/cardapio.{html,js,css}` (CSP-safe, reusa `dinheiro.js`/`endereco-cep.js`).
+
+## PDV — vendas no local (Plano Completo)
+
+- `POST /api/pdv/vender` (`exigeAuth` + `exigePdv`): registra uma **venda de balcão**. Fluxo
+  atômico — **recalcula** a venda pelo cardápio (`src/pdv.js`: `recalcularVenda` com kg+opcionais),
+  aplica desconto (`aplicarDesconto`), valida o split (`validarPagamentos`) e chama
+  `caixa.venderLocal` (transação: insere `pedidos` tipo `Balcão` já `recebido_em` + **1
+  `caixa_movimentos` por forma** de pagamento). Depois dá **baixa de estoque** (`estoque.aplicarBaixa`,
+  best-effort, igual ao web). Exige **caixa aberto** (senão erro). Devolve o pedido (p/ impressão).
+- Helpers PUROS em `src/pdv.js` (testados em `test/pdv.test.js`); tela em `public/app.js`
+  (`carregarPdv`/`renderPdv*`), aba **PDV** no painel. Gate `temPdv` (front + back).
 
 ## Caixa do dia (Plano Completo)
 

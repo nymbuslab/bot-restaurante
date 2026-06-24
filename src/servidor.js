@@ -29,6 +29,7 @@ const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
+const pdv = require("./pdv");
 
 const app = express();
 
@@ -1466,6 +1467,56 @@ app.get("/api/caixa/:id", exigeAuth, async (req, res) => {
     if (!d) return res.status(404).json({ erro: "Caixa não encontrado." });
     res.json(d);
   } catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }
+});
+
+// ---- PDV — venda no local (Plano Completo) ----
+// Gate de servidor (não só no front). Fluxo atômico (Abordagem A): recalcula a
+// venda pelo cardápio (fonte de verdade), aplica desconto, valida o split, grava
+// pedido "Balcão" recebido + movimentos no caixa (caixa.venderLocal) e dá baixa
+// no estoque (best-effort, igual ao cardápio web). Devolve o pedido p/ impressão.
+async function exigePdv(req, res) {
+  const emp = await empresas.buscarPorSlug(req.slug);
+  if (!empresas.temPdv(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
+  return true;
+}
+
+app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const b = req.body || {};
+    if (!Array.isArray(b.itens) || !b.itens.length) return res.status(400).json({ erro: "A venda está vazia." });
+
+    await store.ensure(req.tenantDir);
+    const cardapio = store.getCardapio(req.tenantDir);
+
+    // Estoque (fonte de verdade no servidor) antes de gravar.
+    const estCheck = estoque.validarEstoque(cardapio, b.itens);
+    if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
+
+    // Recalcula itens/subtotal pelo cardápio; nunca confia no preço do cliente.
+    const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+    const { desconto, total } = pdv.aplicarDesconto(subtotal, b.desconto);
+    pdv.validarPagamentos(total, b.pagamentos);
+
+    const pedido = await caixa.venderLocal(req.tenantDir, {
+      cliente: b.cliente,
+      itens,
+      total,
+      desconto,
+      pagamentos: b.pagamentos,
+      pagamentoResumo: pdv.resumoPagamento(b.pagamentos),
+    });
+
+    // Baixa de estoque após o commit (best-effort, padrão do cardápio web).
+    try {
+      await store.setCardapio(req.tenantDir, estoque.aplicarBaixa(store.getCardapio(req.tenantDir), itens));
+    } catch (e) { console.error("PDV baixa estoque:", e.message); }
+
+    res.json({ ok: true, pedido });
+  } catch (e) {
+    // Erros de validação (recalcular/desconto/split/caixa) → 400 com a mensagem.
+    res.status(400).json({ erro: e.message || "Falha ao registrar a venda." });
+  }
 });
 
 const MSG_PRONTO_PADRAO = {

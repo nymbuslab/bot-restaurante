@@ -197,6 +197,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "conexao") atualizarStatus();
     if (btn.dataset.aba === "assinatura") carregarAssinatura();
     if (btn.dataset.aba === "caixa") carregarCaixa();
+    if (btn.dataset.aba === "pdv") carregarPdv();
   });
 });
 
@@ -3303,6 +3304,16 @@ const UPSELL_FEATURES = {
       'Corte do papel <strong>automático</strong>',
     ],
   },
+  pdv: {
+    icone: _svgUpsell('<rect x="3" y="3" width="18" height="13" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/>'),
+    titulo: "Venda no balcão com o PDV",
+    sub: 'O <strong>PDV (vendas no local)</strong> faz parte do <strong>Plano Completo</strong>. Monte o pedido na hora, cobre e a venda já entra no caixa com baixa de estoque.',
+    beneficios: [
+      'Monte a venda pelo <strong>cardápio</strong> (opcionais, observação e itens por kg)',
+      'Cobre com <strong>troco, desconto e pagamento dividido</strong>',
+      'A venda entra no <strong>caixa</strong> e dá <strong>baixa no estoque</strong> automático',
+    ],
+  },
   caixa: {
     icone: _svgUpsell('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/>'),
     titulo: "Controle o caixa do seu dia",
@@ -3355,6 +3366,441 @@ if ($("upsell-cta")) $("upsell-cta").addEventListener("click", () => {
   fecharNovoPedido();
   const b = document.querySelector("nav button[data-aba='assinatura']");
   if (b) b.click();
+});
+
+// ============================================================
+// PDV — vendas no local (Plano Completo)
+// Usa o cardápio já carregado (cardapioAtual). A venda é gravada/recebida no
+// servidor (POST /api/pdv/vender) que recalcula tudo; o front só faz a prévia.
+// ============================================================
+let pdvCart = [];        // [{ uid, id, nome, preco, unidade, qtd, opcionais:[{nome,preco,qtd}], observacao }]
+let pdvFormasPg = ["Dinheiro"]; // formas de pagamento (config.pagamentos)
+let pdvCatAtiva = null;  // null = Todos
+let pdvBuscaTermo = "";
+let pdvUidSeq = 1;
+
+function pdvMoney(v) { return Dinheiro.comPrefixo(Number(v) || 0); }
+function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function pdvParseOpcionais(texto) {
+  if (!texto || !String(texto).trim()) return [];
+  const lista = [];
+  String(texto).split("\n").forEach((l) => {
+    l = l.trim().replace(/^[*\-•]\s*/, "");
+    if (!l) return;
+    const partes = l.split("|");
+    const nome = partes[0].trim();
+    let preco = 0;
+    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+    if (nome) lista.push({ nome, preco });
+  });
+  return lista;
+}
+function pdvPrecoLinha(l) {
+  const add = (l.opcionais || []).reduce((s, o) => s + (Number(o.preco) || 0) * (o.qtd || 1), 0);
+  return ((Number(l.preco) || 0) + add) * (Number(l.qtd) || 0);
+}
+function pdvTotal() { return pdvCart.reduce((s, l) => s + pdvPrecoLinha(l), 0); }
+
+async function carregarPdv() {
+  $("pdvLock").hidden = true; $("pdvSemCaixa").hidden = true; $("pdvConteudo").hidden = true; $("pdvFab").hidden = true;
+  const r = await api("GET", "/api/caixa"); // gate (403) + status do caixa, numa chamada
+  if (!r) return; // 401 já redirecionou
+  if (r.status === 403) { $("pdvLock").hidden = false; return; }
+  if (!r.ok) { $("pdvSemCaixa").hidden = false; return; }
+  const data = await r.json();
+  pdvFormasPg = (Array.isArray(data.formasPagamento) && data.formasPagamento.length) ? data.formasPagamento : ["Dinheiro"];
+  if (!data.caixa) { $("pdvSemCaixa").hidden = false; return; } // exige caixa aberto
+  // Garante o cardápio carregado (a aba PDV pode ser a primeira a abrir).
+  if (!cardapioAtual || !cardapioAtual.categorias || !cardapioAtual.categorias.length) {
+    const rc = await api("GET", "/api/cardapio");
+    if (rc && rc.ok) cardapioAtual = await rc.json();
+  }
+  $("pdvConteudo").hidden = false;
+  renderPdvCategorias();
+  renderPdvProdutos();
+  renderPdvCarrinho();
+}
+
+function pdvCategorias() { return (cardapioAtual && cardapioAtual.categorias) || []; }
+
+function renderPdvCategorias() {
+  const nav = $("pdvCats");
+  const cats = pdvCategorias().filter((c) => c && c.nome);
+  nav.innerHTML = "";
+  const mk = (rotulo, val) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pdv-chip" + ((pdvCatAtiva === val) ? " ativo" : "");
+    b.textContent = rotulo;
+    b.addEventListener("click", () => { pdvCatAtiva = val; renderPdvCategorias(); renderPdvProdutos(); });
+    nav.appendChild(b);
+  };
+  mk("Todos", null);
+  cats.forEach((c) => mk(c.nome, c.nome));
+}
+
+function renderPdvProdutos() {
+  const grid = $("pdvGrid");
+  grid.innerHTML = "";
+  let n = 0;
+  pdvCategorias().forEach((cat) => {
+    if (pdvCatAtiva !== null && cat.nome !== pdvCatAtiva) return;
+    (cat.itens || []).forEach((item) => {
+      if (!item || item.disponivel === false || item.arquivado === true) return;
+      if (pdvBuscaTermo && !Busca.itemCasaBusca(item.nome, pdvBuscaTermo)) return;
+      const st = window.Estoque ? window.Estoque.statusEstoque(item) : { esgotado: false };
+      const ehKg = item.unidade === "kg";
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "pdv-tile" + (st.esgotado ? " esgotado" : "");
+      tile.innerHTML =
+        '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
+        '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + (ehKg ? "<small>/kg</small>" : "") + "</span>" +
+        (st.esgotado ? '<span class="pdv-tile-selo">Esgotado</span>' : "");
+      if (!st.esgotado) tile.addEventListener("click", () => pdvTileClick(item));
+      grid.appendChild(tile);
+      n++;
+    });
+  });
+  $("pdvVazio").hidden = n > 0;
+}
+
+function pdvTileClick(item) {
+  const ops = pdvParseOpcionais(item.opcionais);
+  const ehKg = item.unidade === "kg";
+  if (ops.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  // Item simples: soma na linha existente (sem opcionais/obs) ou cria nova.
+  const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao);
+  if (ex) ex.qtd += 1;
+  else pdvCart.push({ uid: pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: "un", qtd: 1, opcionais: [], observacao: "" });
+  renderPdvCarrinho();
+  toast("✓ " + item.nome);
+}
+
+// ---- Modal de item (opcionais / peso / observação) ----
+let pdvItemCtx = null; // { item, ops, uid|null }
+
+function abrirPdvItemModal(item, uid) {
+  const ops = pdvParseOpcionais(item.opcionais);
+  const ehKg = item.unidade === "kg";
+  const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
+  pdvItemCtx = { item, ops, uid: uid != null ? uid : null, ehKg };
+  const opsQtd = ops.map((o) => {
+    const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
+    return found ? found.qtd : 0;
+  });
+  const qtdIni = linha ? linha.qtd : (ehKg ? "" : 1);
+  const obsIni = linha ? linha.observacao : "";
+
+  let html =
+    '<button class="pdv-modal-x" type="button" data-pdv-close="item" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '<h3 class="pdv-modal-titulo">' + pdvEsc(item.nome) + "</h3>";
+  if (ehKg) {
+    html += '<label class="pdv-campo"><span>Peso (kg)</span><input id="pdvMpeso" type="text" inputmode="decimal" placeholder="0,000" value="' + pdvEsc(qtdIni === "" ? "" : String(qtdIni).replace(".", ",")) + '" /></label>';
+  } else {
+    html += '<div class="pdv-campo"><span>Quantidade</span><div class="pdv-stepper" data-stepper="qtd"><button type="button" data-step="-1">−</button><span id="pdvMqtd">' + qtdIni + '</span><button type="button" data-step="1">+</button></div></div>';
+  }
+  if (ops.length) {
+    html += '<div class="pdv-ops"><span class="pdv-ops-tit">Adicionais</span>';
+    ops.forEach((o, i) => {
+      html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' +
+        '<div class="pdv-stepper" data-stepper="op" data-opi="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-op-q">' + opsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
+    });
+    html += "</div>";
+  }
+  html += '<label class="pdv-campo"><span>Observação (opcional)</span><textarea id="pdvMobs" rows="2" placeholder="Ex.: sem cebola, ponto da carne…">' + pdvEsc(obsIni) + "</textarea></label>";
+  html += '<button type="button" class="primario pdv-modal-add" id="pdvMadd">' + (uid != null ? "Salvar" : "Adicionar") + ' · <span id="pdvMtot">R$ 0,00</span></button>';
+
+  $("pdvItemCaixa").innerHTML = html;
+  $("pdvItemOverlay").hidden = false;
+
+  // wiring
+  $("pdvItemCaixa").querySelectorAll("[data-stepper]").forEach((box) => {
+    box.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
+      const span = box.querySelector("span");
+      const min = box.dataset.stepper === "qtd" ? 1 : 0;
+      let v = parseInt(span.textContent, 10) || 0;
+      v = Math.max(min, v + Number(b.dataset.step));
+      span.textContent = v;
+      pdvItemRecalc();
+    }));
+  });
+  const peso = $("pdvMpeso"); if (peso) peso.addEventListener("input", pdvItemRecalc);
+  $("pdvMadd").addEventListener("click", pdvConfirmarItem);
+  const xb = $("pdvItemCaixa").querySelector('[data-pdv-close="item"]');
+  if (xb) xb.addEventListener("click", fecharPdvItemModal);
+  pdvItemRecalc();
+}
+function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = null; }
+
+function _pdvLerModalItem() {
+  const { item, ops, ehKg } = pdvItemCtx;
+  let qtd;
+  if (ehKg) {
+    qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
+  } else {
+    qtd = parseInt($("pdvMqtd").textContent, 10) || 1;
+  }
+  const opcionais = [];
+  $("pdvItemCaixa").querySelectorAll('[data-stepper="op"]').forEach((box) => {
+    const i = Number(box.dataset.opi);
+    const q = parseInt(box.querySelector("span").textContent, 10) || 0;
+    if (q > 0) opcionais.push({ nome: ops[i].nome, preco: ops[i].preco, qtd: q });
+  });
+  const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
+  return { item, qtd, opcionais, observacao, ehKg };
+}
+function pdvItemRecalc() {
+  const { item, qtd, opcionais } = _pdvLerModalItem();
+  const add = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
+  const tot = ((Number(item.preco) || 0) + add) * (Number(qtd) || 0);
+  const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
+}
+function pdvConfirmarItem() {
+  const { item, qtd, opcionais, observacao, ehKg } = _pdvLerModalItem();
+  if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
+  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, opcionais, observacao };
+  const idx = pdvItemCtx.uid != null ? pdvCart.findIndex((l) => l.uid === pdvItemCtx.uid) : -1;
+  if (idx >= 0) pdvCart[idx] = linha; else pdvCart.push(linha);
+  fecharPdvItemModal();
+  renderPdvCarrinho();
+}
+
+// ---- Carrinho ----
+function renderPdvCarrinho() {
+  const cont = $("pdvCartItens");
+  cont.innerHTML = "";
+  if (!pdvCart.length) {
+    cont.innerHTML = '<p class="pdv-cart-vazio">Toque nos produtos para montar a venda.</p>';
+  } else {
+    pdvCart.forEach((l) => {
+      const div = document.createElement("div");
+      div.className = "pdv-linha";
+      const opsTxt = (l.opcionais || []).map((o) => (o.qtd > 1 ? o.qtd + "x " : "") + o.nome).join(", ");
+      const qtdCtrl = l.unidade === "kg"
+        ? '<span class="pdv-linha-kg" data-edit="' + l.uid + '">' + window.Estoque.formatarQtd(l.qtd, "kg") + " kg</span>"
+        : '<div class="pdv-stepper sm"><button type="button" data-dec="' + l.uid + '">−</button><span>' + l.qtd + '</span><button type="button" data-inc="' + l.uid + '">+</button></div>';
+      div.innerHTML =
+        '<div class="pdv-linha-corpo" data-edit="' + l.uid + '">' +
+          '<span class="pdv-linha-nome">' + pdvEsc(l.nome) + "</span>" +
+          (opsTxt ? '<span class="pdv-linha-ops">' + pdvEsc(opsTxt) + "</span>" : "") +
+          (l.observacao ? '<span class="pdv-linha-obs">' + pdvEsc(l.observacao) + "</span>" : "") +
+        "</div>" +
+        '<div class="pdv-linha-dir">' +
+          '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
+          qtdCtrl +
+          '<button class="pdv-linha-rm" type="button" data-rm="' + l.uid + '" aria-label="Remover"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        "</div>";
+      cont.appendChild(div);
+    });
+    cont.querySelectorAll("[data-inc]").forEach((b) => b.addEventListener("click", () => { const l = pdvCart.find((x) => x.uid == b.dataset.inc); if (l) { l.qtd++; renderPdvCarrinho(); } }));
+    cont.querySelectorAll("[data-dec]").forEach((b) => b.addEventListener("click", () => { const l = pdvCart.find((x) => x.uid == b.dataset.dec); if (l) { l.qtd = Math.max(1, l.qtd - 1); renderPdvCarrinho(); } }));
+    cont.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { pdvCart = pdvCart.filter((x) => x.uid != b.dataset.rm); renderPdvCarrinho(); }));
+    cont.querySelectorAll("[data-edit]").forEach((el) => el.addEventListener("click", () => {
+      const l = pdvCart.find((x) => x.uid == el.dataset.edit);
+      if (!l) return;
+      const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, opcionais: "" };
+      abrirPdvItemModal(item, l.uid);
+    }));
+  }
+  const tot = pdvTotal();
+  $("pdvTotal").textContent = pdvMoney(tot);
+  $("pdvCobrar").disabled = !pdvCart.length;
+  const fab = $("pdvFab");
+  if (pdvCart.length) {
+    fab.hidden = false;
+    $("pdvFabCount").textContent = pdvCart.reduce((s, l) => s + (l.unidade === "kg" ? 1 : l.qtd), 0);
+    $("pdvFabTotal").textContent = pdvMoney(tot);
+  } else { fab.hidden = true; fab.classList.remove("oculto"); $("pdvCarrinho").classList.remove("aberto"); }
+}
+
+function pdvAcharItem(id) {
+  for (const c of pdvCategorias()) {
+    for (const it of (c.itens || [])) if (it && it.id === id) return it;
+  }
+  return null;
+}
+
+// ---- Pagamento (desconto / formas / troco) ----
+let pdvPgRows = [];      // [{ forma, valorStr }]
+let pdvDescontoTipo = "valor";
+
+function abrirPdvPagar() {
+  if (!pdvCart.length) return;
+  pdvDescontoTipo = "valor";
+  pdvPgRows = [{ forma: pdvFormasPg[0] || "Dinheiro", valorStr: "" }];
+  renderPdvPagar();
+  $("pdvPagarOverlay").hidden = false;
+}
+function fecharPdvPagar() { $("pdvPagarOverlay").hidden = true; }
+
+function pdvSubtotalAtual() { return pdvTotal(); }
+function pdvDescontoAtual() {
+  const sub = pdvSubtotalAtual();
+  const inp = $("pdvDescVal");
+  if (!inp) return 0;
+  let abate = 0;
+  if (pdvDescontoTipo === "pct") {
+    const pct = parseFloat(String(inp.value || "").replace(",", ".")) || 0;
+    abate = sub * (Math.min(100, Math.max(0, pct)) / 100);
+  } else {
+    abate = Dinheiro.valor(inp);
+  }
+  return Math.min(sub, Math.max(0, Math.round(abate * 100) / 100));
+}
+function pdvTotalLiquido() { return Math.round((pdvSubtotalAtual() - pdvDescontoAtual()) * 100) / 100; }
+
+function renderPdvPagar() {
+  const formasOpts = pdvFormasPg.map((f) => '<option value="' + pdvEsc(f) + '">' + pdvEsc(f) + "</option>").join("");
+  let html =
+    '<button class="pdv-modal-x" type="button" data-pdv-close="pagar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '<h3 class="pdv-modal-titulo">Pagamento</h3>' +
+    '<div class="pdv-pg-resumo"><span>Subtotal</span><span id="pdvPgSub">' + pdvMoney(pdvSubtotalAtual()) + "</span></div>" +
+    '<div class="pdv-campo pdv-desc"><span>Desconto</span>' +
+      '<div class="pdv-desc-row">' +
+        '<div class="pdv-desc-tipo">' +
+          '<button type="button" class="' + (pdvDescontoTipo === "valor" ? "ativo" : "") + '" data-desc-tipo="valor">R$</button>' +
+          '<button type="button" class="' + (pdvDescontoTipo === "pct" ? "ativo" : "") + '" data-desc-tipo="pct">%</button>' +
+        "</div>" +
+        '<input id="pdvDescVal" type="text" inputmode="decimal" placeholder="0" />' +
+      "</div></div>" +
+    '<div class="pdv-pg-resumo pdv-pg-total"><span>Total a pagar</span><strong id="pdvPgTot">' + pdvMoney(pdvTotalLiquido()) + "</strong></div>" +
+    '<div class="pdv-pg-formas"><span class="pdv-ops-tit">Formas de pagamento</span><div id="pdvPgFormas"></div>' +
+      '<button type="button" class="pdv-pg-add" id="pdvPgAdd">+ Dividir pagamento</button></div>' +
+    '<div class="pdv-pg-restante" id="pdvPgRestante"></div>' +
+    '<div class="pdv-campo pdv-troco" id="pdvTrocoBox" hidden><span>Valor recebido em dinheiro</span><input id="pdvRecebido" type="text" inputmode="numeric" placeholder="0,00" /><div class="pdv-troco-val" id="pdvTrocoVal"></div></div>' +
+    '<button type="button" class="primario pdv-pg-finalizar" id="pdvFinalizar">Finalizar venda</button>';
+  $("pdvPagarCaixa").innerHTML = html;
+
+  // desconto tipo
+  $("pdvPagarCaixa").querySelectorAll("[data-desc-tipo]").forEach((b) => b.addEventListener("click", () => {
+    pdvDescontoTipo = b.dataset.descTipo;
+    const inp = $("pdvDescVal"); const v = inp.value;
+    $("pdvPagarCaixa").querySelectorAll("[data-desc-tipo]").forEach((x) => x.classList.toggle("ativo", x === b));
+    // re-aplica máscara conforme o tipo
+    delete inp.dataset.dinheiro;
+    if (pdvDescontoTipo === "valor") { Dinheiro.mascarar(inp); } else { inp.value = v.replace(/[^\d,]/g, ""); }
+    pdvPagarRecalc();
+  }));
+  const descInp = $("pdvDescVal");
+  if (pdvDescontoTipo === "valor") Dinheiro.mascarar(descInp);
+  descInp.addEventListener("input", pdvPagarRecalc);
+
+  renderPdvPgFormas(formasOpts);
+  $("pdvPgAdd").addEventListener("click", () => {
+    if (pdvPgRows.length >= pdvFormasPg.length) { toast("Sem mais formas configuradas.", "erro"); return; }
+    pdvPgRows.push({ forma: pdvFormasPg.find((f) => !pdvPgRows.some((r) => r.forma === f)) || pdvFormasPg[0], valorStr: "" });
+    renderPdvPgFormas(formasOpts);
+    pdvPagarRecalc();
+  });
+  const rec = $("pdvRecebido"); if (rec) { Dinheiro.mascarar(rec); rec.addEventListener("input", pdvPagarRecalc); }
+  $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
+  const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]');
+  if (xb) xb.addEventListener("click", fecharPdvPagar);
+  pdvPagarRecalc();
+}
+
+function renderPdvPgFormas(formasOpts) {
+  const box = $("pdvPgFormas");
+  box.innerHTML = "";
+  pdvPgRows.forEach((row, i) => {
+    const div = document.createElement("div");
+    div.className = "pdv-pg-row";
+    div.innerHTML =
+      '<select class="pdv-pg-forma" data-i="' + i + '">' + formasOpts + "</select>" +
+      '<input class="pdv-pg-valor" data-i="' + i + '" type="text" inputmode="numeric" placeholder="0,00" />' +
+      (pdvPgRows.length > 1 ? '<button type="button" class="pdv-pg-rm" data-i="' + i + '" aria-label="Remover">×</button>' : "");
+    box.appendChild(div);
+    div.querySelector(".pdv-pg-forma").value = row.forma;
+    const vinp = div.querySelector(".pdv-pg-valor");
+    if (row.valorStr) vinp.value = row.valorStr;
+    Dinheiro.mascarar(vinp);
+  });
+  box.querySelectorAll(".pdv-pg-forma").forEach((s) => s.addEventListener("change", () => { pdvPgRows[Number(s.dataset.i)].forma = s.value; pdvPagarRecalc(); }));
+  box.querySelectorAll(".pdv-pg-valor").forEach((inp) => inp.addEventListener("input", () => { pdvPgRows[Number(inp.dataset.i)].valorStr = inp.value; pdvPagarRecalc(); }));
+  box.querySelectorAll(".pdv-pg-rm").forEach((b) => b.addEventListener("click", () => { pdvPgRows.splice(Number(b.dataset.i), 1); renderPdvPgFormas(formasOpts); pdvPagarRecalc(); }));
+}
+
+function pdvLerPagamentos() {
+  const inputs = $("pdvPgFormas").querySelectorAll(".pdv-pg-valor");
+  return pdvPgRows.map((r, i) => ({ forma: r.forma, valor: inputs[i] ? Dinheiro.valor(inputs[i]) : 0 }));
+}
+
+function pdvPagarRecalc() {
+  const liquido = pdvTotalLiquido();
+  $("pdvPgSub").textContent = pdvMoney(pdvSubtotalAtual());
+  $("pdvPgTot").textContent = pdvMoney(liquido);
+  // Com UMA única forma, o valor acompanha o total automaticamente (a não ser
+  // que o operador esteja editando o campo). Com split, cada valor é manual.
+  if (pdvPgRows.length === 1) {
+    const inp = $("pdvPgFormas").querySelector(".pdv-pg-valor");
+    if (inp && document.activeElement !== inp) { Dinheiro.setValor(inp, liquido); pdvPgRows[0].valorStr = inp.value; }
+  }
+  const soma = pdvLerPagamentos().reduce((s, p) => s + p.valor, 0);
+  const restante = Math.round((liquido - soma) * 100) / 100;
+  const rEl = $("pdvPgRestante");
+  if (Math.abs(restante) <= 0.01) rEl.innerHTML = '<span class="ok">✓ Pagamento fechado</span>';
+  else if (restante > 0) rEl.innerHTML = '<span>Falta: <strong>' + pdvMoney(restante) + "</strong></span>";
+  else rEl.innerHTML = '<span class="erro">Passou: <strong>' + pdvMoney(-restante) + "</strong></span>";
+  // Troco: só quando há forma dinheiro.
+  const temDinheiro = pdvLerPagamentos().some((p) => /dinheiro/i.test(p.forma));
+  const box = $("pdvTrocoBox");
+  box.hidden = !temDinheiro;
+  if (temDinheiro) {
+    const totalDinheiro = pdvLerPagamentos().filter((p) => /dinheiro/i.test(p.forma)).reduce((s, p) => s + p.valor, 0);
+    const recebido = Dinheiro.valor($("pdvRecebido"));
+    const troco = Math.max(0, Math.round((recebido - totalDinheiro) * 100) / 100);
+    $("pdvTrocoVal").innerHTML = recebido > 0 ? "Troco: <strong>" + pdvMoney(troco) + "</strong>" : "";
+  }
+  $("pdvFinalizar").disabled = !(Math.abs(restante) <= 0.01 && pdvLerPagamentos().every((p) => p.valor > 0));
+}
+
+async function finalizarVendaPdv() {
+  const pagamentos = pdvLerPagamentos();
+  const desconto = pdvDescontoAtual() > 0
+    ? { tipo: pdvDescontoTipo, valor: pdvDescontoTipo === "pct" ? (parseFloat(String($("pdvDescVal").value || "").replace(",", ".")) || 0) : Dinheiro.valor($("pdvDescVal")) }
+    : null;
+  const body = {
+    cliente: ($("pdvCliente").value || "").trim(),
+    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), observacao: l.observacao })),
+    desconto,
+    pagamentos,
+  };
+  const btn = $("pdvFinalizar");
+  btn.disabled = true; btn.textContent = "Registrando…";
+  const r = await api("POST", "/api/pdv/vender", body);
+  btn.textContent = "Finalizar venda";
+  if (!r) return;
+  if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
+  const { pedido } = await r.json();
+  toast("✓ Venda registrada no caixa!");
+  // Imprime a comanda (cozinha + cupom), como nos pedidos.
+  if (pedido && window.Impressao) { try { window.Impressao.abrirPreview(pedido, configAtual, { linkCardapio: _linkCardapio }); } catch (e) { /* impressão é opcional */ } }
+  // Limpa e recarrega o cardápio (estoque mudou no servidor).
+  pdvCart = []; $("pdvCliente").value = "";
+  fecharPdvPagar();
+  $("pdvCarrinho").classList.remove("aberto");
+  const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
+  renderPdvProdutos();
+  renderPdvCarrinho();
+}
+
+// ---- Wiring do PDV ----
+if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => abrirUpsell("pdv"));
+if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
+if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
+if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", abrirPdvPagar);
+if ($("pdvFab")) $("pdvFab").addEventListener("click", () => { $("pdvCarrinho").classList.add("aberto"); $("pdvFab").classList.add("oculto"); });
+if ($("pdvCartFechar")) $("pdvCartFechar").addEventListener("click", () => { $("pdvCarrinho").classList.remove("aberto"); $("pdvFab").classList.remove("oculto"); });
+document.querySelectorAll("[data-pdv-close]").forEach((el) => el.addEventListener("click", (e) => {
+  if (e.target !== el) return;
+  if (el.dataset.pdvClose === "item") fecharPdvItemModal();
+  if (el.dataset.pdvClose === "pagar") fecharPdvPagar();
+}));
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (!$("pdvItemOverlay").hidden) fecharPdvItemModal();
+  else if (!$("pdvPagarOverlay").hidden) fecharPdvPagar();
 });
 
 $("btnAtualizarPedidos").addEventListener("click", carregarPedidos);

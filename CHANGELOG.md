@@ -423,3 +423,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - Nova seção "Identidade visual" no painel (Configurações → Empresa): envie a **capa** (banner) e a **logo** do restaurante, com uma prévia de como vai ficar.
 - O cardápio digital agora abre com um **header personalizado**: capa no topo e logo circular — a página fica com a cara da sua marca. Sem capa/logo, usa um visual padrão elegante (não fica quebrado).
 - Ajustes no cardápio: a barra de categorias agora gruda corretamente no topo ao rolar (sem sobrepor o conteúdo) e os ícones de fechar e de remover item ficaram mais modernos.
+
+## [0.47.0] — PDV: vendas no balcão (Plano Completo)
+
+- Nova aba **PDV** no painel para vender no balcão: monte o pedido tocando nos produtos do cardápio (com adicionais, observação e itens por kg), com busca e categorias.
+- Na hora de cobrar: **desconto** (em R$ ou %), **pagamento dividido** em várias formas, cálculo de **troco** e impressão da comanda ao finalizar.
+- A venda entra automaticamente no **caixa do dia** (precisa estar aberto) e dá **baixa no estoque** — e aparece na lista de Pedidos como "Balcão".
+- Funciona no computador e no celular/tablet (carrinho vira uma folha na parte de baixo). Recurso do **Plano Completo**.

@@ -31,6 +31,10 @@
           <span>Pedidos</span>
           <span class="nav-badge" id="badge-pedidos" hidden>0</span>
         </button>
+        <button data-aba="pdv">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="13" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></svg>
+          <span>PDV</span>
+        </button>
         <button data-aba="caixa">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
           <span>Caixa</span>
@@ -668,6 +672,66 @@
     </section>
 
     <!-- CAIXA (Plano Completo) -->
+    <!-- PDV (vendas no local) -->
+    <section class="aba" id="aba-pdv">
+      <div class="caixa-lock" id="pdvLock" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h3>PDV é do Plano Completo</h3>
+        <p class="sub">Venda no balcão direto pelo painel: monte o pedido, cobre e a venda entra no caixa com baixa de estoque. Disponível no Plano Completo.</p>
+        <button type="button" class="secundario" id="btnVerPlanosPdv">Ver planos</button>
+      </div>
+
+      <div class="pdv-semcaixa" id="pdvSemCaixa" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+        <h3>Abra o caixa para vender</h3>
+        <p class="sub">O PDV registra cada venda no caixa aberto. Abra o caixa do dia para começar.</p>
+        <button type="button" class="primario" id="btnPdvIrCaixa">Ir para o Caixa</button>
+      </div>
+
+      <div class="pdv" id="pdvConteudo" hidden>
+        <div class="pdv-produtos">
+          <div class="pdv-busca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="pdvBusca" type="search" placeholder="Buscar produto…" autocomplete="off" />
+          </div>
+          <nav class="pdv-cats" id="pdvCats" aria-label="Categorias"></nav>
+          <div class="pdv-grid" id="pdvGrid"></div>
+          <p class="pdv-vazio" id="pdvVazio" hidden>Nenhum produto encontrado.</p>
+        </div>
+
+        <aside class="pdv-carrinho" id="pdvCarrinho">
+          <div class="pdv-cart-head">
+            <h3>Venda atual</h3>
+            <button type="button" class="pdv-cart-fechar" id="pdvCartFechar" aria-label="Fechar carrinho"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <label class="pdv-cliente"><span>Cliente (opcional)</span><input id="pdvCliente" type="text" placeholder="Balcão" autocomplete="off" /></label>
+          <div class="pdv-cart-itens" id="pdvCartItens"></div>
+          <div class="pdv-cart-rodape">
+            <div class="pdv-tot-linha pdv-tot-total"><span>Total</span><strong id="pdvTotal">R$ 0,00</strong></div>
+            <button type="button" class="primario pdv-cobrar" id="pdvCobrar" disabled>Cobrar</button>
+          </div>
+        </aside>
+      </div>
+
+      <button type="button" class="pdv-fab" id="pdvFab" hidden>
+        <span class="pdv-fab-count" id="pdvFabCount">0</span>
+        <span>Ver venda</span>
+        <strong id="pdvFabTotal">R$ 0,00</strong>
+      </button>
+    </section>
+
+    <!-- PDV: modal de item (opcionais / peso / observação) -->
+    <div class="pdv-modal" id="pdvItemOverlay" hidden>
+      <div class="pdv-modal-overlay" data-pdv-close="item"></div>
+      <div class="pdv-modal-caixa" id="pdvItemCaixa" role="dialog" aria-label="Item"></div>
+    </div>
+
+    <!-- PDV: modal de pagamento (desconto / formas / troco) -->
+    <div class="pdv-modal" id="pdvPagarOverlay" hidden>
+      <div class="pdv-modal-overlay" data-pdv-close="pagar"></div>
+      <div class="pdv-modal-caixa pdv-pagar-caixa" id="pdvPagarCaixa" role="dialog" aria-label="Pagamento"></div>
+    </div>
+
     <section class="aba" id="aba-caixa">
       <div class="caixa-lock" id="caixaLock" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>

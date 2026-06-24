@@ -279,9 +279,25 @@ que vêm do WhatsApp.
   `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`. Migrations
   `20260620120000`/`20260620130000`/`20260620140000`.
 
-### Fora do v1 do caixa (futuro)
+## PDV — vendas no local (Plano Completo)
 
-- PDV de balcão / venda presencial / mesas (feature à parte).
+Aba **PDV** no painel (gate `temPdv`, front+back) para registrar venda de balcão. **Exige caixa
+aberto** (senão mostra "Abra o caixa para vender"). Fluxo: grade de produtos (chips de categoria +
+busca) → toque adiciona ao carrinho; itens com **opcionais** ou por **kg** abrem um mini-modal
+(peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **desconto** (R$ ou %),
+**pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e **imprimir ao finalizar**.
+
+Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
+fonte de verdade — nunca confia no preço do cliente), e `caixa.venderLocal` grava numa transação o
+**pedido tipo `Balcão`** (já `recebido_em`) + **1 movimento de recebimento por forma** no caixa, depois
+dá **baixa de estoque**. A venda aparece em **Pedidos** (selo Balcão/Recebido) e no **Caixa** (Vendas
+por forma). Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
+mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/pdv.js`
+(`test/pdv.test.js`); tela em `public/app.js` (`carregarPdv`/`renderPdv*`).
+
+### Fora do v1 do caixa/PDV (futuro)
+
+- Mesas / comanda aberta (fiado) e venda presencial **sem** caixa aberto; **item avulso** (fora do cardápio).
 - **Formas de pagamento detalhadas + taxa** (Crédito/Débito/PIX maquininha/conta; recebimento líquido) — ROADMAP P3.
 - **Conferência cega, justificativa de diferença, limite de gaveta, comprovante de sangria/suprimento,
   tolerância de divergência, múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.
