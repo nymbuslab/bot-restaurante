@@ -10,7 +10,31 @@ _(nada no momento)_
 
 ### Em aberto
 
-_(nada no momento)_
+#### Adequação LGPD (origem: relatório lgpd-checker — 2026-06-24)
+
+> Meta: fechar todas as lacunas até o `lgpd-checker` não acusar mais itens ALTO/MÉDIO. Itens **(decisão)** precisam de um valor/aprovação antes de implementar. A skill avalia código/docs — **não substitui revisão jurídica** (ver pendência standing).
+
+**Fase 1 — Transparência ao cliente final (P0)**
+
+- [x] **L1 [ID-001]** Aviso de privacidade no checkout do cardápio `/c/:slug` (finalidade da coleta + link à Política) — `public/cardapio.js`/`cardapio.css`. Validado no Playwright. — 2026-06-24
+- [x] **L2 [ID-002]** Direitos do cliente final no mesmo aviso ("para acessar/excluir seus dados, fale com o restaurante"). — 2026-06-24
+- [x] **L3 [ID-003]** E-mail fixo do DPO na Política: `atendimento@nymbuslab.com.br` — `public/privacidade.html` (seção 9). — 2026-06-24
+- [x] **L4 [ID-006]** Prazo de resposta a titulares = **15 dias** — `public/privacidade.html` (seção 8.3). — 2026-06-24
+
+**Fase 2 — Prova de consentimento + transferência (P1)**
+
+- [ ] **L5 [ID-004]** Registrar aceite do dono: migration `termos_aceitos_em` + `termos_versao` em `empresas` + gravar no `POST /api/cadastro` — `supabase/migrations/`, `src/empresas.js`, `src/servidor.js`.
+- [ ] **L6 [ID-005]** `docs/subprocessadores.md` (serviço·dados·país·DPA) + confirmar/forçar a região do Supabase + referenciar na Política.
+
+**Fase 3 — Governança formal (P2)**
+
+- [ ] **L7 [ID-007]** ROPA — `docs/ropa.md` (inventário de tratamentos; base levantada no relatório).
+- [ ] **L8 [ID-008]** Plano de resposta a incidentes — `docs/resposta-incidentes.md` (detecção → ANPD 72h → notificar titulares).
+- [ ] **L9 [ID-010]** Trilha mínima de auditoria (registrar exclusões/exportações de dados pessoais) — avaliar escopo.
+
+**Fase 4 — Observação (P3)**
+
+- [ ] **L10 [ID-009]** IDs sequenciais — avaliar e documentar a decisão (provável "aceito; `slug` é a chave pública, `numero` não é exposto sem auth").
 
 ### Pendências operacionais (standing)
 

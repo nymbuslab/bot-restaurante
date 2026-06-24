@@ -548,6 +548,7 @@
         '<div id="cdBlocoTroco"></div>' +
         '<label class="cd-campo"><span>Observação do pedido (opcional)</span><textarea id="cdObsPedido" rows="2" maxlength="300" placeholder="Algo sobre o pedido todo?"></textarea></label>' +
         '<p class="cd-erro-campo" id="cdErrGeral" hidden></p>' +
+        '<p class="cd-aviso-privacidade">Ao enviar, seu nome, telefone e endereço são usados pelo restaurante para preparar e entregar seu pedido. Para acessar ou excluir seus dados, fale com o restaurante. Veja a <a href="/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p>' +
         '<button id="cdEnviar" class="cd-btn cd-btn-primary" type="submit"' + (DADOS.aberto ? "" : " disabled") + ">Enviar pedido</button>" +
       "</form>";
 

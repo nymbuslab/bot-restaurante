@@ -385,6 +385,8 @@ button.cd-hero { cursor: pointer; }
 .cd-resumo-tax { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); padding: 2px 0; }
 
 .cd-form { border: 1px solid var(--border); background: var(--bg-surface); border-radius: var(--radius-lg); padding: 16px; display: grid; gap: 14px; }
+.cd-aviso-privacidade { font-size: 11.5px; color: var(--text-secondary); line-height: 1.45; margin: -2px 0 0; }
+.cd-aviso-privacidade a { color: var(--accent-fg); text-decoration: underline; }
 .cd-tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cd-tipo button {
   height: 44px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elevated);
