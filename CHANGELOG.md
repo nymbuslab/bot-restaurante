@@ -390,3 +390,23 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - Novo botão "Ajuda" abrindo uma página de Perguntas Frequentes (FAQ)
 - Primeira seção com o manual completo da impressora: USB × serial, corte do papel, conectar a serial e imprimir direto pelo USB sem a janela do navegador
+
+## [0.42.0] — Upgrade para o Completo mais claro
+
+- Ao tocar numa função do Plano Completo (imprimir comanda, caixa, frete por raio) no Essencial, aparece um card explicando os benefícios e levando ao upgrade.
+- O botão "Imprimir comanda" agora aparece bloqueado (em vez de sumir) no Essencial.
+- Conta cortesia no Essencial pode assinar o Plano Completo direto pela aba Assinatura.
+- Correções: o checkout não falha mais quando o cadastro de pagamento estava desatualizado; ajuste no layout do cadastro de produto; e o fim de uma piscada do modal ao marcar opções.
+
+## [0.43.0] — Cupom mais bonito e corte na Daruma
+
+- Corte automático do papel agora funciona em impressoras Daruma (DR700/DR800) e avança o papel para o cupom sair inteiro, sem precisar puxar à mão.
+- O cupom do cliente ganhou cabeçalho com nome, endereço e telefone do restaurante e rodapé com mensagem de "volte sempre" + link do cardápio digital.
+- Nova "Mensagem no rodapé do cupom" em Configurações → Impressora (em branco usa a padrão).
+- CEP e telefone na mesma linha do cabeçalho e data no formato dd/mm/aaaa - HH:MM.
+
+## [0.44.0] — Cardápio digital com visual premium
+
+- Os cards do cardápio ficaram maiores e mais bonitos: imagem grande no topo, selos (Destaque, Esgotado, Só no local), preço com ícone de etiqueta e botão Adicionar. 4 por linha no computador e 2 no celular.
+- A seção Destaques virou um carrossel: no computador navega pelas setas, no celular arrastando o dedo, com pontinhos indicando que há mais itens.
+- No celular o preço não quebra mais em duas linhas e fica centralizado.

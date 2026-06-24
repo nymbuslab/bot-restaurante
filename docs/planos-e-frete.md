@@ -187,24 +187,38 @@ commit + push, e aprovação antes da fase seguinte.
 
 ## 2º benefício do Completo — Impressão de pedido na térmica (80mm)
 
-> ✅ **implementado** (CHANGELOG 0.29.0). Spec/plano: `docs/superpowers/specs/2026-06-20-impressao-termica-design.md`
-> e `docs/superpowers/plans/2026-06-20-impressao-termica.md`.
+> ✅ **implementado** (CHANGELOG 0.29.0; serial/COM em 0.40.0; corte Daruma + cupom marketing em 0.43.0).
+> Spec/plano: `docs/superpowers/specs/2026-06-20-impressao-termica-design.md` e
+> `docs/superpowers/plans/2026-06-20-impressao-termica.md`.
 
 Além do frete por raio, o **Plano Completo** libera a **impressão de pedido** numa impressora
-térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x e similares — qualquer uma com **driver** no SO).
+térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x, **Daruma DR700/DR800** e similares).
 
-- **Caminho:** impressão **pelo navegador** (`window.print()` + CSS `@page { size: 80mm auto }`),
-  sem agente local nem ESC/POS. A montagem do texto é pura e testada (`public/comanda.js`); a
-  orquestração fica em `public/impressao.js`. Largura amarrada ao físico via `font-size: 2.5mm`
-  (≈ 48 colunas em ~72mm, sem quebra de linha).
+- **Dois caminhos** (escolhidos em **Configurações → Impressora**):
+  - **Navegador (USB/driver)** — padrão: `window.print()` + CSS `@page { size: 80mm auto }`, sem
+    agente local. Largura amarrada ao físico via `font-size: 2.5mm` (≈ 48 colunas, sem quebra).
+  - **Porta serial (COM)** — imprime **direto na térmica, sem caixa de diálogo**: encoder **ESC/POS
+    puro** (`public/serial-escpos.js`: init + codepage CP850 + avanço + corte) sobre a **Web Serial
+    API** (`public/serial.js`: conectar/lembrar a porta/escrever). O roteamento (serial quando
+    configurado/suportado; senão navegador) fica em `public/impressao.js`; a montagem do texto é
+    pura/testada (`public/comanda.js`).
+- **Corte do papel (serial):** usa o comando **legado Epson** — `ESC m` (parcial/picote, **padrão**) /
+  `ESC i` (total) — **nativo na linha Daruma (DR700/DR800)** e aceito pela maioria das térmicas (o
+  `GS V` novo era ignorado por elas e o papel não cortava). Avança **6 linhas** antes do corte pra
+  empurrar o fim do cupom pra fora da guilhotina. Opção "Não cortar" também disponível.
 - **Disparo:** botão **Imprimir comanda** no modal de detalhe do pedido **e** no modal de novo
-  pedido abre um **modal de pré-visualização** com as **2 vias** renderizadas em 80mm e os botões
-  **Imprimir cozinha** (itens/opcionais/observações, **sem preços**) e **Imprimir cupom** (cliente,
-  endereço, pagamento, total). Cada via é **uma impressão própria** → a guilhotina corta no fim de
-  cada (sem toggle de corte; a pessoa vê a prévia e escolhe, sem perder via por distração).
-- **Gating:** front, por `planoAtual === "completo"` (impressão é ação **local**, sem recurso de
-  servidor a proteger). Essencial vê a sub-aba **Configurações → Impressora** com cadeado/upsell
-  (a sub-aba é só informativa — não há mais configuração de impressão).
+  pedido abre um **modal de pré-visualização** com as **2 vias** e os botões **Imprimir cozinha**
+  (itens/opcionais/observações, **sem preços**) e **Imprimir cupom** (cliente, endereço, pagamento,
+  total). Cada via é **uma impressão própria** → corta no fim de cada.
+- **Cupom (marketing):** o cupom traz **cabeçalho** com nome/endereço/telefone da empresa (CEP e
+  telefone na mesma linha; data `dd/mm/aaaa - HH:MM`) e **rodapé** com mensagem **personalizável**
+  (`config.impressao.rodape`; vazio = padrão "Obrigado pela preferência! Volte sempre.") + chamada
+  pro **cardápio digital** (link público do tenant). A via **cozinha** segue enxuta.
+- **Config por tenant:** `config.impressao` (jsonb, via `PUT /api/config`, sem migração):
+  `{ metodo: "navegador"|"serial", baud, corte: "parcial"|"total"|"nenhum", semAcento, rodape }`.
+- **Gating:** front, por `planoAtual === "completo"` (impressão é ação **local**). Essencial vê a
+  sub-aba **Configurações → Impressora** com cadeado/upsell. Manual completo (USB × serial, corte,
+  conectar COM, *kiosk-printing*) na **Central de Ajuda (FAQ)** do painel.
 
 ### Impressão silenciosa/automática (opcional) — Chrome em *kiosk-printing*
 
@@ -222,8 +236,8 @@ diálogo. Sem a flag, segue funcionando no modo manual (uma caixa de impressão 
 
 ### Fora do v1 (futuro)
 
-- ESC/POS via agente local (QZ Tray): corte fino/silencioso e impressão disparada pelo servidor
-  (sem painel aberto).
+- ESC/POS **por porta serial (COM) já implementado** (ver acima). Falta: impressão **disparada pelo
+  servidor sem o painel aberto** (agente local tipo QZ Tray) e abertura de gaveta.
 - Auto-impressão ao chegar o pedido; largura 58mm; escolher quais vias; KDS (tela de cozinha).
 
 ---
