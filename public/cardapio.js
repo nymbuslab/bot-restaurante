@@ -139,8 +139,7 @@
     if (catAtiva === null) {
       // aba "Todos": seção "Destaques" no topo + todas as categorias empilhadas.
       var destaques = [];
-      // clona o item + anexa a categoria (rótulo do card lateral), sem mutar o original
-      cats.forEach(function (c) { c.itens.forEach(function (it) { if (it.destaque) destaques.push(Object.assign({}, it, { _cat: c.nome })); }); });
+      cats.forEach(function (c) { c.itens.forEach(function (it) { if (it.destaque) destaques.push(it); }); });
       var grupos = cats.slice();
       if (destaques.length) grupos.unshift({ nome: "Destaques", itens: destaques, hero: true });
       return grupos;
@@ -174,7 +173,8 @@
     });
   }
 
-  // Vitrine de Destaques: 1 card hero grande + até 2 cards laterais.
+  // Vitrine de Destaques: carrossel horizontal de cards hero (desktop e mobile),
+  // com setas (mouse) e pontinhos de posição. Swipe no celular.
   function renderDestaques(items) {
     var wrap = document.createElement("div");
     wrap.className = "cd-destaques-wrap";
@@ -182,18 +182,79 @@
     h.className = "cd-destaques-titulo";
     h.textContent = "Destaques";
     wrap.appendChild(h);
-    var row = document.createElement("div");
-    row.className = "cd-destaques";
-    row.appendChild(heroCard(items[0]));
-    var side = items.slice(1, 3);
-    if (side.length) {
-      var col = document.createElement("div");
-      col.className = "cd-destaques-side";
-      side.forEach(function (it) { col.appendChild(featCard(it)); });
-      row.appendChild(col);
+
+    var car = document.createElement("div");
+    car.className = "cd-carousel";
+    var view = document.createElement("div");
+    view.className = "cd-carousel-viewport";
+    var track = document.createElement("div");
+    track.className = "cd-carousel-track";
+    items.forEach(function (it) { track.appendChild(heroCard(it)); });
+    view.appendChild(track);
+
+    if (items.length > 1) {
+      var prev = setaCarrossel("prev", "‹", "Anterior");
+      var next = setaCarrossel("next", "›", "Próximo");
+      prev.addEventListener("click", function () { deslizarCarrossel(track, -1); });
+      next.addEventListener("click", function () { deslizarCarrossel(track, 1); });
+      view.appendChild(prev);
+      view.appendChild(next);
+      car.appendChild(view);
+
+      var dots = document.createElement("div");
+      dots.className = "cd-carousel-dots";
+      items.forEach(function (it, i) {
+        var d = document.createElement("button");
+        d.type = "button";
+        d.className = "cd-dot" + (i === 0 ? " ativo" : "");
+        d.setAttribute("aria-label", "Ir ao destaque " + (i + 1));
+        d.addEventListener("click", function () { irParaSlide(track, i); });
+        dots.appendChild(d);
+      });
+      car.appendChild(dots);
+
+      var sync = function () { sincronizarCarrossel(track, dots, prev, next); };
+      track.addEventListener("scroll", function () { window.requestAnimationFrame(sync); });
+      window.requestAnimationFrame(sync); // estado inicial das setas
+    } else {
+      car.appendChild(view);
     }
-    wrap.appendChild(row);
+    wrap.appendChild(car);
     $("cdGrid").appendChild(wrap);
+  }
+
+  function setaCarrossel(tipo, txt, label) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "cd-carousel-arrow " + tipo;
+    b.setAttribute("aria-label", label);
+    b.textContent = txt;
+    return b;
+  }
+  function larguraSlide(track) {
+    var s = track.children[0];
+    return s ? s.clientWidth + 14 : track.clientWidth * 0.8; // 14 = gap do CSS
+  }
+  function deslizarCarrossel(track, dir) {
+    track.scrollBy({ left: dir * larguraSlide(track), behavior: "smooth" });
+  }
+  function irParaSlide(track, i) {
+    var s = track.children[i];
+    if (s) track.scrollTo({ left: s.offsetLeft - track.offsetLeft, behavior: "smooth" });
+  }
+  function sincronizarCarrossel(track, dots, prev, next) {
+    var centro = track.scrollLeft + track.clientWidth / 2, best = 0, bd = Infinity;
+    for (var i = 0; i < track.children.length; i++) {
+      var ch = track.children[i];
+      var c = (ch.offsetLeft - track.offsetLeft) + ch.clientWidth / 2;
+      var dist = Math.abs(c - centro);
+      if (dist < bd) { bd = dist; best = i; }
+    }
+    for (var j = 0; j < dots.children.length; j++) {
+      dots.children[j].className = "cd-dot" + (j === best ? " ativo" : "");
+    }
+    prev.disabled = track.scrollLeft <= 2;
+    next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
   }
 
   // Card hero: imagem grande de fundo + nome/descrição/preço sobre a imagem.
@@ -219,36 +280,6 @@
         '<div class="cd-hero-rodape">' +
           '<span class="cd-hero-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
           (naoAdd ? "" : '<span class="cd-add cd-hero-add">+ Adicionar</span>') +
-        "</div>" +
-      "</div>";
-    if (!naoAdd) el.addEventListener("click", function () { abrirModal(it); });
-    return el;
-  }
-
-  // Card lateral da vitrine: imagem no topo + categoria/nome/descrição/preço + botão "+".
-  function featCard(it) {
-    var kg = it.unidade === "kg";
-    var naoAdd = it.esgotado || kg;
-    var el = document.createElement(naoAdd ? "div" : "button");
-    if (!naoAdd) el.type = "button";
-    el.className = "cd-feat" + (it.esgotado ? " cd-card-esgotado" : "");
-    var selos = "";
-    if (it.esgotado) selos += '<span class="cd-card-selo esgotado">Esgotado</span>';
-    if (it.apenasLocal) selos += '<span class="cd-card-selo local">Só no local</span>';
-    if (kg && !it.esgotado) selos += '<span class="cd-card-selo balcao">Pesado no balcão</span>';
-    var selosHtml = selos ? '<div class="cd-card-selos">' + selos + "</div>" : "";
-    var media = it.imagem
-      ? '<div class="cd-feat-media"><img src="' + esc(it.imagem) + '" alt="" loading="lazy" />' + selosHtml + "</div>"
-      : '<div class="cd-feat-media vazia" aria-hidden="true">' + ICON_SEM_FOTO + selosHtml + "</div>";
-    el.innerHTML =
-      media +
-      '<div class="cd-feat-corpo">' +
-        (it._cat ? '<span class="cd-feat-eyebrow">' + esc(it._cat) + "</span>" : "") +
-        '<h3 class="cd-feat-nome">' + esc(it.nome) + "</h3>" +
-        (it.desc ? '<p class="cd-feat-desc">' + esc(it.desc) + "</p>" : "") +
-        '<div class="cd-feat-rodape">' +
-          '<span class="cd-card-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
-          (naoAdd ? "" : '<span class="cd-feat-add" aria-hidden="true">+</span>') +
         "</div>" +
       "</div>";
     if (!naoAdd) el.addEventListener("click", function () { abrirModal(it); });
