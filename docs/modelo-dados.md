@@ -28,14 +28,21 @@ no checkout do cardápio web; é PII e é limpa na retenção).
 
 ```text
 id (uuid), user_id (uuid→auth.users), slug, nome, email, ativo, plano,
-config (jsonb), cardapio (jsonb), criado_em (timestamptz)
+config (jsonb), cardapio (jsonb), criado_em (timestamptz),
+termos_aceitos_em (timestamptz), termos_versao (text)
 ```
 A **senha não fica aqui** — vive no Supabase Auth (`auth.users`, bcrypt). `config` e
 `cardapio` são os antigos `config.json`/`cardapio.json`. Colunas de billing
 (`assinatura_status`, `trial_ate`, `proxima_cobranca`, `stripe_customer_id`,
 `stripe_subscription_id`) — ver [assinatura-stripe.md](assinatura-stripe.md). **`plano`**
 (`essencial|completo`, default essencial) é o plano comercial — gating de features por plano
-(ver [planos-e-frete.md](planos-e-frete.md)).
+(ver [planos-e-frete.md](planos-e-frete.md)). **`termos_aceitos_em`/`termos_versao`** registram o
+aceite de Termos/Privacidade no cadastro (prova de consentimento — ver [lgpd/](lgpd/README.md)).
+
+**Tabela `auditoria`** (trilha LGPD Art. 37): `id (bigserial), evento (text), slug (text),
+detalhe (jsonb), criado_em (timestamptz)`. Registra eventos sensíveis (`conta_criada`,
+`dados_exportados`, `conta_excluida`); o `slug` é **texto sem FK** → o registro **sobrevive à
+exclusão** da conta. Sem PII no `detalhe`. Escrita best-effort em `src/auditoria.js`.
 
 **Frete (em `config.frete` jsonb):** `modo` (`fixo|raio`), `taxaFixa` (R$), e — no modo raio —
 `raio: { coordEmpresa{lat,lon}, enderecoBase, faixas:[{ini,fim,valor}], foraDaArea }`. Compat: se

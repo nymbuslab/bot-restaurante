@@ -410,3 +410,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - Os cards do cardápio ficaram maiores e mais bonitos: imagem grande no topo, selos (Destaque, Esgotado, Só no local), preço com ícone de etiqueta e botão Adicionar. 4 por linha no computador e 2 no celular.
 - A seção Destaques virou um carrossel: no computador navega pelas setas, no celular arrastando o dedo, com pontinhos indicando que há mais itens.
 - No celular o preço não quebra mais em duas linhas e fica centralizado.
+
+## [0.45.0] — Privacidade e conformidade (LGPD)
+
+- O cardápio digital passa a mostrar um aviso de privacidade ao finalizar o pedido, com link para a Política de Privacidade.
+- A Política ganhou o contato do Encarregado de dados (atendimento@nymbuslab.com.br), prazo de resposta de 15 dias, a lista completa de parceiros que recebem dados (envio de e-mails e cálculo de entrega) e o aviso de que o banco de dados fica nos EUA.
+- Ao criar a conta, passa a ficar registrado quando e qual versão dos termos foi aceita.

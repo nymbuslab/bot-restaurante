@@ -10,36 +10,9 @@ _(nada no momento)_
 
 ### Em aberto
 
-#### Adequação LGPD (origem: relatório lgpd-checker — 2026-06-24)
+#### Adequação LGPD — pendências futuras (Fases 1–4 concluídas; ver ✅ Concluído)
 
-> Meta: fechar todas as lacunas até o `lgpd-checker` não acusar mais itens ALTO/MÉDIO. Itens **(decisão)** precisam de um valor/aprovação antes de implementar. A skill avalia código/docs — **não substitui revisão jurídica** (ver pendência standing).
-
-**Fase 1 — Transparência ao cliente final (P0)**
-
-- [x] **L1 [ID-001]** Aviso de privacidade no checkout do cardápio `/c/:slug` (finalidade da coleta + link à Política) — `public/cardapio.js`/`cardapio.css`. Validado no Playwright. — 2026-06-24
-- [x] **L2 [ID-002]** Direitos do cliente final no mesmo aviso ("para acessar/excluir seus dados, fale com o restaurante"). — 2026-06-24
-- [x] **L3 [ID-003]** E-mail fixo do DPO na Política: `atendimento@nymbuslab.com.br` — `public/privacidade.html` (seção 9). — 2026-06-24
-- [x] **L4 [ID-006]** Prazo de resposta a titulares = **15 dias** — `public/privacidade.html` (seção 8.3). — 2026-06-24
-
-**Fase 2 — Prova de consentimento + transferência (P1)**
-
-- [x] **L5 [ID-004]** Registrar aceite do dono: migration `20260624120000_empresas_consentimento` (`termos_aceitos_em` + `termos_versao`) aplicada; `POST /api/cadastro` exige `aceite` e grava `now()` + versão `2026-06-24`. Sintaxe/100 testes OK; gravação real a confirmar no 1º cadastro. — 2026-06-24
-- [x] **L6 [ID-005]** `docs/lgpd/subprocessadores.md` criado; Política passou a listar Resend e Geoapify + parágrafo de transferência internacional (banco no EUA). Validado no Playwright. — 2026-06-24
-- **(decisão sua) Região do Supabase = EUA (`us-east-1`)** — já divulgada na Política como transferência internacional (legal c/ salvaguardas). Se quiser os dados **no Brasil**, avaliar migrar pra `sa-east-1` (operação à parte). Detalhe em `docs/lgpd/subprocessadores.md`.
-
-**Fase 3 — Governança formal (P2)**
-
-- [x] **L7 [ID-007]** ROPA — `docs/lgpd/ropa.md` (inventário de tratamentos: dados/finalidade/base legal/retenção por atividade). Docs de LGPD agrupados em `docs/lgpd/` com índice (README). — 2026-06-24
-- [x] **L8 [ID-008]** Plano de resposta a incidentes — `docs/lgpd/resposta-incidentes.md` (detecção → ANPD ~72h → notificar titulares). — 2026-06-24
-- [x] **L9 [ID-010]** Trilha de auditoria: tabela `auditoria` (migration `20260624130000`, `slug` em texto sobrevive à exclusão) + `src/auditoria.js`; registra `conta_criada`/`dados_exportados`/`conta_excluida` (sem PII no detalhe). Skill `concluir-tarefa` passou a revisar ROPA/subprocessadores. — 2026-06-24
-
-**Fase 4 — Observação (P3)**
-
-- [x] **L10 [ID-009]** IDs sequenciais avaliados: `slug` é público por design; `pedidos.numero` é sequencial só como referência, **sem rota pública de leitura por número** (toda leitura exige `exigeAuth` + isolamento por `empresa_id`). **Decisão: mantido como está** — documentado em `docs/lgpd/ropa.md` (seção "Identificadores"). — 2026-06-24
-
-> **Adequação LGPD — Fases 1–4 concluídas (2026-06-24).** Reanálise do `/lgpd-checker`: de ❌ NÃO CONFORME (71) → ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Tudo que dependia de código/documentação está fechado.
-
-**Fase 5 — pendências futuras (não bloqueiam; ficam para depois)**
+> Reanálise `/lgpd-checker`: ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Nenhuma destas bloqueia.
 
 - [ ] **R-03 (código)** Job de retenção da trilha de auditoria: apagar registros de `auditoria` com +24 meses (junto dos jobs de retenção no `index.js`). _Único item de código restante._
 - [ ] **R-01 (operacional)** Confirmar/arquivar os DPAs dos subprocessadores (Supabase, Stripe, Resend, Geoapify) e anotar em `docs/lgpd/subprocessadores.md`.
@@ -59,6 +32,7 @@ _(nada no momento)_
 
 ## ✅ Concluído
 
+- [x] **Adequação LGPD (Fases 1–4)** — fechadas as 10 lacunas do relatório `lgpd-checker` (de ❌ NÃO CONFORME/71 → ⚠️ PARCIALMENTE CONFORME/90, zero ALTO/CRÍTICO): aviso de privacidade + link à Política no checkout do cardápio (cliente final); e-mail do DPO (`atendimento@nymbuslab.com.br`) + prazo de 15 dias na Política; registro do aceite do dono no cadastro (`termos_aceitos_em`/`termos_versao`, exige `aceite`); Política com Resend/Geoapify + transferência internacional (banco nos EUA); docs em `docs/lgpd/` (ROPA, subprocessadores, resposta a incidentes, índice); trilha de auditoria (tabela `auditoria` + `src/auditoria.js`, registra conta criada/exportada/excluída). Pendências futuras (não bloqueiam) na Fase 5 de Próximos Passos. — 2026-06-24
 - [x] **Cardápio web — vitrine de Destaques em carrossel** — a seção Destaques virou um carrossel horizontal de cards hero (imagem grande de fundo + nome/preço/Adicionar sobre a foto): no desktop com setas de navegação (mostra ~2 cards + o próximo espiando), no celular por swipe; pontinhos abaixo indicam a posição e que há mais (dot ativo acompanha o scroll, clicável). Mostra todos os destaques. Validado no Playwright (desktop + mobile). — 2026-06-24
 - [x] **Cardápio web — cards de produto premium (vertical, imagem grande)** — os cards trocaram a lista horizontal por cards verticais com imagem grande no topo, selo flutuante sobre a foto (Destaque/Esgotado/Só no local/Pesado no balcão), nome, descrição, preço (com ícone de etiqueta) e botão Adicionar; 4 colunas no desktop e 2 no mobile, hover com elevação + glow, entrada em cascata. No mobile o preço fica centralizado e nunca quebra (rodapé empilha com Adicionar largura total). Placeholder com ícone quando sem foto. Validado no Playwright. — 2026-06-24
 - [x] **Cupom com cara de recibo/marketing (cabeçalho + rodapé)** — o cupom do cliente ganhou cabeçalho com nome/endereço/telefone da empresa e rodapé com mensagem de "volte sempre" personalizável (campo novo em Configurações → Impressora; vazio usa um padrão) + chamada pro cardápio digital com o link do tenant. Cabeçalho refinado: CEP saiu da linha do endereço e foi pra **mesma linha do telefone**; data/hora no padrão **dd/mm/aaaa - HH:MM** (cupom e cozinha). Via cozinha intacta. Validado por render/teste (100/100); textarea da aba Impressora não validada no painel logado. — 2026-06-23
