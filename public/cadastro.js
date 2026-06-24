@@ -69,7 +69,7 @@
         const r = await fetch("/api/cadastro", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome, email, senha }),
+          body: JSON.stringify({ nome, email, senha, aceite: true }),
         });
         const data = await r.json();
         if (!r.ok) {

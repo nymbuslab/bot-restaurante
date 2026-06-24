@@ -23,8 +23,9 @@ _(nada no momento)_
 
 **Fase 2 — Prova de consentimento + transferência (P1)**
 
-- [ ] **L5 [ID-004]** Registrar aceite do dono: migration `termos_aceitos_em` + `termos_versao` em `empresas` + gravar no `POST /api/cadastro` — `supabase/migrations/`, `src/empresas.js`, `src/servidor.js`.
-- [ ] **L6 [ID-005]** `docs/subprocessadores.md` (serviço·dados·país·DPA) + confirmar/forçar a região do Supabase + referenciar na Política.
+- [x] **L5 [ID-004]** Registrar aceite do dono: migration `20260624120000_empresas_consentimento` (`termos_aceitos_em` + `termos_versao`) aplicada; `POST /api/cadastro` exige `aceite` e grava `now()` + versão `2026-06-24`. Sintaxe/100 testes OK; gravação real a confirmar no 1º cadastro. — 2026-06-24
+- [x] **L6 [ID-005]** `docs/subprocessadores.md` criado; Política passou a listar Resend e Geoapify + parágrafo de transferência internacional (banco no EUA). Validado no Playwright. — 2026-06-24
+- **(decisão sua) Região do Supabase = EUA (`us-east-1`)** — já divulgada na Política como transferência internacional (legal c/ salvaguardas). Se quiser os dados **no Brasil**, avaliar migrar pra `sa-east-1` (operação à parte). Detalhe em `docs/subprocessadores.md`.
 
 **Fase 3 — Governança formal (P2)**
 

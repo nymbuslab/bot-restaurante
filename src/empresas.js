@@ -71,6 +71,10 @@ function configInicial(nomeRestaurante) {
 
 // ---- CRUD ----
 
+// Versão dos Termos/Privacidade vigente — gravada junto do aceite no cadastro (prova de
+// consentimento). Atualizar quando o conteúdo legal mudar de forma relevante.
+const TERMOS_VERSAO = "2026-06-24";
+
 async function cadastrar({ nome, email, senha }) {
   if (!nome || !email || !senha) throw new Error("nome, email e senha são obrigatórios");
 
@@ -106,9 +110,9 @@ async function cadastrar({ nome, email, senha }) {
   const slug = await slugUnico(slugBase(nome));
   try {
     await db.query(
-      `INSERT INTO empresas (user_id, slug, nome, email, ativo, config, cardapio)
-       VALUES ($1, $2, $3, $4, true, $5::jsonb, $6::jsonb)`,
-      [userId, slug, nome, email, JSON.stringify(configInicial(nome)), JSON.stringify({ categorias: [] })]
+      `INSERT INTO empresas (user_id, slug, nome, email, ativo, config, cardapio, termos_aceitos_em, termos_versao)
+       VALUES ($1, $2, $3, $4, true, $5::jsonb, $6::jsonb, now(), $7)`,
+      [userId, slug, nome, email, JSON.stringify(configInicial(nome)), JSON.stringify({ categorias: [] }), TERMOS_VERSAO]
     );
   } catch (e) {
     // rollback do usuário Auth só se ACABAMOS de criá-lo (não em auto-reparo de órfã).

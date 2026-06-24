@@ -194,9 +194,10 @@ async function exigeSuperAdmin(req, res, next) {
 
 app.post("/api/cadastro", cadastroLimiter, async (req, res) => {
   try {
-    const { nome, email, senha } = req.body || {};
+    const { nome, email, senha, aceite } = req.body || {};
     if (!nome || !email || !senha) return res.status(400).json({ erro: "Preencha todos os campos." });
     if (senha.length < 6) return res.status(400).json({ erro: "Senha deve ter pelo menos 6 caracteres." });
+    if (aceite !== true) return res.status(400).json({ erro: "É necessário aceitar os Termos de Uso e a Política de Privacidade." });
     const empresa = await empresas.cadastrar({ nome, email, senha });
     mail.boasVindas(email, empresa.nome).catch((e) => console.error("email boas-vindas:", e.message));
     res.json({ ok: true, slug: empresa.slug, nome: empresa.nome });
