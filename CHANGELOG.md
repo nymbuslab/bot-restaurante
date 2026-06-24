@@ -416,3 +416,4 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - O cardápio digital passa a mostrar um aviso de privacidade ao finalizar o pedido, com link para a Política de Privacidade.
 - A Política ganhou o contato do Encarregado de dados (atendimento@nymbuslab.com.br), prazo de resposta de 15 dias, a lista completa de parceiros que recebem dados (envio de e-mails e cálculo de entrega) e o aviso de que o banco de dados fica nos EUA.
 - Ao criar a conta, passa a ficar registrado quando e qual versão dos termos foi aceita.
+- O cardápio digital agora tem um rodapé fixo com links para a Política de Privacidade e os Termos de Uso.

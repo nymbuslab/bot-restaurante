@@ -34,7 +34,7 @@
 - **Dono:** autoatendimento no painel — exportar dados (`GET /api/conta/exportar`) e excluir a
   conta (`DELETE /api/conta`). Ver [lgpd-e-conta.md](lgpd-e-conta.md).
 - **Cliente final:** exerce os direitos **junto ao restaurante** (controlador); o aviso no
-  checkout do cardápio orienta isso. A retenção automática (12 meses) também limita o acúmulo.
+  checkout e o rodapé do cardápio orientam isso. A retenção automática (12 meses) também limita o acúmulo.
 - **Canal/Encarregado (DPO):** `atendimento@nymbuslab.com.br` — resposta em até **15 dias**.
 
 ## Segurança (resumo)
