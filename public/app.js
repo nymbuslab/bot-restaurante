@@ -3588,11 +3588,9 @@ function renderPdvCarrinho() {
           (opsTxt ? '<span class="pdv-linha-ops">' + pdvEsc(opsTxt) + "</span>" : "") +
           (l.observacao ? '<span class="pdv-linha-obs">' + pdvEsc(l.observacao) + "</span>" : "") +
         "</div>" +
-        '<div class="pdv-linha-dir">' +
-          '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
-          qtdCtrl +
-          '<button class="pdv-linha-rm" type="button" data-rm="' + l.uid + '" aria-label="Remover"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
-        "</div>";
+        qtdCtrl +
+        '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
+        '<button class="pdv-linha-rm" type="button" data-rm="' + l.uid + '" aria-label="Remover"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
       cont.appendChild(div);
     });
     cont.querySelectorAll("[data-inc]").forEach((b) => b.addEventListener("click", () => { const l = pdvCart.find((x) => x.uid == b.dataset.inc); if (l) { l.qtd++; renderPdvCarrinho(); } }));
