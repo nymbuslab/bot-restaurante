@@ -154,6 +154,8 @@
     var grupos = itensVisiveis();
     var qtd = grupos.reduce(function (s, g) { return s + g.itens.length; }, 0);
     $("cdVazio").hidden = qtd > 0;
+    grid.classList.toggle("cd-anim", !busca); // cascata só fora da busca
+    var idx = 0;
     grupos.forEach(function (g) {
       if (g.nome) {
         var h = document.createElement("div");
@@ -162,10 +164,17 @@
         grid.appendChild(h);
       }
       g.itens.forEach(function (it) {
-        grid.appendChild(cardItem(it));
+        var c = cardItem(it);
+        if (!busca) c.style.animationDelay = (Math.min(idx, 16) * 0.035).toFixed(3) + "s";
+        grid.appendChild(c);
+        idx++;
       });
     });
   }
+
+  // ícone (sem foto) — placeholder dentro da mídia do card
+  var ICON_SEM_FOTO = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+  var ICON_ESTRELA = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
 
   function cardItem(it) {
     var kg = it.unidade === "kg";
@@ -173,19 +182,20 @@
     var card = document.createElement(naoAdd ? "div" : "button");
     if (!naoAdd) card.type = "button";
     card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "") + (kg && !it.esgotado ? " cd-card-kg" : "");
-    var img = it.imagem
-      ? '<img class="cd-card-img" src="' + esc(it.imagem) + '" alt="" loading="lazy" />'
-      : '<div class="cd-card-img vazia" aria-hidden="true"></div>';
-    var nota = it.esgotado
-      ? '<span class="cd-card-esgotado-tag">Esgotado</span>'
-      : (kg ? '<span class="cd-card-balcao-tag">Pesado no balcão</span>' : "");
+    // selos flutuantes sobre a imagem (empilham no canto superior esquerdo)
+    var selos = "";
+    if (it.esgotado) selos += '<span class="cd-card-selo esgotado">Esgotado</span>';
+    if (it.destaque && !it.esgotado) selos += '<span class="cd-card-selo destaque">' + ICON_ESTRELA + " Destaque</span>";
+    if (it.apenasLocal) selos += '<span class="cd-card-selo local">Só no local</span>';
+    if (kg && !it.esgotado) selos += '<span class="cd-card-selo balcao">Pesado no balcão</span>';
+    var selosHtml = selos ? '<div class="cd-card-selos">' + selos + "</div>" : "";
+    var media = it.imagem
+      ? '<div class="cd-card-media"><img src="' + esc(it.imagem) + '" alt="" loading="lazy" />' + selosHtml + "</div>"
+      : '<div class="cd-card-media vazia" aria-hidden="true">' + ICON_SEM_FOTO + selosHtml + "</div>";
     card.innerHTML =
-      img +
+      media +
       '<div class="cd-card-corpo">' +
         '<h3 class="cd-card-nome">' + esc(it.nome) + "</h3>" +
-        (it.destaque ? '<span class="cd-card-destaque"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Destaque</span>' : "") +
-        nota +
-        (it.apenasLocal ? '<span class="cd-card-local">Só no local</span>' : "") +
         (it.desc ? '<p class="cd-card-desc">' + esc(it.desc) + "</p>" : "") +
         '<div class="cd-card-rodape">' +
           '<span class="cd-card-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
