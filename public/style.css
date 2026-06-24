@@ -4572,48 +4572,44 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-semcaixa h3 { margin: 10px 0 4px; }
 .pdv-semcaixa .sub { max-width: 420px; margin: 0 auto 16px; }
 
-/* Layout: produtos + carrinho */
-/* Sem a animação de entrada NESTE container: o transform do fadeSlide viraria
+/* Layout: rail de categorias + produtos + carrinho.
+   Sem a animação de entrada NESTE container: o transform do fadeSlide viraria
    containing block do carrinho fixed (folha do mobile ancoraria errado). */
 #pdvConteudo { animation: none; }
-.pdv { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }
+.pdv { display: grid; grid-template-columns: 140px 1fr 360px; gap: 18px; align-items: start; }
 .pdv-produtos { min-width: 0; }
 
-.pdv-busca { position: relative; margin-bottom: 12px; }
+/* Rail de categorias (coluna à esquerda, com ícones) */
+.pdv-cats { display: flex; flex-direction: column; gap: 6px; }
+.pdv-cat {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 11px 13px; border-radius: var(--radius); font-size: 13.5px; font-weight: 600;
+  background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.pdv-cat svg { flex: none; }
+.pdv-cat:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+.pdv-cat.ativo { background: var(--accent); border-color: transparent; color: #fff; }
+
+.pdv-busca { position: relative; margin-bottom: 14px; }
 .pdv-busca svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; }
 .pdv-busca input { width: 100%; padding: 11px 14px 11px 38px; }
 
-/* Categorias: SEMPRE chips horizontais (a aba usa <div>, não <nav> — evita herdar
-   o nav vertical da sidebar). */
-.pdv-cats { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding: 0 0 10px; margin: 0 0 14px; scrollbar-width: none; }
-.pdv-cats::-webkit-scrollbar { display: none; }
-.pdv-chip {
-  flex: 0 0 auto; width: auto; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
-  background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border);
-  text-align: center; white-space: nowrap; transition: background .15s, color .15s, border-color .15s;
-}
-.pdv-chip:hover { color: var(--text-primary); border-color: var(--text-secondary); }
-.pdv-chip.ativo { background: var(--accent); border-color: transparent; color: #fff; }
-
-.pdv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-content: start; }
+.pdv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .pdv-tile {
-  display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left;
-  min-height: 96px; padding: 14px; border-radius: var(--radius-lg);
-  background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary);
+  display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden;
+  border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary);
   position: relative; transition: border-color .15s, transform .08s, box-shadow .15s;
 }
-.pdv-tile:hover { background: var(--bg-surface); border-color: var(--accent); box-shadow: 0 6px 18px rgba(var(--accent-rgb), .25); }
+.pdv-tile:hover { border-color: var(--accent); box-shadow: 0 6px 18px rgba(var(--accent-rgb), .25); }
 .pdv-tile:active { transform: translateY(1px); }
-.pdv-tile-nome { font-size: 13.5px; font-weight: 600; line-height: 1.3; padding-right: 26px; }
-.pdv-tile-preco { margin-top: auto; font-size: 16px; font-weight: 800; color: var(--accent-fg); }
+.pdv-tile-img { width: 100%; height: 104px; object-fit: cover; display: block; background: var(--bg-elevated); }
+.pdv-tile-img.vazia { display: flex; align-items: center; justify-content: center; color: var(--text-disabled); }
+.pdv-tile-corpo { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; }
+.pdv-tile-nome { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.pdv-tile-preco { font-size: 15px; font-weight: 800; color: var(--accent-fg); }
 .pdv-tile-preco small { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
-.pdv-tile-add {
-  position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent-subtle); color: var(--accent-fg);
-  display: inline-flex; align-items: center; justify-content: center; transition: background .15s, color .15s;
-}
-.pdv-tile:hover .pdv-tile-add { background: var(--accent); color: #fff; }
-.pdv-tile-selo { position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700; color: var(--error); background: var(--error-subtle); padding: 2px 7px; border-radius: 20px; }
+.pdv-tile-selo { position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700; color: #fff; background: var(--error); padding: 2px 8px; border-radius: 20px; }
 .pdv-tile.esgotado { opacity: .55; cursor: not-allowed; }
 .pdv-tile.esgotado:hover { border-color: var(--border); box-shadow: none; transform: none; }
 .pdv-vazio { color: var(--text-secondary); text-align: center; padding: 32px 0; font-size: 13px; }
@@ -4632,15 +4628,18 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-cart-itens { flex: 1; overflow-y: auto; padding: 6px 16px; min-height: 80px; }
 .pdv-cart-vazio { color: var(--text-secondary); text-align: center; font-size: 13px; padding: 28px 8px; }
 
-.pdv-linha { display: flex; align-items: center; gap: 10px; padding: 12px 2px; border-bottom: 1px solid var(--border-subtle); }
+/* Linha do item: nome+total (topo) · preço unit · controles */
+.pdv-linha { display: flex; flex-direction: column; gap: 4px; padding: 12px 2px; border-bottom: 1px solid var(--border-subtle); }
 .pdv-linha:last-child { border-bottom: none; }
-.pdv-linha-corpo { flex: 1; min-width: 0; cursor: pointer; }
-.pdv-linha-nome { display: block; font-size: 13.5px; font-weight: 600; }
-.pdv-linha-ops, .pdv-linha-obs { display: block; font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
-.pdv-linha-obs { color: var(--accent-fg); }
-.pdv-linha-preco { flex: none; font-size: 13.5px; font-weight: 700; white-space: nowrap; min-width: 64px; text-align: right; }
-.pdv-linha-kg { flex: none; font-size: 12px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; border: 1px solid var(--border); border-radius: 20px; }
-.pdv-linha-rm { flex: none; background: transparent; color: var(--text-secondary); border: none; padding: 2px; }
+.pdv-linha-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; cursor: pointer; }
+.pdv-linha-nome { font-size: 13.5px; font-weight: 600; min-width: 0; }
+.pdv-linha-preco { flex: none; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+.pdv-linha-unit { font-size: 11.5px; color: var(--text-secondary); }
+.pdv-linha-ops { font-size: 11.5px; color: var(--text-secondary); }
+.pdv-linha-obs { font-size: 11.5px; color: var(--accent-fg); }
+.pdv-linha-ctrl { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.pdv-linha-kg { font-size: 12px; font-weight: 700; color: var(--text-secondary); cursor: pointer; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; }
+.pdv-linha-rm { flex: none; background: transparent; color: var(--text-secondary); border: none; padding: 4px; }
 .pdv-linha-rm:hover { background: transparent; color: var(--error); }
 
 /* Stepper (qtd / opcionais) */
@@ -4648,14 +4647,20 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-stepper button { background: var(--bg-elevated); color: var(--text-primary); border: none; width: 32px; height: 32px; padding: 0; font-size: 16px; border-radius: 0; }
 .pdv-stepper button:hover { background: var(--bg-overlay); }
 .pdv-stepper span { min-width: 30px; text-align: center; font-size: 13.5px; font-weight: 700; }
-.pdv-stepper.sm button { width: 26px; height: 26px; font-size: 14px; }
-.pdv-stepper.sm span { min-width: 24px; font-size: 12.5px; }
+.pdv-stepper.sm button { width: 28px; height: 28px; font-size: 15px; }
+.pdv-stepper.sm span { min-width: 26px; font-size: 13px; }
 
 .pdv-cart-rodape { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
 .pdv-tot-linha { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
-.pdv-tot-total { font-size: 16px; color: var(--text-primary); margin: 4px 0 12px; }
-.pdv-tot-total strong { font-size: 20px; }
-.pdv-cobrar { width: 100%; padding: 13px; font-size: 15px; }
+.pdv-desc-row { align-items: center; }
+.pdv-desc-link { background: none; border: none; color: var(--accent-fg); padding: 0; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pdv-desc-link:hover { background: none; text-decoration: underline; }
+.pdv-desc-valor { color: var(--success); font-weight: 600; }
+.pdv-tot-total { font-size: 16px; color: var(--text-primary); margin: 6px 0 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle); }
+.pdv-tot-total strong { font-size: 21px; color: var(--accent-fg); }
+.pdv-cart-acoes { display: flex; gap: 8px; }
+.pdv-cancelar { flex: none; padding: 13px 16px; font-size: 14px; }
+.pdv-cobrar { flex: 1; padding: 13px; font-size: 15px; }
 
 /* FAB do carrinho (mobile) */
 .pdv-fab {
@@ -4691,32 +4696,54 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-op-preco { font-size: 12.5px; color: var(--accent-fg); font-weight: 600; }
 .pdv-modal-add { width: 100%; padding: 13px; font-size: 15px; margin-top: 4px; }
 
-/* Modal de pagamento */
-.pdv-pagar-caixa { max-width: 480px; }
-.pdv-pg-resumo { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
-.pdv-pg-total { font-size: 16px; color: var(--text-primary); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
-.pdv-pg-total strong { font-size: 22px; color: var(--accent-fg); }
-.pdv-desc-row { display: flex; gap: 8px; }
-.pdv-desc-tipo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
-.pdv-desc-tipo button { background: var(--bg-elevated); color: var(--text-secondary); border: none; width: 44px; padding: 0; border-radius: 0; font-size: 13px; }
+/* Desconto: toggle R$/% (modal de desconto) */
+.pdv-desc-tipo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; align-self: flex-start; }
+.pdv-desc-tipo button { background: var(--bg-elevated); color: var(--text-secondary); border: none; width: 48px; padding: 8px 0; border-radius: 0; font-size: 13px; }
 .pdv-desc-tipo button.ativo { background: var(--accent); color: #fff; }
-.pdv-desc-row input { flex: 1; }
-.pdv-pg-formas { margin: 14px 0 4px; }
-.pdv-pg-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.pdv-pg-row .pdv-pg-forma { flex: 1; }
-.pdv-pg-row .pdv-pg-valor { width: 120px; }
-.pdv-pg-row .pdv-pg-rm { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); width: 38px; padding: 0; font-size: 18px; }
-.pdv-pg-add { background: transparent; color: var(--accent-fg); border: 1px dashed var(--border); width: 100%; padding: 9px; font-size: 13px; }
-.pdv-pg-add:hover { background: var(--accent-subtle); }
-.pdv-pg-restante { font-size: 13px; text-align: right; margin: 6px 0; color: var(--text-secondary); }
-.pdv-pg-restante .ok { color: var(--success); font-weight: 700; }
-.pdv-pg-restante .erro { color: var(--error); font-weight: 700; }
-.pdv-troco-val { font-size: 14px; margin-top: 6px; color: var(--text-primary); }
-.pdv-pg-finalizar { width: 100%; padding: 14px; font-size: 15px; margin-top: 10px; }
 
-/* Responsivo: carrinho vira folha no mobile */
+/* Modal de pagamento (2 colunas: formas + resumo) */
+.pdv-pagar-caixa { max-width: 880px; }
+.pdv-pg-grid { display: grid; grid-template-columns: 1fr 300px; gap: 22px; align-items: start; }
+.pdv-pg-main { min-width: 0; }
+.pdv-formas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 14px; }
+.pdv-forma {
+  display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elevated);
+  color: var(--text-primary); font-size: 13.5px; font-weight: 600; transition: border-color .15s, background .15s;
+}
+.pdv-forma:hover { border-color: var(--text-secondary); background: var(--bg-elevated); }
+.pdv-forma.ativo { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent-fg); }
+.pdv-pg-add-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.pdv-pg-add-row input { flex: 1; }
+.pdv-pg-addbtn { flex: none; padding: 0 20px; font-size: 14px; }
+.pdv-pg-lista { display: flex; flex-direction: column; gap: 8px; }
+.pdv-pg-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-elevated); }
+.pdv-pg-item > span { flex: 1; font-size: 13px; font-weight: 600; }
+.pdv-pg-item > strong { font-size: 13.5px; }
+.pdv-pg-item button { background: transparent; color: var(--text-secondary); border: none; width: 26px; height: 26px; padding: 0; font-size: 18px; border-radius: 50%; }
+.pdv-pg-item button:hover { background: var(--error-subtle); color: var(--error); }
+.pdv-pg-prints { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.pdv-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer; }
+.pdv-check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.pdv-pg-resumo-box { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.pdv-resumo-itens { margin: 6px 0 4px; }
+.pdv-resumo-item { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; }
+.pdv-resumo-tot { display: flex; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px; font-size: 14px; }
+.pdv-resumo-tot strong { font-size: 22px; color: var(--accent-fg); }
+.pdv-resumo-linha { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-top: 7px; }
+.pdv-resumo-linha .falta { color: var(--error); font-weight: 700; }
+.pdv-resumo-linha .troco { color: var(--success); font-weight: 700; }
+.pdv-cpf { margin: 14px 0 0; }
+.pdv-pg-acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.pdv-pg-acoes .secundario { padding: 13px 22px; }
+.pdv-pg-confirmar { padding: 13px 24px; font-size: 15px; }
+
+/* Responsivo */
+@media (max-width: 980px) {
+  .pdv { grid-template-columns: 116px 1fr 320px; gap: 14px; }
+}
 @media (max-width: 860px) {
-  .pdv { grid-template-columns: 1fr; }
+  .pdv { grid-template-columns: 116px 1fr; }
   .pdv-carrinho {
     position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 110; max-height: 85vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translateY(100vh); transition: transform .25s ease; box-shadow: 0 -8px 30px rgba(0,0,0,.5);
@@ -4724,8 +4751,15 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .pdv-carrinho.aberto { transform: translateY(0); }
   .pdv-cart-fechar { display: inline-flex; }
   .pdv-fab { display: inline-flex; }
+  .pdv-pg-grid { grid-template-columns: 1fr; }
+  .pdv-pg-resumo-box { order: -1; }
 }
-/* No bottom-nav (≤640px) o FAB sobe para não cobrir a barra de navegação */
+/* No celular: rail vira chips horizontais no topo + bottom-nav */
 @media (max-width: 640px) {
+  .pdv { grid-template-columns: 1fr; }
+  .pdv-cats { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 8px; scrollbar-width: none; }
+  .pdv-cats::-webkit-scrollbar { display: none; }
+  .pdv-cat { width: auto; flex: 0 0 auto; border-radius: 999px; padding: 8px 14px; }
+  .pdv-formas { grid-template-columns: 1fr; }
   .pdv-fab { bottom: 72px; z-index: 90; }
 }

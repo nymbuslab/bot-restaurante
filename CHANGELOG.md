@@ -430,3 +430,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - Na hora de cobrar: **desconto** (em R$ ou %), **pagamento dividido** em várias formas, cálculo de **troco** e impressão da comanda ao finalizar.
 - A venda entra automaticamente no **caixa do dia** (precisa estar aberto) e dá **baixa no estoque** — e aparece na lista de Pedidos como "Balcão".
 - Funciona no computador e no celular/tablet (carrinho vira uma folha na parte de baixo). Recurso do **Plano Completo**.
+
+## [0.48.0] — PDV repaginado (layout estilo balcão)
+
+- O PDV ganhou um visual novo, mais próximo de um caixa de verdade: **categorias numa barra lateral** com ícones, **cards de produto com foto** e o **carrinho à direita** mostrando o preço unitário de cada item, com Subtotal, Desconto e Total.
+- **Desconto** agora é aplicado no próprio carrinho (em R$ ou %).
+- A **tela de finalizar venda** foi redesenhada: escolha a forma de pagamento em botões grandes (Dinheiro, Cartão, Pix…), divida o pagamento em várias formas, veja **Pago / Falta / Troco** num resumo do pedido, informe o **CPF na nota** (opcional) e escolha imprimir a comanda da cozinha e/ou o comprovante do cliente.
+- No celular as categorias viram atalhos no topo e o pagamento se ajusta à tela.

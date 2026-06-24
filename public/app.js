@@ -3378,6 +3378,21 @@ let pdvFormasPg = ["Dinheiro"]; // formas de pagamento (config.pagamentos)
 let pdvCatAtiva = null;  // null = Todos
 let pdvBuscaTermo = "";
 let pdvUidSeq = 1;
+let pdvDesconto = null;  // { tipo:'valor'|'pct', valor } | null — aplicado no carrinho
+
+// Desconto sobre o subtotal. Retorna { desconto (R$ abatido), total (líquido) }.
+function pdvDescontoCalc(subtotal) {
+  const sub = Math.max(0, Number(subtotal) || 0);
+  let abate = 0;
+  if (pdvDesconto && Number(pdvDesconto.valor) > 0) {
+    abate = pdvDesconto.tipo === "pct"
+      ? sub * (Math.min(100, Number(pdvDesconto.valor)) / 100)
+      : Number(pdvDesconto.valor);
+  }
+  abate = Math.min(sub, Math.max(0, Math.round(abate * 100) / 100));
+  return { desconto: abate, total: Math.round((sub - abate) * 100) / 100 };
+}
+function pdvTotalLiq() { return pdvDescontoCalc(pdvTotal()).total; }
 
 function pdvMoney(v) { return Dinheiro.comPrefixo(Number(v) || 0); }
 function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -3395,10 +3410,11 @@ function pdvParseOpcionais(texto) {
   });
   return lista;
 }
-function pdvPrecoLinha(l) {
+function pdvPrecoUnit(l) {
   const add = (l.opcionais || []).reduce((s, o) => s + (Number(o.preco) || 0) * (o.qtd || 1), 0);
-  return ((Number(l.preco) || 0) + add) * (Number(l.qtd) || 0);
+  return (Number(l.preco) || 0) + add;
 }
+function pdvPrecoLinha(l) { return pdvPrecoUnit(l) * (Number(l.qtd) || 0); }
 function pdvTotal() { return pdvCart.reduce((s, l) => s + pdvPrecoLinha(l), 0); }
 
 async function carregarPdv() {
@@ -3423,20 +3439,24 @@ async function carregarPdv() {
 
 function pdvCategorias() { return (cardapioAtual && cardapioAtual.categorias) || []; }
 
+var IC_TAG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
+var IC_GRID = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
+var IC_IMG = '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+
 function renderPdvCategorias() {
   const nav = $("pdvCats");
   const cats = pdvCategorias().filter((c) => c && c.nome);
   nav.innerHTML = "";
-  const mk = (rotulo, val) => {
+  const mk = (rotulo, val, ico) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "pdv-chip" + ((pdvCatAtiva === val) ? " ativo" : "");
-    b.textContent = rotulo;
+    b.className = "pdv-cat" + ((pdvCatAtiva === val) ? " ativo" : "");
+    b.innerHTML = ico + "<span>" + pdvEsc(rotulo) + "</span>";
     b.addEventListener("click", () => { pdvCatAtiva = val; renderPdvCategorias(); renderPdvProdutos(); });
     nav.appendChild(b);
   };
-  mk("Todos", null);
-  cats.forEach((c) => mk(c.nome, c.nome));
+  mk("Todos", null, IC_GRID);
+  cats.forEach((c) => mk(c.nome, c.nome, IC_TAG));
 }
 
 function renderPdvProdutos() {
@@ -3453,12 +3473,16 @@ function renderPdvProdutos() {
       const tile = document.createElement("button");
       tile.type = "button";
       tile.className = "pdv-tile" + (st.esgotado ? " esgotado" : "");
+      const img = item.imagem
+        ? '<img class="pdv-tile-img" src="' + pdvEsc(item.imagem) + '" alt="" loading="lazy" />'
+        : '<div class="pdv-tile-img vazia">' + IC_IMG + "</div>";
       tile.innerHTML =
-        '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
-        '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + (ehKg ? "<small>/kg</small>" : "") + "</span>" +
-        (st.esgotado
-          ? '<span class="pdv-tile-selo">Esgotado</span>'
-          : '<span class="pdv-tile-add" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>');
+        img +
+        '<div class="pdv-tile-corpo">' +
+          '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
+          '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + (ehKg ? "<small>/kg</small>" : "") + "</span>" +
+        "</div>" +
+        (st.esgotado ? '<span class="pdv-tile-selo">Esgotado</span>' : "");
       if (!st.esgotado) tile.addEventListener("click", () => pdvTileClick(item));
       grid.appendChild(tile);
       n++;
@@ -3579,18 +3603,23 @@ function renderPdvCarrinho() {
       const div = document.createElement("div");
       div.className = "pdv-linha";
       const opsTxt = (l.opcionais || []).map((o) => (o.qtd > 1 ? o.qtd + "x " : "") + o.nome).join(", ");
-      const qtdCtrl = l.unidade === "kg"
+      const ehKg = l.unidade === "kg";
+      const unit = pdvMoney(pdvPrecoUnit(l)) + (ehKg ? "/kg" : "");
+      const ctrl = ehKg
         ? '<span class="pdv-linha-kg" data-edit="' + l.uid + '">' + window.Estoque.formatarQtd(l.qtd, "kg") + " kg</span>"
         : '<div class="pdv-stepper sm"><button type="button" data-dec="' + l.uid + '">−</button><span>' + l.qtd + '</span><button type="button" data-inc="' + l.uid + '">+</button></div>';
       div.innerHTML =
-        '<div class="pdv-linha-corpo" data-edit="' + l.uid + '">' +
+        '<div class="pdv-linha-top" data-edit="' + l.uid + '">' +
           '<span class="pdv-linha-nome">' + pdvEsc(l.nome) + "</span>" +
-          (opsTxt ? '<span class="pdv-linha-ops">' + pdvEsc(opsTxt) + "</span>" : "") +
-          (l.observacao ? '<span class="pdv-linha-obs">' + pdvEsc(l.observacao) + "</span>" : "") +
+          '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
         "</div>" +
-        qtdCtrl +
-        '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
-        '<button class="pdv-linha-rm" type="button" data-rm="' + l.uid + '" aria-label="Remover"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+        '<span class="pdv-linha-unit">Preço unit: ' + unit + "</span>" +
+        (opsTxt ? '<span class="pdv-linha-ops">' + pdvEsc(opsTxt) + "</span>" : "") +
+        (l.observacao ? '<span class="pdv-linha-obs">' + pdvEsc(l.observacao) + "</span>" : "") +
+        '<div class="pdv-linha-ctrl">' +
+          ctrl +
+          '<button class="pdv-linha-rm" type="button" data-rm="' + l.uid + '" aria-label="Remover"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        "</div>";
       cont.appendChild(div);
     });
     cont.querySelectorAll("[data-inc]").forEach((b) => b.addEventListener("click", () => { const l = pdvCart.find((x) => x.uid == b.dataset.inc); if (l) { l.qtd++; renderPdvCarrinho(); } }));
@@ -3603,15 +3632,21 @@ function renderPdvCarrinho() {
       abrirPdvItemModal(item, l.uid);
     }));
   }
-  const tot = pdvTotal();
-  $("pdvTotal").textContent = pdvMoney(tot);
+  // Rodapé: subtotal, desconto, total.
+  const sub = pdvTotal();
+  const { desconto, total } = pdvDescontoCalc(sub);
+  $("pdvSubtotal").textContent = pdvMoney(sub);
+  $("pdvDescValor").textContent = "− " + pdvMoney(desconto);
+  $("pdvDescBtn").textContent = pdvDesconto ? "Editar desconto" : "+ Desconto";
+  $("pdvDescValor").hidden = !pdvDesconto;
+  $("pdvTotal").textContent = pdvMoney(total);
   $("pdvCobrar").disabled = !pdvCart.length;
   const fab = $("pdvFab");
   if (pdvCart.length) {
     fab.hidden = false;
     $("pdvFabCount").textContent = pdvCart.reduce((s, l) => s + (l.unidade === "kg" ? 1 : l.qtd), 0);
-    $("pdvFabTotal").textContent = pdvMoney(tot);
-  } else { fab.hidden = true; fab.classList.remove("oculto"); $("pdvCarrinho").classList.remove("aberto"); }
+    $("pdvFabTotal").textContent = pdvMoney(total);
+  } else { fab.hidden = true; fab.classList.remove("oculto"); $("pdvCarrinho").classList.remove("aberto"); pdvDesconto = null; }
 }
 
 function pdvAcharItem(id) {
@@ -3621,163 +3656,194 @@ function pdvAcharItem(id) {
   return null;
 }
 
-// ---- Pagamento (desconto / formas / troco) ----
-let pdvPgRows = [];      // [{ forma, valorStr }]
-let pdvDescontoTipo = "valor";
+// ---- Desconto (modal, aplicado no carrinho) ----
+function abrirPdvDesconto() {
+  if (!pdvCart.length) return;
+  let dtipo = (pdvDesconto && pdvDesconto.tipo) || "valor";
+  const valIni = pdvDesconto ? pdvDesconto.valor : 0;
+  const html =
+    '<button class="pdv-modal-x" type="button" data-pdv-close="desc" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '<h3 class="pdv-modal-titulo">Desconto na venda</h3>' +
+    '<div class="pdv-campo"><span>Tipo</span><div class="pdv-desc-tipo">' +
+      '<button type="button" class="' + (dtipo === "valor" ? "ativo" : "") + '" data-dt="valor">R$</button>' +
+      '<button type="button" class="' + (dtipo === "pct" ? "ativo" : "") + '" data-dt="pct">%</button>' +
+    "</div></div>" +
+    '<label class="pdv-campo"><span>Valor</span><input id="pdvDescInput" type="text" inputmode="decimal" placeholder="0" /></label>' +
+    '<div class="pdv-pg-acoes">' +
+      (pdvDesconto ? '<button type="button" class="secundario" id="pdvDescRemover">Remover</button>' : '') +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvDescAplicar">Aplicar</button>' +
+    "</div>";
+  $("pdvDescCaixa").innerHTML = html;
+  const inp = $("pdvDescInput");
+  if (dtipo === "valor") { Dinheiro.mascarar(inp); if (valIni) Dinheiro.setValor(inp, valIni); }
+  else { inp.value = valIni ? String(valIni).replace(".", ",") : ""; }
+  $("pdvDescCaixa").querySelectorAll("[data-dt]").forEach((b) => b.addEventListener("click", () => {
+    dtipo = b.dataset.dt;
+    $("pdvDescCaixa").querySelectorAll("[data-dt]").forEach((x) => x.classList.toggle("ativo", x === b));
+    const v = inp.value; delete inp.dataset.dinheiro;
+    if (dtipo === "valor") Dinheiro.mascarar(inp); else inp.value = v.replace(/[^\d,]/g, "");
+  }));
+  $("pdvDescAplicar").addEventListener("click", () => {
+    const valor = dtipo === "valor" ? Dinheiro.valor(inp) : (parseFloat(String(inp.value || "").replace(",", ".")) || 0);
+    pdvDesconto = valor > 0 ? { tipo: dtipo, valor } : null;
+    fecharPdvDesconto(); renderPdvCarrinho();
+  });
+  if ($("pdvDescRemover")) $("pdvDescRemover").addEventListener("click", () => { pdvDesconto = null; fecharPdvDesconto(); renderPdvCarrinho(); });
+  const xb = $("pdvDescCaixa").querySelector('[data-pdv-close="desc"]'); if (xb) xb.addEventListener("click", fecharPdvDesconto);
+  $("pdvDescOverlay").hidden = false;
+}
+function fecharPdvDesconto() { $("pdvDescOverlay").hidden = true; }
+
+// ---- Pagamento (forma em tiles + split + troco) ----
+let pdvPagamentos = []; // [{ forma, valor }] adicionados (tendência)
+let pdvFormaSel = null;
+
+function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
+function pdvIconeForma(f) {
+  const s = (f || "").toLowerCase();
+  const w = (inner) => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + "</svg>";
+  if (pdvEhDinheiro(s)) return w('<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>');
+  if (/pix/.test(s)) return w('<rect x="3" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>');
+  if (/cart|cr[eé]dito|d[eé]bito/.test(s)) return w('<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>');
+  if (/aliment|vale|vr\b|va\b|ticket|sodexo|alelo/.test(s)) return w('<path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 11v11"/><path d="M19 2v20"/><path d="M19 8c-1.7 0-3-1.8-3-4s1.3-2 3-2"/>');
+  return w('<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><circle cx="16" cy="14" r="1.5"/>');
+}
 
 function abrirPdvPagar() {
   if (!pdvCart.length) return;
-  pdvDescontoTipo = "valor";
-  pdvPgRows = [{ forma: pdvFormasPg[0] || "Dinheiro", valorStr: "" }];
+  pdvPagamentos = [];
+  pdvFormaSel = pdvFormasPg[0] || "Dinheiro";
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false;
 }
 function fecharPdvPagar() { $("pdvPagarOverlay").hidden = true; }
-
-function pdvSubtotalAtual() { return pdvTotal(); }
-function pdvDescontoAtual() {
-  const sub = pdvSubtotalAtual();
-  const inp = $("pdvDescVal");
-  if (!inp) return 0;
-  let abate = 0;
-  if (pdvDescontoTipo === "pct") {
-    const pct = parseFloat(String(inp.value || "").replace(",", ".")) || 0;
-    abate = sub * (Math.min(100, Math.max(0, pct)) / 100);
-  } else {
-    abate = Dinheiro.valor(inp);
-  }
-  return Math.min(sub, Math.max(0, Math.round(abate * 100) / 100));
-}
-function pdvTotalLiquido() { return Math.round((pdvSubtotalAtual() - pdvDescontoAtual()) * 100) / 100; }
+function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100; }
 
 function renderPdvPagar() {
-  const formasOpts = pdvFormasPg.map((f) => '<option value="' + pdvEsc(f) + '">' + pdvEsc(f) + "</option>").join("");
-  let html =
+  const total = pdvTotalLiq();
+  const tiles = pdvFormasPg.map((f) =>
+    '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
+  ).join("");
+  const itensHtml = pdvCart.map((l) => {
+    const q = l.unidade === "kg" ? window.Estoque.formatarQtd(l.qtd, "kg") + " kg" : l.qtd + "x";
+    return '<div class="pdv-resumo-item"><span>' + q + " " + pdvEsc(l.nome) + "</span><span>" + pdvMoney(pdvPrecoLinha(l)) + "</span></div>";
+  }).join("");
+  const html =
     '<button class="pdv-modal-x" type="button" data-pdv-close="pagar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
-    '<h3 class="pdv-modal-titulo">Pagamento</h3>' +
-    '<div class="pdv-pg-resumo"><span>Subtotal</span><span id="pdvPgSub">' + pdvMoney(pdvSubtotalAtual()) + "</span></div>" +
-    '<div class="pdv-campo pdv-desc"><span>Desconto</span>' +
-      '<div class="pdv-desc-row">' +
-        '<div class="pdv-desc-tipo">' +
-          '<button type="button" class="' + (pdvDescontoTipo === "valor" ? "ativo" : "") + '" data-desc-tipo="valor">R$</button>' +
-          '<button type="button" class="' + (pdvDescontoTipo === "pct" ? "ativo" : "") + '" data-desc-tipo="pct">%</button>' +
+    '<div class="pdv-pg-grid">' +
+      '<div class="pdv-pg-main">' +
+        '<h3 class="pdv-modal-titulo">Finalizar venda</h3>' +
+        '<span class="pdv-ops-tit">Forma de pagamento</span>' +
+        '<div class="pdv-formas">' + tiles + "</div>" +
+        '<div class="pdv-pg-add-row"><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button></div>' +
+        '<div class="pdv-pg-lista" id="pdvPgLista"></div>' +
+        '<div class="pdv-pg-prints">' +
+          '<label class="pdv-check"><input type="checkbox" id="pdvPrintCozinha" checked /><span>Imprimir comanda para cozinha</span></label>' +
+          '<label class="pdv-check"><input type="checkbox" id="pdvPrintCliente" checked /><span>Imprimir comprovante para cliente</span></label>' +
         "</div>" +
-        '<input id="pdvDescVal" type="text" inputmode="decimal" placeholder="0" />' +
-      "</div></div>" +
-    '<div class="pdv-pg-resumo pdv-pg-total"><span>Total a pagar</span><strong id="pdvPgTot">' + pdvMoney(pdvTotalLiquido()) + "</strong></div>" +
-    '<div class="pdv-pg-formas"><span class="pdv-ops-tit">Formas de pagamento</span><div id="pdvPgFormas"></div>' +
-      '<button type="button" class="pdv-pg-add" id="pdvPgAdd">+ Dividir pagamento</button></div>' +
-    '<div class="pdv-pg-restante" id="pdvPgRestante"></div>' +
-    '<div class="pdv-campo pdv-troco" id="pdvTrocoBox" hidden><span>Valor recebido em dinheiro</span><input id="pdvRecebido" type="text" inputmode="numeric" placeholder="0,00" /><div class="pdv-troco-val" id="pdvTrocoVal"></div></div>' +
-    '<button type="button" class="primario pdv-pg-finalizar" id="pdvFinalizar">Finalizar venda</button>';
+      "</div>" +
+      '<aside class="pdv-pg-resumo-box">' +
+        '<span class="pdv-ops-tit">Resumo do pedido</span>' +
+        '<div class="pdv-resumo-itens">' + itensHtml + "</div>" +
+        '<div class="pdv-resumo-tot"><span>Total</span><strong id="pdvPgTotal">' + pdvMoney(total) + "</strong></div>" +
+        '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
+        '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
+        '<div class="pdv-resumo-linha"><span>Troco</span><span id="pdvPgTroco" class="troco">R$ 0,00</span></div>' +
+        '<label class="pdv-campo pdv-cpf"><span>CPF na nota (opcional)</span><input id="pdvCpf" type="text" inputmode="numeric" placeholder="000.000.000-00" /></label>' +
+      "</aside>" +
+    "</div>" +
+    '<div class="pdv-pg-acoes">' +
+      '<button type="button" class="secundario" id="pdvVoltar">Voltar</button>' +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>Confirmar pagamento</button>' +
+    "</div>";
   $("pdvPagarCaixa").innerHTML = html;
 
-  // desconto tipo
-  $("pdvPagarCaixa").querySelectorAll("[data-desc-tipo]").forEach((b) => b.addEventListener("click", () => {
-    pdvDescontoTipo = b.dataset.descTipo;
-    const inp = $("pdvDescVal"); const v = inp.value;
-    $("pdvPagarCaixa").querySelectorAll("[data-desc-tipo]").forEach((x) => x.classList.toggle("ativo", x === b));
-    // re-aplica máscara conforme o tipo
-    delete inp.dataset.dinheiro;
-    if (pdvDescontoTipo === "valor") { Dinheiro.mascarar(inp); } else { inp.value = v.replace(/[^\d,]/g, ""); }
-    pdvPagarRecalc();
+  $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((b) => b.addEventListener("click", () => {
+    pdvFormaSel = b.dataset.forma;
+    $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((x) => x.classList.toggle("ativo", x === b));
+    const inp = $("pdvPgValor"); if (inp) inp.focus();
   }));
-  const descInp = $("pdvDescVal");
-  if (pdvDescontoTipo === "valor") Dinheiro.mascarar(descInp);
-  descInp.addEventListener("input", pdvPagarRecalc);
-
-  renderPdvPgFormas(formasOpts);
-  $("pdvPgAdd").addEventListener("click", () => {
-    if (pdvPgRows.length >= pdvFormasPg.length) { toast("Sem mais formas configuradas.", "erro"); return; }
-    pdvPgRows.push({ forma: pdvFormasPg.find((f) => !pdvPgRows.some((r) => r.forma === f)) || pdvFormasPg[0], valorStr: "" });
-    renderPdvPgFormas(formasOpts);
-    pdvPagarRecalc();
-  });
-  const rec = $("pdvRecebido"); if (rec) { Dinheiro.mascarar(rec); rec.addEventListener("input", pdvPagarRecalc); }
+  const valInp = $("pdvPgValor");
+  Dinheiro.mascarar(valInp);
+  Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
+  $("pdvPgAdd").addEventListener("click", pdvAddPagamento);
+  valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
+  $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
-  const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]');
-  if (xb) xb.addEventListener("click", fecharPdvPagar);
+  const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
+  renderPdvPgLista();
+}
+
+function pdvAddPagamento() {
+  let v = Dinheiro.valor($("pdvPgValor"));
+  if (!(v > 0)) { toast("Informe o valor.", "erro"); return; }
+  if (!pdvFormaSel) { toast("Escolha a forma de pagamento.", "erro"); return; }
+  const total = pdvTotalLiq();
+  const restante = Math.round((total - pdvPagoTotal()) * 100) / 100;
+  // Só DINHEIRO pode exceder (gera troco); as demais formas limitam ao restante.
+  if (!pdvEhDinheiro(pdvFormaSel)) {
+    if (restante <= 0) { toast("Pagamento já fechado.", "erro"); return; }
+    v = Math.min(v, restante);
+  }
+  pdvPagamentos.push({ forma: pdvFormaSel, valor: v });
+  renderPdvPgLista();
+  const novoRest = Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100);
+  Dinheiro.setValor($("pdvPgValor"), novoRest);
+}
+
+function renderPdvPgLista() {
+  const box = $("pdvPgLista");
+  box.innerHTML = pdvPagamentos.map((p, i) =>
+    '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmpg="' + i + '" aria-label="Remover">×</button></div>'
+  ).join("");
+  box.querySelectorAll("[data-rmpg]").forEach((b) => b.addEventListener("click", () => { pdvPagamentos.splice(Number(b.dataset.rmpg), 1); renderPdvPgLista(); }));
   pdvPagarRecalc();
 }
 
-function renderPdvPgFormas(formasOpts) {
-  const box = $("pdvPgFormas");
-  box.innerHTML = "";
-  pdvPgRows.forEach((row, i) => {
-    const div = document.createElement("div");
-    div.className = "pdv-pg-row";
-    div.innerHTML =
-      '<select class="pdv-pg-forma" data-i="' + i + '">' + formasOpts + "</select>" +
-      '<input class="pdv-pg-valor" data-i="' + i + '" type="text" inputmode="numeric" placeholder="0,00" />' +
-      (pdvPgRows.length > 1 ? '<button type="button" class="pdv-pg-rm" data-i="' + i + '" aria-label="Remover">×</button>' : "");
-    box.appendChild(div);
-    div.querySelector(".pdv-pg-forma").value = row.forma;
-    const vinp = div.querySelector(".pdv-pg-valor");
-    if (row.valorStr) vinp.value = row.valorStr;
-    Dinheiro.mascarar(vinp);
-  });
-  box.querySelectorAll(".pdv-pg-forma").forEach((s) => s.addEventListener("change", () => { pdvPgRows[Number(s.dataset.i)].forma = s.value; pdvPagarRecalc(); }));
-  box.querySelectorAll(".pdv-pg-valor").forEach((inp) => inp.addEventListener("input", () => { pdvPgRows[Number(inp.dataset.i)].valorStr = inp.value; pdvPagarRecalc(); }));
-  box.querySelectorAll(".pdv-pg-rm").forEach((b) => b.addEventListener("click", () => { pdvPgRows.splice(Number(b.dataset.i), 1); renderPdvPgFormas(formasOpts); pdvPagarRecalc(); }));
-}
-
-function pdvLerPagamentos() {
-  const inputs = $("pdvPgFormas").querySelectorAll(".pdv-pg-valor");
-  return pdvPgRows.map((r, i) => ({ forma: r.forma, valor: inputs[i] ? Dinheiro.valor(inputs[i]) : 0 }));
-}
-
 function pdvPagarRecalc() {
-  const liquido = pdvTotalLiquido();
-  $("pdvPgSub").textContent = pdvMoney(pdvSubtotalAtual());
-  $("pdvPgTot").textContent = pdvMoney(liquido);
-  // Com UMA única forma, o valor acompanha o total automaticamente (a não ser
-  // que o operador esteja editando o campo). Com split, cada valor é manual.
-  if (pdvPgRows.length === 1) {
-    const inp = $("pdvPgFormas").querySelector(".pdv-pg-valor");
-    if (inp && document.activeElement !== inp) { Dinheiro.setValor(inp, liquido); pdvPgRows[0].valorStr = inp.value; }
-  }
-  const soma = pdvLerPagamentos().reduce((s, p) => s + p.valor, 0);
-  const restante = Math.round((liquido - soma) * 100) / 100;
-  const rEl = $("pdvPgRestante");
-  if (Math.abs(restante) <= 0.01) rEl.innerHTML = '<span class="ok">✓ Pagamento fechado</span>';
-  else if (restante > 0) rEl.innerHTML = '<span>Falta: <strong>' + pdvMoney(restante) + "</strong></span>";
-  else rEl.innerHTML = '<span class="erro">Passou: <strong>' + pdvMoney(-restante) + "</strong></span>";
-  // Troco: só quando há forma dinheiro.
-  const temDinheiro = pdvLerPagamentos().some((p) => /dinheiro/i.test(p.forma));
-  const box = $("pdvTrocoBox");
-  box.hidden = !temDinheiro;
-  if (temDinheiro) {
-    const totalDinheiro = pdvLerPagamentos().filter((p) => /dinheiro/i.test(p.forma)).reduce((s, p) => s + p.valor, 0);
-    const recebido = Dinheiro.valor($("pdvRecebido"));
-    const troco = Math.max(0, Math.round((recebido - totalDinheiro) * 100) / 100);
-    $("pdvTrocoVal").innerHTML = recebido > 0 ? "Troco: <strong>" + pdvMoney(troco) + "</strong>" : "";
-  }
-  $("pdvFinalizar").disabled = !(Math.abs(restante) <= 0.01 && pdvLerPagamentos().every((p) => p.valor > 0));
+  const total = pdvTotalLiq();
+  const pago = pdvPagoTotal();
+  const falta = Math.max(0, Math.round((total - pago) * 100) / 100);
+  const troco = Math.max(0, Math.round((pago - total) * 100) / 100);
+  if ($("pdvPgTotal")) $("pdvPgTotal").textContent = pdvMoney(total);
+  if ($("pdvPgPago")) $("pdvPgPago").textContent = pdvMoney(pago);
+  if ($("pdvPgFalta")) $("pdvPgFalta").textContent = pdvMoney(falta);
+  if ($("pdvPgTroco")) $("pdvPgTroco").textContent = pdvMoney(troco);
+  if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !(falta <= 0.001 && pdvPagamentos.length);
 }
 
 async function finalizarVendaPdv() {
-  const pagamentos = pdvLerPagamentos();
-  const desconto = pdvDescontoAtual() > 0
-    ? { tipo: pdvDescontoTipo, valor: pdvDescontoTipo === "pct" ? (parseFloat(String($("pdvDescVal").value || "").replace(",", ".")) || 0) : Dinheiro.valor($("pdvDescVal")) }
-    : null;
+  const total = pdvTotalLiq();
+  // Pagamentos REGISTRADOS (somam o total): não-dinheiro como lançado; o dinheiro
+  // registra só a parte da venda — o troco não é receita do caixa.
+  const naoDin = pdvPagamentos.filter((p) => !pdvEhDinheiro(p.forma));
+  const somaNaoDin = Math.round(naoDin.reduce((s, p) => s + p.valor, 0) * 100) / 100;
+  const dinNaVenda = Math.max(0, Math.round((total - somaNaoDin) * 100) / 100);
+  const registrados = naoDin.map((p) => ({ forma: p.forma, valor: p.valor }));
+  if (dinNaVenda > 0) {
+    const formaDin = (pdvPagamentos.find((p) => pdvEhDinheiro(p.forma)) || {}).forma || "Dinheiro";
+    registrados.push({ forma: formaDin, valor: dinNaVenda });
+  }
+  const cpf = ($("pdvCpf").value || "").replace(/\D/g, "");
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
     itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), observacao: l.observacao })),
-    desconto,
-    pagamentos,
+    desconto: pdvDesconto,
+    pagamentos: registrados,
+    observacao: cpf ? ("CPF na nota: " + cpf) : "",
   };
   const btn = $("pdvFinalizar");
   btn.disabled = true; btn.textContent = "Registrando…";
   const r = await api("POST", "/api/pdv/vender", body);
-  btn.textContent = "Finalizar venda";
+  btn.textContent = "Confirmar pagamento";
   if (!r) return;
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
   const { pedido } = await r.json();
   toast("✓ Venda registrada no caixa!");
-  // Imprime a comanda (cozinha + cupom), como nos pedidos.
-  if (pedido && window.Impressao) { try { window.Impressao.abrirPreview(pedido, configAtual, { linkCardapio: _linkCardapio }); } catch (e) { /* impressão é opcional */ } }
-  // Limpa e recarrega o cardápio (estoque mudou no servidor).
-  pdvCart = []; $("pdvCliente").value = "";
+  const cozinha = $("pdvPrintCozinha") && $("pdvPrintCozinha").checked;
+  const cliente = $("pdvPrintCliente") && $("pdvPrintCliente").checked;
+  if (pedido && (cozinha || cliente) && window.Impressao) { try { window.Impressao.abrirPreview(pedido, configAtual, { linkCardapio: _linkCardapio }); } catch (e) { /* impressão é opcional */ } }
+  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
@@ -3790,16 +3856,20 @@ if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => a
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
 if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", abrirPdvPagar);
+if ($("pdvDescBtn")) $("pdvDescBtn").addEventListener("click", abrirPdvDesconto);
+if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", () => { pdvCart = []; pdvDesconto = null; renderPdvCarrinho(); });
 if ($("pdvFab")) $("pdvFab").addEventListener("click", () => { $("pdvCarrinho").classList.add("aberto"); $("pdvFab").classList.add("oculto"); });
 if ($("pdvCartFechar")) $("pdvCartFechar").addEventListener("click", () => { $("pdvCarrinho").classList.remove("aberto"); $("pdvFab").classList.remove("oculto"); });
 document.querySelectorAll("[data-pdv-close]").forEach((el) => el.addEventListener("click", (e) => {
   if (e.target !== el) return;
   if (el.dataset.pdvClose === "item") fecharPdvItemModal();
   if (el.dataset.pdvClose === "pagar") fecharPdvPagar();
+  if (el.dataset.pdvClose === "desc") fecharPdvDesconto();
 }));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("pdvItemOverlay").hidden) fecharPdvItemModal();
+  else if (!$("pdvDescOverlay").hidden) fecharPdvDesconto();
   else if (!$("pdvPagarOverlay").hidden) fecharPdvPagar();
 });
 

@@ -1505,6 +1505,7 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       desconto,
       pagamentos: b.pagamentos,
       pagamentoResumo: pdv.resumoPagamento(b.pagamentos),
+      observacao: String(b.observacao || "").slice(0, 200),
     });
 
     // Baixa de estoque após o commit (best-effort, padrão do cardápio web).

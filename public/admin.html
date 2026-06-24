@@ -689,12 +689,12 @@
       </div>
 
       <div class="pdv" id="pdvConteudo" hidden>
+        <div class="pdv-cats" id="pdvCats" role="tablist" aria-label="Categorias"></div>
         <div class="pdv-produtos">
           <div class="pdv-busca">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="pdvBusca" type="search" placeholder="Buscar produto…" autocomplete="off" />
+            <input id="pdvBusca" type="search" placeholder="Buscar produto ou prato…" autocomplete="off" />
           </div>
-          <div class="pdv-cats" id="pdvCats" role="tablist" aria-label="Categorias"></div>
           <div class="pdv-grid" id="pdvGrid"></div>
           <p class="pdv-vazio" id="pdvVazio" hidden>Nenhum produto encontrado.</p>
         </div>
@@ -707,8 +707,16 @@
           <label class="pdv-cliente"><span>Cliente (opcional)</span><input id="pdvCliente" type="text" placeholder="Balcão" autocomplete="off" /></label>
           <div class="pdv-cart-itens" id="pdvCartItens"></div>
           <div class="pdv-cart-rodape">
+            <div class="pdv-tot-linha"><span>Subtotal</span><span id="pdvSubtotal">R$ 0,00</span></div>
+            <div class="pdv-tot-linha pdv-desc-row">
+              <button type="button" class="pdv-desc-link" id="pdvDescBtn">+ Desconto</button>
+              <span class="pdv-desc-valor" id="pdvDescValor">− R$ 0,00</span>
+            </div>
             <div class="pdv-tot-linha pdv-tot-total"><span>Total</span><strong id="pdvTotal">R$ 0,00</strong></div>
-            <button type="button" class="primario pdv-cobrar" id="pdvCobrar" disabled>Cobrar</button>
+            <div class="pdv-cart-acoes">
+              <button type="button" class="secundario pdv-cancelar" id="pdvCancelar">Cancelar</button>
+              <button type="button" class="pdv-cobrar" id="pdvCobrar" disabled>Cobrar</button>
+            </div>
           </div>
         </aside>
       </div>
@@ -726,10 +734,16 @@
       <div class="pdv-modal-caixa" id="pdvItemCaixa" role="dialog" aria-label="Item"></div>
     </div>
 
-    <!-- PDV: modal de pagamento (desconto / formas / troco) -->
+    <!-- PDV: modal de pagamento (formas / troco) -->
     <div class="pdv-modal" id="pdvPagarOverlay" hidden>
       <div class="pdv-modal-overlay" data-pdv-close="pagar"></div>
       <div class="pdv-modal-caixa pdv-pagar-caixa" id="pdvPagarCaixa" role="dialog" aria-label="Pagamento"></div>
+    </div>
+
+    <!-- PDV: modal de desconto -->
+    <div class="pdv-modal" id="pdvDescOverlay" hidden>
+      <div class="pdv-modal-overlay" data-pdv-close="desc"></div>
+      <div class="pdv-modal-caixa" id="pdvDescCaixa" role="dialog" aria-label="Desconto"></div>
     </div>
 
     <section class="aba" id="aba-caixa">
