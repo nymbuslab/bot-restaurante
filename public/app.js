@@ -3456,7 +3456,9 @@ function renderPdvProdutos() {
       tile.innerHTML =
         '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
         '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + (ehKg ? "<small>/kg</small>" : "") + "</span>" +
-        (st.esgotado ? '<span class="pdv-tile-selo">Esgotado</span>' : "");
+        (st.esgotado
+          ? '<span class="pdv-tile-selo">Esgotado</span>'
+          : '<span class="pdv-tile-add" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>');
       if (!st.esgotado) tile.addEventListener("click", () => pdvTileClick(item));
       grid.appendChild(tile);
       n++;
