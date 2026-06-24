@@ -24,14 +24,14 @@ _(nada no momento)_
 **Fase 2 — Prova de consentimento + transferência (P1)**
 
 - [x] **L5 [ID-004]** Registrar aceite do dono: migration `20260624120000_empresas_consentimento` (`termos_aceitos_em` + `termos_versao`) aplicada; `POST /api/cadastro` exige `aceite` e grava `now()` + versão `2026-06-24`. Sintaxe/100 testes OK; gravação real a confirmar no 1º cadastro. — 2026-06-24
-- [x] **L6 [ID-005]** `docs/subprocessadores.md` criado; Política passou a listar Resend e Geoapify + parágrafo de transferência internacional (banco no EUA). Validado no Playwright. — 2026-06-24
-- **(decisão sua) Região do Supabase = EUA (`us-east-1`)** — já divulgada na Política como transferência internacional (legal c/ salvaguardas). Se quiser os dados **no Brasil**, avaliar migrar pra `sa-east-1` (operação à parte). Detalhe em `docs/subprocessadores.md`.
+- [x] **L6 [ID-005]** `docs/lgpd/subprocessadores.md` criado; Política passou a listar Resend e Geoapify + parágrafo de transferência internacional (banco no EUA). Validado no Playwright. — 2026-06-24
+- **(decisão sua) Região do Supabase = EUA (`us-east-1`)** — já divulgada na Política como transferência internacional (legal c/ salvaguardas). Se quiser os dados **no Brasil**, avaliar migrar pra `sa-east-1` (operação à parte). Detalhe em `docs/lgpd/subprocessadores.md`.
 
 **Fase 3 — Governança formal (P2)**
 
-- [ ] **L7 [ID-007]** ROPA — `docs/ropa.md` (inventário de tratamentos; base levantada no relatório).
-- [ ] **L8 [ID-008]** Plano de resposta a incidentes — `docs/resposta-incidentes.md` (detecção → ANPD 72h → notificar titulares).
-- [ ] **L9 [ID-010]** Trilha mínima de auditoria (registrar exclusões/exportações de dados pessoais) — avaliar escopo.
+- [x] **L7 [ID-007]** ROPA — `docs/lgpd/ropa.md` (inventário de tratamentos: dados/finalidade/base legal/retenção por atividade). Docs de LGPD agrupados em `docs/lgpd/` com índice (README). — 2026-06-24
+- [x] **L8 [ID-008]** Plano de resposta a incidentes — `docs/lgpd/resposta-incidentes.md` (detecção → ANPD ~72h → notificar titulares). — 2026-06-24
+- [x] **L9 [ID-010]** Trilha de auditoria: tabela `auditoria` (migration `20260624130000`, `slug` em texto sobrevive à exclusão) + `src/auditoria.js`; registra `conta_criada`/`dados_exportados`/`conta_excluida` (sem PII no detalhe). Skill `concluir-tarefa` passou a revisar ROPA/subprocessadores. — 2026-06-24
 
 **Fase 4 — Observação (P3)**
 

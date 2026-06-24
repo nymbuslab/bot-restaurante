@@ -10,6 +10,7 @@ const fs = require("fs");
 const db = require("./db");
 const store = require("./store");
 const pedidos = require("./pedidos");
+const auditoria = require("./auditoria");
 const clientes = require("./clientes");
 const { supabaseAdmin, supabaseAnon } = require("./supabase");
 
@@ -120,6 +121,7 @@ async function cadastrar({ nome, email, senha }) {
     throw e;
   }
 
+  await auditoria.registrar("conta_criada", slug, {}); // trilha LGPD (best-effort)
   return { slug, nome };
 }
 

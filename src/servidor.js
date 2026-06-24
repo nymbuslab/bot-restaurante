@@ -16,6 +16,7 @@ const store = require("./store");
 const pedidos = require("./pedidos");
 const caixa = require("./caixa");
 const clientes = require("./clientes");
+const auditoria = require("./auditoria");
 const cep = require("./cep");
 const frete = require("./frete");
 const mail = require("./email");
@@ -1246,6 +1247,7 @@ app.get("/api/conta/exportar", exigeAuth, async (req, res) => {
       pedidos: await pedidos.lerTodos(req.tenantDir),
       clientes: await clientes.exportar(req.tenantDir),
     };
+    await auditoria.registrar("dados_exportados", req.slug, {}); // trilha LGPD
     res.json(dados);
   } catch (e) {
     res.status(500).json({ erro: "Falha ao exportar os dados." });
@@ -1281,6 +1283,7 @@ app.delete("/api/conta", exigeAuth, async (req, res) => {
     await multiBot.desconectar(req.slug).catch(() => {});
     const contato = emp ? { email: emp.email, nome: emp.nome } : null;
     await empresas.excluir(req.slug);
+    await auditoria.registrar("conta_excluida", req.slug, {}); // trilha LGPD (slug em texto sobrevive à exclusão)
     if (contato) mail.contaExcluida(contato.email, contato.nome).catch((e) => console.error("email exclusao:", e.message));
     limparSessaoCookies(req, res); // conta apagada → derruba a sessão
     res.json({ ok: true });
