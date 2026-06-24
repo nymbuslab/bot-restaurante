@@ -139,9 +139,10 @@
     if (catAtiva === null) {
       // aba "Todos": seção "Destaques" no topo + todas as categorias empilhadas.
       var destaques = [];
-      cats.forEach(function (c) { c.itens.forEach(function (it) { if (it.destaque) destaques.push(it); }); });
+      // clona o item + anexa a categoria (rótulo do card lateral), sem mutar o original
+      cats.forEach(function (c) { c.itens.forEach(function (it) { if (it.destaque) destaques.push(Object.assign({}, it, { _cat: c.nome })); }); });
       var grupos = cats.slice();
-      if (destaques.length) grupos.unshift({ nome: "Destaques", itens: destaques });
+      if (destaques.length) grupos.unshift({ nome: "Destaques", itens: destaques, hero: true });
       return grupos;
     }
     var cat = cats.filter(function (c) { return c.nome === catAtiva; })[0] || cats[0];
@@ -157,6 +158,7 @@
     grid.classList.toggle("cd-anim", !busca); // cascata só fora da busca
     var idx = 0;
     grupos.forEach(function (g) {
+      if (g.hero) { renderDestaques(g.itens); return; } // vitrine especial dos destaques
       if (g.nome) {
         var h = document.createElement("div");
         h.className = "cd-cat-titulo";
@@ -170,6 +172,87 @@
         idx++;
       });
     });
+  }
+
+  // Vitrine de Destaques: 1 card hero grande + até 2 cards laterais.
+  function renderDestaques(items) {
+    var wrap = document.createElement("div");
+    wrap.className = "cd-destaques-wrap";
+    var h = document.createElement("h2");
+    h.className = "cd-destaques-titulo";
+    h.textContent = "Destaques";
+    wrap.appendChild(h);
+    var row = document.createElement("div");
+    row.className = "cd-destaques";
+    row.appendChild(heroCard(items[0]));
+    var side = items.slice(1, 3);
+    if (side.length) {
+      var col = document.createElement("div");
+      col.className = "cd-destaques-side";
+      side.forEach(function (it) { col.appendChild(featCard(it)); });
+      row.appendChild(col);
+    }
+    wrap.appendChild(row);
+    $("cdGrid").appendChild(wrap);
+  }
+
+  // Card hero: imagem grande de fundo + nome/descrição/preço sobre a imagem.
+  function heroCard(it) {
+    var kg = it.unidade === "kg";
+    var naoAdd = it.esgotado || kg;
+    var el = document.createElement(naoAdd ? "div" : "button");
+    if (!naoAdd) el.type = "button";
+    el.className = "cd-hero" + (it.esgotado ? " cd-card-esgotado" : "");
+    var bg = it.imagem
+      ? '<img class="cd-hero-img" src="' + esc(it.imagem) + '" alt="" />'
+      : '<div class="cd-hero-img vazia" aria-hidden="true">' + ICON_SEM_FOTO + "</div>";
+    var selo = it.esgotado
+      ? '<span class="cd-card-selo esgotado">Esgotado</span>'
+      : '<span class="cd-card-selo destaque">' + ICON_ESTRELA + " Destaque</span>";
+    el.innerHTML =
+      bg +
+      '<div class="cd-hero-grad"></div>' +
+      '<div class="cd-hero-corpo">' +
+        '<div class="cd-hero-selos">' + selo + (it.apenasLocal ? '<span class="cd-card-selo local">Só no local</span>' : "") + "</div>" +
+        '<h3 class="cd-hero-nome">' + esc(it.nome) + "</h3>" +
+        (it.desc ? '<p class="cd-hero-desc">' + esc(it.desc) + "</p>" : "") +
+        '<div class="cd-hero-rodape">' +
+          '<span class="cd-hero-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
+          (naoAdd ? "" : '<span class="cd-add cd-hero-add">+ Adicionar</span>') +
+        "</div>" +
+      "</div>";
+    if (!naoAdd) el.addEventListener("click", function () { abrirModal(it); });
+    return el;
+  }
+
+  // Card lateral da vitrine: imagem no topo + categoria/nome/descrição/preço + botão "+".
+  function featCard(it) {
+    var kg = it.unidade === "kg";
+    var naoAdd = it.esgotado || kg;
+    var el = document.createElement(naoAdd ? "div" : "button");
+    if (!naoAdd) el.type = "button";
+    el.className = "cd-feat" + (it.esgotado ? " cd-card-esgotado" : "");
+    var selos = "";
+    if (it.esgotado) selos += '<span class="cd-card-selo esgotado">Esgotado</span>';
+    if (it.apenasLocal) selos += '<span class="cd-card-selo local">Só no local</span>';
+    if (kg && !it.esgotado) selos += '<span class="cd-card-selo balcao">Pesado no balcão</span>';
+    var selosHtml = selos ? '<div class="cd-card-selos">' + selos + "</div>" : "";
+    var media = it.imagem
+      ? '<div class="cd-feat-media"><img src="' + esc(it.imagem) + '" alt="" loading="lazy" />' + selosHtml + "</div>"
+      : '<div class="cd-feat-media vazia" aria-hidden="true">' + ICON_SEM_FOTO + selosHtml + "</div>";
+    el.innerHTML =
+      media +
+      '<div class="cd-feat-corpo">' +
+        (it._cat ? '<span class="cd-feat-eyebrow">' + esc(it._cat) + "</span>" : "") +
+        '<h3 class="cd-feat-nome">' + esc(it.nome) + "</h3>" +
+        (it.desc ? '<p class="cd-feat-desc">' + esc(it.desc) + "</p>" : "") +
+        '<div class="cd-feat-rodape">' +
+          '<span class="cd-card-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
+          (naoAdd ? "" : '<span class="cd-feat-add" aria-hidden="true">+</span>') +
+        "</div>" +
+      "</div>";
+    if (!naoAdd) el.addEventListener("click", function () { abrirModal(it); });
+    return el;
   }
 
   // ícone (sem foto) — placeholder dentro da mídia do card
