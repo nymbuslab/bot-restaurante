@@ -204,3 +204,31 @@ test("itensSoLocal: payload/cardápio vazios → []", () => {
   assert.deepEqual(cw.itensSoLocal(null, null), []);
   assert.deepEqual(cw.itensSoLocal(cardapioSoLocal, []), []);
 });
+
+// ---- recalcularItens com composição ----
+const cardComp = { categorias: [{ nome: "M", itens: [
+  { id: 7, nome: "Marmitex", preco: 18, opcionais: "Bacon | 3.50", composicao: [
+    { nome: "Proteínas", obrigatorio: true, min: 1, max: 1, itens: ["Frango", "Carne"] },
+    { nome: "Principais", obrigatorio: true, min: 1, max: 3, itens: ["Arroz", "Feijão"] },
+  ] },
+] }] };
+
+test("recalcularItens: escolhas válidas vão para o item (composicao não muda preço)", () => {
+  const r = cw.recalcularItens(cardComp, [
+    { id: 7, qtd: 1, composicao: [
+      { grupo: "Proteínas", itens: ["Frango"] },
+      { grupo: "Principais", itens: ["Arroz", "Feijão"] },
+    ], opcionais: [{ nome: "Bacon", qtd: 1 }] },
+  ]);
+  assert.equal(r.subtotal, 18 + 3.5); // só o opcional soma
+  assert.deepEqual(r.itens[0].composicao, [
+    { grupo: "Proteínas", itens: ["Frango"] },
+    { grupo: "Principais", itens: ["Arroz", "Feijão"] },
+  ]);
+});
+
+test("recalcularItens: composição obrigatória ausente lança erro", () => {
+  assert.throws(() => cw.recalcularItens(cardComp, [
+    { id: 7, qtd: 1, composicao: [{ grupo: "Principais", itens: ["Arroz"] }] },
+  ]), /Proteínas/);
+});

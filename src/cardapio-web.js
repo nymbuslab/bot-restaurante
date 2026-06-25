@@ -82,11 +82,14 @@ function recalcularItens(cardapio, itensPayload) {
       const oq = Math.max(1, Math.min(10, parseInt(o.qtd, 10) || 1));
       opcionais.push({ nome: nome, preco: opsMap[nome], qtd: oq });
     });
+    const aval = grupos.avaliarComposicao(base, p && p.composicao);
+    if (!aval.valido) throw new Error(aval.pendencias[0] || ("Composição inválida em " + base.nome + "."));
     const precoBase = Number(base.preco) || 0;
     const addUnit = opcionais.reduce(function (s, o) { return s + o.preco * o.qtd; }, 0);
-    subtotal += (precoBase + addUnit) * qtd;
+    subtotal += (precoBase + addUnit) * qtd; // composição é grátis (não soma)
     itens.push({
       id: base.id, nome: base.nome, preco: precoBase, qtd: qtd,
+      composicao: aval.selecoes,
       opcionais: opcionais, observacao: String((p && p.observacao) || "").slice(0, 200),
     });
   });
