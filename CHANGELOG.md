@@ -459,3 +459,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Lista de Pedidos mais robusta:** se a tela de Pedidos falhar ao carregar (queda de conexão), agora aparece um aviso claro em vez de a tela ficar "muda".
 - **Acessibilidade no PDV:** os modais (item, pagamento, entrega, desconto) passaram a receber o **foco no primeiro campo** ao abrir e foram marcados como diálogo para leitores de tela.
 - **Robustez interna:** conexão com o banco com **SSL sempre ligado**, **número do pedido** com garantia de unicidade no banco (sem duplicata sob acesso simultâneo) e versão mínima do Node fixada no projeto.
+
+## [0.50.0] — Grupos de opções no item (monte seu prato)
+
+- **Cadastro de item repaginado:** no lugar de "Composição" e "Opcionais", cada item agora tem **Grupos de opções**. Crie grupos como "Proteínas", "Guarnição" ou "Salada"; em cada grupo você define se é **obrigatório** e **quantas** opções o cliente pode escolher (mínimo e máximo), e cada opção pode ser **grátis** ou ter **preço** (ex.: "Picanha +R$ 5").
+- **No cardápio digital e no PDV:** o cliente (e o operador no balcão) monta o prato escolhendo dentro de cada grupo — escolha **única** (bolinha) ou **múltipla** (caixinha) conforme a regra; o preço atualiza na hora e só dá pra adicionar quando os grupos obrigatórios estão completos.
+- **Na comanda:** as escolhas saem **agrupadas** (ex.: "Proteínas: Picanha").
+- Ideal para **marmitex, combos e pratos montáveis**. (Os antigos campos de composição/opcionais em texto deixaram de existir.)

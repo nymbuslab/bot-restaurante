@@ -3325,20 +3325,6 @@ function pdvSelecionarAoFocar(el) {
   el.addEventListener("focus", () => setTimeout(() => { try { el.select(); } catch (_) {} }, 0));
 }
 function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-function pdvParseOpcionais(texto) {
-  if (!texto || !String(texto).trim()) return [];
-  const lista = [];
-  String(texto).split("\n").forEach((l) => {
-    l = l.trim().replace(/^[*\-•]\s*/, "");
-    if (!l) return;
-    const partes = l.split("|");
-    const nome = partes[0].trim();
-    let preco = 0;
-    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-    if (nome) lista.push({ nome, preco });
-  });
-  return lista;
-}
 function pdvPrecoUnit(l) {
   const add = (l.opcionais || []).reduce((s, o) => s + (Number(o.preco) || 0) * (o.qtd || 1), 0);
   return (Number(l.preco) || 0) + add;
