@@ -2961,15 +2961,27 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .comp-sg-regras {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: nowrap;
   margin-bottom: 8px;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
 }
-.comp-sg-obrig-lbl { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
-.comp-sg-num { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.comp-sg-num input { width: 46px; flex: none; }
+/* display:inline-flex no proprio seletor `.comp-sg-regras label` (mesma especificidade
+   do `.campo label` global, vence por ordem) — sem isso os rotulos viram block e o
+   layout quebra/sobrepoe; tambem anula uppercase/letter-spacing/margem que alargavam. */
+.comp-sg-regras label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.comp-sg-obrig-lbl { cursor: pointer; }
+.comp-sg-num input { width: 44px; flex: none; }
 
 .comp-sg-nome {
   flex: 1;
