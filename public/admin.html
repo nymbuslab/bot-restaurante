@@ -1182,10 +1182,14 @@
       </div>
       <div class="editor-textareas">
         <div class="campo">
-          <label>Grupos de opções</label>
-          <p class="grp-ajuda">Crie grupos para o cliente escolher (ex.: Proteínas, Guarnição, Salada). Por grupo defina o mínimo e o máximo de escolhas; cada opção pode ser grátis (R$ 0,00) ou cobrada.</p>
-          <div id="editor-grupos-builder" class="grp-builder"></div>
-          <button type="button" class="secundario mini" id="editor-grupo-add">+ Adicionar grupo</button>
+          <label>Composição</label>
+          <div id="editor-composicao-builder" class="comp-builder"></div>
+          <button type="button" class="secundario mini" id="editor-comp-add-subgrupo">+ Adicionar subgrupo</button>
+        </div>
+        <div class="campo">
+          <label>Opcionais</label>
+          <div id="editor-opcionais-builder" class="opc-builder"></div>
+          <button type="button" class="secundario mini" id="editor-opc-add">+ Adicionar opcional</button>
         </div>
       </div>
       <div class="editor-rodape">
@@ -1226,6 +1230,7 @@
   <script src="dinheiro.js"></script>
   <script src="busca.js"></script>
   <script src="estoque.js"></script>
+  <script src="grupos.js"></script>
   <script src="comanda.js"></script>
   <script src="serial-escpos.js"></script>
   <script src="serial.js"></script>

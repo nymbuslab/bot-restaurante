@@ -86,7 +86,8 @@ let configAtual = {};
 let editorCi = -1;
 let editorIi = -1;
 let editorFotoUrl = "";
-let editorGrupos = []; // [{ nome, min, max, opcoes:[{nome,preco}] }]
+let editorComposicao = [];
+let editorOpcionais = [];
 
 // Identidade visual do cardápio (capa + logo) — estado das prévias
 let identCapaUrl = "";
@@ -1162,7 +1163,8 @@ function abrirEditorItem(ci, ii) {
     $("editor-unidade").value = "un";
     $("editor-destaque").checked = false;
     editorFotoUrl = "";
-    editorGrupos = [];
+    editorComposicao = [];
+    editorOpcionais = [];
   } else {
     const it = cardapioAtual.categorias[ci].itens[ii];
     $("editor-nome").value = it.nome || "";
@@ -1175,9 +1177,11 @@ function abrirEditorItem(ci, ii) {
     $("editor-unidade").value = it.unidade === "kg" ? "kg" : "un";
     $("editor-destaque").checked = it.destaque === true;
     editorFotoUrl = it.imagem || "";
-    editorGrupos = JSON.parse(JSON.stringify(it.grupos || [])); // cópia — só grava no salvar
+    editorComposicao = (typeof Grupos !== "undefined" ? Grupos.normalizarGrupos(it.composicao) : (Array.isArray(it.composicao) ? it.composicao : []));
+    editorOpcionais = parsearOpcionais(it.opcionais || "");
   }
-  renderEditorGrupos();
+  renderEditorComposicao();
+  renderEditorOpcionais();
   aplicarUnidadeEditor();
 
   atualizarPreviewFoto();
@@ -1250,7 +1254,8 @@ async function salvarEditorItem() {
     desc:        $("editor-desc").value,
     disponivel:  $("editor-disponivel").checked,
     apenasLocal: !$("editor-entrega").checked,
-    grupos:      limparGrupos(editorGrupos),
+    composicao:  (typeof Grupos !== "undefined" ? Grupos.normalizarGrupos(editorComposicao) : editorComposicao),
+    opcionais:   serializarOpcionais(editorOpcionais),
     imagem:      editorFotoUrl,
   };
 
@@ -1361,11 +1366,9 @@ $("editor-foto-input").addEventListener("change", async () => {
   }
 });
 
-$("editor-grupo-add").addEventListener("click", () => {
-  editorGrupos.push({ nome: "", min: 0, max: 1, opcoes: [{ nome: "", preco: 0 }] });
-  renderEditorGrupos();
-  const inputs = $("editor-grupos-builder").querySelectorAll(".grp-nome");
-  if (inputs.length) inputs[inputs.length - 1].focus();
+$("editor-comp-add-subgrupo").addEventListener("click", () => {
+  editorComposicao.push({ nome: "", obrigatorio: false, min: 0, max: 0, itens: [] });
+  renderEditorComposicao();
 });
 
 // ============================================================
@@ -1429,85 +1432,168 @@ $("identLogoInput").addEventListener("change", async () => {
 $("identLogoRemover").addEventListener("click", () => { identLogoUrl = ""; atualizarPreviewIdentidade(); });
 
 // ============================================================
-// CONSTRUTOR DE GRUPOS DE OPÇÕES (substitui composição + opcionais)
-// Cada grupo: { nome, min, max, opcoes:[{nome, preco}] }. min≥1 = obrigatório;
-// max=1 = escolha única. Opção com preço 0 = grátis.
+// CONSTRUTOR DE COMPOSIÇÃO
 // ============================================================
-function limparGrupos(grupos) {
-  return (grupos || []).map((g) => ({
-    nome: (g.nome || "").trim(),
-    min: Math.max(0, parseInt(g.min, 10) || 0),
-    max: Math.max(1, parseInt(g.max, 10) || 1),
-    opcoes: (g.opcoes || [])
-      .map((o) => ({ nome: (o.nome || "").trim(), preco: Number(o.preco) || 0 }))
-      .filter((o) => o.nome),
-  })).filter((g) => g.nome && g.opcoes.length);
-}
-
-function renderEditorGrupos() {
-  const container = $("editor-grupos-builder");
+function renderEditorComposicao() {
+  const container = $("editor-composicao-builder");
   container.innerHTML = "";
 
-  editorGrupos.forEach((g, gi) => {
+  editorComposicao.forEach((sg, si) => {
     const div = document.createElement("div");
-    div.className = "grp-card";
+    div.className = "comp-subgrupo";
 
-    const opcoesHtml = (g.opcoes || []).map((o, oi) => `
-      <div class="grp-opc-linha">
-        <input class="grp-opc-nome" placeholder="Nome da opção (ex.: Picanha)" value="${escapar(o.nome)}" data-gi="${gi}" data-oi="${oi}" />
-        <div class="opc-preco-wrap">
-          <span class="opc-rs">R$</span>
-          <input type="text" inputmode="numeric" class="grp-opc-preco" placeholder="0,00" value="${o.preco ? Dinheiro.formatar(o.preco) : ""}" data-gi="${gi}" data-oi="${oi}" />
-        </div>
-        <button type="button" class="perigo mini grp-opc-del" data-gi="${gi}" data-oi="${oi}" aria-label="Remover opção">×</button>
-      </div>`).join("");
+    const chipsHtml = sg.itens.map((it, ii) =>
+      `<span class="comp-chip">${escapar(it)}<button type="button" class="comp-chip-del" data-sg="${si}" data-ii="${ii}" aria-label="Remover">×</button></span>`
+    ).join("");
 
     div.innerHTML = `
-      <div class="grp-cabeca">
-        <input class="grp-nome" placeholder="Nome do grupo (ex.: Proteínas)" value="${escapar(g.nome)}" data-gi="${gi}" />
-        <button type="button" class="perigo mini grp-del" data-gi="${gi}" aria-label="Remover grupo">×</button>
+      <div class="comp-subgrupo-cabeca">
+        <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" data-sg="${si}" />
+        <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">×</button>
       </div>
-      <div class="grp-regra">
-        <label class="grp-regra-campo">Mín. <input type="number" min="0" class="grp-min" value="${Number(g.min) || 0}" data-gi="${gi}" /></label>
-        <label class="grp-regra-campo">Máx. <input type="number" min="1" class="grp-max" value="${Math.max(1, Number(g.max) || 1)}" data-gi="${gi}" /></label>
-        <span class="grp-regra-dica">Mín. 1 = obrigatório · Máx. 1 = escolher só uma</span>
+      <div class="comp-sg-regras">
+        <label class="comp-sg-obrig-lbl"><input type="checkbox" class="comp-sg-obrig" data-sg="${si}" ${sg.obrigatorio ? "checked" : ""} /> Obrigatório</label>
+        <label class="comp-sg-num">mín <input type="number" min="0" class="comp-sg-min" data-sg="${si}" value="${Number(sg.min) || 0}" /></label>
+        <label class="comp-sg-num">máx <input type="number" min="0" class="comp-sg-max" data-sg="${si}" value="${Number(sg.max) || 0}" /></label>
       </div>
-      <div class="grp-opcoes">${opcoesHtml}</div>
-      <button type="button" class="secundario mini grp-opc-add" data-gi="${gi}">Adicionar opção</button>
+      <div class="comp-chips">${chipsHtml}</div>
+      <div class="comp-add-ing">
+        <input class="comp-ing-input" placeholder="Adicionar ingrediente..." data-sg="${si}" />
+        <button type="button" class="secundario mini comp-ing-btn" data-sg="${si}">Adicionar</button>
+      </div>
     `;
     container.appendChild(div);
   });
 
-  // Listeners — re-ligados a cada render (innerHTML substituído, sem vazamento).
-  container.querySelectorAll(".grp-nome").forEach((el) =>
-    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].nome = e.target.value; }));
-  container.querySelectorAll(".grp-min").forEach((el) =>
-    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].min = Math.max(0, parseInt(e.target.value, 10) || 0); }));
-  container.querySelectorAll(".grp-max").forEach((el) =>
-    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].max = Math.max(1, parseInt(e.target.value, 10) || 1); }));
-  container.querySelectorAll(".grp-del").forEach((el) =>
-    el.addEventListener("click", (e) => { editorGrupos.splice(+e.target.dataset.gi, 1); renderEditorGrupos(); }));
+  // Listeners — re-ligados a cada render; sem vazamento pois o innerHTML é substituído
+  container.querySelectorAll(".comp-sg-nome").forEach((el) =>
+    el.addEventListener("input", (e) => {
+      editorComposicao[+e.target.dataset.sg].nome = e.target.value;
+    })
+  );
 
-  container.querySelectorAll(".grp-opc-nome").forEach((el) =>
-    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].opcoes[+e.target.dataset.oi].nome = e.target.value; }));
-  container.querySelectorAll(".grp-opc-preco").forEach((el) => {
-    Dinheiro.mascarar(el);
-    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].opcoes[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
-  });
-  container.querySelectorAll(".grp-opc-del").forEach((el) =>
+  container.querySelectorAll(".comp-sg-obrig").forEach((el) =>
+    el.addEventListener("change", (e) => {
+      editorComposicao[+e.target.dataset.sg].obrigatorio = e.target.checked;
+    })
+  );
+  container.querySelectorAll(".comp-sg-min").forEach((el) =>
+    el.addEventListener("input", (e) => {
+      editorComposicao[+e.target.dataset.sg].min = Math.max(0, parseInt(e.target.value, 10) || 0);
+    })
+  );
+  container.querySelectorAll(".comp-sg-max").forEach((el) =>
+    el.addEventListener("input", (e) => {
+      editorComposicao[+e.target.dataset.sg].max = Math.max(0, parseInt(e.target.value, 10) || 0);
+    })
+  );
+
+  container.querySelectorAll(".comp-sg-del").forEach((el) =>
     el.addEventListener("click", (e) => {
-      editorGrupos[+e.target.dataset.gi].opcoes.splice(+e.target.dataset.oi, 1);
-      renderEditorGrupos();
-    }));
-  container.querySelectorAll(".grp-opc-add").forEach((el) =>
+      editorComposicao.splice(+e.target.dataset.sg, 1);
+      renderEditorComposicao();
+    })
+  );
+
+  container.querySelectorAll(".comp-chip-del").forEach((el) =>
     el.addEventListener("click", (e) => {
-      const gi = +e.target.dataset.gi;
-      editorGrupos[gi].opcoes.push({ nome: "", preco: 0 });
-      renderEditorGrupos();
-      const inputs = container.querySelectorAll(`.grp-opc-nome[data-gi="${gi}"]`);
-      if (inputs.length) inputs[inputs.length - 1].focus();
-    }));
+      const si = +e.target.dataset.sg, ii = +e.target.dataset.ii;
+      editorComposicao[si].itens.splice(ii, 1);
+      renderEditorComposicao();
+    })
+  );
+
+  container.querySelectorAll(".comp-ing-btn").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      const si = +e.target.dataset.sg;
+      const input = container.querySelector(`.comp-ing-input[data-sg="${si}"]`);
+      const val = input.value.trim();
+      if (!val) return;
+      editorComposicao[si].itens.push(val);
+      input.value = "";
+      renderEditorComposicao();
+      // Re-foca o input do mesmo subgrupo após re-render
+      const novo = $("editor-composicao-builder").querySelector(`.comp-ing-input[data-sg="${si}"]`);
+      if (novo) novo.focus();
+    })
+  );
+
+  container.querySelectorAll(".comp-ing-input").forEach((el) =>
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(`.comp-ing-btn[data-sg="${e.target.dataset.sg}"]`).click();
+      }
+    })
+  );
 }
+
+// ============================================================
+// CONSTRUTOR DE OPCIONAIS
+// ============================================================
+function parsearOpcionais(texto) {
+  if (!texto || !texto.trim()) return [];
+  const lista = [];
+  for (let linha of texto.split("\n")) {
+    linha = linha.trim().replace(/^[*\-•]\s*/, "");
+    if (!linha) continue;
+    const partes = linha.split("|");
+    const nome = partes[0].trim();
+    let preco = 0;
+    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+    if (nome) lista.push({ nome, preco });
+  }
+  return lista;
+}
+
+function serializarOpcionais(lista) {
+  return lista
+    .filter((o) => o.nome.trim())
+    .map((o) => o.nome.trim() + " | " + Number(o.preco || 0).toFixed(2))
+    .join("\n");
+}
+
+function renderEditorOpcionais() {
+  const container = $("editor-opcionais-builder");
+  container.innerHTML = "";
+
+  editorOpcionais.forEach((op, oi) => {
+    const div = document.createElement("div");
+    div.className = "opc-linha";
+    div.innerHTML = `
+      <input class="opc-nome" placeholder="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
+      <div class="opc-preco-wrap">
+        <span class="opc-rs">R$</span>
+        <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
+      </div>
+      <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">×</button>
+    `;
+    container.appendChild(div);
+  });
+
+  container.querySelectorAll(".opc-nome").forEach((el) =>
+    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; })
+  );
+
+  container.querySelectorAll(".opc-preco").forEach((el) => {
+    Dinheiro.mascarar(el);
+    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
+  });
+
+  container.querySelectorAll(".opc-del").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      editorOpcionais.splice(+e.target.dataset.oi, 1);
+      renderEditorOpcionais();
+    })
+  );
+}
+
+$("editor-opc-add").addEventListener("click", () => {
+  editorOpcionais.push({ nome: "", preco: 0 });
+  renderEditorOpcionais();
+  const inputs = $("editor-opcionais-builder").querySelectorAll(".opc-nome");
+  if (inputs.length) inputs[inputs.length - 1].focus();
+});
 
 $("btnAddCategoria").addEventListener("click", () => {
   cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
@@ -3325,6 +3411,20 @@ function pdvSelecionarAoFocar(el) {
   el.addEventListener("focus", () => setTimeout(() => { try { el.select(); } catch (_) {} }, 0));
 }
 function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function pdvParseOpcionais(texto) {
+  if (!texto || !String(texto).trim()) return [];
+  const lista = [];
+  String(texto).split("\n").forEach((l) => {
+    l = l.trim().replace(/^[*\-•]\s*/, "");
+    if (!l) return;
+    const partes = l.split("|");
+    const nome = partes[0].trim();
+    let preco = 0;
+    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+    if (nome) lista.push({ nome, preco });
+  });
+  return lista;
+}
 function pdvPrecoUnit(l) {
   const add = (l.opcionais || []).reduce((s, o) => s + (Number(o.preco) || 0) * (o.qtd || 1), 0);
   return (Number(l.preco) || 0) + add;
@@ -3412,9 +3512,9 @@ function renderPdvProdutos() {
 }
 
 function pdvTileClick(item) {
-  const temGrupos = (item.grupos || []).length > 0;
+  const ops = pdvParseOpcionais(item.opcionais);
   const ehKg = item.unidade === "kg";
-  if (temGrupos || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (ops.length || ehKg) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao);
   if (ex) ex.qtd += 1;
@@ -3424,21 +3524,17 @@ function pdvTileClick(item) {
 }
 
 // ---- Modal de item (opcionais / peso / observação) ----
-let pdvItemCtx = null; // { item, grupos, sel:[[...]], uid|null, ehKg }
+let pdvItemCtx = null; // { item, ops, uid|null }
 
 function abrirPdvItemModal(item, uid) {
-  const grupos = item.grupos || [];
+  const ops = pdvParseOpcionais(item.opcionais);
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
-  // Reconstrói a seleção ao editar uma linha existente (casa por grupo+nome).
-  const sel = grupos.map((g) => {
-    const out = [];
-    (g.opcoes || []).forEach((o, oi) => {
-      if (linha && (linha.opcionais || []).some((x) => x.nome === o.nome && (x.grupo || "") === g.nome)) out.push(oi);
-    });
-    return out;
+  pdvItemCtx = { item, ops, uid: uid != null ? uid : null, ehKg };
+  const opsQtd = ops.map((o) => {
+    const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
+    return found ? found.qtd : 0;
   });
-  pdvItemCtx = { item, grupos, sel, uid: uid != null ? uid : null, ehKg };
   const qtdIni = linha ? linha.qtd : (ehKg ? "" : 1);
   const obsIni = linha ? linha.observacao : "";
 
@@ -3450,36 +3546,32 @@ function abrirPdvItemModal(item, uid) {
   } else {
     html += '<div class="pdv-campo"><span>Quantidade</span><div class="pdv-stepper" data-stepper="qtd"><button type="button" data-step="-1">−</button><span id="pdvMqtd">' + qtdIni + '</span><button type="button" data-step="1">+</button></div></div>';
   }
-  grupos.forEach((g, gi) => {
-    html += '<div class="pdv-grp"><div class="pdv-grp-cab"><span class="pdv-grp-nome">' + pdvEsc(g.nome) + '</span><span class="pdv-grp-regra">' + pdvRegraTxt(g) + '</span></div>';
-    (g.opcoes || []).forEach((o, oi) => {
-      const on = sel[gi].indexOf(oi) !== -1;
-      html += '<button type="button" class="pdv-op-row' + (on ? " sel" : "") + (g.max === 1 ? " radio" : "") + '" data-op="' + gi + '-' + oi + '">' +
-        '<span class="pdv-op-check"></span><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span>' +
-        (o.preco ? '<span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' : '') + '</button>';
+  if (ops.length) {
+    html += '<div class="pdv-ops"><span class="pdv-ops-tit">Adicionais</span>';
+    ops.forEach((o, i) => {
+      html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' +
+        '<div class="pdv-stepper" data-stepper="op" data-opi="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-op-q">' + opsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
     });
     html += "</div>";
-  });
+  }
   html += '<label class="pdv-campo"><span>Observação (opcional)</span><textarea id="pdvMobs" rows="2" placeholder="Ex.: sem cebola, ponto da carne…">' + pdvEsc(obsIni) + "</textarea></label>";
-  html += '<button type="button" class="primario pdv-modal-add" id="pdvMadd"></button>';
+  html += '<button type="button" class="primario pdv-modal-add" id="pdvMadd">' + (uid != null ? "Salvar" : "Adicionar") + ' · <span id="pdvMtot">R$ 0,00</span></button>';
 
   $("pdvItemCaixa").innerHTML = html;
   $("pdvItemOverlay").hidden = false;
   focarModalPdv("pdvItemCaixa");
 
-  $("pdvItemCaixa").querySelectorAll('[data-stepper="qtd"]').forEach((box) => {
+  // wiring
+  $("pdvItemCaixa").querySelectorAll("[data-stepper]").forEach((box) => {
     box.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
       const span = box.querySelector("span");
+      const min = box.dataset.stepper === "qtd" ? 1 : 0;
       let v = parseInt(span.textContent, 10) || 0;
-      v = Math.max(1, v + Number(b.dataset.step));
+      v = Math.max(min, v + Number(b.dataset.step));
       span.textContent = v;
       pdvItemRecalc();
     }));
   });
-  $("pdvItemCaixa").querySelectorAll("[data-op]").forEach((b) => b.addEventListener("click", () => {
-    const p = b.getAttribute("data-op").split("-");
-    pdvToggleOp(+p[0], +p[1]);
-  }));
   const peso = $("pdvMpeso"); if (peso) peso.addEventListener("input", pdvItemRecalc);
   $("pdvMadd").addEventListener("click", pdvConfirmarItem);
   const xb = $("pdvItemCaixa").querySelector('[data-pdv-close="item"]');
@@ -3488,60 +3580,30 @@ function abrirPdvItemModal(item, uid) {
 }
 function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = null; }
 
-function pdvRegraTxt(g) {
-  let s;
-  if (g.min === g.max) s = "Escolha " + g.min;
-  else if (g.min > 0) s = "Escolha de " + g.min + " a " + g.max;
-  else s = "Escolha até " + g.max;
-  return s + (g.min >= 1 ? " · obrigatório" : " · opcional");
-}
-function pdvToggleOp(gi, oi) {
-  const g = pdvItemCtx.grupos[gi], sel = pdvItemCtx.sel[gi];
-  const pos = sel.indexOf(oi);
-  if (g.max === 1) {
-    if (pos !== -1) { if (g.min === 0) sel.length = 0; }
-    else { sel.length = 0; sel.push(oi); }
-  } else if (pos !== -1) { sel.splice(pos, 1); }
-  else if (sel.length < g.max) { sel.push(oi); }
-  const caixa = $("pdvItemCaixa");
-  (g.opcoes || []).forEach((o, i) => {
-    const row = caixa.querySelector('[data-op="' + gi + '-' + i + '"]');
-    if (row) row.classList.toggle("sel", sel.indexOf(i) !== -1);
-  });
-  pdvItemRecalc();
-}
-
 function _pdvLerModalItem() {
-  const { item, grupos, sel, ehKg } = pdvItemCtx;
+  const { item, ops, ehKg } = pdvItemCtx;
   let qtd;
-  if (ehKg) qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
-  else qtd = parseInt($("pdvMqtd").textContent, 10) || 1;
+  if (ehKg) {
+    qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
+  } else {
+    qtd = parseInt($("pdvMqtd").textContent, 10) || 1;
+  }
   const opcionais = [];
-  grupos.forEach((g, gi) => {
-    (sel[gi] || []).forEach((oi) => {
-      const o = g.opcoes[oi];
-      opcionais.push({ grupo: g.nome, nome: o.nome, preco: Number(o.preco) || 0, qtd: 1 });
-    });
+  $("pdvItemCaixa").querySelectorAll('[data-stepper="op"]').forEach((box) => {
+    const i = Number(box.dataset.opi);
+    const q = parseInt(box.querySelector("span").textContent, 10) || 0;
+    if (q > 0) opcionais.push({ nome: ops[i].nome, preco: ops[i].preco, qtd: q });
   });
-  return { item, qtd, opcionais, observacao: ($("pdvMobs").value || "").trim().slice(0, 200), ehKg };
-}
-function pdvItemFaltaObrig() {
-  return pdvItemCtx.grupos.some((g, gi) => (pdvItemCtx.sel[gi] || []).length < g.min);
+  const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
+  return { item, qtd, opcionais, observacao, ehKg };
 }
 function pdvItemRecalc() {
   const { item, qtd, opcionais } = _pdvLerModalItem();
   const add = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
   const tot = ((Number(item.preco) || 0) + add) * (Number(qtd) || 0);
-  const btn = $("pdvMadd");
-  if (!btn) return;
-  const falta = pdvItemFaltaObrig();
-  btn.disabled = falta;
-  btn.innerHTML = falta
-    ? "Escolha as opções obrigatórias"
-    : (pdvItemCtx.uid != null ? "Salvar" : "Adicionar") + ' · ' + pdvMoney(tot);
+  const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
 }
 function pdvConfirmarItem() {
-  if (pdvItemFaltaObrig()) { toast("Escolha as opções obrigatórias.", "erro"); return; }
   const { item, qtd, opcionais, observacao, ehKg } = _pdvLerModalItem();
   if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
   const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, opcionais, observacao };
@@ -3587,7 +3649,7 @@ function renderPdvCarrinho() {
     cont.querySelectorAll("[data-edit]").forEach((el) => el.addEventListener("click", () => {
       const l = pdvCart.find((x) => x.uid == el.dataset.edit);
       if (!l) return;
-      const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, grupos: [] };
+      const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, opcionais: "" };
       abrirPdvItemModal(item, l.uid);
     }));
   }
@@ -3972,7 +4034,7 @@ async function finalizarVendaPdv() {
     : (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
-    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ grupo: o.grupo, nome: o.nome })), observacao: l.observacao })),
+    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao: cpf ? ("CPF na nota: " + cpf) : "",
