@@ -82,3 +82,12 @@ test("avaliarComposicao: item sem composição → válido e selecoes vazias", (
   const r = avaliarComposicao({ nome: "Refri" }, undefined);
   assert.deepEqual(r, { valido: true, selecoes: [], pendencias: [] });
 });
+
+test("avaliarComposicao: grupo acima do máx não entra em selecoes", () => {
+  const r = avaliarComposicao(base, [
+    { grupo: "Proteínas", itens: ["Frango", "Carne"] }, // 2 > máx 1
+    { grupo: "Principais", itens: ["Arroz"] },
+  ]);
+  assert.equal(r.valido, false);
+  assert.equal(r.selecoes.find((s) => s.grupo === "Proteínas"), undefined);
+});

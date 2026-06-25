@@ -53,7 +53,9 @@
       } else if (validos.length > max) {
         pendencias.push(g.nome + ": escolha no máximo " + max);
       }
-      if (validos.length) selecoes.push({ grupo: g.nome, itens: validos.slice(0, max) });
+      if (validos.length && validos.length >= min && validos.length <= max) {
+        selecoes.push({ grupo: g.nome, itens: validos });
+      }
     });
     return { valido: pendencias.length === 0, selecoes: selecoes, pendencias: pendencias };
   }
