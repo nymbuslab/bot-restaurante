@@ -4711,12 +4711,30 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .pdv-campo > span { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
 .pdv-campo .pdv-stepper { align-self: flex-start; }
-.pdv-ops { margin-bottom: 14px; }
-.pdv-ops-tit { display: block; font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-bottom: 8px; }
-.pdv-op { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
+/* Grupos de opções no modal do PDV */
+.pdv-grp { margin-bottom: 14px; }
+.pdv-grp-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.pdv-grp-nome { font-size: 13px; font-weight: 700; }
+.pdv-grp-regra { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+.pdv-op-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; margin-bottom: 6px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elevated);
+  cursor: pointer; text-align: left; font: inherit; color: inherit;
+}
+.pdv-op-row:hover { border-color: var(--accent); }
+.pdv-op-row.sel { border-color: var(--accent); background: rgba(99, 68, 188, 0.10); }
+.pdv-op-check {
+  flex: none; width: 19px; height: 19px; border: 2px solid var(--border); border-radius: 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pdv-op-row.radio .pdv-op-check { border-radius: 50%; }
+.pdv-op-row.sel .pdv-op-check { border-color: var(--accent); background: var(--accent); }
+.pdv-op-row.sel .pdv-op-check::after { content: ""; width: 9px; height: 9px; border-radius: 2px; background: #fff; }
+.pdv-op-row.radio.sel .pdv-op-check::after { border-radius: 50%; }
 .pdv-op-nome { flex: 1; font-size: 13.5px; font-weight: 600; }
 .pdv-op-preco { font-size: 12.5px; color: var(--accent-fg); font-weight: 600; }
 .pdv-modal-add { width: 100%; padding: 13px; font-size: 15px; margin-top: 4px; }
+.pdv-modal-add:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* Desconto: botão ao lado do recebimento + modal (toggle R$/% + campo) */
 .pdv-desc-acao { flex: none; padding: 0 16px; font-size: 14px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--accent-fg); font-weight: 600; border-radius: var(--radius-sm); }

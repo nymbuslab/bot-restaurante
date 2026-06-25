@@ -3426,9 +3426,9 @@ function renderPdvProdutos() {
 }
 
 function pdvTileClick(item) {
-  const ops = pdvParseOpcionais(item.opcionais);
+  const temGrupos = (item.grupos || []).length > 0;
   const ehKg = item.unidade === "kg";
-  if (ops.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (temGrupos || ehKg) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao);
   if (ex) ex.qtd += 1;
@@ -3438,17 +3438,21 @@ function pdvTileClick(item) {
 }
 
 // ---- Modal de item (opcionais / peso / observação) ----
-let pdvItemCtx = null; // { item, ops, uid|null }
+let pdvItemCtx = null; // { item, grupos, sel:[[...]], uid|null, ehKg }
 
 function abrirPdvItemModal(item, uid) {
-  const ops = pdvParseOpcionais(item.opcionais);
+  const grupos = item.grupos || [];
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
-  pdvItemCtx = { item, ops, uid: uid != null ? uid : null, ehKg };
-  const opsQtd = ops.map((o) => {
-    const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
-    return found ? found.qtd : 0;
+  // Reconstrói a seleção ao editar uma linha existente (casa por grupo+nome).
+  const sel = grupos.map((g) => {
+    const out = [];
+    (g.opcoes || []).forEach((o, oi) => {
+      if (linha && (linha.opcionais || []).some((x) => x.nome === o.nome && (x.grupo || "") === g.nome)) out.push(oi);
+    });
+    return out;
   });
+  pdvItemCtx = { item, grupos, sel, uid: uid != null ? uid : null, ehKg };
   const qtdIni = linha ? linha.qtd : (ehKg ? "" : 1);
   const obsIni = linha ? linha.observacao : "";
 
@@ -3460,32 +3464,36 @@ function abrirPdvItemModal(item, uid) {
   } else {
     html += '<div class="pdv-campo"><span>Quantidade</span><div class="pdv-stepper" data-stepper="qtd"><button type="button" data-step="-1">−</button><span id="pdvMqtd">' + qtdIni + '</span><button type="button" data-step="1">+</button></div></div>';
   }
-  if (ops.length) {
-    html += '<div class="pdv-ops"><span class="pdv-ops-tit">Adicionais</span>';
-    ops.forEach((o, i) => {
-      html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' +
-        '<div class="pdv-stepper" data-stepper="op" data-opi="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-op-q">' + opsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
+  grupos.forEach((g, gi) => {
+    html += '<div class="pdv-grp"><div class="pdv-grp-cab"><span class="pdv-grp-nome">' + pdvEsc(g.nome) + '</span><span class="pdv-grp-regra">' + pdvRegraTxt(g) + '</span></div>';
+    (g.opcoes || []).forEach((o, oi) => {
+      const on = sel[gi].indexOf(oi) !== -1;
+      html += '<button type="button" class="pdv-op-row' + (on ? " sel" : "") + (g.max === 1 ? " radio" : "") + '" data-op="' + gi + '-' + oi + '">' +
+        '<span class="pdv-op-check"></span><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span>' +
+        (o.preco ? '<span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' : '') + '</button>';
     });
     html += "</div>";
-  }
+  });
   html += '<label class="pdv-campo"><span>Observação (opcional)</span><textarea id="pdvMobs" rows="2" placeholder="Ex.: sem cebola, ponto da carne…">' + pdvEsc(obsIni) + "</textarea></label>";
-  html += '<button type="button" class="primario pdv-modal-add" id="pdvMadd">' + (uid != null ? "Salvar" : "Adicionar") + ' · <span id="pdvMtot">R$ 0,00</span></button>';
+  html += '<button type="button" class="primario pdv-modal-add" id="pdvMadd"></button>';
 
   $("pdvItemCaixa").innerHTML = html;
   $("pdvItemOverlay").hidden = false;
   focarModalPdv("pdvItemCaixa");
 
-  // wiring
-  $("pdvItemCaixa").querySelectorAll("[data-stepper]").forEach((box) => {
+  $("pdvItemCaixa").querySelectorAll('[data-stepper="qtd"]').forEach((box) => {
     box.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
       const span = box.querySelector("span");
-      const min = box.dataset.stepper === "qtd" ? 1 : 0;
       let v = parseInt(span.textContent, 10) || 0;
-      v = Math.max(min, v + Number(b.dataset.step));
+      v = Math.max(1, v + Number(b.dataset.step));
       span.textContent = v;
       pdvItemRecalc();
     }));
   });
+  $("pdvItemCaixa").querySelectorAll("[data-op]").forEach((b) => b.addEventListener("click", () => {
+    const p = b.getAttribute("data-op").split("-");
+    pdvToggleOp(+p[0], +p[1]);
+  }));
   const peso = $("pdvMpeso"); if (peso) peso.addEventListener("input", pdvItemRecalc);
   $("pdvMadd").addEventListener("click", pdvConfirmarItem);
   const xb = $("pdvItemCaixa").querySelector('[data-pdv-close="item"]');
@@ -3494,30 +3502,60 @@ function abrirPdvItemModal(item, uid) {
 }
 function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = null; }
 
-function _pdvLerModalItem() {
-  const { item, ops, ehKg } = pdvItemCtx;
-  let qtd;
-  if (ehKg) {
-    qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
-  } else {
-    qtd = parseInt($("pdvMqtd").textContent, 10) || 1;
-  }
-  const opcionais = [];
-  $("pdvItemCaixa").querySelectorAll('[data-stepper="op"]').forEach((box) => {
-    const i = Number(box.dataset.opi);
-    const q = parseInt(box.querySelector("span").textContent, 10) || 0;
-    if (q > 0) opcionais.push({ nome: ops[i].nome, preco: ops[i].preco, qtd: q });
+function pdvRegraTxt(g) {
+  let s;
+  if (g.min === g.max) s = "Escolha " + g.min;
+  else if (g.min > 0) s = "Escolha de " + g.min + " a " + g.max;
+  else s = "Escolha até " + g.max;
+  return s + (g.min >= 1 ? " · obrigatório" : " · opcional");
+}
+function pdvToggleOp(gi, oi) {
+  const g = pdvItemCtx.grupos[gi], sel = pdvItemCtx.sel[gi];
+  const pos = sel.indexOf(oi);
+  if (g.max === 1) {
+    if (pos !== -1) { if (g.min === 0) sel.length = 0; }
+    else { sel.length = 0; sel.push(oi); }
+  } else if (pos !== -1) { sel.splice(pos, 1); }
+  else if (sel.length < g.max) { sel.push(oi); }
+  const caixa = $("pdvItemCaixa");
+  (g.opcoes || []).forEach((o, i) => {
+    const row = caixa.querySelector('[data-op="' + gi + '-' + i + '"]');
+    if (row) row.classList.toggle("sel", sel.indexOf(i) !== -1);
   });
-  const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
-  return { item, qtd, opcionais, observacao, ehKg };
+  pdvItemRecalc();
+}
+
+function _pdvLerModalItem() {
+  const { item, grupos, sel, ehKg } = pdvItemCtx;
+  let qtd;
+  if (ehKg) qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
+  else qtd = parseInt($("pdvMqtd").textContent, 10) || 1;
+  const opcionais = [];
+  grupos.forEach((g, gi) => {
+    (sel[gi] || []).forEach((oi) => {
+      const o = g.opcoes[oi];
+      opcionais.push({ grupo: g.nome, nome: o.nome, preco: Number(o.preco) || 0, qtd: 1 });
+    });
+  });
+  return { item, qtd, opcionais, observacao: ($("pdvMobs").value || "").trim().slice(0, 200), ehKg };
+}
+function pdvItemFaltaObrig() {
+  return pdvItemCtx.grupos.some((g, gi) => (pdvItemCtx.sel[gi] || []).length < g.min);
 }
 function pdvItemRecalc() {
   const { item, qtd, opcionais } = _pdvLerModalItem();
   const add = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
   const tot = ((Number(item.preco) || 0) + add) * (Number(qtd) || 0);
-  const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
+  const btn = $("pdvMadd");
+  if (!btn) return;
+  const falta = pdvItemFaltaObrig();
+  btn.disabled = falta;
+  btn.innerHTML = falta
+    ? "Escolha as opções obrigatórias"
+    : (pdvItemCtx.uid != null ? "Salvar" : "Adicionar") + ' · ' + pdvMoney(tot);
 }
 function pdvConfirmarItem() {
+  if (pdvItemFaltaObrig()) { toast("Escolha as opções obrigatórias.", "erro"); return; }
   const { item, qtd, opcionais, observacao, ehKg } = _pdvLerModalItem();
   if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
   const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, opcionais, observacao };
@@ -3563,7 +3601,7 @@ function renderPdvCarrinho() {
     cont.querySelectorAll("[data-edit]").forEach((el) => el.addEventListener("click", () => {
       const l = pdvCart.find((x) => x.uid == el.dataset.edit);
       if (!l) return;
-      const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, opcionais: "" };
+      const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, grupos: [] };
       abrirPdvItemModal(item, l.uid);
     }));
   }
@@ -3948,7 +3986,7 @@ async function finalizarVendaPdv() {
     : (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
-    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), observacao: l.observacao })),
+    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ grupo: o.grupo, nome: o.nome })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao: cpf ? ("CPF na nota: " + cpf) : "",
