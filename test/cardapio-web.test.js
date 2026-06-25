@@ -2,19 +2,45 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const cw = require("../src/cardapio-web");
 
-// ---- parseOpcionais ----
-test("parseOpcionais: 'Nome | preco' por linha → [{nome,preco}]", () => {
-  assert.deepEqual(cw.parseOpcionais("Bacon | 3,50\nOvo | 2"), [
-    { nome: "Bacon", preco: 3.5 },
-    { nome: "Ovo", preco: 2 },
+// ---- projetarGrupos ----
+test("projetarGrupos: normaliza, default max 1 e descarta grupo sem opções", () => {
+  assert.deepEqual(cw.projetarGrupos([
+    { nome: "Proteínas", min: 1, opcoes: [{ nome: "Frango", preco: 0 }, { nome: "Picanha", preco: "5" }] },
+    { nome: "Vazio", opcoes: [] },
+    { nome: "  ", opcoes: [{ nome: "x" }] },
+  ]), [
+    { nome: "Proteínas", min: 1, max: 1, opcoes: [{ nome: "Frango", preco: 0 }, { nome: "Picanha", preco: 5 }] },
   ]);
 });
-test("parseOpcionais: vazio/nulo → []", () => {
-  assert.deepEqual(cw.parseOpcionais(""), []);
-  assert.deepEqual(cw.parseOpcionais(null), []);
+test("projetarGrupos: nulo → []", () => {
+  assert.deepEqual(cw.projetarGrupos(null), []);
 });
-test("parseOpcionais: sem preço → 0", () => {
-  assert.deepEqual(cw.parseOpcionais("Sem cebola"), [{ nome: "Sem cebola", preco: 0 }]);
+
+// ---- resolverOpcoesGrupos (validação + preço por grupo) ----
+const ITEM_GRP = { nome: "Marmitex", grupos: [
+  { nome: "Proteínas", min: 1, max: 1, opcoes: [{ nome: "Frango", preco: 0 }, { nome: "Picanha", preco: 5 }] },
+  { nome: "Adicionais", min: 0, max: 2, opcoes: [{ nome: "Ovo", preco: 2 }, { nome: "Bacon", preco: 3 }] },
+] };
+test("resolverOpcoesGrupos: casa opções, precifica e marca o grupo", () => {
+  assert.deepEqual(
+    cw.resolverOpcoesGrupos(ITEM_GRP, [{ grupo: "Proteínas", nome: "Picanha" }, { grupo: "Adicionais", nome: "Ovo" }]),
+    [ { nome: "Picanha", preco: 5, qtd: 1, grupo: "Proteínas" }, { nome: "Ovo", preco: 2, qtd: 1, grupo: "Adicionais" } ]
+  );
+});
+test("resolverOpcoesGrupos: opção inexistente lança", () => {
+  assert.throws(() => cw.resolverOpcoesGrupos(ITEM_GRP, [{ grupo: "Proteínas", nome: "Frango" }, { grupo: "Adicionais", nome: "Trufa" }]), /inválida/i);
+});
+test("resolverOpcoesGrupos: grupo obrigatório não atendido lança", () => {
+  assert.throws(() => cw.resolverOpcoesGrupos(ITEM_GRP, [{ grupo: "Adicionais", nome: "Ovo" }]), /Proteínas/);
+});
+test("resolverOpcoesGrupos: excedeu o máximo do grupo lança", () => {
+  assert.throws(() => cw.resolverOpcoesGrupos(ITEM_GRP, [
+    { grupo: "Proteínas", nome: "Frango" },
+    { grupo: "Adicionais", nome: "Ovo" }, { grupo: "Adicionais", nome: "Bacon" }, { grupo: "Adicionais", nome: "Ovo" },
+  ]), /no máximo/i);
+});
+test("resolverOpcoesGrupos: item sem grupos → [] (item simples)", () => {
+  assert.deepEqual(cw.resolverOpcoesGrupos({ nome: "Refri" }, []), []);
 });
 
 // ---- projetarCardapio (whitelist) ----
@@ -22,7 +48,7 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   const cru = {
     categorias: [
       { nome: "Lanches", itens: [
-        { id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: "c", opcionais: "Bacon | 3", disponivel: true, segredo: "NAO_VAZAR" },
+        { id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", grupos: [{ nome: "Add", min: 0, max: 2, opcoes: [{ nome: "Bacon", preco: 3 }] }], disponivel: true, segredo: "NAO_VAZAR" },
         { id: 2, nome: "Oculto", preco: 9, disponivel: false },
       ] },
       { nome: "Vazia", itens: [{ id: 3, nome: "Off", disponivel: false }] },
@@ -33,8 +59,9 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   const it = proj.categorias[0].itens;
   assert.equal(it.length, 1); // item indisponível some
   assert.deepEqual(it[0], {
-    id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: "c",
-    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false, esgotado: false, unidade: "un", destaque: false,
+    id: 1, nome: "X", preco: 20, desc: "d", imagem: "u",
+    grupos: [{ nome: "Add", min: 0, max: 2, opcoes: [{ nome: "Bacon", preco: 3 }] }],
+    apenasLocal: false, esgotado: false, unidade: "un", destaque: false,
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
 });
@@ -107,27 +134,37 @@ test("projetarCardapio: cardápio vazio/sem categorias → { categorias: [] }", 
 // ---- recalcularItens (recálculo no servidor) ----
 const CARD = { categorias: [
   { nome: "L", itens: [
-    { id: 1, nome: "Burger", preco: 20, disponivel: true, opcionais: "Bacon | 3\nOvo | 2" },
+    { id: 1, nome: "Burger", preco: 20, disponivel: true, grupos: [
+      { nome: "Ponto", min: 1, max: 1, opcoes: [{ nome: "Mal passado", preco: 0 }, { nome: "Bem passado", preco: 0 }] },
+      { nome: "Adicionais", min: 0, max: 3, opcoes: [{ nome: "Bacon", preco: 3 }, { nome: "Ovo", preco: 2 }] },
+    ] },
     { id: 2, nome: "Off", preco: 9, disponivel: false },
   ] },
 ] };
-test("recalcularItens: usa preços do cardápio e soma opcionais×qtd", () => {
-  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 2, opcionais: [{ nome: "Ovo", qtd: 3 }], observacao: "x" }]);
-  assert.equal(r.subtotal, 52); // (20 + 2*3) * 2
+test("recalcularItens: usa preços do cardápio e soma as opções escolhidas", () => {
+  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 2, opcionais: [
+    { grupo: "Ponto", nome: "Mal passado" }, { grupo: "Adicionais", nome: "Bacon" }, { grupo: "Adicionais", nome: "Ovo" },
+  ], observacao: "x" }]);
+  assert.equal(r.subtotal, 50); // (20 + 0 + 3 + 2) * 2
   assert.equal(r.itens.length, 1);
-  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Ovo", preco: 2, qtd: 3 }]);
+  assert.deepEqual(r.itens[0].opcionais, [
+    { nome: "Mal passado", preco: 0, qtd: 1, grupo: "Ponto" },
+    { nome: "Bacon", preco: 3, qtd: 1, grupo: "Adicionais" },
+    { nome: "Ovo", preco: 2, qtd: 1, grupo: "Adicionais" },
+  ]);
   assert.equal(r.itens[0].nome, "Burger");
   assert.equal(r.itens[0].preco, 20);
 });
 test("recalcularItens: ignora preço/nome enviados pelo cliente (anti-fraude)", () => {
-  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 1, preco: 0.01, nome: "HACK", opcionais: [] }]);
+  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 1, preco: 0.01, nome: "HACK", opcionais: [{ grupo: "Ponto", nome: "Bem passado" }] }]);
   assert.equal(r.subtotal, 20);
   assert.equal(r.itens[0].nome, "Burger");
 });
-test("recalcularItens: opcional desconhecido é ignorado", () => {
-  const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 1, opcionais: [{ nome: "Trufa", qtd: 5 }] }]);
-  assert.equal(r.subtotal, 20);
-  assert.equal(r.itens[0].opcionais.length, 0);
+test("recalcularItens: opção desconhecida → lança", () => {
+  assert.throws(() => cw.recalcularItens(CARD, [{ id: 1, qtd: 1, opcionais: [{ grupo: "Adicionais", nome: "Trufa" }] }]), /inválida/i);
+});
+test("recalcularItens: grupo obrigatório não atendido → lança", () => {
+  assert.throws(() => cw.recalcularItens(CARD, [{ id: 1, qtd: 1, opcionais: [] }]), /Ponto/);
 });
 test("recalcularItens: item inexistente/indisponível → lança", () => {
   assert.throws(() => cw.recalcularItens(CARD, [{ id: 999, qtd: 1 }]), /indispon/i);

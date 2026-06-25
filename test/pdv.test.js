@@ -7,7 +7,7 @@ const cardapio = {
     {
       nome: "Espetos",
       itens: [
-        { id: "a1", nome: "Espeto de carne", preco: 8, unidade: "un", opcionais: "Bacon | 3.50\nQueijo | 2" },
+        { id: "a1", nome: "Espeto de carne", preco: 8, unidade: "un", grupos: [{ nome: "Adicionais", min: 0, max: 2, opcoes: [{ nome: "Bacon", preco: 3.5 }, { nome: "Queijo", preco: 2 }] }] },
         { id: "a2", nome: "Picanha (kg)", preco: 80, unidade: "kg", apenasLocal: true },
         { id: "a3", nome: "Indisponível", preco: 5, unidade: "un", disponivel: false },
         { id: "a4", nome: "Arquivado", preco: 5, unidade: "un", arquivado: true },
@@ -16,16 +16,21 @@ const cardapio = {
   ],
 };
 
-test("recalcularVenda: item un + opcionais, preço pelo cardápio (ignora preço do cliente)", () => {
+test("recalcularVenda: item un + opção do grupo, preço pelo cardápio (ignora preço do cliente)", () => {
   const r = recalcularVenda(cardapio, [
-    { id: "a1", qtd: 2, preco: 999, opcionais: [{ nome: "Bacon", qtd: 1 }, { nome: "Fantasma", qtd: 5 }] },
+    { id: "a1", qtd: 2, preco: 999, opcionais: [{ grupo: "Adicionais", nome: "Bacon" }] },
   ]);
   assert.equal(r.itens.length, 1);
   assert.equal(r.itens[0].preco, 8);
   assert.equal(r.itens[0].unidade, "un");
-  assert.equal(r.itens[0].opcionais.length, 1); // opcional desconhecido descartado
+  assert.equal(r.itens[0].opcionais.length, 1);
+  assert.deepEqual(r.itens[0].opcionais[0], { nome: "Bacon", preco: 3.5, qtd: 1, grupo: "Adicionais" });
   // (8 + 3.50) * 2 = 23
   assert.equal(r.subtotal, 23);
+});
+
+test("recalcularVenda: opção desconhecida no grupo → lança", () => {
+  assert.throws(() => recalcularVenda(cardapio, [{ id: "a1", qtd: 1, opcionais: [{ grupo: "Adicionais", nome: "Fantasma" }] }]), /inválida/i);
 });
 
 test("recalcularVenda: item por kg usa peso decimal (preço por kg)", () => {
