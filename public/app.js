@@ -3398,6 +3398,12 @@ function pdvFreteValor() { return (pdvTipoEntrega === "Entrega" && pdvEntrega) ?
 function pdvTotalCobrar() { return Math.round((pdvTotalLiq() + pdvFreteValor()) * 100) / 100; }
 
 function pdvMoney(v) { return Dinheiro.comPrefixo(Number(v) || 0); }
+// Seleciona todo o conteúdo ao focar (deferido p/ não perder a seleção no clique
+// do mouse) — operador digita o valor recebido substituindo, sem apagar.
+function pdvSelecionarAoFocar(el) {
+  if (!el) return;
+  el.addEventListener("focus", () => setTimeout(() => { try { el.select(); } catch (_) {} }, 0));
+}
 function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function pdvParseOpcionais(texto) {
   if (!texto || !String(texto).trim()) return [];
@@ -3798,12 +3804,14 @@ function renderPdvPagar() {
   }));
   $("pdvDescAplicar").addEventListener("click", pdvAplicarDesconto);
   descInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAplicarDesconto(); } });
+  pdvSelecionarAoFocar(descInp);
 
   const valInp = $("pdvPgValor");
   Dinheiro.mascarar(valInp);
   Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
   $("pdvPgAdd").addEventListener("click", pdvAddPagamento);
   valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
+  pdvSelecionarAoFocar(valInp);
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
   const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
