@@ -4734,6 +4734,41 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-resumo-linha .falta { color: var(--error); font-weight: 700; }
 .pdv-resumo-linha .troco { color: var(--success); font-weight: 700; }
 .pdv-resumo-desc span:last-child { color: var(--success); font-weight: 600; }
+.pdv-resumo-frete > span:last-child { display: inline-flex; align-items: center; }
+.pdv-frete-val { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; }
+.pdv-frete-zerar { background: transparent; border: none; color: var(--text-secondary); width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.pdv-frete-zerar:hover { background: var(--error-subtle); color: var(--error); }
+
+/* Tipo de venda (Balcão/Entrega/Retirada) + endereço de entrega no PDV */
+.pdv-tve-bloco { margin-bottom: 18px; }
+.pdv-tve { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.pdv-tve button { padding: 10px 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elevated); color: var(--text-secondary); font-size: 13.5px; font-weight: 600; }
+.pdv-tve button.ativo { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent-fg); }
+.pdv-tve-tel { margin: 12px 0 0; }
+.pdv-entrega-resumo { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pdv-entrega-vazio { font-size: 12.5px; color: var(--text-secondary); margin: 0; }
+.pdv-entrega-end { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--text-primary); }
+.pdv-entrega-end svg { flex: none; margin-top: 1px; color: var(--accent-fg); }
+.pdv-entrega-btn { align-self: flex-start; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--accent-fg); padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: var(--radius-sm); }
+.pdv-entrega-btn:hover { border-color: var(--accent); background: var(--bg-elevated); }
+
+/* Overlay de endereço de entrega (form em grade) */
+.pdv-entrega-caixa { max-width: 560px; }
+.pdv-ent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0 12px; }
+.pdv-ent-grid .pdv-campo { grid-column: span 6; }
+.pdv-ent-cep { grid-column: span 2; }
+.pdv-ent-hint { grid-column: span 4; align-self: center; margin: 0 0 14px; font-size: 12px; color: var(--text-secondary); }
+.pdv-ent-logr { grid-column: span 4; }
+.pdv-ent-num { grid-column: span 2; }
+.pdv-ent-compl { grid-column: span 3; }
+.pdv-ent-bairro { grid-column: span 3; }
+.pdv-ent-cidade { grid-column: span 2; }
+.pdv-ent-uf { grid-column: span 1; }
+.pdv-ent-tel { grid-column: span 3; }
+@media (max-width: 560px) {
+  .pdv-ent-grid { grid-template-columns: repeat(2, 1fr); }
+  .pdv-ent-cep, .pdv-ent-hint, .pdv-ent-logr, .pdv-ent-num, .pdv-ent-compl, .pdv-ent-bairro, .pdv-ent-cidade, .pdv-ent-uf, .pdv-ent-tel { grid-column: span 2; }
+}
 .pdv-cpf { margin: 14px 0 0; }
 .pdv-pg-acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 .pdv-pg-acoes .secundario { padding: 13px 22px; }

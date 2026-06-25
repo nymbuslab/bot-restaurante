@@ -3393,6 +3393,9 @@ function pdvDescontoCalc(subtotal) {
   return { desconto: abate, total: Math.round((sub - abate) * 100) / 100 };
 }
 function pdvTotalLiq() { return pdvDescontoCalc(pdvTotal()).total; }
+// Frete da venda (0 fora de Entrega ou sem endereço). Total a cobrar = líquido + frete.
+function pdvFreteValor() { return (pdvTipoEntrega === "Entrega" && pdvEntrega) ? (Number(pdvEntrega.taxaEntrega) || 0) : 0; }
+function pdvTotalCobrar() { return Math.round((pdvTotalLiq() + pdvFreteValor()) * 100) / 100; }
 
 function pdvMoney(v) { return Dinheiro.comPrefixo(Number(v) || 0); }
 function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -3662,6 +3665,8 @@ function pdvAcharItem(id) {
 let pdvPagamentos = []; // [{ forma, valor }] adicionados (tendência)
 let pdvFormaSel = null;
 let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
+let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada'
+let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
 
 function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
 function pdvIconeForma(f) {
@@ -3679,6 +3684,8 @@ function abrirPdvPagar() {
   pdvPagamentos = [];
   pdvFormaSel = pdvFormasPg[0] || "Dinheiro";
   pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
+  pdvTipoEntrega = "Balcão";
+  pdvEntrega = null;
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false;
 }
@@ -3686,7 +3693,7 @@ function fecharPdvPagar() { $("pdvPagarOverlay").hidden = true; }
 function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100; }
 
 function renderPdvPagar() {
-  const total = pdvTotalLiq();
+  const total = pdvTotalCobrar();
   const tiles = pdvFormasPg.map((f) =>
     '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
   ).join("");
@@ -3700,6 +3707,19 @@ function renderPdvPagar() {
     '<div class="pdv-pg-grid">' +
       '<div class="pdv-pg-main">' +
         '<h3 class="pdv-modal-titulo">Finalizar venda</h3>' +
+        '<div class="pdv-tve-bloco">' +
+          '<span class="pdv-ops-tit">Tipo de venda</span>' +
+          '<div class="pdv-tve">' +
+            ["Balcão", "Entrega", "Retirada"].map((t) =>
+              '<button type="button" class="' + (pdvTipoEntrega === t ? "ativo" : "") + '" data-tve="' + t + '">' + t + "</button>"
+            ).join("") +
+          "</div>" +
+          (pdvTipoEntrega === "Entrega"
+            ? '<div class="pdv-entrega-resumo" id="pdvEntregaResumo"></div>'
+            : pdvTipoEntrega === "Retirada"
+            ? '<label class="pdv-campo pdv-tve-tel"><span>Telefone (opcional)</span><input id="pdvRetiradaTel" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>'
+            : "") +
+        "</div>" +
         '<div class="pdv-desc-bloco">' +
           '<span class="pdv-ops-tit">Desconto</span>' +
           '<div class="pdv-desc-linha">' +
@@ -3721,6 +3741,7 @@ function renderPdvPagar() {
         '<div class="pdv-resumo-itens">' + itensHtml + "</div>" +
         '<div class="pdv-resumo-linha" id="pdvResSubLinha" hidden><span>Subtotal</span><span id="pdvResSub"></span></div>' +
         '<div class="pdv-resumo-linha pdv-resumo-desc" id="pdvResDescLinha" hidden><span>Desconto</span><span id="pdvResDesc"></span></div>' +
+        '<div class="pdv-resumo-linha pdv-resumo-frete" id="pdvResFreteLinha" hidden><span>Frete</span><span class="pdv-frete-val"><span id="pdvResFrete"></span><button type="button" class="pdv-frete-zerar" id="pdvFreteZerar" title="Não cobrar frete (cortesia)" aria-label="Não cobrar frete"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></span></div>' +
         '<div class="pdv-resumo-tot"><span>Total</span><strong id="pdvPgTotal">' + pdvMoney(total) + "</strong></div>" +
         '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
         '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
@@ -3733,6 +3754,28 @@ function renderPdvPagar() {
       '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>Confirmar pagamento</button>' +
     "</div>";
   $("pdvPagarCaixa").innerHTML = html;
+
+  // Tipo de venda: Balcão / Entrega / Retirada (re-renderiza p/ mostrar o bloco certo).
+  $("pdvPagarCaixa").querySelectorAll("[data-tve]").forEach((b) => b.addEventListener("click", () => {
+    if (pdvTipoEntrega === b.dataset.tve) return;
+    pdvTipoEntrega = b.dataset.tve;
+    renderPdvPagar();
+  }));
+  if (pdvTipoEntrega === "Entrega") {
+    pdvRenderEntregaResumo();
+    const eb = $("pdvEntregaBtn"); if (eb) eb.addEventListener("click", abrirPdvEntrega);
+  }
+  if (pdvTipoEntrega === "Retirada") {
+    const rt = $("pdvRetiradaTel");
+    if (rt) rt.addEventListener("input", () => { pdvEntrega = pdvEntrega || {}; pdvEntrega.telefone = rt.value; });
+  }
+  const fz = $("pdvFreteZerar");
+  if (fz) fz.addEventListener("click", () => {
+    if (pdvEntrega) pdvEntrega.taxaEntrega = 0;
+    pdvSyncResumo(); pdvPagarRecalc();
+    Dinheiro.setValor($("pdvPgValor"), Math.max(0, Math.round((pdvTotalCobrar() - pdvPagoTotal()) * 100) / 100));
+    toast("Frete zerado (cortesia).");
+  });
 
   $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((b) => b.addEventListener("click", () => {
     pdvFormaSel = b.dataset.forma;
@@ -3764,21 +3807,36 @@ function renderPdvPagar() {
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
   const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
-  pdvSyncResumoDesc();
+  pdvSyncResumo();
   renderPdvPgLista();
 }
 
-// Atualiza as linhas Subtotal/Desconto do RESUMO conforme o desconto aplicado.
-function pdvSyncResumoDesc() {
+// Atualiza as linhas Subtotal/Desconto/Frete do RESUMO. Subtotal aparece quando há
+// desconto OU frete (p/ o cliente ver a composição do total).
+function pdvSyncResumo() {
   const sub = pdvTotal();
   const { desconto } = pdvDescontoCalc(sub);
-  const sl = $("pdvResSubLinha"), dl = $("pdvResDescLinha");
-  if (pdvDesconto && desconto > 0) {
-    if (sl) { sl.hidden = false; $("pdvResSub").textContent = pdvMoney(sub); }
-    if (dl) { dl.hidden = false; $("pdvResDesc").textContent = "− " + pdvMoney(desconto); }
+  const frete = pdvFreteValor();
+  const temDesc = pdvDesconto && desconto > 0;
+  const temFrete = frete > 0;
+  const sl = $("pdvResSubLinha"), dl = $("pdvResDescLinha"), fl = $("pdvResFreteLinha");
+  if (sl) { sl.hidden = !(temDesc || temFrete); $("pdvResSub").textContent = pdvMoney(sub); }
+  if (dl) { dl.hidden = !temDesc; if (temDesc) $("pdvResDesc").textContent = "− " + pdvMoney(desconto); }
+  if (fl) { fl.hidden = !temFrete; if (temFrete) $("pdvResFrete").textContent = "+ " + pdvMoney(frete); }
+}
+
+// Resumo do endereço de entrega no bloco "Tipo de venda" (botão adicionar/editar).
+function pdvRenderEntregaResumo() {
+  const box = $("pdvEntregaResumo");
+  if (!box) return;
+  if (pdvEntrega && pdvEntrega.endereco) {
+    box.innerHTML =
+      '<div class="pdv-entrega-end"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>' + pdvEsc(pdvEntrega.endereco) + (pdvEntrega.telefone ? " · " + pdvEsc(pdvEntrega.telefone) : "") + "</span></div>" +
+      '<button type="button" class="pdv-entrega-btn" id="pdvEntregaBtn">Editar endereço</button>';
   } else {
-    if (sl) sl.hidden = true;
-    if (dl) dl.hidden = true;
+    box.innerHTML =
+      '<p class="pdv-entrega-vazio">Informe o endereço de entrega para calcular o frete.</p>' +
+      '<button type="button" class="pdv-entrega-btn" id="pdvEntregaBtn">Adicionar endereço</button>';
   }
 }
 
@@ -3789,19 +3847,76 @@ function pdvAplicarDesconto() {
     ? Dinheiro.valor(inp)
     : (parseFloat(String(inp.value || "").replace(",", ".")) || 0);
   pdvDesconto = valor > 0 ? { tipo: pdvDescTipoSel, valor } : null;
-  pdvSyncResumoDesc();
+  pdvSyncResumo();
   pdvPagarRecalc();
-  const rest = Math.max(0, Math.round((pdvTotalLiq() - pdvPagoTotal()) * 100) / 100);
+  const rest = Math.max(0, Math.round((pdvTotalCobrar() - pdvPagoTotal()) * 100) / 100);
   if ($("pdvPgValor")) Dinheiro.setValor($("pdvPgValor"), rest);
   renderPdvCarrinho();
   toast(pdvDesconto ? "Desconto aplicado." : "Desconto removido.");
+}
+
+// ---- Entrega (overlay com endereço + cálculo de frete) ----
+function abrirPdvEntrega() {
+  const ec = (pdvEntrega && pdvEntrega.enderecoCampos) || {};
+  const v = (x) => pdvEsc(ec[x] || "");
+  const html =
+    '<button class="pdv-modal-x" type="button" data-pdv-close="entrega" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '<h3 class="pdv-modal-titulo">Endereço de entrega</h3>' +
+    '<div class="pdv-ent-grid">' +
+      '<label class="pdv-campo pdv-ent-cep"><span>CEP</span><input id="pdvEntCep" type="text" inputmode="numeric" placeholder="00000-000" value="' + v("cep") + '" /></label>' +
+      '<p class="pdv-ent-hint" id="pdvEntCepHint"></p>' +
+      '<label class="pdv-campo pdv-ent-logr"><span>Rua</span><input id="pdvEntLogradouro" type="text" placeholder="Logradouro" value="' + v("logradouro") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-num"><span>Número</span><input id="pdvEntNumero" type="text" inputmode="numeric" placeholder="Nº" value="' + v("numero") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-compl"><span>Complemento</span><input id="pdvEntComplemento" type="text" placeholder="Apto, bloco… (opcional)" value="' + v("complemento") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-bairro"><span>Bairro</span><input id="pdvEntBairro" type="text" placeholder="Bairro" value="' + v("bairro") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-cidade"><span>Cidade</span><input id="pdvEntCidade" type="text" placeholder="Cidade" value="' + v("cidade") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-uf"><span>UF</span><input id="pdvEntUf" type="text" maxlength="2" placeholder="UF" value="' + v("uf") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-tel"><span>Telefone</span><input id="pdvEntTelefone" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>' +
+    "</div>" +
+    '<div class="pdv-pg-acoes">' +
+      '<button type="button" class="secundario" data-pdv-close="entrega">Cancelar</button>' +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvEntConfirmar">Confirmar endereço</button>' +
+    "</div>";
+  $("pdvEntregaCaixa").innerHTML = html;
+  if (window.EnderecoCep) {
+    window.EnderecoCep.ligarBuscaCep({ cep: "pdvEntCep", hint: "pdvEntCepHint", hintClass: "cep-hint", logradouro: "pdvEntLogradouro", numero: "pdvEntNumero", bairro: "pdvEntBairro", cidade: "pdvEntCidade", uf: "pdvEntUf" });
+  }
+  $("pdvEntConfirmar").addEventListener("click", pdvConfirmarEntrega);
+  $("pdvEntregaCaixa").querySelectorAll('[data-pdv-close="entrega"]').forEach((b) => b.addEventListener("click", fecharPdvEntrega));
+  $("pdvEntregaOverlay").hidden = false;
+}
+function fecharPdvEntrega() { $("pdvEntregaOverlay").hidden = true; }
+
+async function pdvConfirmarEntrega() {
+  const g = (id) => ($(id) ? $(id).value.trim() : "");
+  const campos = {
+    cep: g("pdvEntCep").replace(/\D/g, "").slice(0, 8),
+    logradouro: g("pdvEntLogradouro"), numero: g("pdvEntNumero"),
+    complemento: g("pdvEntComplemento"), bairro: g("pdvEntBairro"),
+    cidade: g("pdvEntCidade"), uf: g("pdvEntUf").toUpperCase().slice(0, 2),
+  };
+  const telefone = g("pdvEntTelefone");
+  if (!campos.logradouro || !campos.numero) { toast("Informe a rua e o número.", "erro"); return; }
+  const btn = $("pdvEntConfirmar"); btn.disabled = true; btn.textContent = "Calculando…";
+  const r = await api("POST", "/api/pdv/frete", { cep: campos.cep, numero: campos.numero });
+  btn.disabled = false; btn.textContent = "Confirmar endereço";
+  if (!r) return;
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { toast(d.erro || "Falha ao calcular o frete.", "erro"); return; }
+  if (d.incompleto) { toast("Para o frete por raio, informe CEP e número.", "erro"); return; }
+  let taxa = Number(d.valor_frete) || 0;
+  if (d.foraDaArea) { taxa = 0; toast("Endereço fora da área — frete como cortesia.", "erro"); }
+  const endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(campos) : (campos.logradouro + ", " + campos.numero);
+  pdvEntrega = { endereco, enderecoCampos: campos, telefone, taxaEntrega: taxa };
+  fecharPdvEntrega();
+  renderPdvPagar();
 }
 
 function pdvAddPagamento() {
   let v = Dinheiro.valor($("pdvPgValor"));
   if (!(v > 0)) { toast("Informe o valor.", "erro"); return; }
   if (!pdvFormaSel) { toast("Escolha a forma de pagamento.", "erro"); return; }
-  const total = pdvTotalLiq();
+  const total = pdvTotalCobrar();
   const restante = Math.round((total - pdvPagoTotal()) * 100) / 100;
   // Só DINHEIRO pode exceder (gera troco); as demais formas limitam ao restante.
   if (!pdvEhDinheiro(pdvFormaSel)) {
@@ -3824,7 +3939,7 @@ function renderPdvPgLista() {
 }
 
 function pdvPagarRecalc() {
-  const total = pdvTotalLiq();
+  const total = pdvTotalCobrar();
   const pago = pdvPagoTotal();
   const falta = Math.max(0, Math.round((total - pago) * 100) / 100);
   const troco = Math.max(0, Math.round((pago - total) * 100) / 100);
@@ -3832,11 +3947,13 @@ function pdvPagarRecalc() {
   if ($("pdvPgPago")) $("pdvPgPago").textContent = pdvMoney(pago);
   if ($("pdvPgFalta")) $("pdvPgFalta").textContent = pdvMoney(falta);
   if ($("pdvPgTroco")) $("pdvPgTroco").textContent = pdvMoney(troco);
-  if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !(falta <= 0.001 && pdvPagamentos.length);
+  // Entrega exige endereço definido antes de fechar a venda.
+  const entregaOk = pdvTipoEntrega !== "Entrega" || !!(pdvEntrega && pdvEntrega.endereco);
+  if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !(falta <= 0.001 && pdvPagamentos.length && entregaOk);
 }
 
 async function finalizarVendaPdv() {
-  const total = pdvTotalLiq();
+  const total = pdvTotalCobrar();
   // Pagamentos REGISTRADOS (somam o total): não-dinheiro como lançado; o dinheiro
   // registra só a parte da venda — o troco não é receita do caixa.
   const naoDin = pdvPagamentos.filter((p) => !pdvEhDinheiro(p.forma));
@@ -3848,12 +3965,21 @@ async function finalizarVendaPdv() {
     registrados.push({ forma: formaDin, valor: dinNaVenda });
   }
   const cpf = ($("pdvCpf").value || "").replace(/\D/g, "");
+  // Telefone: Entrega vem do overlay; Retirada do campo do bloco.
+  const telefone = pdvTipoEntrega === "Retirada" && $("pdvRetiradaTel")
+    ? $("pdvRetiradaTel").value
+    : (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
     itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao: cpf ? ("CPF na nota: " + cpf) : "",
+    tipoEntrega: pdvTipoEntrega,
+    endereco: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.endereco : "",
+    enderecoCampos: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.enderecoCampos : null,
+    telefone,
+    taxaEntrega: pdvFreteValor(),
   };
   const btn = $("pdvFinalizar");
   btn.disabled = true; btn.textContent = "Registrando…";
@@ -3864,7 +3990,7 @@ async function finalizarVendaPdv() {
   toast("✓ Venda registrada — disponível em Pedidos.");
   // A venda é salva como pedido "Balcão" recebido; aparece na aba Pedidos para
   // conferência/reimpressão. Não abrimos modal de impressão automaticamente.
-  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; $("pdvCliente").value = "";
+  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
@@ -3884,10 +4010,12 @@ document.querySelectorAll("[data-pdv-close]").forEach((el) => el.addEventListene
   if (e.target !== el) return;
   if (el.dataset.pdvClose === "item") fecharPdvItemModal();
   if (el.dataset.pdvClose === "pagar") fecharPdvPagar();
+  if (el.dataset.pdvClose === "entrega") fecharPdvEntrega();
 }));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("pdvItemOverlay").hidden) fecharPdvItemModal();
+  else if (!$("pdvEntregaOverlay").hidden) fecharPdvEntrega();
   else if (!$("pdvPagarOverlay").hidden) fecharPdvPagar();
 });
 

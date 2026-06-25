@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { recalcularVenda, aplicarDesconto, validarPagamentos, calcularTroco, resumoPagamento } = require("../src/pdv");
+const { recalcularVenda, aplicarDesconto, validarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete } = require("../src/pdv");
 
 const cardapio = {
   categorias: [
@@ -70,4 +70,17 @@ test("resumoPagamento: string legível das formas", () => {
     resumoPagamento([{ forma: "Dinheiro", valor: 30 }, { forma: "Pix", valor: 15 }]),
     "Dinheiro R$ 30,00 · Pix R$ 15,00"
   );
+});
+
+test("freteEfetivo: aceita só 0 (cortesia) ou o valor calculado pelo servidor", () => {
+  assert.equal(freteEfetivo(0, 8), 0);      // lixeira/cortesia
+  assert.equal(freteEfetivo(8, 8), 8);      // bate com o calculado
+  assert.equal(freteEfetivo(999, 8), 8);    // cliente tenta forjar → usa o calculado
+  assert.equal(freteEfetivo(5, 0), 0);      // calculado 0 (fora da área) → 0
+});
+
+test("totalComFrete: soma o frete ao total (>= 0)", () => {
+  assert.equal(totalComFrete(50, 8), 58);
+  assert.equal(totalComFrete(50, 0), 50);
+  assert.equal(totalComFrete(50, -3), 50);  // frete negativo é ignorado
 });

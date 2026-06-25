@@ -89,11 +89,12 @@ async function receberPedido(dir, pedidoId, { forma, valor }) {
   }
 }
 
-// PDV — venda no local: cria o pedido (tipo "Balcão", já recebido) e lança UM
-// movimento de recebimento POR FORMA de pagamento, tudo numa transação (a venda
-// nunca fica meio-salva). Exige caixa aberto. `venda` já vem RECALCULADA pela
-// rota (src/pdv.js): { cliente, itens, total, desconto, pagamentos:[{forma,valor}],
-// pagamentoResumo }. A baixa de estoque é feita FORA daqui (best-effort, na rota,
+// PDV — venda no local: cria o pedido (já recebido) e lança UM movimento de
+// recebimento POR FORMA de pagamento, tudo numa transação (a venda nunca fica
+// meio-salva). Exige caixa aberto. `venda` já vem RECALCULADA pela rota
+// (src/pdv.js): { cliente, itens, total, desconto, pagamentos:[{forma,valor}],
+// pagamentoResumo, tipoEntrega, endereco, telefone, taxaEntrega }. `total` já
+// inclui o frete. A baixa de estoque é feita FORA daqui (best-effort, na rota,
 // igual ao cardápio web). Retorna o pedido salvo (p/ impressão).
 async function venderLocal(dir, venda) {
   const empId = await empresaId(dir);
@@ -105,6 +106,13 @@ async function venderLocal(dir, venda) {
   const total = Number(venda.total) || 0;
   const desconto = Number(venda.desconto) || 0;
   const pagamentos = Array.isArray(venda.pagamentos) ? venda.pagamentos : [];
+  // Tipo da venda: Balcão (padrão) / Retirada / Entrega. Endereço/telefone/taxa
+  // só fazem sentido na Entrega; nos demais ficam vazios/0.
+  const tipoEntrega = ["Entrega", "Retirada"].includes(venda.tipoEntrega) ? venda.tipoEntrega : "Balcão";
+  const ehEntrega = tipoEntrega === "Entrega";
+  const endereco = ehEntrega ? String(venda.endereco || "").slice(0, 300) : "";
+  const telefone = tipoEntrega === "Balcão" ? "" : String(venda.telefone || "").slice(0, 30);
+  const taxaEntrega = ehEntrega ? (Number(venda.taxaEntrega) || 0) : 0;
 
   const client = await db.pool.connect();
   try {
@@ -114,9 +122,9 @@ async function venderLocal(dir, venda) {
          (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, recebido_em)
        VALUES
          ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-          $2, '', '', 'Balcão', '', $3, 0, $4::jsonb, $5, $6, $7, now())
+          $2, $3, '', $4, $5, $6, $7, $8::jsonb, $9, $10, $11, now())
        RETURNING id, numero, criado_em, recebido_em`,
-      [empId, cliente, venda.pagamentoResumo || "", JSON.stringify(itens), total, (venda.observacao || ""), desconto]
+      [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );
     const row = ped.rows[0];
     for (const p of pagamentos) {
@@ -129,8 +137,8 @@ async function venderLocal(dir, venda) {
     await client.query("COMMIT");
     return {
       id: row.id, numero: row.numero, status: "novo",
-      cliente, telefone: "", tipoEntrega: "Balcão", endereco: "",
-      pagamento: venda.pagamentoResumo || "", taxaEntrega: 0,
+      cliente, telefone, tipoEntrega, endereco,
+      pagamento: venda.pagamentoResumo || "", taxaEntrega,
       itens, total, desconto, observacao: venda.observacao || "",
       criadoEm: new Date(row.criado_em).toISOString(),
       recebidoEm: new Date(row.recebido_em).toISOString(),

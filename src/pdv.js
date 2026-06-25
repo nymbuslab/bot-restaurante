@@ -102,6 +102,18 @@ function calcularTroco(recebido, totalDinheiro) {
   return Math.max(0, cent((Number(recebido) || 0) - (Number(totalDinheiro) || 0)));
 }
 
+// Frete efetivo no PDV (anti-fraude): aceita do cliente APENAS 0 (cortesia/lixeira)
+// ou o valor CALCULADO pelo servidor. Qualquer outro número vira o calculado.
+function freteEfetivo(freteCliente, freteCalculado) {
+  if (cent(freteCliente) <= 0) return 0; // cortesia (lixeira) ou sem frete
+  return Math.max(0, cent(freteCalculado));
+}
+
+// Total final somando o frete (>= 0).
+function totalComFrete(total, frete) {
+  return cent(Math.max(0, cent(total) + Math.max(0, cent(frete))));
+}
+
 // Resumo legível das formas, p/ o campo `pagamento` do pedido (ex.: "Dinheiro R$ 30,00 · Pix R$ 15,00").
 function resumoPagamento(pagamentos) {
   return (Array.isArray(pagamentos) ? pagamentos : [])
@@ -109,4 +121,4 @@ function resumoPagamento(pagamentos) {
     .join(" · ");
 }
 
-module.exports = { recalcularVenda, aplicarDesconto, validarPagamentos, calcularTroco, resumoPagamento };
+module.exports = { recalcularVenda, aplicarDesconto, validarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete };

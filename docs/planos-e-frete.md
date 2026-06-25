@@ -284,15 +284,26 @@ que vêm do WhatsApp.
 Aba **PDV** no painel (gate `temPdv`, front+back) para registrar venda de balcão. **Exige caixa
 aberto** (senão mostra "Abra o caixa para vender"). Fluxo: grade de produtos (chips de categoria +
 busca) → toque adiciona ao carrinho; itens com **opcionais** ou por **kg** abrem um mini-modal
-(peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **desconto** (R$ ou %),
-**pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e **CPF na nota** (opcional).
+(peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **tipo de venda** (Balcão/Entrega/Retirada),
+**desconto** (R$ ou %), **pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e
+**CPF na nota** (opcional).
+
+**Entrega no PDV:** escolhendo **Entrega**, um botão abre o overlay de endereço (CEP autopreenche
+logradouro/bairro/cidade/UF via `window.EnderecoCep`; número, complemento, telefone). O **frete** é
+**calculado pelo servidor** (`POST /api/pdv/frete`, autenticada: fixo = `taxaFixa` da config; raio =
+geocode + Haversine + faixa) e entra como linha **Frete** no RESUMO (`Total = Subtotal − Desconto +
+Frete`), com **lixeira** para zerar (cortesia). "Fora da área" não bloqueia — vira cortesia (0).
+**Retirada** = sem endereço/frete (telefone opcional). O servidor é a fonte de verdade do frete:
+aceita do cliente **apenas** 0 (cortesia) ou o valor calculado (`pdv.freteEfetivo`).
 
 Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
-fonte de verdade — nunca confia no preço do cliente), e `caixa.venderLocal` grava numa transação o
-**pedido tipo `Balcão`** (já `recebido_em`) + **1 movimento de recebimento por forma** no caixa, depois
-dá **baixa de estoque**. A venda aparece em **Pedidos** (selo Balcão/Recebido) e no **Caixa** (Vendas
-por forma). A confirmação é **silenciosa** — o pedido fica na aba **Pedidos** para conferência e
-**reimpressão** (botão "Imprimir comanda"); o PDV **não** abre modal de impressão ao finalizar. Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
+fonte de verdade — nunca confia no preço do cliente), resolve o frete e `caixa.venderLocal` grava numa
+transação o **pedido** (tipo Balcão/Entrega/Retirada, `endereco`/`telefone`/`taxa_entrega`, já
+`recebido_em`) + **1 movimento de recebimento por forma** no caixa, depois dá **baixa de estoque**. A
+venda aparece em **Pedidos** (selo do tipo/Recebido) e no **Caixa** (Vendas por forma). A confirmação
+é **silenciosa** — o pedido fica na aba **Pedidos** para conferência e **reimpressão** (botão
+"Imprimir comanda"; a comanda já imprime tipo + endereço + taxa); o PDV **não** abre modal de
+impressão ao finalizar. Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
 mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/pdv.js`
 (`test/pdv.test.js`); tela em `public/app.js` (`carregarPdv`/`renderPdv*`).
 

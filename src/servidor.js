@@ -630,6 +630,23 @@ function sanitizarEnderecoCampos(c) {
   };
 }
 
+// Frete do PDV (servidor = fonte de verdade): Fixo → taxa única; Raio → geocode
+// do endereço (Haversine + faixa). Retorna { taxa, entrega_disponivel, distancia,
+// foraDaArea, incompleto }. Usado pela rota /api/pdv/frete e por /api/pdv/vender.
+async function calcularFretePdv(dir, tipoEntrega, enderecoCampos) {
+  if (tipoEntrega !== "Entrega") return { taxa: 0, entrega_disponivel: true };
+  const f = frete.freteDeConfig(store.getConfig(dir));
+  if (f.modo !== "raio") return { taxa: Number(f.taxaFixa) || 0, entrega_disponivel: true };
+  if (!f.raio.coordEmpresa || !f.raio.faixas.length) return { taxa: 0, entrega_disponivel: false, foraDaArea: true };
+  const ec = sanitizarEnderecoCampos(enderecoCampos);
+  if (ec.cep.length !== 8 || !ec.numero) return { taxa: 0, entrega_disponivel: false, incompleto: true };
+  const endCep = await cep.buscarCep(ec.cep);
+  const coordCli = endCep ? await frete.geocodificar(frete.montarEnderecoCompleto(Object.assign({}, endCep, { numero: ec.numero }))) : null;
+  const rr = frete.calcularFreteRaio(f.raio.coordEmpresa, coordCli, f.raio.faixas);
+  if (!rr.entrega_disponivel) return { taxa: 0, entrega_disponivel: false, foraDaArea: true, distancia: rr.distancia_km };
+  return { taxa: Number(rr.valor_frete) || 0, entrega_disponivel: true, distancia: rr.distancia_km };
+}
+
 // preço/total do cliente), salva e dispara a confirmação pelo bot. Sem auth, rate-limited.
 app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
   try {
@@ -1480,6 +1497,27 @@ async function exigePdv(req, res) {
   return true;
 }
 
+// Cálculo de frete no PDV (autenticada). Front usa para o modo raio (CEP+número);
+// no fixo retorna a taxa direto. Não expõe a chave/coords da empresa.
+app.post("/api/pdv/frete", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    await store.ensure(req.tenantDir);
+    const b = req.body || {};
+    const r = await calcularFretePdv(req.tenantDir, "Entrega", { cep: b.cep, numero: b.numero });
+    res.json({
+      entrega_disponivel: r.entrega_disponivel,
+      valor_frete: r.taxa,
+      distancia_km: r.distancia != null ? r.distancia : null,
+      foraDaArea: !!r.foraDaArea,
+      incompleto: !!r.incompleto,
+    });
+  } catch (e) {
+    console.error("POST /api/pdv/frete:", e.message);
+    res.status(500).json({ erro: "Falha ao calcular o frete." });
+  }
+});
+
 app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
@@ -1493,9 +1531,23 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     const estCheck = estoque.validarEstoque(cardapio, b.itens);
     if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
 
+    // Tipo da venda + frete (servidor é a fonte de verdade do frete).
+    const tipoEntrega = ["Entrega", "Retirada"].includes(b.tipoEntrega) ? b.tipoEntrega : "Balcão";
+    let endereco = "", telefone = "", taxaEntrega = 0;
+    if (tipoEntrega === "Entrega") {
+      endereco = String(b.endereco || "").trim().slice(0, 300);
+      if (endereco.length < 4) return res.status(400).json({ erro: "Informe o endereço de entrega." });
+      const soLocal = cardapioWeb.itensSoLocal(cardapio, b.itens);
+      if (soLocal.length) return res.status(400).json({ erro: "Estes itens são vendidos só no local e não saem para entrega: " + soLocal.join(", ") + "." });
+      const fr = await calcularFretePdv(req.tenantDir, "Entrega", b.enderecoCampos);
+      taxaEntrega = pdv.freteEfetivo(b.taxaEntrega, fr.taxa); // aceita só 0 (cortesia) ou o calculado
+    }
+    if (tipoEntrega !== "Balcão") telefone = String(b.telefone || "").replace(/[^\d]/g, "").slice(0, 20);
+
     // Recalcula itens/subtotal pelo cardápio; nunca confia no preço do cliente.
     const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
-    const { desconto, total } = pdv.aplicarDesconto(subtotal, b.desconto);
+    const { desconto, total: totalSemFrete } = pdv.aplicarDesconto(subtotal, b.desconto);
+    const total = pdv.totalComFrete(totalSemFrete, taxaEntrega);
     pdv.validarPagamentos(total, b.pagamentos);
 
     const pedido = await caixa.venderLocal(req.tenantDir, {
@@ -1506,6 +1558,7 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       pagamentos: b.pagamentos,
       pagamentoResumo: pdv.resumoPagamento(b.pagamentos),
       observacao: String(b.observacao || "").slice(0, 200),
+      tipoEntrega, endereco, telefone, taxaEntrega,
     });
 
     // Baixa de estoque após o commit (best-effort, padrão do cardápio web).

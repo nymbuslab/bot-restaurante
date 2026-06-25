@@ -437,3 +437,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Desconto** agora é aplicado no próprio carrinho (em R$ ou %).
 - A **tela de finalizar venda** foi redesenhada: escolha a forma de pagamento em botões grandes (Dinheiro, Cartão, Pix…), divida o pagamento em várias formas, veja **Pago / Falta / Troco** num resumo do pedido, informe o **CPF na nota** (opcional) e escolha imprimir a comanda da cozinha e/ou o comprovante do cliente.
 - No celular as categorias viram atalhos no topo e o pagamento se ajusta à tela.
+
+## [0.49.0] — PDV: venda silenciosa, desconto na finalização e entrega
+
+- Ao finalizar a venda no PDV, **não abre mais o pop-up de impressão**: o pedido entra direto no caixa e na aba **Pedidos**, onde fica para conferência e reimpressão (botão "Imprimir comanda").
+- O **desconto** passou a ser aplicado na própria tela de **Finalizar venda** (ao lado do total), com os campos de valor no padrão da plataforma ("R$ 0,00").
+- **Entrega no balcão:** ao finalizar, escolha **Balcão, Entrega ou Retirada**. Na Entrega, informe o endereço (o **CEP preenche** rua/bairro/cidade) e o **frete é calculado** automaticamente (taxa fixa ou por distância), com um ícone de **lixeira para não cobrar** (cortesia). O frete entra no total e a venda fica registrada como Entrega, com endereço e taxa.
