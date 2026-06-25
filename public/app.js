@@ -3707,7 +3707,6 @@ function renderPdvPagar() {
     const q = l.unidade === "kg" ? window.Estoque.formatarQtd(l.qtd, "kg") + " kg" : l.qtd + "x";
     return '<div class="pdv-resumo-item"><span>' + q + " " + pdvEsc(l.nome) + "</span><span>" + pdvMoney(pdvPrecoLinha(l)) + "</span></div>";
   }).join("");
-  const descPref = pdvDescTipoSel === "pct" ? "%" : "R$";
   const html =
     '<button class="pdv-modal-x" type="button" data-pdv-close="pagar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
     '<div class="pdv-pg-grid">' +
@@ -3726,20 +3725,9 @@ function renderPdvPagar() {
             ? '<label class="pdv-campo pdv-tve-tel"><span>Telefone (opcional)</span><input id="pdvRetiradaTel" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>'
             : "") +
         "</div>" +
-        '<div class="pdv-desc-bloco">' +
-          '<span class="pdv-ops-tit">Desconto</span>' +
-          '<div class="pdv-desc-linha">' +
-            '<div class="pdv-desc-tipo">' +
-              '<button type="button" class="' + (pdvDescTipoSel === "valor" ? "ativo" : "") + '" data-dt="valor">R$</button>' +
-              '<button type="button" class="' + (pdvDescTipoSel === "pct" ? "ativo" : "") + '" data-dt="pct">%</button>' +
-            "</div>" +
-            '<div class="campo-prefixo pdv-desc-campo"><span class="campo-prefixo-moeda" id="pdvDescPrefixo">' + descPref + '</span><input id="pdvDescInput" type="text" inputmode="numeric" placeholder="0,00" /></div>' +
-            '<button type="button" class="pdv-pg-addbtn" id="pdvDescAplicar">Aplicar</button>' +
-          "</div>" +
-        "</div>" +
         '<span class="pdv-ops-tit">Forma de pagamento</span>' +
         '<div class="pdv-formas">' + tiles + "</div>" +
-        '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button></div>' +
+        '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
         '<div class="pdv-pg-lista" id="pdvPgLista"></div>' +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
@@ -3788,23 +3776,8 @@ function renderPdvPagar() {
     $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((x) => x.classList.toggle("ativo", x === b));
     const inp = $("pdvPgValor"); if (inp) inp.focus();
   }));
-  // Desconto: alternador R$/% + campo no padrão monetário.
-  const descInp = $("pdvDescInput");
-  if (pdvDescTipoSel === "valor") {
-    Dinheiro.mascarar(descInp);
-    if (pdvDesconto && pdvDesconto.tipo === "valor") Dinheiro.setValor(descInp, pdvDesconto.valor);
-  } else if (pdvDesconto && pdvDesconto.tipo === "pct") {
-    descInp.value = String(pdvDesconto.valor).replace(".", ",");
-  }
-  $("pdvPagarCaixa").querySelectorAll("[data-dt]").forEach((b) => b.addEventListener("click", () => {
-    if (pdvDescTipoSel === b.dataset.dt) return;
-    pdvDescTipoSel = b.dataset.dt;
-    renderPdvPagar(); // re-renderiza: troca o nó do input e zera a máscara antiga (sem vazar listener)
-    const di = $("pdvDescInput"); if (di) di.focus();
-  }));
-  $("pdvDescAplicar").addEventListener("click", pdvAplicarDesconto);
-  descInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAplicarDesconto(); } });
-  pdvSelecionarAoFocar(descInp);
+  // Desconto: botão ao lado do recebimento → abre o modal de desconto.
+  if ($("pdvDescBtn")) $("pdvDescBtn").addEventListener("click", abrirPdvDescModal);
 
   const valInp = $("pdvPgValor");
   Dinheiro.mascarar(valInp);
@@ -3850,19 +3823,71 @@ function pdvRenderEntregaResumo() {
   }
 }
 
-// Aplica o desconto digitado na tela de pagamento e recalcula tudo.
+// ---- Desconto (modal aberto pelo botão ao lado do recebimento) ----
+function abrirPdvDescModal() {
+  pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
+  renderPdvDescModal();
+  $("pdvDescOverlay").hidden = false;
+}
+function fecharPdvDescModal() { $("pdvDescOverlay").hidden = true; }
+
+function renderPdvDescModal() {
+  const pref = pdvDescTipoSel === "pct" ? "%" : "R$";
+  const html =
+    '<button class="pdv-modal-x" type="button" data-pdv-close="desc" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+    '<h3 class="pdv-modal-titulo">Desconto na venda</h3>' +
+    '<div class="pdv-desc-linha">' +
+      '<div class="pdv-desc-tipo">' +
+        '<button type="button" class="' + (pdvDescTipoSel === "valor" ? "ativo" : "") + '" data-dt="valor">R$</button>' +
+        '<button type="button" class="' + (pdvDescTipoSel === "pct" ? "ativo" : "") + '" data-dt="pct">%</button>' +
+      "</div>" +
+      '<div class="campo-prefixo pdv-desc-campo"><span class="campo-prefixo-moeda" id="pdvDescPrefixo">' + pref + '</span><input id="pdvDescInput" type="text" inputmode="numeric" placeholder="0,00" /></div>' +
+    "</div>" +
+    '<div class="pdv-pg-acoes">' +
+      (pdvDesconto ? '<button type="button" class="secundario" id="pdvDescRemover">Remover</button>' : "") +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvDescAplicar">Aplicar</button>' +
+    "</div>";
+  $("pdvDescCaixa").innerHTML = html;
+  const inp = $("pdvDescInput");
+  if (pdvDescTipoSel === "valor") {
+    Dinheiro.mascarar(inp);
+    if (pdvDesconto && pdvDesconto.tipo === "valor") Dinheiro.setValor(inp, pdvDesconto.valor);
+  } else if (pdvDesconto && pdvDesconto.tipo === "pct") {
+    inp.value = String(pdvDesconto.valor).replace(".", ",");
+  }
+  pdvSelecionarAoFocar(inp);
+  $("pdvDescCaixa").querySelectorAll("[data-dt]").forEach((b) => b.addEventListener("click", () => {
+    if (pdvDescTipoSel === b.dataset.dt) return;
+    pdvDescTipoSel = b.dataset.dt;
+    renderPdvDescModal(); // re-renderiza: troca o nó do input e zera a máscara antiga (sem vazar listener)
+    $("pdvDescInput").focus();
+  }));
+  $("pdvDescAplicar").addEventListener("click", pdvAplicarDesconto);
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAplicarDesconto(); } });
+  if ($("pdvDescRemover")) $("pdvDescRemover").addEventListener("click", () => { pdvDesconto = null; pdvAposDesconto(); fecharPdvDescModal(); toast("Desconto removido."); });
+  const xb = $("pdvDescCaixa").querySelector('[data-pdv-close="desc"]'); if (xb) xb.addEventListener("click", fecharPdvDescModal);
+}
+
 function pdvAplicarDesconto() {
   const inp = $("pdvDescInput");
   const valor = pdvDescTipoSel === "valor"
     ? Dinheiro.valor(inp)
     : (parseFloat(String(inp.value || "").replace(",", ".")) || 0);
   pdvDesconto = valor > 0 ? { tipo: pdvDescTipoSel, valor } : null;
+  pdvAposDesconto();
+  fecharPdvDescModal();
+  toast(pdvDesconto ? "Desconto aplicado." : "Desconto removido.");
+}
+
+// Refresca tudo após mudar o desconto (RESUMO, total a cobrar, campo de
+// recebimento, estado do botão Desconto e rodapé do carrinho).
+function pdvAposDesconto() {
   pdvSyncResumo();
   pdvPagarRecalc();
   const rest = Math.max(0, Math.round((pdvTotalCobrar() - pdvPagoTotal()) * 100) / 100);
   if ($("pdvPgValor")) Dinheiro.setValor($("pdvPgValor"), rest);
+  const db = $("pdvDescBtn"); if (db) db.classList.toggle("ativo", !!pdvDesconto);
   renderPdvCarrinho();
-  toast(pdvDesconto ? "Desconto aplicado." : "Desconto removido.");
 }
 
 // ---- Entrega (overlay com endereço + cálculo de frete) ----
@@ -4024,11 +4049,13 @@ document.querySelectorAll("[data-pdv-close]").forEach((el) => el.addEventListene
   if (el.dataset.pdvClose === "item") fecharPdvItemModal();
   if (el.dataset.pdvClose === "pagar") fecharPdvPagar();
   if (el.dataset.pdvClose === "entrega") fecharPdvEntrega();
+  if (el.dataset.pdvClose === "desc") fecharPdvDescModal();
 }));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("pdvItemOverlay").hidden) fecharPdvItemModal();
   else if (!$("pdvEntregaOverlay").hidden) fecharPdvEntrega();
+  else if (!$("pdvDescOverlay").hidden) fecharPdvDescModal();
   else if (!$("pdvPagarOverlay").hidden) fecharPdvPagar();
 });
 

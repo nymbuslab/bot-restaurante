@@ -4695,8 +4695,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-op-preco { font-size: 12.5px; color: var(--accent-fg); font-weight: 600; }
 .pdv-modal-add { width: 100%; padding: 13px; font-size: 15px; margin-top: 4px; }
 
-/* Desconto na tela de pagamento: toggle R$/% + campo + Aplicar */
-.pdv-desc-bloco { margin-bottom: 18px; }
+/* Desconto: botão ao lado do recebimento + modal (toggle R$/% + campo) */
+.pdv-desc-acao { flex: none; padding: 0 16px; font-size: 14px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--accent-fg); font-weight: 600; border-radius: var(--radius-sm); }
+.pdv-desc-acao:hover { border-color: var(--accent); background: var(--bg-elevated); }
+.pdv-desc-acao.ativo { border-color: var(--accent); background: var(--accent-subtle); }
 .pdv-desc-linha { display: flex; gap: 8px; align-items: stretch; }
 .pdv-desc-campo { flex: 1; min-width: 0; }
 .pdv-desc-tipo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
