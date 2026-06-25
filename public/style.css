@@ -3064,6 +3064,26 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   text-align: right;
 }
 
+/* ---------- Construtor de grupos de opções (editor de item) ---------- */
+.grp-ajuda { font-size: 12px; color: var(--text-secondary); margin: 2px 0 8px; line-height: 1.4; }
+.grp-builder { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.grp-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+}
+.grp-cabeca { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.grp-nome { flex: 1; font-size: 13px; font-weight: 600; min-width: 0; }
+.grp-regra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.grp-regra-campo { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+.grp-regra-campo input { width: 54px; font-size: 13px; text-align: center; }
+.grp-regra-dica { font-size: 11px; color: var(--text-secondary); }
+.grp-opcoes { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.grp-opc-linha { display: flex; align-items: center; gap: 6px; }
+.grp-opc-nome { flex: 1; font-size: 13px; min-width: 0; }
+.grp-opc-preco { width: 76px; font-size: 13px; text-align: right; }
+
 /* ---------- Mobile: bordas de edição sempre visíveis ---------- */
 @media (hover: none) {
   .catNome { border-color: var(--border-subtle); }

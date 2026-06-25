@@ -86,8 +86,7 @@ let configAtual = {};
 let editorCi = -1;
 let editorIi = -1;
 let editorFotoUrl = "";
-let editorComposicao = [];
-let editorOpcionais = [];
+let editorGrupos = []; // [{ nome, min, max, opcoes:[{nome,preco}] }]
 
 // Identidade visual do cardápio (capa + logo) — estado das prévias
 let identCapaUrl = "";
@@ -1163,8 +1162,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-unidade").value = "un";
     $("editor-destaque").checked = false;
     editorFotoUrl = "";
-    editorComposicao = [];
-    editorOpcionais = [];
+    editorGrupos = [];
   } else {
     const it = cardapioAtual.categorias[ci].itens[ii];
     $("editor-nome").value = it.nome || "";
@@ -1177,11 +1175,9 @@ function abrirEditorItem(ci, ii) {
     $("editor-unidade").value = it.unidade === "kg" ? "kg" : "un";
     $("editor-destaque").checked = it.destaque === true;
     editorFotoUrl = it.imagem || "";
-    editorComposicao = parsearComposicao(it.composicao || "");
-    editorOpcionais = parsearOpcionais(it.opcionais || "");
+    editorGrupos = JSON.parse(JSON.stringify(it.grupos || [])); // cópia — só grava no salvar
   }
-  renderEditorComposicao();
-  renderEditorOpcionais();
+  renderEditorGrupos();
   aplicarUnidadeEditor();
 
   atualizarPreviewFoto();
@@ -1254,8 +1250,7 @@ async function salvarEditorItem() {
     desc:        $("editor-desc").value,
     disponivel:  $("editor-disponivel").checked,
     apenasLocal: !$("editor-entrega").checked,
-    composicao:  serializarComposicao(editorComposicao),
-    opcionais:   serializarOpcionais(editorOpcionais),
+    grupos:      limparGrupos(editorGrupos),
     imagem:      editorFotoUrl,
   };
 
@@ -1366,9 +1361,11 @@ $("editor-foto-input").addEventListener("change", async () => {
   }
 });
 
-$("editor-comp-add-subgrupo").addEventListener("click", () => {
-  editorComposicao.push({ nome: "", itens: [] });
-  renderEditorComposicao();
+$("editor-grupo-add").addEventListener("click", () => {
+  editorGrupos.push({ nome: "", min: 0, max: 1, opcoes: [{ nome: "", preco: 0 }] });
+  renderEditorGrupos();
+  const inputs = $("editor-grupos-builder").querySelectorAll(".grp-nome");
+  if (inputs.length) inputs[inputs.length - 1].focus();
 });
 
 // ============================================================
@@ -1432,176 +1429,85 @@ $("identLogoInput").addEventListener("change", async () => {
 $("identLogoRemover").addEventListener("click", () => { identLogoUrl = ""; atualizarPreviewIdentidade(); });
 
 // ============================================================
-// CONSTRUTOR DE COMPOSIÇÃO
+// CONSTRUTOR DE GRUPOS DE OPÇÕES (substitui composição + opcionais)
+// Cada grupo: { nome, min, max, opcoes:[{nome, preco}] }. min≥1 = obrigatório;
+// max=1 = escolha única. Opção com preço 0 = grátis.
 // ============================================================
-function parsearComposicao(texto) {
-  if (!texto || !texto.trim()) return [];
-  const grupos = [];
-  let grupoAtual = null;
-  for (const linha of texto.split("\n")) {
-    const l = linha.trim();
-    if (!l) continue;
-    if (l.endsWith(":")) {
-      grupoAtual = { nome: l.slice(0, -1).trim(), itens: [] };
-      grupos.push(grupoAtual);
-    } else if (l.startsWith("*")) {
-      if (!grupoAtual) { grupoAtual = { nome: "", itens: [] }; grupos.push(grupoAtual); }
-      grupoAtual.itens.push(l.slice(1).trim());
-    }
-  }
-  return grupos;
+function limparGrupos(grupos) {
+  return (grupos || []).map((g) => ({
+    nome: (g.nome || "").trim(),
+    min: Math.max(0, parseInt(g.min, 10) || 0),
+    max: Math.max(1, parseInt(g.max, 10) || 1),
+    opcoes: (g.opcoes || [])
+      .map((o) => ({ nome: (o.nome || "").trim(), preco: Number(o.preco) || 0 }))
+      .filter((o) => o.nome),
+  })).filter((g) => g.nome && g.opcoes.length);
 }
 
-function serializarComposicao(grupos) {
-  const linhas = [];
-  for (const g of grupos) {
-    if (g.nome.trim()) linhas.push(g.nome.trim() + ":");
-    for (const it of g.itens) {
-      if (it.trim()) linhas.push("* " + it.trim());
-    }
-  }
-  return linhas.join("\n");
-}
-
-function renderEditorComposicao() {
-  const container = $("editor-composicao-builder");
+function renderEditorGrupos() {
+  const container = $("editor-grupos-builder");
   container.innerHTML = "";
 
-  editorComposicao.forEach((sg, si) => {
+  editorGrupos.forEach((g, gi) => {
     const div = document.createElement("div");
-    div.className = "comp-subgrupo";
+    div.className = "grp-card";
 
-    const chipsHtml = sg.itens.map((it, ii) =>
-      `<span class="comp-chip">${escapar(it)}<button type="button" class="comp-chip-del" data-sg="${si}" data-ii="${ii}" aria-label="Remover">×</button></span>`
-    ).join("");
+    const opcoesHtml = (g.opcoes || []).map((o, oi) => `
+      <div class="grp-opc-linha">
+        <input class="grp-opc-nome" placeholder="Nome da opção (ex.: Picanha)" value="${escapar(o.nome)}" data-gi="${gi}" data-oi="${oi}" />
+        <div class="opc-preco-wrap">
+          <span class="opc-rs">R$</span>
+          <input type="text" inputmode="numeric" class="grp-opc-preco" placeholder="0,00" value="${o.preco ? Dinheiro.formatar(o.preco) : ""}" data-gi="${gi}" data-oi="${oi}" />
+        </div>
+        <button type="button" class="perigo mini grp-opc-del" data-gi="${gi}" data-oi="${oi}" aria-label="Remover opção">×</button>
+      </div>`).join("");
 
     div.innerHTML = `
-      <div class="comp-subgrupo-cabeca">
-        <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" data-sg="${si}" />
-        <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">×</button>
+      <div class="grp-cabeca">
+        <input class="grp-nome" placeholder="Nome do grupo (ex.: Proteínas)" value="${escapar(g.nome)}" data-gi="${gi}" />
+        <button type="button" class="perigo mini grp-del" data-gi="${gi}" aria-label="Remover grupo">×</button>
       </div>
-      <div class="comp-chips">${chipsHtml}</div>
-      <div class="comp-add-ing">
-        <input class="comp-ing-input" placeholder="Adicionar ingrediente..." data-sg="${si}" />
-        <button type="button" class="secundario mini comp-ing-btn" data-sg="${si}">Adicionar</button>
+      <div class="grp-regra">
+        <label class="grp-regra-campo">Mín. <input type="number" min="0" class="grp-min" value="${Number(g.min) || 0}" data-gi="${gi}" /></label>
+        <label class="grp-regra-campo">Máx. <input type="number" min="1" class="grp-max" value="${Math.max(1, Number(g.max) || 1)}" data-gi="${gi}" /></label>
+        <span class="grp-regra-dica">Mín. 1 = obrigatório · Máx. 1 = escolher só uma</span>
       </div>
+      <div class="grp-opcoes">${opcoesHtml}</div>
+      <button type="button" class="secundario mini grp-opc-add" data-gi="${gi}">Adicionar opção</button>
     `;
     container.appendChild(div);
   });
 
-  // Listeners — re-ligados a cada render; sem vazamento pois o innerHTML é substituído
-  container.querySelectorAll(".comp-sg-nome").forEach((el) =>
-    el.addEventListener("input", (e) => {
-      editorComposicao[+e.target.dataset.sg].nome = e.target.value;
-    })
-  );
+  // Listeners — re-ligados a cada render (innerHTML substituído, sem vazamento).
+  container.querySelectorAll(".grp-nome").forEach((el) =>
+    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].nome = e.target.value; }));
+  container.querySelectorAll(".grp-min").forEach((el) =>
+    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].min = Math.max(0, parseInt(e.target.value, 10) || 0); }));
+  container.querySelectorAll(".grp-max").forEach((el) =>
+    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].max = Math.max(1, parseInt(e.target.value, 10) || 1); }));
+  container.querySelectorAll(".grp-del").forEach((el) =>
+    el.addEventListener("click", (e) => { editorGrupos.splice(+e.target.dataset.gi, 1); renderEditorGrupos(); }));
 
-  container.querySelectorAll(".comp-sg-del").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      editorComposicao.splice(+e.target.dataset.sg, 1);
-      renderEditorComposicao();
-    })
-  );
-
-  container.querySelectorAll(".comp-chip-del").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      const si = +e.target.dataset.sg, ii = +e.target.dataset.ii;
-      editorComposicao[si].itens.splice(ii, 1);
-      renderEditorComposicao();
-    })
-  );
-
-  container.querySelectorAll(".comp-ing-btn").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      const si = +e.target.dataset.sg;
-      const input = container.querySelector(`.comp-ing-input[data-sg="${si}"]`);
-      const val = input.value.trim();
-      if (!val) return;
-      editorComposicao[si].itens.push(val);
-      input.value = "";
-      renderEditorComposicao();
-      // Re-foca o input do mesmo subgrupo após re-render
-      const novo = $("editor-composicao-builder").querySelector(`.comp-ing-input[data-sg="${si}"]`);
-      if (novo) novo.focus();
-    })
-  );
-
-  container.querySelectorAll(".comp-ing-input").forEach((el) =>
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        container.querySelector(`.comp-ing-btn[data-sg="${e.target.dataset.sg}"]`).click();
-      }
-    })
-  );
-}
-
-// ============================================================
-// CONSTRUTOR DE OPCIONAIS
-// ============================================================
-function parsearOpcionais(texto) {
-  if (!texto || !texto.trim()) return [];
-  const lista = [];
-  for (let linha of texto.split("\n")) {
-    linha = linha.trim().replace(/^[*\-•]\s*/, "");
-    if (!linha) continue;
-    const partes = linha.split("|");
-    const nome = partes[0].trim();
-    let preco = 0;
-    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-    if (nome) lista.push({ nome, preco });
-  }
-  return lista;
-}
-
-function serializarOpcionais(lista) {
-  return lista
-    .filter((o) => o.nome.trim())
-    .map((o) => o.nome.trim() + " | " + Number(o.preco || 0).toFixed(2))
-    .join("\n");
-}
-
-function renderEditorOpcionais() {
-  const container = $("editor-opcionais-builder");
-  container.innerHTML = "";
-
-  editorOpcionais.forEach((op, oi) => {
-    const div = document.createElement("div");
-    div.className = "opc-linha";
-    div.innerHTML = `
-      <input class="opc-nome" placeholder="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
-      <div class="opc-preco-wrap">
-        <span class="opc-rs">R$</span>
-        <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
-      </div>
-      <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">×</button>
-    `;
-    container.appendChild(div);
-  });
-
-  container.querySelectorAll(".opc-nome").forEach((el) =>
-    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; })
-  );
-
-  container.querySelectorAll(".opc-preco").forEach((el) => {
+  container.querySelectorAll(".grp-opc-nome").forEach((el) =>
+    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].opcoes[+e.target.dataset.oi].nome = e.target.value; }));
+  container.querySelectorAll(".grp-opc-preco").forEach((el) => {
     Dinheiro.mascarar(el);
-    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
+    el.addEventListener("input", (e) => { editorGrupos[+e.target.dataset.gi].opcoes[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
   });
-
-  container.querySelectorAll(".opc-del").forEach((el) =>
+  container.querySelectorAll(".grp-opc-del").forEach((el) =>
     el.addEventListener("click", (e) => {
-      editorOpcionais.splice(+e.target.dataset.oi, 1);
-      renderEditorOpcionais();
-    })
-  );
+      editorGrupos[+e.target.dataset.gi].opcoes.splice(+e.target.dataset.oi, 1);
+      renderEditorGrupos();
+    }));
+  container.querySelectorAll(".grp-opc-add").forEach((el) =>
+    el.addEventListener("click", (e) => {
+      const gi = +e.target.dataset.gi;
+      editorGrupos[gi].opcoes.push({ nome: "", preco: 0 });
+      renderEditorGrupos();
+      const inputs = container.querySelectorAll(`.grp-opc-nome[data-gi="${gi}"]`);
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }));
 }
-
-$("editor-opc-add").addEventListener("click", () => {
-  editorOpcionais.push({ nome: "", preco: 0 });
-  renderEditorOpcionais();
-  const inputs = $("editor-opcionais-builder").querySelectorAll(".opc-nome");
-  if (inputs.length) inputs[inputs.length - 1].focus();
-});
 
 $("btnAddCategoria").addEventListener("click", () => {
   cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
