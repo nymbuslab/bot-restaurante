@@ -351,33 +351,33 @@
   }
 
   // ---------- Modal de item ----------
-  var modalItem = null, modalQtd = 1, modalOps = []; // modalOps[i] = quantidade do adicional i
+  var modalItem = null, modalQtd = 1, modalSel = []; // modalSel[gi] = índices das opções escolhidas no grupo gi
 
   function abrirModal(it) {
-    var ops = it.opcionais || [];
-    modalItem = it; modalQtd = 1; modalOps = ops.map(function () { return 0; });
+    modalItem = it; modalQtd = 1;
+    var grupos = it.grupos || [];
+    modalSel = grupos.map(function () { return []; });
+
     var html =
       '<button class="cd-x" type="button" data-close="modal" aria-label="Fechar">' + IC.x + '</button>' +
       (it.imagem ? '<img class="cd-modal-img" src="' + esc(it.imagem) + '" alt="" />' : "") +
       "<h2>" + esc(it.nome) + "</h2>" +
-      (it.desc ? '<p class="cd-modal-desc">' + esc(it.desc) + "</p>" : "") +
-      (it.composicao ? '<div class="cd-modal-comp">' + esc(formatComp(it.composicao)) + "</div>" : "");
-    if (ops.length) {
-      html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Adicionais</p>';
-      ops.forEach(function (o, i) {
-        html +=
-          '<div class="cd-op">' +
-            '<span class="cd-op-nome">' + esc(o.nome) + "</span>" +
-            (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + "</span>" : "") +
-            '<div class="cd-op-qtd">' +
-              '<button type="button" data-opdec="' + i + '" aria-label="Menos">−</button>' +
-              '<span data-opqtd="' + i + '">0</span>' +
-              '<button type="button" data-opinc="' + i + '" aria-label="Mais">+</button>' +
-            "</div>" +
-          "</div>";
+      (it.desc ? '<p class="cd-modal-desc">' + esc(it.desc) + "</p>" : "");
+
+    grupos.forEach(function (g, gi) {
+      html += '<div class="cd-grupo"><div class="cd-grupo-cab">' +
+        '<span class="cd-grupo-nome">' + esc(g.nome) + '</span>' +
+        '<span class="cd-grupo-regra">' + regraTxt(g) + '</span></div>';
+      g.opcoes.forEach(function (o, oi) {
+        html += '<button type="button" class="cd-op-row" data-op="' + gi + '-' + oi + '">' +
+          '<span class="cd-op-check' + (g.max === 1 ? ' cd-op-radio' : '') + '"></span>' +
+          '<span class="cd-op-nome">' + esc(o.nome) + '</span>' +
+          (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + '</span>' : '') +
+          '</button>';
       });
       html += "</div>";
-    }
+    });
+
     html +=
       '<label class="cd-campo"><span>Observação (opcional)</span>' +
         '<textarea id="cdModalObs" rows="2" maxlength="200" placeholder="Ex.: sem cebola, ponto da carne…"></textarea></label>' +
@@ -391,8 +391,12 @@
     var caixa = $("cdModalCaixa");
     caixa.innerHTML = html;
     caixa.scrollTop = 0;
-    caixa.querySelectorAll("[data-opinc]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opinc"), 1); }); });
-    caixa.querySelectorAll("[data-opdec]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opdec"), -1); }); });
+    caixa.querySelectorAll("[data-op]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var p = b.getAttribute("data-op").split("-");
+        toggleOp(+p[0], +p[1]);
+      });
+    });
     caixa.querySelectorAll("[data-qtd]").forEach(function (b) {
       b.addEventListener("click", function () {
         modalQtd = Math.max(1, Math.min(50, modalQtd + (+b.getAttribute("data-qtd"))));
@@ -405,25 +409,60 @@
     $("cdModal").hidden = false;
   }
 
-  function mudarOp(i, delta) {
-    modalOps[i] = Math.max(0, Math.min(10, (modalOps[i] || 0) + delta));
-    var span = $("cdModalCaixa").querySelector('[data-opqtd="' + i + '"]');
-    if (span) span.textContent = modalOps[i];
+  // Texto da regra do grupo ("Escolha 1 · obrigatório").
+  function regraTxt(g) {
+    var s;
+    if (g.min === g.max) s = "Escolha " + g.min;
+    else if (g.min > 0) s = "Escolha de " + g.min + " a " + g.max;
+    else s = "Escolha até " + g.max;
+    return s + (g.min >= 1 ? " · obrigatório" : " · opcional");
+  }
+
+  // Marca/desmarca uma opção respeitando min/máx (radio quando máx 1). Atualiza só
+  // as marcações do grupo para preservar a observação já digitada.
+  function toggleOp(gi, oi) {
+    var g = modalItem.grupos[gi];
+    var sel = modalSel[gi];
+    var pos = sel.indexOf(oi);
+    if (g.max === 1) {
+      if (pos !== -1) { if (g.min === 0) sel.length = 0; } // desmarca só se opcional
+      else { sel.length = 0; sel.push(oi); }
+    } else if (pos !== -1) {
+      sel.splice(pos, 1);
+    } else if (sel.length < g.max) {
+      sel.push(oi);
+    }
+    var caixa = $("cdModalCaixa");
+    g.opcoes.forEach(function (o, i) {
+      var row = caixa.querySelector('[data-op="' + gi + '-' + i + '"]');
+      if (row) row.classList.toggle("cd-op-sel", sel.indexOf(i) !== -1);
+    });
     atualizarPrecoModal();
   }
 
   function atualizarPrecoModal() {
     if (!modalItem) return;
-    var ops = modalItem.opcionais || [];
-    var add = ops.reduce(function (s, o, i) { return s + (Number(o.preco) || 0) * (modalOps[i] || 0); }, 0);
-    $("cdModalAdd").textContent = "Adicionar · " + money(((Number(modalItem.preco) || 0) + add) * modalQtd);
+    var grupos = modalItem.grupos || [];
+    var add = 0, faltam = false;
+    grupos.forEach(function (g, gi) {
+      (modalSel[gi] || []).forEach(function (oi) { add += Number(g.opcoes[oi].preco) || 0; });
+      if ((modalSel[gi] || []).length < g.min) faltam = true;
+    });
+    var btn = $("cdModalAdd");
+    btn.disabled = faltam;
+    btn.textContent = faltam
+      ? "Escolha as opções obrigatórias"
+      : "Adicionar · " + money(((Number(modalItem.preco) || 0) + add) * modalQtd);
   }
 
   function confirmarModal() {
-    var ops = modalItem.opcionais || [];
+    var grupos = modalItem.grupos || [];
     var escolhidos = [];
-    ops.forEach(function (o, i) {
-      if (modalOps[i] > 0) escolhidos.push({ nome: o.nome, preco: Number(o.preco) || 0, qtd: modalOps[i] });
+    grupos.forEach(function (g, gi) {
+      (modalSel[gi] || []).forEach(function (oi) {
+        var o = g.opcoes[oi];
+        escolhidos.push({ grupo: g.nome, nome: o.nome, preco: Number(o.preco) || 0, qtd: 1 });
+      });
     });
     addLinha({
       id: modalItem.id,
@@ -434,15 +473,6 @@
       qtd: modalQtd,
     });
     fechar("modal");
-  }
-
-  function formatComp(texto) {
-    return String(texto || "").split("\n").map(function (l) {
-      l = l.trim();
-      if (!l) return "";
-      if (l.slice(-1) === ":") return l.slice(0, -1);
-      return "• " + l.replace(/^[*\-•]\s*/, "");
-    }).filter(Boolean).join("\n");
   }
 
   // ---------- Carrinho (badge + sheet) ----------
@@ -753,7 +783,7 @@
       troco: troco,
       observacao: ($("cdObsPedido").value || "").trim(),
       itens: carrinho.map(function (l) {
-        return { id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd || 1 }; }), observacao: l.observacao || "" };
+        return { id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map(function (o) { return { grupo: o.grupo, nome: o.nome }; }), observacao: l.observacao || "" };
       }),
     };
 
