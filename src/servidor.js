@@ -521,7 +521,10 @@ app.post("/api/esqueci-senha", esqueciLimiter, async (req, res) => {
       "INSERT INTO password_resets (token_hash, email, expira_em) VALUES ($1, $2, $3)",
       [hashToken(token), email_, expira]
     );
-    const link = `${baseUrlDe(req)}/redefinir-senha?token=${token}`;
+    // Base SEMPRE a partir de PUBLIC_URL (domínio confiável) — nunca do header Host,
+    // que é forjável e permitiria "envenenar" o link de reset enviado por e-mail.
+    const base = (process.env.PUBLIC_URL || "").replace(/\/+$/, "") || baseUrlDe(req);
+    const link = `${base}/redefinir-senha?token=${token}`;
     await mail.resetSenha(email_, link).catch((e) => console.error("email reset:", e.message));
   } catch (e) {
     console.error("esqueci-senha:", e.message);

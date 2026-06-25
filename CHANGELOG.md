@@ -446,3 +446,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - O **desconto** virou um botão ao lado do recebimento que abre um modal (R$ ou %).
 - **Caixa do dia obrigatório:** se o caixa ficou aberto de um dia anterior, o **PDV é bloqueado** até fechá-lo (a tela do Caixa avisa). Não dá pra vender sem caixa aberto nem com caixa de outro dia.
 - **Estoque confiável em vendas simultâneas:** a baixa de estoque agora é feita de forma **atômica** (na mesma transação da venda). Dois pedidos ao mesmo tempo (cardápio + PDV) não "perdem" mais a baixa um do outro, e uma venda sem estoque é desfeita por inteiro — a contagem física passa a bater.
+
+## [0.49.1] — Correções de confiabilidade e segurança (pré-produção)
+
+- **Bot mais estável ao reconectar:** desligar e religar o WhatsApp pelo painel não deixa mais o bot "offline sem avisar" na próxima queda de rede, nem dispara uma reconexão fantasma — ele volta sozinho de quedas transitórias como esperado.
+- **Link de "esqueci a senha" mais seguro:** o link enviado por e-mail passou a usar sempre o endereço oficial da plataforma, fechando uma brecha em que o endereço do link poderia ser forjado.
+- **Caixa à prova de corrida:** não é mais possível registrar uma venda no PDV num caixa que acabou de ser fechado — a venda é validada e travada no banco no instante do registro.

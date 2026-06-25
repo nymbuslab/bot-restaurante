@@ -48,7 +48,7 @@ function getEstado(slug) {
 function iniciar(slug, tenantDir) {
   if (tenants.has(slug) && tenants.get(slug).sock) return;
 
-  const t = { sock: null, status: "iniciando", qrDataUrl: null, numero: null, prontoEm: null, fechandoManual: false, tentativas: 0 };
+  const t = { sock: null, status: "iniciando", qrDataUrl: null, numero: null, prontoEm: null, fechandoManual: false, tentativas: 0, reconexaoTimer: null };
   tenants.set(slug, t);
 
   conectar(slug, tenantDir).catch((err) => {
@@ -61,6 +61,12 @@ function iniciar(slug, tenantDir) {
 async function conectar(slug, tenantDir) {
   const t = tenants.get(slug);
   if (!t) return;
+
+  // Toda tentativa real de conexão limpa o estado de "fechamento manual" e qualquer
+  // reconexão pendente — assim uma queda transitória posterior sempre reconecta
+  // (sem ficar offline silencioso) e não fica timer fantasma agendado.
+  t.fechandoManual = false;
+  if (t.reconexaoTimer) { clearTimeout(t.reconexaoTimer); t.reconexaoTimer = null; }
 
   const { makeWASocket, fetchLatestBaileysVersion, Browsers, DisconnectReason, isJidUser, jidDecode } = await getBaileys();
 
@@ -91,6 +97,10 @@ async function conectar(slug, tenantDir) {
     const { connection, qr, lastDisconnect } = update;
     const tt = tenants.get(slug);
     if (!tt) return;
+    // Ignora eventos de um socket antigo já substituído (ex.: reconexão manual
+    // rápida): o `close` do socket velho não pode mexer no socket novo nem
+    // disparar reconexão fantasma.
+    if (tt.sock !== sock) return;
 
     if (qr) {
       tt.status = "aguardando_qr";
@@ -152,7 +162,9 @@ async function conectar(slug, tenantDir) {
       tt.tentativas++;
       const espera = code === DisconnectReason.restartRequired ? 0 : 2000;
       console.log(`[${slug}] 🔄 Reconectando (${tt.tentativas}/${MAX_RECONEXOES}, code ${code})...`);
-      setTimeout(() => {
+      tt.reconexaoTimer = setTimeout(() => {
+        const cur = tenants.get(slug);
+        if (cur) cur.reconexaoTimer = null;
         conectar(slug, tenantDir).catch((e) => console.error(`[${slug}] reconexão falhou:`, e.message));
       }, espera);
     }
@@ -209,6 +221,7 @@ async function conectar(slug, tenantDir) {
 
 async function desconectar(slug) {
   const t = tenants.get(slug);
+  if (t && t.reconexaoTimer) { clearTimeout(t.reconexaoTimer); t.reconexaoTimer = null; }
   if (t && t.sock) {
     t.fechandoManual = true;
     try { t.sock.end(undefined); } catch (e) { /* ignora */ }

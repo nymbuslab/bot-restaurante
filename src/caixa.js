@@ -105,8 +105,8 @@ async function receberPedido(dir, pedidoId, { forma, valor }) {
 // meio-salva). Exige caixa aberto. `venda` já vem RECALCULADA pela rota
 // (src/pdv.js): { cliente, itens, total, desconto, pagamentos:[{forma,valor}],
 // pagamentoResumo, tipoEntrega, endereco, telefone, taxaEntrega }. `total` já
-// inclui o frete. A baixa de estoque é feita FORA daqui (best-effort, na rota,
-// igual ao cardápio web). Retorna o pedido salvo (p/ impressão).
+// inclui o frete. A baixa de estoque é ATÔMICA, dentro desta transação
+// (store.baixarEstoqueTx). Retorna o pedido salvo (p/ impressão).
 async function venderLocal(dir, venda) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
@@ -129,7 +129,21 @@ async function venderLocal(dir, venda) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
-    // Baixa de estoque ATÔMICA primeiro: trava o tenant (FOR UPDATE), revalida e
+    // Revalida o caixa DENTRO da transação, travando a linha (FOR UPDATE) — fecha o
+    // gap entre o check inicial e o commit: se o caixa foi fechado nesse meio-tempo
+    // (corrida com fecharCaixa), a venda inteira é desfeita. Usa o id travado abaixo.
+    const cx = await client.query(
+      `SELECT id,
+              (aberto_em AT TIME ZONE 'America/Sao_Paulo')::date
+                < (now() AT TIME ZONE 'America/Sao_Paulo')::date AS vencido
+         FROM caixas WHERE empresa_id = $1 AND status = 'aberto'
+         ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+      [empId]
+    );
+    if (!cx.rows[0]) throw new Error("O caixa foi fechado. Abra um novo caixa para vender.");
+    if (cx.rows[0].vencido) throw new Error("O caixa precisa ser fechado antes de vender. Feche o caixa do dia anterior e abra um novo.");
+    const caixaId = cx.rows[0].id;
+    // Baixa de estoque ATÔMICA: trava o tenant (FOR UPDATE), revalida e
     // decrementa. Se faltar estoque (corrida), lança e a venda inteira é desfeita —
     // nada é cobrado. O lock também serializa o MAX(numero)+1 abaixo.
     const novoCardapio = await store.baixarEstoqueTx(client, dir, itens);
@@ -147,7 +161,7 @@ async function venderLocal(dir, venda) {
       await client.query(
         `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
          VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
-        [caixa.id, empId, (p.forma || "Outros"), Number(p.valor) || 0, row.id]
+        [caixaId, empId, (p.forma || "Outros"), Number(p.valor) || 0, row.id]
       );
     }
     await client.query("COMMIT");
