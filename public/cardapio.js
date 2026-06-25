@@ -38,7 +38,8 @@
     try { localStorage.setItem(CHAVE_CART, JSON.stringify(carrinho)); } catch (e) { /* ignora */ }
   }
   function assinatura(l) {
-    return l.id + "|" + (l.opcionais || []).map(function (o) { return o.nome + ":" + (o.qtd || 1); }).sort().join(",") + "|" + (l.observacao || "");
+    var comp = (l.composicao || []).map(function (c) { return c.grupo + ":" + (c.itens || []).slice().sort().join("+"); }).sort().join(",");
+    return l.id + "|" + comp + "|" + (l.opcionais || []).map(function (o) { return o.nome + ":" + (o.qtd || 1); }).sort().join(",") + "|" + (l.observacao || "");
   }
   function precoUnit(l) {
     return (Number(l.preco) || 0) + (l.opcionais || []).reduce(function (s, o) { return s + (Number(o.preco) || 0) * (o.qtd || 1); }, 0);
@@ -351,33 +352,50 @@
   }
 
   // ---------- Modal de item ----------
-  var modalItem = null, modalQtd = 1, modalSel = []; // modalSel[gi] = índices das opções escolhidas no grupo gi
+  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}; // modalOps[i] = quantidade do adicional i; modalEscolhas[grupo] = [nome]
 
   function abrirModal(it) {
-    modalItem = it; modalQtd = 1;
-    var grupos = it.grupos || [];
-    modalSel = grupos.map(function () { return []; });
-
+    var ops = it.opcionais || [];
+    modalItem = it; modalQtd = 1; modalOps = ops.map(function () { return 0; });
     var html =
       '<button class="cd-x" type="button" data-close="modal" aria-label="Fechar">' + IC.x + '</button>' +
       (it.imagem ? '<img class="cd-modal-img" src="' + esc(it.imagem) + '" alt="" />' : "") +
       "<h2>" + esc(it.nome) + "</h2>" +
-      (it.desc ? '<p class="cd-modal-desc">' + esc(it.desc) + "</p>" : "");
-
-    grupos.forEach(function (g, gi) {
-      html += '<div class="cd-grupo"><div class="cd-grupo-cab">' +
-        '<span class="cd-grupo-nome">' + esc(g.nome) + '</span>' +
-        '<span class="cd-grupo-regra">' + regraTxt(g) + '</span></div>';
-      g.opcoes.forEach(function (o, oi) {
-        html += '<button type="button" class="cd-op-row" data-op="' + gi + '-' + oi + '">' +
-          '<span class="cd-op-check' + (g.max === 1 ? ' cd-op-radio' : '') + '"></span>' +
-          '<span class="cd-op-nome">' + esc(o.nome) + '</span>' +
-          (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + '</span>' : '') +
-          '</button>';
+      (it.desc ? '<p class="cd-modal-desc">' + esc(it.desc) + "</p>" : "") +
+      "";
+    modalEscolhas = {};
+    var grps = (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
+    grps.forEach(function (g) {
+      var unico = (g.max === 1);
+      var regra = g.obrigatorio
+        ? (unico ? "Escolha 1" : "Escolha ao menos " + Math.max(1, g.min))
+        : (g.max > 1 ? "Até " + g.max : "Opcional");
+      html += '<div class="cd-grp" data-grupo="' + esc(g.nome) + '">' +
+        '<div class="cd-grp-cab"><span class="cd-grp-nome">' + esc(g.nome) + '</span>' +
+        '<span class="cd-grp-regra' + (g.obrigatorio ? " obrig" : "") + '">' + esc(regra) + '</span></div>';
+      g.itens.forEach(function (nome, i) {
+        var tipo = unico ? "radio" : "checkbox";
+        var id = "grp_" + esc(g.nome).replace(/\W/g, "") + "_" + i;
+        html += '<label class="cd-grp-opt"><input type="' + tipo + '" name="' + esc(g.nome) + '" value="' + esc(nome) + '" data-grupo="' + esc(g.nome) + '" data-max="' + g.max + '" id="' + id + '" /> <span>' + esc(nome) + '</span></label>';
+      });
+      html += '</div>';
+    });
+    if (ops.length) {
+      html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Adicionais</p>';
+      ops.forEach(function (o, i) {
+        html +=
+          '<div class="cd-op">' +
+            '<span class="cd-op-nome">' + esc(o.nome) + "</span>" +
+            (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + "</span>" : "") +
+            '<div class="cd-op-qtd">' +
+              '<button type="button" data-opdec="' + i + '" aria-label="Menos">−</button>' +
+              '<span data-opqtd="' + i + '">0</span>' +
+              '<button type="button" data-opinc="' + i + '" aria-label="Mais">+</button>' +
+            "</div>" +
+          "</div>";
       });
       html += "</div>";
-    });
-
+    }
     html +=
       '<label class="cd-campo"><span>Observação (opcional)</span>' +
         '<textarea id="cdModalObs" rows="2" maxlength="200" placeholder="Ex.: sem cebola, ponto da carne…"></textarea></label>' +
@@ -391,12 +409,11 @@
     var caixa = $("cdModalCaixa");
     caixa.innerHTML = html;
     caixa.scrollTop = 0;
-    caixa.querySelectorAll("[data-op]").forEach(function (b) {
-      b.addEventListener("click", function () {
-        var p = b.getAttribute("data-op").split("-");
-        toggleOp(+p[0], +p[1]);
-      });
+    caixa.querySelectorAll(".cd-grp input").forEach(function (inp) {
+      inp.addEventListener("change", function () { onEscolhaGrupo(inp); });
     });
+    caixa.querySelectorAll("[data-opinc]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opinc"), 1); }); });
+    caixa.querySelectorAll("[data-opdec]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opdec"), -1); }); });
     caixa.querySelectorAll("[data-qtd]").forEach(function (b) {
       b.addEventListener("click", function () {
         modalQtd = Math.max(1, Math.min(50, modalQtd + (+b.getAttribute("data-qtd"))));
@@ -409,65 +426,54 @@
     $("cdModal").hidden = false;
   }
 
-  // Texto da regra do grupo ("Escolha 1 · obrigatório").
-  function regraTxt(g) {
-    var s;
-    if (g.min === g.max) s = "Escolha " + g.min;
-    else if (g.min > 0) s = "Escolha de " + g.min + " a " + g.max;
-    else s = "Escolha até " + g.max;
-    return s + (g.min >= 1 ? " · obrigatório" : " · opcional");
+  function cssEsc(s) { return String(s).replace(/"/g, '\\"'); }
+  function onEscolhaGrupo(inp) {
+    var grupo = inp.getAttribute("data-grupo");
+    var max = parseInt(inp.getAttribute("data-max"), 10) || 0;
+    var caixa = $("cdModalCaixa");
+    var marcados = Array.prototype.slice.call(caixa.querySelectorAll('input[data-grupo="' + cssEsc(grupo) + '"]:checked'));
+    // checkbox: trava no máx desmarcando o que excede (radio já é único)
+    if (inp.type === "checkbox" && max > 1 && marcados.length > max) {
+      inp.checked = false;
+      marcados = marcados.filter(function (m) { return m !== inp; });
+    }
+    modalEscolhas[grupo] = marcados.map(function (m) { return m.value; });
+    atualizarPrecoModal();
   }
 
-  // Marca/desmarca uma opção respeitando min/máx (radio quando máx 1). Atualiza só
-  // as marcações do grupo para preservar a observação já digitada.
-  function toggleOp(gi, oi) {
-    var g = modalItem.grupos[gi];
-    var sel = modalSel[gi];
-    var pos = sel.indexOf(oi);
-    if (g.max === 1) {
-      if (pos !== -1) { if (g.min === 0) sel.length = 0; } // desmarca só se opcional
-      else { sel.length = 0; sel.push(oi); }
-    } else if (pos !== -1) {
-      sel.splice(pos, 1);
-    } else if (sel.length < g.max) {
-      sel.push(oi);
-    }
-    var caixa = $("cdModalCaixa");
-    g.opcoes.forEach(function (o, i) {
-      var row = caixa.querySelector('[data-op="' + gi + '-' + i + '"]');
-      if (row) row.classList.toggle("cd-op-sel", sel.indexOf(i) !== -1);
-    });
+  function mudarOp(i, delta) {
+    modalOps[i] = Math.max(0, Math.min(10, (modalOps[i] || 0) + delta));
+    var span = $("cdModalCaixa").querySelector('[data-opqtd="' + i + '"]');
+    if (span) span.textContent = modalOps[i];
     atualizarPrecoModal();
   }
 
   function atualizarPrecoModal() {
     if (!modalItem) return;
-    var grupos = modalItem.grupos || [];
-    var add = 0, faltam = false;
-    grupos.forEach(function (g, gi) {
-      (modalSel[gi] || []).forEach(function (oi) { add += Number(g.opcoes[oi].preco) || 0; });
-      if ((modalSel[gi] || []).length < g.min) faltam = true;
-    });
+    var ops = modalItem.opcionais || [];
+    var add = ops.reduce(function (s, o, i) { return s + (Number(o.preco) || 0) * (modalOps[i] || 0); }, 0);
     var btn = $("cdModalAdd");
-    btn.disabled = faltam;
-    btn.textContent = faltam
-      ? "Escolha as opções obrigatórias"
-      : "Adicionar · " + money(((Number(modalItem.preco) || 0) + add) * modalQtd);
+    btn.textContent = "Adicionar · " + money(((Number(modalItem.preco) || 0) + add) * modalQtd);
+    var esc2 = Object.keys(modalEscolhas).map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; });
+    var aval = window.Grupos ? window.Grupos.avaliarComposicao(modalItem, esc2) : { valido: true };
+    btn.disabled = !aval.valido;
+    btn.title = aval.valido ? "" : (aval.pendencias[0] || "");
   }
 
   function confirmarModal() {
-    var grupos = modalItem.grupos || [];
+    var ops = modalItem.opcionais || [];
     var escolhidos = [];
-    grupos.forEach(function (g, gi) {
-      (modalSel[gi] || []).forEach(function (oi) {
-        var o = g.opcoes[oi];
-        escolhidos.push({ grupo: g.nome, nome: o.nome, preco: Number(o.preco) || 0, qtd: 1 });
-      });
+    ops.forEach(function (o, i) {
+      if (modalOps[i] > 0) escolhidos.push({ nome: o.nome, preco: Number(o.preco) || 0, qtd: modalOps[i] });
     });
+    var comp = Object.keys(modalEscolhas)
+      .map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; })
+      .filter(function (c) { return c.itens && c.itens.length; });
     addLinha({
       id: modalItem.id,
       nome: modalItem.nome,
       preco: Number(modalItem.preco) || 0,
+      composicao: comp,
       opcionais: escolhidos,
       observacao: ($("cdModalObs").value || "").trim(),
       qtd: modalQtd,
@@ -496,11 +502,12 @@
     carrinho.forEach(function (l, idx) {
       var div = document.createElement("div");
       div.className = "cd-linha";
+      var comp = (l.composicao || []).length ? '<p class="cd-linha-comp">' + esc(l.composicao.map(function (c) { return c.itens.join(", "); }).join(" · ")) + "</p>" : "";
       var ops = (l.opcionais || []).length ? '<p class="cd-linha-ops">' + esc(l.opcionais.map(opTxt).join(", ")) + "</p>" : "";
       var obs = l.observacao ? '<p class="cd-linha-obs">📝 ' + esc(l.observacao) + "</p>" : "";
       div.innerHTML =
         '<div class="cd-linha-corpo">' +
-          '<p class="cd-linha-nome">' + esc(l.nome) + "</p>" + ops + obs +
+          '<p class="cd-linha-nome">' + esc(l.nome) + "</p>" + comp + ops + obs +
           '<div class="cd-qtd" style="margin-top:8px">' +
             '<button type="button" data-dec="' + idx + '" aria-label="Menos">−</button>' +
             "<span>" + l.qtd + "</span>" +
@@ -568,6 +575,9 @@
     var v = $("cdViewCheckout");
     var resumo = carrinho.map(function (l) {
       var sub = "";
+      if ((l.composicao || []).length) {
+        sub += l.composicao.map(function (c) { return '<div class="cd-resumo-add">' + esc(c.grupo) + ": " + esc(c.itens.join(", ")) + "</div>"; }).join("");
+      }
       if ((l.opcionais || []).length) {
         sub += '<div class="cd-resumo-add-titulo">Adicionais</div>';
         sub += l.opcionais.map(function (o) { return '<div class="cd-resumo-add">- ' + esc(opTxt(o)) + "</div>"; }).join("");
@@ -783,7 +793,7 @@
       troco: troco,
       observacao: ($("cdObsPedido").value || "").trim(),
       itens: carrinho.map(function (l) {
-        return { id: l.id, qtd: l.qtd, opcionais: (l.opcionais || []).map(function (o) { return { grupo: o.grupo, nome: o.nome }; }), observacao: l.observacao || "" };
+        return { id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd || 1 }; }), observacao: l.observacao || "" };
       }),
     };
 

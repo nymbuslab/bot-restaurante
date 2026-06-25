@@ -400,29 +400,26 @@ button.cd-hero { cursor: pointer; }
 .cd-modal-img { width: 100%; height: 180px; object-fit: cover; border-radius: var(--radius); margin-bottom: 14px; }
 .cd-modal-caixa h2 { font-size: 19px; font-weight: 800; margin: 0 36px 0 0; }
 .cd-modal-desc { color: var(--text-secondary); font-size: 13px; margin: 6px 0 0; }
-.cd-modal-comp { font-size: 13px; color: var(--text-secondary); white-space: pre-line; margin: 10px 0 0; }
-/* Grupos de opções no modal do item */
-.cd-grupo { margin: 16px 0 0; }
-.cd-grupo-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
-.cd-grupo-nome { font-size: 13px; font-weight: 700; }
-.cd-grupo-regra { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
-.cd-op-row {
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: var(--radius);
+.cd-grp { margin: 14px 0; }
+.cd-grp-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cd-grp-nome { font-weight: 600; }
+.cd-grp-regra { font-size: 0.78rem; color: var(--text-secondary); }
+.cd-grp-regra.obrig { color: var(--error); }
+.cd-grp-opt { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+.cd-grp-opt input { width: 18px; height: 18px; accent-color: var(--accent); }
+.cd-linha-comp { font-size: 0.82rem; color: var(--text-secondary); margin: 2px 0 0; }
+.cd-modal-ops { margin: 14px 0 0; }
+.cd-ops-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 0 0 8px; }
+.cd-op {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius);
   border: 1px solid var(--border); background: var(--bg-elevated); margin-bottom: 8px; cursor: pointer;
-  text-align: left; font: inherit; color: inherit;
 }
-.cd-op-row:hover { border-color: var(--accent); }
-.cd-op-sel { border-color: var(--accent); background: rgba(99, 68, 188, 0.10); }
-.cd-op-check {
-  flex: none; width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 5px;
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.cd-op-radio { border-radius: 50%; }
-.cd-op-sel .cd-op-check { border-color: var(--accent); background: var(--accent); }
-.cd-op-sel .cd-op-check::after { content: ""; width: 9px; height: 9px; border-radius: 2px; background: #fff; }
-.cd-op-sel .cd-op-radio::after { border-radius: 50%; }
+.cd-op input { width: 18px; height: 18px; accent-color: var(--accent); }
 .cd-op-nome { flex: 1; font-size: 14px; }
 .cd-op-preco { font-size: 13px; color: var(--accent-fg); font-weight: 700; }
+.cd-op-qtd { flex: none; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); }
+.cd-op-qtd button { width: 30px; height: 30px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
+.cd-op-qtd span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
 .cd-campo { display: block; margin: 14px 0 0; }
 .cd-campo > span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 6px; }
 .cd-campo input, .cd-campo textarea, .cd-campo select {
