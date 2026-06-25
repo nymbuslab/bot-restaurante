@@ -289,7 +289,7 @@
   // Card hero: imagem grande de fundo + nome/descrição/preço sobre a imagem.
   function heroCard(it) {
     var kg = it.unidade === "kg";
-    var naoAdd = it.esgotado || kg;
+    var naoAdd = it.esgotado || kg || it.apenasLocal;
     var el = document.createElement(naoAdd ? "div" : "button");
     if (!naoAdd) el.type = "button";
     el.className = "cd-hero" + (it.esgotado ? " cd-card-esgotado" : "");
@@ -323,7 +323,7 @@
 
   function cardItem(it) {
     var kg = it.unidade === "kg";
-    var naoAdd = it.esgotado || kg;
+    var naoAdd = it.esgotado || kg || it.apenasLocal;
     var card = document.createElement(naoAdd ? "div" : "button");
     if (!naoAdd) card.type = "button";
     card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "") + (kg && !it.esgotado ? " cd-card-kg" : "");
