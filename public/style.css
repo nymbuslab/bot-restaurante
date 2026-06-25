@@ -2961,15 +2961,15 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .comp-sg-regras {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
+  gap: 10px;
+  flex-wrap: nowrap;
   margin-bottom: 8px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
-.comp-sg-obrig-lbl { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.comp-sg-num { display: inline-flex; align-items: center; gap: 6px; }
-.comp-sg-num input { width: 56px; }
+.comp-sg-obrig-lbl { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.comp-sg-num { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.comp-sg-num input { width: 46px; flex: none; }
 
 .comp-sg-nome {
   flex: 1;
