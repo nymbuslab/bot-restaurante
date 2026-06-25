@@ -272,6 +272,11 @@ que vêm do WhatsApp.
   Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
 - **Regras gerais:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);
   receber/estornar exigem caixa aberto; **1 operador** (a conta do tenant); sangria/suprimento imutáveis.
+- **Caixa vencido (virou o dia):** o caixa deve ser fechado ao fim do expediente / ao virar o dia.
+  `caixaAberto` calcula `vencido` = `(aberto_em AT TIME ZONE 'America/Sao_Paulo')::date < hoje`. Enquanto
+  vencido, o **PDV fica bloqueado** (`venderLocal` recusa + tela do PDV mostra "Feche o caixa de DD/MM");
+  a tela do Caixa exibe um **aviso âmbar** com o botão Fechar. Receber pagamento de pedido **não** é
+  bloqueado (pra não travar a conciliação do dia anterior).
 - **Gate:** `empresas.temCaixa(emp)` (= acesso liberado + plano completo) no front (cadeado/upsell) e no
   backend (403); o gate do front decide pela **resposta da API** (evita cadeado falso na navegação inicial).
 - **Dados:** tabelas `caixas` (+ `operador`, `obs_abertura`, `contado_eletronico`, `detalhe_fechamento`

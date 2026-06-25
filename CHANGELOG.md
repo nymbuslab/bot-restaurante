@@ -442,4 +442,6 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - Ao finalizar a venda no PDV, **não abre mais o pop-up de impressão**: o pedido entra direto no caixa e na aba **Pedidos**, onde fica para conferência e reimpressão (botão "Imprimir comanda").
 - O **desconto** passou a ser aplicado na própria tela de **Finalizar venda** (ao lado do total), com os campos de valor no padrão da plataforma ("R$ 0,00").
-- **Entrega no balcão:** ao finalizar, escolha **Balcão, Entrega ou Retirada**. Na Entrega, informe o endereço (o **CEP preenche** rua/bairro/cidade) e o **frete é calculado** automaticamente (taxa fixa ou por distância), com um ícone de **lixeira para não cobrar** (cortesia). O frete entra no total e a venda fica registrada como Entrega, com endereço e taxa.
+- **Entrega no balcão:** ao finalizar, escolha **Balcão, Entrega ou Retirada**. Na Entrega, informe nome, telefone e o endereço (o **CEP preenche** rua/bairro/cidade) e o **frete é calculado** automaticamente (taxa fixa ou por distância), com um ícone de **lixeira para não cobrar** (cortesia). O frete entra no total e a venda fica registrada como Entrega, com endereço e taxa — e dá pra **avisar o cliente** em Pedidos.
+- O **desconto** virou um botão ao lado do recebimento que abre um modal (R$ ou %).
+- **Caixa do dia obrigatório:** se o caixa ficou aberto de um dia anterior, o **PDV é bloqueado** até fechá-lo (a tela do Caixa avisa). Não dá pra vender sem caixa aberto nem com caixa de outro dia.

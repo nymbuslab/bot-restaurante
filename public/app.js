@@ -2221,6 +2221,11 @@ function renderCaixaAberto(data) {
       </div>
     </div>
 
+    ${data.caixa.vencido ? `<div class="cx-aviso-vencido">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>Este caixa é de <b>${new Date(data.caixa.abertoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</b>. Feche-o para iniciar o novo dia — o <b>PDV fica bloqueado</b> até o fechamento.</div>
+    </div>` : ""}
+
     <div class="cx-acoes">
       <div class="cx-acoes-esq">
         <button class="secundario" id="btnSuprimento">Suprimento</button>
@@ -3427,7 +3432,7 @@ function pdvPrecoLinha(l) { return pdvPrecoUnit(l) * (Number(l.qtd) || 0); }
 function pdvTotal() { return pdvCart.reduce((s, l) => s + pdvPrecoLinha(l), 0); }
 
 async function carregarPdv() {
-  $("pdvLock").hidden = true; $("pdvSemCaixa").hidden = true; $("pdvConteudo").hidden = true; $("pdvFab").hidden = true;
+  $("pdvLock").hidden = true; $("pdvSemCaixa").hidden = true; $("pdvVencido").hidden = true; $("pdvConteudo").hidden = true; $("pdvFab").hidden = true;
   const r = await api("GET", "/api/caixa"); // gate (403) + status do caixa, numa chamada
   if (!r) return; // 401 já redirecionou
   if (r.status === 403) { $("pdvLock").hidden = false; return; }
@@ -3435,6 +3440,11 @@ async function carregarPdv() {
   const data = await r.json();
   pdvFormasPg = (Array.isArray(data.formasPagamento) && data.formasPagamento.length) ? data.formasPagamento : ["Dinheiro"];
   if (!data.caixa) { $("pdvSemCaixa").hidden = false; return; } // exige caixa aberto
+  if (data.caixa.vencido) { // caixa de outro dia: bloqueia venda até fechar
+    const dia = new Date(data.caixa.abertoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    $("pdvVencidoSub").textContent = "Há um caixa aberto de " + dia + ". Feche-o no Caixa e abra um novo para vender hoje.";
+    $("pdvVencido").hidden = false; return;
+  }
   // Garante o cardápio carregado (a aba PDV pode ser a primeira a abrir).
   if (!cardapioAtual || !cardapioAtual.categorias || !cardapioAtual.categorias.length) {
     const rc = await api("GET", "/api/cardapio");
@@ -4039,6 +4049,7 @@ async function finalizarVendaPdv() {
 // ---- Wiring do PDV ----
 if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => abrirUpsell("pdv"));
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
+if ($("btnPdvVencidoCaixa")) $("btnPdvVencidoCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
 if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", abrirPdvPagar);
 if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", () => { pdvCart = []; pdvDesconto = null; renderPdvCarrinho(); });

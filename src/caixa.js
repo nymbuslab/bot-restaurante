@@ -31,13 +31,24 @@ async function _contarAReceber(empId, abertoEm) {
   return r.rows[0].n;
 }
 
+// `vencido` = caixa aberto num dia-calendário anterior (fuso BR). Regra: o caixa
+// deve ser fechado ao fim do expediente / ao virar o dia; enquanto vencido, o PDV
+// fica bloqueado (não inicia venda) até fechar e abrir um novo.
 async function caixaAberto(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT * FROM caixas WHERE empresa_id = $1 AND status = 'aberto' ORDER BY id DESC LIMIT 1",
+    `SELECT *,
+            (aberto_em AT TIME ZONE 'America/Sao_Paulo')::date
+              < (now() AT TIME ZONE 'America/Sao_Paulo')::date AS vencido
+       FROM caixas WHERE empresa_id = $1 AND status = 'aberto' ORDER BY id DESC LIMIT 1`,
     [empId]
   );
   return r.rows[0] || null;
+}
+
+// Data DD/MM (fuso BR) de um timestamp — usada em mensagens ("caixa de 23/06").
+function _dataBR(ts) {
+  return new Date(ts).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
 }
 
 async function abrirCaixa(dir, { fundoTroco, operador, obsAbertura }) {
@@ -100,6 +111,7 @@ async function venderLocal(dir, venda) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa antes de vender no PDV.");
+  if (caixa.vencido) throw new Error("O caixa de " + _dataBR(caixa.aberto_em) + " precisa ser fechado antes de vender. Feche o caixa do dia anterior e abra um novo.");
   const itens = Array.isArray(venda.itens) ? venda.itens : [];
   if (!itens.length) throw new Error("A venda está vazia.");
   const cliente = (venda.cliente || "").trim() || "Balcão";
@@ -225,6 +237,7 @@ async function resumo(dir) {
     caixa: {
       id: caixa.id,
       abertoEm: new Date(caixa.aberto_em).toISOString(),
+      vencido: !!caixa.vencido,
       fundoTroco: Number(caixa.fundo_troco) || 0,
       operador: caixa.operador || null,
       obsAbertura: caixa.obs_abertura || null,
