@@ -17,7 +17,7 @@ const pedidoBase = {
   observacao: "entrega rápida",
   itens: [
     { nome: "Burger X", preco: 25, qtd: 2,
-      opcionais: [{ nome: "Bacon", preco: 3, qtd: 1 }, { nome: "Queijo Extra", preco: 2.5, qtd: 2 }],
+      opcionais: [{ grupo: "Adicionais", nome: "Bacon", preco: 3, qtd: 1 }, { grupo: "Adicionais", nome: "Queijo Extra", preco: 2.5, qtd: 2 }],
       observacao: "sem cebola" },
     { nome: "Refrigerante", preco: 5, qtd: 1, opcionais: [], observacao: "" },
   ],
@@ -31,6 +31,7 @@ test("via cozinha: tem cabeçalho, número, itens e observações — SEM preço
   assert.match(cozinha, /2x Burger X/);
   assert.match(cozinha, /Bacon/);
   assert.match(cozinha, /2x Queijo Extra/);
+  assert.match(cozinha, /Adicionais: Bacon, 2x Queijo Extra/); // escolhas agrupadas por grupo
   assert.match(cozinha, /sem cebola/);
   assert.match(cozinha, /entrega rápida/);
   assert.equal(/R\$/.test(cozinha), false, "via cozinha não deve ter preços");

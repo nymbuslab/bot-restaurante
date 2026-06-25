@@ -58,11 +58,24 @@
       return data + " - " + hora; // dd/mm/yyyy - HH:MM
     } catch (_) { return ""; }
   }
-  function opcionaisLinhas(op) {
-    return (op || []).map((o) => {
+  // Agrupa as opções escolhidas por grupo (preserva a ordem de aparição).
+  // Opção sem grupo (dado legado) cai num grupo vazio "".
+  function agruparOpcoes(op) {
+    const ordem = [], porGrupo = {};
+    (op || []).forEach((o) => {
+      const g = o.grupo || "";
+      if (!(g in porGrupo)) { porGrupo[g] = []; ordem.push(g); }
       const q = (o.qtd && o.qtd > 1) ? o.qtd + "x " : "";
-      return "   + " + q + (o.nome || "");
+      porGrupo[g].push(q + (o.nome || ""));
     });
+    return ordem.map((g) => ({ grupo: g, nomes: porGrupo[g] }));
+  }
+  function opcionaisLinhas(op) {
+    return agruparOpcoes(op).reduce((out, gr) => {
+      if (gr.grupo) out.push("   " + gr.grupo + ": " + gr.nomes.join(", "));
+      else gr.nomes.forEach((n) => out.push("   + " + n));
+      return out;
+    }, []);
   }
 
   function montarCozinha(pedido, config) {
@@ -127,7 +140,7 @@
     itensCup.forEach((i) => {
       const sub = ((i.preco || 0) + extrasDe(i)) * (i.qtd || 1);
       linhas.push(linhaValor((i.qtd || 1) + "x " + (i.nome || ""), fmtBR(sub)));
-      const op = (i.opcionais || []).map((o) => (o.qtd > 1 ? o.qtd + "x " : "") + o.nome).join(" / ");
+      const op = agruparOpcoes(i.opcionais).map((gr) => gr.grupo ? gr.grupo + ": " + gr.nomes.join(", ") : gr.nomes.join(", ")).join(" / ");
       if (op) linhas.push("   " + op);
     });
     linhas.push(sep("-"));
