@@ -4652,9 +4652,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 
 .pdv-cart-rodape { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
 .pdv-tot-linha { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.pdv-tot-linha[hidden] { display: none; }
 .pdv-desc-row { align-items: center; }
-.pdv-desc-link { background: none; border: none; color: var(--accent-fg); padding: 0; font-size: 13px; font-weight: 600; cursor: pointer; }
-.pdv-desc-link:hover { background: none; text-decoration: underline; }
 .pdv-desc-valor { color: var(--success); font-weight: 600; }
 .pdv-tot-total { font-size: 16px; color: var(--text-primary); margin: 6px 0 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle); }
 .pdv-tot-total strong { font-size: 21px; color: var(--accent-fg); }
@@ -4696,8 +4695,11 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-op-preco { font-size: 12.5px; color: var(--accent-fg); font-weight: 600; }
 .pdv-modal-add { width: 100%; padding: 13px; font-size: 15px; margin-top: 4px; }
 
-/* Desconto: toggle R$/% (modal de desconto) */
-.pdv-desc-tipo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; align-self: flex-start; }
+/* Desconto na tela de pagamento: toggle R$/% + campo + Aplicar */
+.pdv-desc-bloco { margin-bottom: 18px; }
+.pdv-desc-linha { display: flex; gap: 8px; align-items: stretch; }
+.pdv-desc-campo { flex: 1; min-width: 0; }
+.pdv-desc-tipo { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
 .pdv-desc-tipo button { background: var(--bg-elevated); color: var(--text-secondary); border: none; width: 48px; padding: 8px 0; border-radius: 0; font-size: 13px; }
 .pdv-desc-tipo button.ativo { background: var(--accent); color: #fff; }
 
@@ -4713,8 +4715,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 }
 .pdv-forma:hover { border-color: var(--text-secondary); background: var(--bg-elevated); }
 .pdv-forma.ativo { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent-fg); }
-.pdv-pg-add-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.pdv-pg-add-row input { flex: 1; }
+.pdv-pg-add-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: stretch; }
+.pdv-pg-campo { flex: 1; min-width: 0; }
 .pdv-pg-addbtn { flex: none; padding: 0 20px; font-size: 14px; }
 .pdv-pg-lista { display: flex; flex-direction: column; gap: 8px; }
 .pdv-pg-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-elevated); }
@@ -4728,8 +4730,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-resumo-tot { display: flex; align-items: baseline; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px; font-size: 14px; }
 .pdv-resumo-tot strong { font-size: 22px; color: var(--accent-fg); }
 .pdv-resumo-linha { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-top: 7px; }
+.pdv-resumo-linha[hidden] { display: none; }
 .pdv-resumo-linha .falta { color: var(--error); font-weight: 700; }
 .pdv-resumo-linha .troco { color: var(--success); font-weight: 700; }
+.pdv-resumo-desc span:last-child { color: var(--success); font-weight: 600; }
 .pdv-cpf { margin: 14px 0 0; }
 .pdv-pg-acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 .pdv-pg-acoes .secundario { padding: 13px 22px; }

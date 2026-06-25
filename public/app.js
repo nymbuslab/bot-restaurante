@@ -3632,13 +3632,15 @@ function renderPdvCarrinho() {
       abrirPdvItemModal(item, l.uid);
     }));
   }
-  // Rodapé: subtotal, desconto, total.
+  // Rodapé: reflete o desconto aplicado no Finalizar venda (Subtotal/Desconto só
+  // aparecem quando há desconto; senão mostra só o Total).
   const sub = pdvTotal();
   const { desconto, total } = pdvDescontoCalc(sub);
+  const temDesc = !!pdvDesconto && desconto > 0;
   $("pdvSubtotal").textContent = pdvMoney(sub);
   $("pdvDescValor").textContent = "− " + pdvMoney(desconto);
-  $("pdvDescBtn").textContent = pdvDesconto ? "Editar desconto" : "+ Desconto";
-  $("pdvDescValor").hidden = !pdvDesconto;
+  $("pdvSubLinha").hidden = !temDesc;
+  $("pdvDescLinha").hidden = !temDesc;
   $("pdvTotal").textContent = pdvMoney(total);
   $("pdvCobrar").disabled = !pdvCart.length;
   const fab = $("pdvFab");
@@ -3656,47 +3658,10 @@ function pdvAcharItem(id) {
   return null;
 }
 
-// ---- Desconto (modal, aplicado no carrinho) ----
-function abrirPdvDesconto() {
-  if (!pdvCart.length) return;
-  let dtipo = (pdvDesconto && pdvDesconto.tipo) || "valor";
-  const valIni = pdvDesconto ? pdvDesconto.valor : 0;
-  const html =
-    '<button class="pdv-modal-x" type="button" data-pdv-close="desc" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
-    '<h3 class="pdv-modal-titulo">Desconto na venda</h3>' +
-    '<div class="pdv-campo"><span>Tipo</span><div class="pdv-desc-tipo">' +
-      '<button type="button" class="' + (dtipo === "valor" ? "ativo" : "") + '" data-dt="valor">R$</button>' +
-      '<button type="button" class="' + (dtipo === "pct" ? "ativo" : "") + '" data-dt="pct">%</button>' +
-    "</div></div>" +
-    '<label class="pdv-campo"><span>Valor</span><input id="pdvDescInput" type="text" inputmode="decimal" placeholder="0" /></label>' +
-    '<div class="pdv-pg-acoes">' +
-      (pdvDesconto ? '<button type="button" class="secundario" id="pdvDescRemover">Remover</button>' : '') +
-      '<button type="button" class="pdv-pg-confirmar" id="pdvDescAplicar">Aplicar</button>' +
-    "</div>";
-  $("pdvDescCaixa").innerHTML = html;
-  const inp = $("pdvDescInput");
-  if (dtipo === "valor") { Dinheiro.mascarar(inp); if (valIni) Dinheiro.setValor(inp, valIni); }
-  else { inp.value = valIni ? String(valIni).replace(".", ",") : ""; }
-  $("pdvDescCaixa").querySelectorAll("[data-dt]").forEach((b) => b.addEventListener("click", () => {
-    dtipo = b.dataset.dt;
-    $("pdvDescCaixa").querySelectorAll("[data-dt]").forEach((x) => x.classList.toggle("ativo", x === b));
-    const v = inp.value; delete inp.dataset.dinheiro;
-    if (dtipo === "valor") Dinheiro.mascarar(inp); else inp.value = v.replace(/[^\d,]/g, "");
-  }));
-  $("pdvDescAplicar").addEventListener("click", () => {
-    const valor = dtipo === "valor" ? Dinheiro.valor(inp) : (parseFloat(String(inp.value || "").replace(",", ".")) || 0);
-    pdvDesconto = valor > 0 ? { tipo: dtipo, valor } : null;
-    fecharPdvDesconto(); renderPdvCarrinho();
-  });
-  if ($("pdvDescRemover")) $("pdvDescRemover").addEventListener("click", () => { pdvDesconto = null; fecharPdvDesconto(); renderPdvCarrinho(); });
-  const xb = $("pdvDescCaixa").querySelector('[data-pdv-close="desc"]'); if (xb) xb.addEventListener("click", fecharPdvDesconto);
-  $("pdvDescOverlay").hidden = false;
-}
-function fecharPdvDesconto() { $("pdvDescOverlay").hidden = true; }
-
-// ---- Pagamento (forma em tiles + split + troco) ----
+// ---- Pagamento (forma em tiles + split + troco + desconto) ----
 let pdvPagamentos = []; // [{ forma, valor }] adicionados (tendência)
 let pdvFormaSel = null;
+let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
 
 function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
 function pdvIconeForma(f) {
@@ -3713,6 +3678,7 @@ function abrirPdvPagar() {
   if (!pdvCart.length) return;
   pdvPagamentos = [];
   pdvFormaSel = pdvFormasPg[0] || "Dinheiro";
+  pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false;
 }
@@ -3728,19 +3694,33 @@ function renderPdvPagar() {
     const q = l.unidade === "kg" ? window.Estoque.formatarQtd(l.qtd, "kg") + " kg" : l.qtd + "x";
     return '<div class="pdv-resumo-item"><span>' + q + " " + pdvEsc(l.nome) + "</span><span>" + pdvMoney(pdvPrecoLinha(l)) + "</span></div>";
   }).join("");
+  const descPref = pdvDescTipoSel === "pct" ? "%" : "R$";
   const html =
     '<button class="pdv-modal-x" type="button" data-pdv-close="pagar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
     '<div class="pdv-pg-grid">' +
       '<div class="pdv-pg-main">' +
         '<h3 class="pdv-modal-titulo">Finalizar venda</h3>' +
+        '<div class="pdv-desc-bloco">' +
+          '<span class="pdv-ops-tit">Desconto</span>' +
+          '<div class="pdv-desc-linha">' +
+            '<div class="pdv-desc-tipo">' +
+              '<button type="button" class="' + (pdvDescTipoSel === "valor" ? "ativo" : "") + '" data-dt="valor">R$</button>' +
+              '<button type="button" class="' + (pdvDescTipoSel === "pct" ? "ativo" : "") + '" data-dt="pct">%</button>' +
+            "</div>" +
+            '<div class="campo-prefixo pdv-desc-campo"><span class="campo-prefixo-moeda" id="pdvDescPrefixo">' + descPref + '</span><input id="pdvDescInput" type="text" inputmode="numeric" placeholder="0,00" /></div>' +
+            '<button type="button" class="pdv-pg-addbtn" id="pdvDescAplicar">Aplicar</button>' +
+          "</div>" +
+        "</div>" +
         '<span class="pdv-ops-tit">Forma de pagamento</span>' +
         '<div class="pdv-formas">' + tiles + "</div>" +
-        '<div class="pdv-pg-add-row"><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button></div>' +
+        '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button></div>' +
         '<div class="pdv-pg-lista" id="pdvPgLista"></div>' +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
         '<span class="pdv-ops-tit">Resumo do pedido</span>' +
         '<div class="pdv-resumo-itens">' + itensHtml + "</div>" +
+        '<div class="pdv-resumo-linha" id="pdvResSubLinha" hidden><span>Subtotal</span><span id="pdvResSub"></span></div>' +
+        '<div class="pdv-resumo-linha pdv-resumo-desc" id="pdvResDescLinha" hidden><span>Desconto</span><span id="pdvResDesc"></span></div>' +
         '<div class="pdv-resumo-tot"><span>Total</span><strong id="pdvPgTotal">' + pdvMoney(total) + "</strong></div>" +
         '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
         '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
@@ -3759,6 +3739,23 @@ function renderPdvPagar() {
     $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((x) => x.classList.toggle("ativo", x === b));
     const inp = $("pdvPgValor"); if (inp) inp.focus();
   }));
+  // Desconto: alternador R$/% + campo no padrão monetário.
+  const descInp = $("pdvDescInput");
+  if (pdvDescTipoSel === "valor") {
+    Dinheiro.mascarar(descInp);
+    if (pdvDesconto && pdvDesconto.tipo === "valor") Dinheiro.setValor(descInp, pdvDesconto.valor);
+  } else if (pdvDesconto && pdvDesconto.tipo === "pct") {
+    descInp.value = String(pdvDesconto.valor).replace(".", ",");
+  }
+  $("pdvPagarCaixa").querySelectorAll("[data-dt]").forEach((b) => b.addEventListener("click", () => {
+    if (pdvDescTipoSel === b.dataset.dt) return;
+    pdvDescTipoSel = b.dataset.dt;
+    renderPdvPagar(); // re-renderiza: troca o nó do input e zera a máscara antiga (sem vazar listener)
+    const di = $("pdvDescInput"); if (di) di.focus();
+  }));
+  $("pdvDescAplicar").addEventListener("click", pdvAplicarDesconto);
+  descInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAplicarDesconto(); } });
+
   const valInp = $("pdvPgValor");
   Dinheiro.mascarar(valInp);
   Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
@@ -3767,7 +3764,37 @@ function renderPdvPagar() {
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
   const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
+  pdvSyncResumoDesc();
   renderPdvPgLista();
+}
+
+// Atualiza as linhas Subtotal/Desconto do RESUMO conforme o desconto aplicado.
+function pdvSyncResumoDesc() {
+  const sub = pdvTotal();
+  const { desconto } = pdvDescontoCalc(sub);
+  const sl = $("pdvResSubLinha"), dl = $("pdvResDescLinha");
+  if (pdvDesconto && desconto > 0) {
+    if (sl) { sl.hidden = false; $("pdvResSub").textContent = pdvMoney(sub); }
+    if (dl) { dl.hidden = false; $("pdvResDesc").textContent = "− " + pdvMoney(desconto); }
+  } else {
+    if (sl) sl.hidden = true;
+    if (dl) dl.hidden = true;
+  }
+}
+
+// Aplica o desconto digitado na tela de pagamento e recalcula tudo.
+function pdvAplicarDesconto() {
+  const inp = $("pdvDescInput");
+  const valor = pdvDescTipoSel === "valor"
+    ? Dinheiro.valor(inp)
+    : (parseFloat(String(inp.value || "").replace(",", ".")) || 0);
+  pdvDesconto = valor > 0 ? { tipo: pdvDescTipoSel, valor } : null;
+  pdvSyncResumoDesc();
+  pdvPagarRecalc();
+  const rest = Math.max(0, Math.round((pdvTotalLiq() - pdvPagoTotal()) * 100) / 100);
+  if ($("pdvPgValor")) Dinheiro.setValor($("pdvPgValor"), rest);
+  renderPdvCarrinho();
+  toast(pdvDesconto ? "Desconto aplicado." : "Desconto removido.");
 }
 
 function pdvAddPagamento() {
@@ -3850,7 +3877,6 @@ if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => a
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
 if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", abrirPdvPagar);
-if ($("pdvDescBtn")) $("pdvDescBtn").addEventListener("click", abrirPdvDesconto);
 if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", () => { pdvCart = []; pdvDesconto = null; renderPdvCarrinho(); });
 if ($("pdvFab")) $("pdvFab").addEventListener("click", () => { $("pdvCarrinho").classList.add("aberto"); $("pdvFab").classList.add("oculto"); });
 if ($("pdvCartFechar")) $("pdvCartFechar").addEventListener("click", () => { $("pdvCarrinho").classList.remove("aberto"); $("pdvFab").classList.remove("oculto"); });
@@ -3858,12 +3884,10 @@ document.querySelectorAll("[data-pdv-close]").forEach((el) => el.addEventListene
   if (e.target !== el) return;
   if (el.dataset.pdvClose === "item") fecharPdvItemModal();
   if (el.dataset.pdvClose === "pagar") fecharPdvPagar();
-  if (el.dataset.pdvClose === "desc") fecharPdvDesconto();
 }));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("pdvItemOverlay").hidden) fecharPdvItemModal();
-  else if (!$("pdvDescOverlay").hidden) fecharPdvDesconto();
   else if (!$("pdvPagarOverlay").hidden) fecharPdvPagar();
 });
 

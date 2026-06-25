@@ -707,9 +707,9 @@
           <label class="pdv-cliente"><span>Cliente (opcional)</span><input id="pdvCliente" type="text" placeholder="Balcão" autocomplete="off" /></label>
           <div class="pdv-cart-itens" id="pdvCartItens"></div>
           <div class="pdv-cart-rodape">
-            <div class="pdv-tot-linha"><span>Subtotal</span><span id="pdvSubtotal">R$ 0,00</span></div>
-            <div class="pdv-tot-linha pdv-desc-row">
-              <button type="button" class="pdv-desc-link" id="pdvDescBtn">+ Desconto</button>
+            <div class="pdv-tot-linha" id="pdvSubLinha" hidden><span>Subtotal</span><span id="pdvSubtotal">R$ 0,00</span></div>
+            <div class="pdv-tot-linha pdv-desc-row" id="pdvDescLinha" hidden>
+              <span>Desconto</span>
               <span class="pdv-desc-valor" id="pdvDescValor">− R$ 0,00</span>
             </div>
             <div class="pdv-tot-linha pdv-tot-total"><span>Total</span><strong id="pdvTotal">R$ 0,00</strong></div>
@@ -738,12 +738,6 @@
     <div class="pdv-modal" id="pdvPagarOverlay" hidden>
       <div class="pdv-modal-overlay" data-pdv-close="pagar"></div>
       <div class="pdv-modal-caixa pdv-pagar-caixa" id="pdvPagarCaixa" role="dialog" aria-label="Pagamento"></div>
-    </div>
-
-    <!-- PDV: modal de desconto -->
-    <div class="pdv-modal" id="pdvDescOverlay" hidden>
-      <div class="pdv-modal-overlay" data-pdv-close="desc"></div>
-      <div class="pdv-modal-caixa" id="pdvDescCaixa" role="dialog" aria-label="Desconto"></div>
     </div>
 
     <section class="aba" id="aba-caixa">
