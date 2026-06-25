@@ -4707,8 +4707,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-grp { margin: 10px 0; }
 .pdv-grp-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .pdv-grp-nome { font-weight: 600; }
-.pdv-grp-regra { font-size: 0.78rem; color: var(--texto-suave); }
-.pdv-grp-regra.obrig { color: var(--perigo, #c0392b); }
+.pdv-grp-regra { font-size: 0.78rem; color: var(--text-secondary); }
+.pdv-grp-regra.obrig { color: var(--error); }
 .pdv-grp-opt { display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer; }
 .pdv-grp-opt input { width: 18px; height: 18px; }
 .pdv-ops { margin-bottom: 14px; }
