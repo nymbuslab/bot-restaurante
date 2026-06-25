@@ -285,13 +285,14 @@ Aba **PDV** no painel (gate `temPdv`, front+back) para registrar venda de balcã
 aberto** (senão mostra "Abra o caixa para vender"). Fluxo: grade de produtos (chips de categoria +
 busca) → toque adiciona ao carrinho; itens com **opcionais** ou por **kg** abrem um mini-modal
 (peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **desconto** (R$ ou %),
-**pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e **imprimir ao finalizar**.
+**pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e **CPF na nota** (opcional).
 
 Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
 fonte de verdade — nunca confia no preço do cliente), e `caixa.venderLocal` grava numa transação o
 **pedido tipo `Balcão`** (já `recebido_em`) + **1 movimento de recebimento por forma** no caixa, depois
 dá **baixa de estoque**. A venda aparece em **Pedidos** (selo Balcão/Recebido) e no **Caixa** (Vendas
-por forma). Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
+por forma). A confirmação é **silenciosa** — o pedido fica na aba **Pedidos** para conferência e
+**reimpressão** (botão "Imprimir comanda"); o PDV **não** abre modal de impressão ao finalizar. Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
 mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/pdv.js`
 (`test/pdv.test.js`); tela em `public/app.js` (`carregarPdv`/`renderPdv*`).
 

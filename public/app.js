@@ -3737,10 +3737,6 @@ function renderPdvPagar() {
         '<div class="pdv-formas">' + tiles + "</div>" +
         '<div class="pdv-pg-add-row"><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button></div>' +
         '<div class="pdv-pg-lista" id="pdvPgLista"></div>' +
-        '<div class="pdv-pg-prints">' +
-          '<label class="pdv-check"><input type="checkbox" id="pdvPrintCozinha" checked /><span>Imprimir comanda para cozinha</span></label>' +
-          '<label class="pdv-check"><input type="checkbox" id="pdvPrintCliente" checked /><span>Imprimir comprovante para cliente</span></label>' +
-        "</div>" +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
         '<span class="pdv-ops-tit">Resumo do pedido</span>' +
@@ -3838,11 +3834,9 @@ async function finalizarVendaPdv() {
   btn.textContent = "Confirmar pagamento";
   if (!r) return;
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
-  const { pedido } = await r.json();
-  toast("✓ Venda registrada no caixa!");
-  const cozinha = $("pdvPrintCozinha") && $("pdvPrintCozinha").checked;
-  const cliente = $("pdvPrintCliente") && $("pdvPrintCliente").checked;
-  if (pedido && (cozinha || cliente) && window.Impressao) { try { window.Impressao.abrirPreview(pedido, configAtual, { linkCardapio: _linkCardapio }); } catch (e) { /* impressão é opcional */ } }
+  toast("✓ Venda registrada — disponível em Pedidos.");
+  // A venda é salva como pedido "Balcão" recebido; aparece na aba Pedidos para
+  // conferência/reimpressão. Não abrimos modal de impressão automaticamente.
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
