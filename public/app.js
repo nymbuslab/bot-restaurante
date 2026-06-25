@@ -3830,8 +3830,10 @@ function pdvRenderEntregaResumo() {
   const box = $("pdvEntregaResumo");
   if (!box) return;
   if (pdvEntrega && pdvEntrega.endereco) {
+    const contato = [pdvEntrega.nome, pdvEntrega.telefone].filter(Boolean).join(" · ");
     box.innerHTML =
-      '<div class="pdv-entrega-end"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>' + pdvEsc(pdvEntrega.endereco) + (pdvEntrega.telefone ? " · " + pdvEsc(pdvEntrega.telefone) : "") + "</span></div>" +
+      (contato ? '<div class="pdv-entrega-contato">' + pdvEsc(contato) + "</div>" : "") +
+      '<div class="pdv-entrega-end"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>' + pdvEsc(pdvEntrega.endereco) + "</span></div>" +
       '<button type="button" class="pdv-entrega-btn" id="pdvEntregaBtn">Editar endereço</button>';
   } else {
     box.innerHTML =
@@ -3863,15 +3865,15 @@ function abrirPdvEntrega() {
     '<button class="pdv-modal-x" type="button" data-pdv-close="entrega" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
     '<h3 class="pdv-modal-titulo">Endereço de entrega</h3>' +
     '<div class="pdv-ent-grid">' +
+      '<label class="pdv-campo pdv-ent-nome"><span>Nome do cliente</span><input id="pdvEntNome" type="text" placeholder="Nome" value="' + pdvEsc((pdvEntrega && pdvEntrega.nome) || ($("pdvCliente") ? $("pdvCliente").value : "")) + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-tel"><span>Telefone</span><input id="pdvEntTelefone" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-cep"><span>CEP</span><input id="pdvEntCep" type="text" inputmode="numeric" placeholder="00000-000" value="' + v("cep") + '" /></label>' +
-      '<p class="pdv-ent-hint" id="pdvEntCepHint"></p>' +
       '<label class="pdv-campo pdv-ent-logr"><span>Rua</span><input id="pdvEntLogradouro" type="text" placeholder="Logradouro" value="' + v("logradouro") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-num"><span>Número</span><input id="pdvEntNumero" type="text" inputmode="numeric" placeholder="Nº" value="' + v("numero") + '" /></label>' +
-      '<label class="pdv-campo pdv-ent-compl"><span>Complemento</span><input id="pdvEntComplemento" type="text" placeholder="Apto, bloco… (opcional)" value="' + v("complemento") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-bairro"><span>Bairro</span><input id="pdvEntBairro" type="text" placeholder="Bairro" value="' + v("bairro") + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-compl"><span>Complemento</span><input id="pdvEntComplemento" type="text" placeholder="Apto, bloco… (opcional)" value="' + v("complemento") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-cidade"><span>Cidade</span><input id="pdvEntCidade" type="text" placeholder="Cidade" value="' + v("cidade") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-uf"><span>UF</span><input id="pdvEntUf" type="text" maxlength="2" placeholder="UF" value="' + v("uf") + '" /></label>' +
-      '<label class="pdv-campo pdv-ent-tel"><span>Telefone</span><input id="pdvEntTelefone" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>' +
     "</div>" +
     '<div class="pdv-pg-acoes">' +
       '<button type="button" class="secundario" data-pdv-close="entrega">Cancelar</button>' +
@@ -3879,7 +3881,7 @@ function abrirPdvEntrega() {
     "</div>";
   $("pdvEntregaCaixa").innerHTML = html;
   if (window.EnderecoCep) {
-    window.EnderecoCep.ligarBuscaCep({ cep: "pdvEntCep", hint: "pdvEntCepHint", hintClass: "cep-hint", logradouro: "pdvEntLogradouro", numero: "pdvEntNumero", bairro: "pdvEntBairro", cidade: "pdvEntCidade", uf: "pdvEntUf" });
+    window.EnderecoCep.ligarBuscaCep({ cep: "pdvEntCep", logradouro: "pdvEntLogradouro", numero: "pdvEntNumero", bairro: "pdvEntBairro", cidade: "pdvEntCidade", uf: "pdvEntUf" });
   }
   $("pdvEntConfirmar").addEventListener("click", pdvConfirmarEntrega);
   $("pdvEntregaCaixa").querySelectorAll('[data-pdv-close="entrega"]').forEach((b) => b.addEventListener("click", fecharPdvEntrega));
@@ -3895,6 +3897,7 @@ async function pdvConfirmarEntrega() {
     complemento: g("pdvEntComplemento"), bairro: g("pdvEntBairro"),
     cidade: g("pdvEntCidade"), uf: g("pdvEntUf").toUpperCase().slice(0, 2),
   };
+  const nome = g("pdvEntNome");
   const telefone = g("pdvEntTelefone");
   if (!campos.logradouro || !campos.numero) { toast("Informe a rua e o número.", "erro"); return; }
   const btn = $("pdvEntConfirmar"); btn.disabled = true; btn.textContent = "Calculando…";
@@ -3907,7 +3910,9 @@ async function pdvConfirmarEntrega() {
   let taxa = Number(d.valor_frete) || 0;
   if (d.foraDaArea) { taxa = 0; toast("Endereço fora da área — frete como cortesia.", "erro"); }
   const endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(campos) : (campos.logradouro + ", " + campos.numero);
-  pdvEntrega = { endereco, enderecoCampos: campos, telefone, taxaEntrega: taxa };
+  pdvEntrega = { endereco, enderecoCampos: campos, nome, telefone, taxaEntrega: taxa };
+  // Espelha o nome no campo Cliente da venda (consistência no cabeçalho/pedido).
+  if (nome && $("pdvCliente")) $("pdvCliente").value = nome;
   fecharPdvEntrega();
   renderPdvPagar();
 }

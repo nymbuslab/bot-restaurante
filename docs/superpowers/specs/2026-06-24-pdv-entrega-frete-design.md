@@ -34,8 +34,10 @@ No modal **Finalizar venda** (`renderPdvPagar`):
 1. **Seletor de tipo** no topo: `Balcão | Entrega | Retirada` (segmento estilo
    `.pdv-desc-tipo`). Estado em `pdvTipoEntrega` (default `"Balcão"`).
 2. **Entrega** → bloco "Endereço de entrega" com botão que abre um overlay
-   (`#pdvEntregaOverlay`) com o formulário: CEP (autopreenche via `EnderecoCep`),
-   número, complemento, telefone, bairro, cidade, UF.
+   (`#pdvEntregaOverlay`) com o formulário: **Nome + Telefone** (1ª linha, para o
+   "avisar cliente" em Pedidos reusar a lógica existente — `POST /api/pedido/avisar`),
+   CEP (autopreenche via `EnderecoCep`), Rua + Número, Bairro + Complemento,
+   Cidade + UF. O Nome é espelhado no campo Cliente da venda.
    - Frete **fixo**: aplica `taxaFixa` da config assim que escolhe Entrega
      (endereço só compõe o pedido).
    - Frete **raio**: com CEP+número, botão **Calcular frete** chama
