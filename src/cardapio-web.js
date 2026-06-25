@@ -7,51 +7,26 @@
 
 const crypto = require("crypto");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
+const grupos = require("../public/grupos"); // normalização da composição (dual-mode)
 
 // Validade do link enviado pelo bot (liga o pedido feito na web ao chatId).
 const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 
-// Projeção PÚBLICA dos grupos de opções do item: [{ nome, min, max, opcoes:[{nome,preco}] }].
-// Normaliza tipos e descarta grupo sem nome ou sem opções. `max` default 1 (escolha única).
-function projetarGrupos(grupos) {
-  return (Array.isArray(grupos) ? grupos : []).map((g) => ({
-    nome: String((g && g.nome) || "").trim(),
-    min: Math.max(0, parseInt(g && g.min, 10) || 0),
-    max: (g && g.max != null) ? Math.max(1, parseInt(g.max, 10) || 1) : 1,
-    opcoes: (((g && g.opcoes) || []))
-      .map((o) => ({ nome: String((o && o.nome) || "").trim(), preco: Number(o && o.preco) || 0 }))
-      .filter((o) => o.nome),
-  })).filter((g) => g.nome && g.opcoes.length);
-}
-
-// Valida e precifica as opções escolhidas contra os GRUPOS do item (FONTE DE VERDADE).
-// `opcoesPayload`: [{ grupo, nome }] (cada escolha conta 1). Lança Error amigável se a
-// opção não existir no grupo, ou se a regra min/máx do grupo for violada. Retorna
-// [{ nome, preco, qtd: 1, grupo }] — formato da linha (igual ao antigo `opcionais`).
-function resolverOpcoesGrupos(base, opcoesPayload) {
-  const grupos = projetarGrupos(base && base.grupos);
-  const idx = {}; // grupoNome -> { opNome: preco }
-  grupos.forEach((g) => { idx[g.nome] = {}; g.opcoes.forEach((o) => { idx[g.nome][o.nome] = o.preco; }); });
-
-  const contagem = {};
-  const resolvidas = [];
-  (opcoesPayload || []).forEach((o) => {
-    const gNome = o && o.grupo;
-    const opNome = o && o.nome;
-    if (gNome == null || opNome == null) return;
-    if (!idx[gNome] || !(opNome in idx[gNome])) {
-      throw new Error('Opção inválida em "' + ((base && base.nome) || "item") + '".');
-    }
-    contagem[gNome] = (contagem[gNome] || 0) + 1;
-    resolvidas.push({ nome: opNome, preco: idx[gNome][opNome], qtd: 1, grupo: gNome });
-  });
-
-  grupos.forEach((g) => {
-    const n = contagem[g.nome] || 0;
-    if (n < g.min) throw new Error('Em "' + g.nome + '" escolha ' + (g.min === g.max ? "" : "pelo menos ") + g.min + (g.min === 1 ? " opção." : " opções."));
-    if (n > g.max) throw new Error('Em "' + g.nome + '" escolha no máximo ' + g.max + (g.max === 1 ? " opção." : " opções."));
-  });
-  return resolvidas;
+// Opcionais do item são guardados como texto ("Nome | preco" por linha).
+// Converte para [{ nome, preco }] — mesma regra usada pelo bot (fluxo.js importa daqui).
+function parseOpcionais(texto) {
+  if (!texto || !texto.trim()) return [];
+  const lista = [];
+  for (let linha of texto.split("\n")) {
+    linha = linha.trim().replace(/^[*\-•]\s*/, "");
+    if (!linha) continue;
+    const partes = linha.split("|");
+    const nome = partes[0].trim();
+    let preco = 0;
+    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+    if (nome) lista.push({ nome, preco });
+  }
+  return lista;
 }
 
 // Projeção PÚBLICA (whitelist) do cardápio jsonb: só os campos que o cliente
@@ -69,7 +44,8 @@ function projetarCardapio(cardapio) {
         preco: Number(item.preco) || 0,
         desc: item.desc || "",
         imagem: item.imagem || "",
-        grupos: projetarGrupos(item.grupos),
+        composicao: grupos.normalizarGrupos(item.composicao),
+        opcionais: parseOpcionais(item.opcionais),
         apenasLocal: item.apenasLocal === true,
         esgotado: estoque.statusEstoque(item).esgotado,
         unidade: item.unidade === "kg" ? "kg" : "un",
@@ -97,7 +73,15 @@ function recalcularItens(cardapio, itensPayload) {
     const base = mapa[p && p.id];
     if (!base) throw new Error("Item indisponível no cardápio.");
     const qtd = Math.max(1, Math.min(50, parseInt(p.qtd, 10) || 1));
-    const opcionais = resolverOpcoesGrupos(base, (p && p.opcionais) || []);
+    const opsMap = {};
+    parseOpcionais(base.opcionais).forEach(function (o) { opsMap[o.nome] = o.preco; });
+    const opcionais = [];
+    ((p && p.opcionais) || []).forEach(function (o) {
+      const nome = o && o.nome;
+      if (nome == null || !(nome in opsMap)) return; // ignora opcional desconhecido
+      const oq = Math.max(1, Math.min(10, parseInt(o.qtd, 10) || 1));
+      opcionais.push({ nome: nome, preco: opsMap[nome], qtd: oq });
+    });
     const precoBase = Number(base.preco) || 0;
     const addUnit = opcionais.reduce(function (s, o) { return s + o.preco * o.qtd; }, 0);
     subtotal += (precoBase + addUnit) * qtd;
@@ -154,4 +138,4 @@ function verificarToken(secret, token, slug, agoraMs) {
   return { chatId: dados.chatId };
 }
 
-module.exports = { projetarGrupos, resolverOpcoesGrupos, projetarCardapio, recalcularItens, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS };
+module.exports = { parseOpcionais, projetarCardapio, recalcularItens, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS };
