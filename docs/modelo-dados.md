@@ -3,21 +3,28 @@
 ## Modelo de dados
 
 **Item do cardápio** (dentro do `cardapio` jsonb da `empresas`):
-```json
+```jsonc
 { "id": 10, "nome": "Marmitex P", "preco": 18.0, "desc": "...",
-  "disponivel": true, "unidade": "un", "estoque": 30,
-  "grupos": [
-    { "nome": "Proteínas", "min": 1, "max": 1,
-      "opcoes": [ { "nome": "Frango", "preco": 0 }, { "nome": "Picanha", "preco": 5.0 } ] },
-    { "nome": "Adicionais", "min": 0, "max": 3,
-      "opcoes": [ { "nome": "Ovo", "preco": 2.0 }, { "nome": "Bacon", "preco": 3.5 } ] }
-  ] }
+  "disponivel": true,
+  // composicao = subgrupos SELECIONÁVEIS pelo cliente (array estruturado)
+  "composicao": [
+    { "nome": "Proteínas", "obrigatorio": true, "min": 1, "max": 1, "itens": ["Frango", "Carne"] }
+  ],
+  // opcionais permanece TEXTO `Nome | preço` (acréscimos pagos) — inalterado
+  "opcionais": "Ovo frito | 2.00\nBacon | 3.50" }
 ```
-**Grupos de opções** (substituem os antigos `composicao`/`opcionais` em texto): por grupo,
-`min`/`max` de escolhas (`min≥1` = obrigatório; `max=1` = escolha única) e `opcoes` com `preco`
-(0 = grátis). O cliente (cardápio web) e o operador (PDV) escolhem; o servidor valida e precifica
-contra os grupos (`cardapio-web.resolverOpcoesGrupos`). Detalhe em
-[grupos-de-opcoes](superpowers/specs/2026-06-25-grupos-de-opcoes-design.md).
+`composicao` é um **array de subgrupos** `[{ nome, obrigatorio, min, max, itens:[string] }]`
+que o cliente seleciona ao montar o pedido. Regras:
+
+- `max = 1` → **escolha única** (radio); `max > 1` → **múltipla** (checkbox, trava no máximo);
+- `obrigatorio: true` ⇒ exige `min ≥ 1` (ao menos uma escolha no subgrupo);
+- a **composição é grátis** — escolher itens **não soma preço** ao item;
+- helpers puros em `public/grupos.js` (`normalizarGrupos`, `avaliarComposicao`); o **servidor valida**
+  por aqui (cardápio web + PDV), descartando itens fora do subgrupo e aplicando mín/máx/obrigatório.
+
+`opcionais` segue como **texto** `Nome | preço` (um por linha), parseado em runtime — são os
+acréscimos **pagos** (steppers) e é o que soma no preço da linha. **Sem migração de schema**: ambos
+moram no mesmo `cardapio` jsonb.
 
 **Tabela `pedidos`** (Postgres/Supabase, uma só, isolada por `empresa_id`):
 
@@ -66,11 +73,14 @@ só houver `config.atendimento.taxaEntrega`, vale como frete fixo (normalizado p
 
 **Linha do carrinho / pedido**:
 ```js
-{ id, nome, preco, qtd, opcionais: [{nome, preco, qtd, grupo}], observacao }
+{ id, nome, preco, qtd, opcionais: [{nome, preco, qtd}],
+  composicao: [{ grupo, itens:[nome] }], observacao }
 ```
-As **escolhas dos grupos** são gravadas aqui como `opcionais` (cada escolha = `qtd:1` + o `grupo`
-de origem). Preço da linha = `(preco + soma de opcional.preco) * qtd`, **recalculado no servidor**.
-A comanda agrupa as escolhas pelo `grupo`.
+Preço da linha = `(preco + soma de (opcional.preco × opcional.qtd)) * qtd`. O opcional tem
+quantidade (ex.: 2 ovos) — escolhida no cardápio web. **A composição não entra no preço** (é grátis):
+`composicao` guarda apenas as escolhas do cliente por subgrupo (`{ grupo, itens:[nome] }`), validadas
+no servidor por `public/grupos.js` (`avaliarComposicao`). A comanda da cozinha lista essas escolhas
+agrupadas por subgrupo.
 
 ## Bot (fluxo.js) — enxuto, baseado em link
 
