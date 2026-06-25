@@ -2767,12 +2767,16 @@ function exportarPedidosCSV() {
 function periodoRange() {
   const agora = new Date();
   const inicioDoDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  // Fim do dia (e não "agora") como limite superior: evita que um pedido recém-criado
+  // — cujo horário vem do relógio do servidor — caia "no futuro" por desencontro de
+  // relógio e suma do "Hoje" até o próximo refresh.
+  const fimDoDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
   if (filtros.periodo === "hoje") {
-    return { ini: inicioDoDia(agora), fim: agora, dias: 1 };
+    return { ini: inicioDoDia(agora), fim: fimDoDia(agora), dias: 1 };
   }
   if (filtros.periodo === "7dias") {
     const ini = inicioDoDia(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 6));
-    return { ini, fim: agora, dias: 7 };
+    return { ini, fim: fimDoDia(agora), dias: 7 };
   }
   // Personalizado
   const di = filtros.dataIni ? new Date(filtros.dataIni + "T00:00:00") : null;
