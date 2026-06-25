@@ -1556,6 +1556,10 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       const soLocal = cardapioWeb.itensSoLocal(cardapio, b.itens);
       if (soLocal.length) return res.status(400).json({ erro: "Estes itens são vendidos só no local e não saem para entrega: " + soLocal.join(", ") + "." });
       const fr = await calcularFretePdv(req.tenantDir, "Entrega", b.enderecoCampos);
+      // Não aceita entrega que o frete não cobre (em vez de cobrar 0 em silêncio):
+      // endereço incompleto ou fora da área de entrega → erro claro p/ o operador.
+      if (fr.incompleto) return res.status(400).json({ erro: "Para o frete por raio, informe o CEP e o número do endereço." });
+      if (fr.foraDaArea) return res.status(400).json({ erro: "Endereço fora da área de entrega. Use Retirada/Balcão ou ajuste o endereço." });
       taxaEntrega = pdv.freteEfetivo(b.taxaEntrega, fr.taxa); // aceita só 0 (cortesia) ou o calculado
     }
     if (tipoEntrega !== "Balcão") telefone = String(b.telefone || "").replace(/[^\d]/g, "").slice(0, 20);

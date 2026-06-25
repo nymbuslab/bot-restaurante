@@ -4,6 +4,9 @@
   "description": "Bot de WhatsApp para restaurante com painel administrativo",
   "main": "index.js",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node index.js",
     "test": "node --test",

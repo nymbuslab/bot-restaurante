@@ -2726,10 +2726,15 @@ let listaPedidosAtual = []; // lista filtrada atual (para paginar sem refazer o 
 // Só busca os pedidos do tenant; o recorte (período/tipo/busca) e as métricas
 // são calculados no front em renderPedidos() a partir deste conjunto.
 async function carregarPedidos() {
-  const r = await api("GET", "/api/pedidos");
-  if (!r) return;
-  pedidosCache = await r.json();
-  renderPedidos();
+  try {
+    const r = await api("GET", "/api/pedidos");
+    if (!r) return;
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    pedidosCache = await r.json();
+    renderPedidos();
+  } catch (e) {
+    toast("Não foi possível carregar os pedidos. Verifique a conexão e tente de novo.", "erro");
+  }
 }
 
 // Exporta os pedidos atualmente filtrados (período + tipo + busca) em CSV (Excel BR: ; + BOM).
@@ -3562,6 +3567,7 @@ function abrirPdvItemModal(item, uid) {
 
   $("pdvItemCaixa").innerHTML = html;
   $("pdvItemOverlay").hidden = false;
+  focarModalPdv("pdvItemCaixa");
 
   // wiring
   $("pdvItemCaixa").querySelectorAll("[data-stepper]").forEach((box) => {
@@ -3699,6 +3705,14 @@ function pdvIconeForma(f) {
   return w('<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><circle cx="16" cy="14" r="1.5"/>');
 }
 
+// A11y: foca o primeiro controle do modal ao abrir (navegação por teclado/leitor).
+function focarModalPdv(caixaId) {
+  const caixa = $(caixaId);
+  if (!caixa) return;
+  const alvo = caixa.querySelector("input:not([type=hidden]), select, textarea, button");
+  if (alvo) { try { alvo.focus(); } catch (_) {} }
+}
+
 function abrirPdvPagar() {
   if (!pdvCart.length) return;
   pdvPagamentos = [];
@@ -3708,6 +3722,7 @@ function abrirPdvPagar() {
   pdvEntrega = null;
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false;
+  focarModalPdv("pdvPagarCaixa");
 }
 function fecharPdvPagar() { $("pdvPagarOverlay").hidden = true; }
 function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100; }
@@ -3842,6 +3857,7 @@ function abrirPdvDescModal() {
   pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
   renderPdvDescModal();
   $("pdvDescOverlay").hidden = false;
+  focarModalPdv("pdvDescCaixa");
 }
 function fecharPdvDescModal() { $("pdvDescOverlay").hidden = true; }
 
@@ -3933,6 +3949,7 @@ function abrirPdvEntrega() {
   $("pdvEntConfirmar").addEventListener("click", pdvConfirmarEntrega);
   $("pdvEntregaCaixa").querySelectorAll('[data-pdv-close="entrega"]').forEach((b) => b.addEventListener("click", fecharPdvEntrega));
   $("pdvEntregaOverlay").hidden = false;
+  focarModalPdv("pdvEntregaCaixa");
 }
 function fecharPdvEntrega() { $("pdvEntregaOverlay").hidden = true; }
 
@@ -3954,8 +3971,10 @@ async function pdvConfirmarEntrega() {
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { toast(d.erro || "Falha ao calcular o frete.", "erro"); return; }
   if (d.incompleto) { toast("Para o frete por raio, informe CEP e número.", "erro"); return; }
+  // Fora da área: não prossegue com frete grátis em silêncio — o operador decide
+  // (Retirada/Balcão ou corrigir o endereço). Mantém o overlay aberto.
+  if (d.foraDaArea) { toast("Endereço fora da área de entrega. Use Retirada/Balcão ou ajuste o endereço.", "erro"); return; }
   let taxa = Number(d.valor_frete) || 0;
-  if (d.foraDaArea) { taxa = 0; toast("Endereço fora da área — frete como cortesia.", "erro"); }
   const endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(campos) : (campos.logradouro + ", " + campos.numero);
   pdvEntrega = { endereco, enderecoCampos: campos, nome, telefone, taxaEntrega: taxa };
   // Espelha o nome no campo Cliente da venda (consistência no cabeçalho/pedido).

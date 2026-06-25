@@ -452,3 +452,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Bot mais estável ao reconectar:** desligar e religar o WhatsApp pelo painel não deixa mais o bot "offline sem avisar" na próxima queda de rede, nem dispara uma reconexão fantasma — ele volta sozinho de quedas transitórias como esperado.
 - **Link de "esqueci a senha" mais seguro:** o link enviado por e-mail passou a usar sempre o endereço oficial da plataforma, fechando uma brecha em que o endereço do link poderia ser forjado.
 - **Caixa à prova de corrida:** não é mais possível registrar uma venda no PDV num caixa que acabou de ser fechado — a venda é validada e travada no banco no instante do registro.
+
+## [0.49.2] — Ajustes pós-lançamento (P2)
+
+- **PDV — entrega fora da área não vira mais frete grátis em silêncio:** ao tentar uma entrega para um endereço fora da área de cobertura, o sistema **avisa e bloqueia** (em vez de cobrar R$ 0 sem avisar), para o operador escolher Retirada/Balcão ou ajustar o endereço. A lixeira de cortesia continua valendo para endereços **dentro** da área.
+- **Lista de Pedidos mais robusta:** se a tela de Pedidos falhar ao carregar (queda de conexão), agora aparece um aviso claro em vez de a tela ficar "muda".
+- **Acessibilidade no PDV:** os modais (item, pagamento, entrega, desconto) passaram a receber o **foco no primeiro campo** ao abrir e foram marcados como diálogo para leitores de tela.
+- **Robustez interna:** conexão com o banco com **SSL sempre ligado**, **número do pedido** com garantia de unicidade no banco (sem duplicata sob acesso simultâneo) e versão mínima do Node fixada no projeto.

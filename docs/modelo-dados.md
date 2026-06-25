@@ -14,7 +14,9 @@
 **Tabela `pedidos`** (Postgres/Supabase, uma só, isolada por `empresa_id`):
 
 ```text
-id (bigint), empresa_id (uuid→empresas), numero (sequencial por empresa),
+id (bigint), empresa_id (uuid→empresas), numero (sequencial por empresa; índice
+único parcial `pedidos_empresa_numero_unico` em (empresa_id, numero) — rede de
+segurança contra duplicata sob corrida, além do lock FOR UPDATE em runtime),
 status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
 taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
 avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa),

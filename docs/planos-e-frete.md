@@ -297,9 +297,11 @@ busca) → toque adiciona ao carrinho; itens com **opcionais** ou por **kg** abr
 logradouro/bairro/cidade/UF via `window.EnderecoCep`; número, complemento, telefone). O **frete** é
 **calculado pelo servidor** (`POST /api/pdv/frete`, autenticada: fixo = `taxaFixa` da config; raio =
 geocode + Haversine + faixa) e entra como linha **Frete** no RESUMO (`Total = Subtotal − Desconto +
-Frete`), com **lixeira** para zerar (cortesia). "Fora da área" não bloqueia — vira cortesia (0).
-**Retirada** = sem endereço/frete (telefone opcional). O servidor é a fonte de verdade do frete:
-aceita do cliente **apenas** 0 (cortesia) ou o valor calculado (`pdv.freteEfetivo`).
+Frete`), com **lixeira** para zerar (cortesia) em endereço **dentro** da área. **"Fora da área"
+bloqueia** (front mantém o overlay aberto + aviso; servidor responde 400) — o operador decide
+Retirada/Balcão ou ajusta o endereço, em vez de cobrar 0 em silêncio; `incompleto` (CEP/número)
+também avisa. **Retirada** = sem endereço/frete (telefone opcional). O servidor é a fonte de verdade
+do frete: aceita do cliente **apenas** 0 (cortesia) ou o valor calculado (`pdv.freteEfetivo`).
 
 Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
 fonte de verdade — nunca confia no preço do cliente), resolve o frete e `caixa.venderLocal` grava numa
