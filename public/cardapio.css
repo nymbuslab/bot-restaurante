@@ -407,7 +407,9 @@ button.cd-hero { cursor: pointer; }
 .cd-grp-regra.obrig { color: var(--error); }
 .cd-grp-opt { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
 .cd-grp-opt input { width: 18px; height: 18px; accent-color: var(--accent); }
+.cd-grp-info { font-size: 0.85rem; color: var(--text-secondary); margin: 2px 0 0; }
 .cd-linha-comp { font-size: 0.82rem; color: var(--text-secondary); margin: 2px 0 0; }
+.cd-modal-local { margin: 16px 0 4px; padding: 12px 14px; border: 1px dashed var(--text-secondary); border-radius: var(--radius, 12px); color: var(--text-secondary); text-align: center; font-weight: 600; font-size: 0.9rem; }
 .cd-modal-ops { margin: 14px 0 0; }
 .cd-ops-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 0 0 8px; }
 .cd-op {

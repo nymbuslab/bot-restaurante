@@ -289,9 +289,10 @@
   // Card hero: imagem grande de fundo + nome/descrição/preço sobre a imagem.
   function heroCard(it) {
     var kg = it.unidade === "kg";
-    var naoAdd = it.esgotado || kg || it.apenasLocal;
-    var el = document.createElement(naoAdd ? "div" : "button");
-    if (!naoAdd) el.type = "button";
+    var naoAbre = it.esgotado || kg;          // não abre o modal (visualização pura)
+    var naoAdd = naoAbre || it.apenasLocal;   // sem botão "+ Adicionar" (só-local abre, mas não pede)
+    var el = document.createElement(naoAbre ? "div" : "button");
+    if (!naoAbre) el.type = "button";
     el.className = "cd-hero" + (it.esgotado ? " cd-card-esgotado" : "");
     var bg = it.imagem
       ? '<img class="cd-hero-img" src="' + esc(it.imagem) + '" alt="" />'
@@ -311,7 +312,7 @@
           (naoAdd ? "" : '<span class="cd-add cd-hero-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
-    if (!naoAdd) el.addEventListener("click", function () { abrirModal(it); });
+    if (!naoAbre) el.addEventListener("click", function () { abrirModal(it); });
     return el;
   }
 
@@ -323,9 +324,10 @@
 
   function cardItem(it) {
     var kg = it.unidade === "kg";
-    var naoAdd = it.esgotado || kg || it.apenasLocal;
-    var card = document.createElement(naoAdd ? "div" : "button");
-    if (!naoAdd) card.type = "button";
+    var naoAbre = it.esgotado || kg;          // não abre o modal (visualização pura)
+    var naoAdd = naoAbre || it.apenasLocal;   // sem botão "+ Adicionar" (só-local abre, mas não pede)
+    var card = document.createElement(naoAbre ? "div" : "button");
+    if (!naoAbre) card.type = "button";
     card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "") + (kg && !it.esgotado ? " cd-card-kg" : "");
     // selos flutuantes sobre a imagem (empilham no canto superior esquerdo)
     var selos = "";
@@ -347,7 +349,7 @@
           (naoAdd ? "" : '<span class="cd-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
-    if (!naoAdd) card.addEventListener("click", function () { abrirModal(it); });
+    if (!naoAbre) card.addEventListener("click", function () { abrirModal(it); });
     return card;
   }
 
@@ -355,6 +357,7 @@
   var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}; // modalOps[i] = quantidade do adicional i; modalEscolhas[grupo] = [nome]
 
   function abrirModal(it) {
+    var soVer = !!it.apenasLocal; // item "Só no local": modal só de visualização (não pede)
     var ops = it.opcionais || [];
     modalItem = it; modalQtd = 1; modalOps = ops.map(function () { return 0; });
     var html =
@@ -365,6 +368,28 @@
       "";
     modalEscolhas = {};
     var grps = (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
+    if (soVer) {
+      // Modo visualização: mostra o que vem (composição) e os adicionais como informação,
+      // sem seletores nem botão de adicionar — item é vendido só no local.
+      grps.forEach(function (g) {
+        html += '<div class="cd-grp"><div class="cd-grp-cab"><span class="cd-grp-nome">' + esc(g.nome) + '</span></div>' +
+          '<p class="cd-grp-info">' + esc(g.itens.join(", ")) + '</p></div>';
+      });
+      if (ops.length) {
+        html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Adicionais</p>';
+        ops.forEach(function (o) {
+          html += '<div class="cd-op"><span class="cd-op-nome">' + esc(o.nome) + '</span>' +
+            (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + '</span>' : '') + '</div>';
+        });
+        html += "</div>";
+      }
+      html += '<div class="cd-modal-local"><span>Disponível apenas no local</span></div>';
+      var cx = $("cdModalCaixa");
+      cx.innerHTML = html;
+      cx.scrollTop = 0;
+      $("cdModal").hidden = false;
+      return;
+    }
     grps.forEach(function (g) {
       var unico = (g.max === 1);
       var regra = g.obrigatorio
