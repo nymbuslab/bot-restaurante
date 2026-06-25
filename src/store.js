@@ -15,6 +15,7 @@
 
 const path = require("path");
 const db = require("./db");
+const Estoque = require("../public/estoque"); // puro (dual-mode): validar/aplicar baixa
 
 const cache = {}; // slug -> { config, cardapio }
 const slugDe = (dir) => path.basename(dir);
@@ -59,6 +60,31 @@ async function setCardapio(dir, dados) {
   return dados;
 }
 
+// Baixa de estoque ATÔMICA dentro da transação do chamador (mesmo `client`).
+// Trava a linha do tenant (`FOR UPDATE`) → serializa baixas concorrentes (sem
+// lost-update) e o `MAX(numero)+1` do pedido; revalida o estoque na versão FRESCA
+// (lança Error com `.code="ESTOQUE"` se faltar → o chamador faz ROLLBACK e a venda
+// não acontece); decrementa e regrava o JSONB. Retorna o novo cardápio — o chamador
+// deve chamar `sincronizarCardapio(dir, novo)` APÓS o COMMIT para atualizar o cache.
+async function baixarEstoqueTx(client, dir, itensPayload) {
+  const slug = slugDe(dir);
+  const r = await client.query("SELECT cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+  if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+  const cardapio = r.rows[0].cardapio || { categorias: [] };
+  const check = Estoque.validarEstoque(cardapio, itensPayload);
+  if (!check.ok) { const e = new Error(check.erro); e.code = "ESTOQUE"; throw e; }
+  const novo = Estoque.aplicarBaixa(cardapio, itensPayload);
+  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
+  return novo;
+}
+
+// Atualiza o cache em memória do cardápio (após o COMMIT da baixa atômica).
+function sincronizarCardapio(dir, cardapio) {
+  const slug = slugDe(dir);
+  if (!cache[slug]) cache[slug] = { config: {}, cardapio };
+  else cache[slug].cardapio = cardapio;
+}
+
 // Mapa { id → item } dos itens disponíveis (cache deve estar quente).
 function itensDisponiveis(dir) {
   const mapa = {};
@@ -75,4 +101,4 @@ function esquecer(slug) {
   delete cache[slug];
 }
 
-module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, itensDisponiveis, esquecer };
+module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, sincronizarCardapio, itensDisponiveis, esquecer };

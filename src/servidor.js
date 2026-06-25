@@ -717,17 +717,30 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     const tk = cardapioWeb.verificarToken(CARDAPIO_LINK_SECRET, b.token, emp.slug);
     const chatId = tk ? tk.chatId : "";
 
-    const pedido = await pedidos.salvarPedido(dir, {
-      cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
-      taxaEntrega, itens: recalc.itens, total, observacao,
-    });
+    // Pedido + baixa de estoque numa ÚNICA transação (atômica): trava o tenant
+    // (FOR UPDATE), revalida o estoque na versão fresca e decrementa; se faltar
+    // estoque (corrida), faz ROLLBACK e o pedido não é salvo. O lock também
+    // serializa o MAX(numero)+1 (sem número duplicado).
+    let pedido, novoCardapio;
+    const clientTx = await db.pool.connect();
+    try {
+      await clientTx.query("BEGIN");
+      novoCardapio = await store.baixarEstoqueTx(clientTx, dir, b.itens);
+      pedido = await pedidos.salvarPedido(dir, {
+        cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
+        taxaEntrega, itens: recalc.itens, total, observacao,
+      }, clientTx);
+      await clientTx.query("COMMIT");
+    } catch (e) {
+      await clientTx.query("ROLLBACK").catch(() => {});
+      if (e.code === "ESTOQUE") return res.status(409).json({ erro: e.message });
+      throw e;
+    } finally {
+      clientTx.release();
+    }
+    store.sincronizarCardapio(dir, novoCardapio); // cache reflete o estoque baixado
 
     confirmarPedidoWeb(emp.slug, dir, pedido).catch((e) => console.error("confirmar pedido web:", e.message));
-
-    // Baixa de estoque (best-effort: relê o cardápio fresco, desconta e persiste).
-    try {
-      await store.setCardapio(dir, estoque.aplicarBaixa(store.getCardapio(dir), b.itens));
-    } catch (e) { console.error("baixa de estoque:", e.message); }
 
     // Cadastro do cliente + endereço (best-effort: o pedido já foi salvo acima).
     const enderecoCampos = tipoEntrega === "Entrega" ? sanitizarEnderecoCampos(b.enderecoCampos) : null;
@@ -1560,11 +1573,8 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       observacao: String(b.observacao || "").slice(0, 200),
       tipoEntrega, endereco, telefone, taxaEntrega,
     });
-
-    // Baixa de estoque após o commit (best-effort, padrão do cardápio web).
-    try {
-      await store.setCardapio(req.tenantDir, estoque.aplicarBaixa(store.getCardapio(req.tenantDir), itens));
-    } catch (e) { console.error("PDV baixa estoque:", e.message); }
+    // A baixa de estoque é ATÔMICA dentro de caixa.venderLocal (mesma transação da
+    // venda) — sem best-effort fora de transação (evita lost-update/oversell).
 
     res.json({ ok: true, pedido });
   } catch (e) {

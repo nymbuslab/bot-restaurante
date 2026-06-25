@@ -129,6 +129,10 @@ async function venderLocal(dir, venda) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    // Baixa de estoque ATÔMICA primeiro: trava o tenant (FOR UPDATE), revalida e
+    // decrementa. Se faltar estoque (corrida), lança e a venda inteira é desfeita —
+    // nada é cobrado. O lock também serializa o MAX(numero)+1 abaixo.
+    const novoCardapio = await store.baixarEstoqueTx(client, dir, itens);
     const ped = await client.query(
       `INSERT INTO pedidos
          (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, recebido_em)
@@ -147,6 +151,7 @@ async function venderLocal(dir, venda) {
       );
     }
     await client.query("COMMIT");
+    store.sincronizarCardapio(dir, novoCardapio); // cache reflete o estoque baixado
     return {
       id: row.id, numero: row.numero, status: "novo",
       cliente, telefone, tipoEntrega, endereco,

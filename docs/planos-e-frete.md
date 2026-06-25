@@ -304,7 +304,9 @@ aceita do cliente **apenas** 0 (cortesia) ou o valor calculado (`pdv.freteEfetiv
 Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
 fonte de verdade — nunca confia no preço do cliente), resolve o frete e `caixa.venderLocal` grava numa
 transação o **pedido** (tipo Balcão/Entrega/Retirada, `endereco`/`telefone`/`taxa_entrega`, já
-`recebido_em`) + **1 movimento de recebimento por forma** no caixa, depois dá **baixa de estoque**. A
+`recebido_em`) + **1 movimento de recebimento por forma** no caixa + **baixa de estoque ATÔMICA**
+(`store.baixarEstoqueTx`: `FOR UPDATE` no tenant + revalida + decrementa; falta de estoque desfaz a
+venda) — tudo num só commit. A
 venda aparece em **Pedidos** (selo do tipo/Recebido) e no **Caixa** (Vendas por forma). A confirmação
 é **silenciosa** — o pedido fica na aba **Pedidos** para conferência e **reimpressão** (botão
 "Imprimir comanda"; a comanda já imprime tipo + endereço + taxa); o PDV **não** abre modal de

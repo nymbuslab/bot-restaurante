@@ -44,9 +44,13 @@ function mapRow(r) {
   };
 }
 
-async function salvarPedido(dir, pedido) {
+// `client` opcional: quando passado, o INSERT roda DENTRO da transação do chamador
+// (usado pelo cardápio web p/ casar a gravação do pedido com a baixa atômica de
+// estoque). Sem `client`, usa o pool (autocommit).
+async function salvarPedido(dir, pedido, client) {
   const empId = await empresaId(dir);
-  const r = await db.query(
+  const exec = client ? (sql, p) => client.query(sql, p) : (sql, p) => db.query(sql, p);
+  const r = await exec(
     `INSERT INTO pedidos
        (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao)
      VALUES

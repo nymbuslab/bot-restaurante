@@ -92,9 +92,10 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
 - `POST /api/pdv/vender` (`exigeAuth` + `exigePdv`): registra uma **venda de balcão**. Fluxo
   atômico — **recalcula** a venda pelo cardápio (`src/pdv.js`: `recalcularVenda` com kg+opcionais),
   aplica desconto (`aplicarDesconto`), valida o split (`validarPagamentos`) e chama
-  `caixa.venderLocal` (transação: insere `pedidos` tipo `Balcão` já `recebido_em` + **1
-  `caixa_movimentos` por forma** de pagamento). Depois dá **baixa de estoque** (`estoque.aplicarBaixa`,
-  best-effort, igual ao web). Exige **caixa aberto** (senão erro). Devolve o pedido (p/ impressão).
+  `caixa.venderLocal` (transação: **baixa de estoque ATÔMICA** `store.baixarEstoqueTx` — trava o
+  tenant com `FOR UPDATE`, revalida e decrementa; falta de estoque desfaz a venda — + insere `pedidos`
+  já `recebido_em` + **1 `caixa_movimentos` por forma** de pagamento, tudo num só commit). Exige
+  **caixa aberto e não vencido** (senão erro). Devolve o pedido (p/ impressão).
 - Helpers PUROS em `src/pdv.js` (testados em `test/pdv.test.js`); tela em `public/app.js`
   (`carregarPdv`/`renderPdv*`), aba **PDV** no painel. Gate `temPdv` (front + back).
 
