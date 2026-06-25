@@ -426,7 +426,7 @@
     $("cdModal").hidden = false;
   }
 
-  function cssEsc(s) { return String(s).replace(/"/g, '\\"'); }
+  function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/"/g, '\\"'); }
   function onEscolhaGrupo(inp) {
     var grupo = inp.getAttribute("data-grupo");
     var max = parseInt(inp.getAttribute("data-max"), 10) || 0;

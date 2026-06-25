@@ -3590,7 +3590,8 @@ function abrirPdvItemModal(item, uid) {
   $("pdvItemCaixa").querySelectorAll(".pdv-grp input").forEach((inp) => inp.addEventListener("change", () => {
     if (inp.type === "checkbox") {
       const max = parseInt(inp.dataset.max, 10) || 0;
-      const marc = $("pdvItemCaixa").querySelectorAll('.pdv-grp input[data-grupo="' + inp.dataset.grupo.replace(/"/g, '\\"') + '"]:checked');
+      const escG = (window.CSS && CSS.escape) ? CSS.escape(inp.dataset.grupo) : inp.dataset.grupo.replace(/"/g, '\\"');
+      const marc = $("pdvItemCaixa").querySelectorAll('.pdv-grp input[data-grupo="' + escG + '"]:checked');
       if (max > 1 && marc.length > max) inp.checked = false;
     }
     pdvItemRecalc();
