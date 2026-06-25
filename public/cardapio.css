@@ -432,6 +432,28 @@ button.cd-hero { cursor: pointer; }
 .cd-campo textarea { resize: vertical; }
 .cd-modal-rodape { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
 .cd-modal-rodape .cd-btn { flex: 1; }
+.cd-op-nome { min-width: 0; overflow-wrap: anywhere; }
+
+/* Mobile: modal mais compacto + rodapé de ação fixo (o botão Adicionar/aviso
+   nunca fica escondido atrás do scroll; só o conteúdo do meio rola). */
+@media (max-width: 599px) {
+  .cd-modal-img { height: 130px; margin-bottom: 10px; }
+  .cd-grp { margin: 12px 0; }
+  .cd-grp-opt { padding: 6px 0; }
+  .cd-op { padding: 9px 10px; margin-bottom: 6px; }
+  .cd-modal-ops, .cd-campo { margin-top: 12px; }
+  .cd-modal-caixa { padding-bottom: 0; }
+  .cd-modal-rodape,
+  .cd-modal-local {
+    position: sticky;
+    bottom: 0;
+    margin: 16px -20px 0;
+    padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+  }
+  .cd-modal-local { border-radius: 0; }
+}
 
 /* ---- Checkout ---- */
 .cd-voltar { background: none; border: none; color: var(--text-secondary); font-size: 13px; padding: 0; margin-bottom: 12px; }
