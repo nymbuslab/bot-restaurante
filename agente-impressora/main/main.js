@@ -1,5 +1,4 @@
 const { app, BrowserWindow, Tray, Menu } = require("electron");
-const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const ipc = require("./ipc");
 const auth = require("./auth");
@@ -34,5 +33,12 @@ function criarTray() {
   } catch (_) { /* sem icone: ignora o tray */ }
 }
 
-app.whenReady().then(() => { criarJanela(); criarTray(); try { autoUpdater.checkForUpdatesAndNotify(); } catch (_) {} });
+// AUTO-UPDATE DESLIGADO de proposito ate o instalador ser ASSINADO (code signing).
+// Sem assinatura, o electron-updater nao consegue verificar a origem do .exe baixado do
+// feed `generic` — um feed comprometido/MITM instalaria um binario malicioso a cada boot
+// (RCE / supply-chain). Para religar com seguranca: assinar o instalador (win.certificateFile
+// + win.publisherName), travar a escrita em /downloads/ e setar verifyUpdateCodeSignature.
+// Ate la, a atualizacao e MANUAL (baixar o novo Setup .exe pelo painel). NAO chamar
+// autoUpdater.checkForUpdatesAndNotify() aqui.
+app.whenReady().then(() => { criarJanela(); criarTray(); });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
