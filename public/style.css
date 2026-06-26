@@ -4637,9 +4637,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
   transition: background .15s, color .15s, border-color .15s;
 }
 .pdv-cat svg { flex: none; }
-/* nome longo de categoria quebra dentro do rail (140px) em vez de estourar a largura.
-   white-space:normal anula o nowrap herdado do estilo global de button (senao nao quebra). */
-.pdv-cat span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+/* nome longo de categoria: corta com reticencias numa linha so (botoes ficam todos do
+   mesmo tamanho), em vez de quebrar/estourar. min-width:0 deixa o flex item encolher
+   pro text-overflow valer; o nowrap ja vem herdado do estilo global de button. */
+.pdv-cat span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pdv-cat:hover { color: var(--text-primary); border-color: var(--text-secondary); }
 .pdv-cat.ativo { background: var(--accent); border-color: transparent; color: #fff; }
 
@@ -4855,7 +4856,6 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .pdv-cats { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 8px; scrollbar-width: none; }
   .pdv-cats::-webkit-scrollbar { display: none; }
   .pdv-cat { width: auto; max-width: 70vw; flex: 0 0 auto; border-radius: 999px; padding: 8px 14px; }
-  .pdv-cat span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pdv-formas { grid-template-columns: 1fr; }
   .pdv-fab { bottom: 72px; z-index: 90; }
 }
