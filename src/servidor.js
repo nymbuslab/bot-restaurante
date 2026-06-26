@@ -586,7 +586,7 @@ app.post("/api/redefinir-senha", esqueciLimiter, async (req, res) => {
     if (!r.rows[0]) return res.status(400).json({ erro: "Link inválido ou expirado. Solicite um novo." });
     const user = await empresas.acharAuthUserPorEmail(r.rows[0].email);
     if (!user) return res.status(400).json({ erro: "Link inválido." });
-    const upd = await supabaseAdmin.auth.updateUserById(user.id, { password: String(novaSenha) });
+    const upd = await supabaseAdmin.auth.admin.updateUserById(user.id, { password: String(novaSenha) });
     if (upd.error) return res.status(400).json({ erro: "Não foi possível redefinir a senha." });
     await db.query("UPDATE password_resets SET usado = true WHERE token_hash = $1", [hashToken(token)]);
     res.json({ ok: true });
@@ -1012,7 +1012,7 @@ app.patch("/api/admin/conta", exigeSuperAdmin, async (req, res) => {
     }
     if (!Object.keys(updates).length) return res.status(400).json({ erro: "Nada para alterar." });
 
-    const upd = await supabaseAdmin.auth.updateUserById(req.adminUserId, updates);
+    const upd = await supabaseAdmin.auth.admin.updateUserById(req.adminUserId, updates);
     if (upd.error) return res.status(400).json({ erro: "Não foi possível atualizar a conta." });
     if (novoEmail) await plataforma.salvarMaster({ email: novoEmail }); // allowlist segue o e-mail
     const oQue = (updates.password && novoEmail) ? "Sua senha e e-mail" : updates.password ? "Sua senha" : "Seu e-mail de acesso";
