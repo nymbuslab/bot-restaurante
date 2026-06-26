@@ -1471,6 +1471,7 @@ button:disabled {
 .cfg-secao-cabeca svg { color: var(--accent-fg); flex-shrink: 0; }
 .cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; padding: 0; border: none; }
 .cfg-secao-sub { margin: -6px 0 14px; }
+.impressora-passos { margin: 12px 0 14px; padding-left: 20px; font-size: 14px; color: var(--text-primary); line-height: 1.7; }
 .cfg-vars {
   list-style: none;
   display: grid;
