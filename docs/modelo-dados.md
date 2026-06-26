@@ -35,7 +35,8 @@ segurança contra duplicata sob corrida, além do lock FOR UPDATE em runtime),
 status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
 taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
 avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa),
-desconto (numeric; abatido na venda — usado pelo PDV; web fica 0)
+desconto (numeric; abatido na venda — usado pelo PDV; web fica 0),
+impresso_em (timestamptz; null = ainda não impresso pelo agente de impressão desktop)
 ```
 `tipo_entrega` = `Entrega` | `Retirada` | **`Balcão`** (venda do PDV — nasce já
 `recebido_em`, sem telefone/endereço). No PDV o `total` é o líquido (subtotal − `desconto`).

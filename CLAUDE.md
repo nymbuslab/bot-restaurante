@@ -94,7 +94,7 @@ src/
   stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas, trocaPlano (upgrade/downgrade)
   planos.js           -> mapa PURO de planos (Essencial/Completo): PLANO_INFO + planoDoPrice (price→plano)
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
-  servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv)
+  servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso)
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
   wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
