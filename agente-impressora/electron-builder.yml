@@ -1,0 +1,20 @@
+appId: com.nymbus.impressora
+productName: Nymbus Impressora
+directories:
+  output: dist
+files:
+  - main/**/*
+  - renderer/**/*
+  - ../public/comanda.js
+  - ../public/serial-escpos.js
+  - package.json
+win:
+  target: nsis
+  artifactName: ${productName} Setup ${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+publish:
+  provider: generic
+  url: https://bot-restaurante.fly.dev/downloads/

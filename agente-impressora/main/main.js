@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Tray, Menu } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const ipc = require("./ipc");
 const auth = require("./auth");
@@ -33,5 +34,5 @@ function criarTray() {
   } catch (_) { /* sem icone: ignora o tray */ }
 }
 
-app.whenReady().then(() => { criarJanela(); criarTray(); });
+app.whenReady().then(() => { criarJanela(); criarTray(); try { autoUpdater.checkForUpdatesAndNotify(); } catch (_) {} });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
