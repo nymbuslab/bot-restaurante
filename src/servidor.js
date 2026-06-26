@@ -306,6 +306,25 @@ app.post("/api/agente/refresh", refreshLimiter, async (req, res) => {
   }
 });
 
+// Pedidos novos (cardápio web) que o agente ainda não imprimiu — alvo do polling.
+app.get("/api/agente/pendentes", exigeAuth, async (req, res) => {
+  try {
+    res.json(await pedidos.pendentes(req.tenantDir));
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao consultar pendentes." });
+  }
+});
+
+// O agente confirma que imprimiu (idempotente): não reimprime em reinício/2 agentes.
+app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, async (req, res) => {
+  try {
+    const marcado = await pedidos.marcarImpresso(req.tenantDir, req.params.numero);
+    res.json({ ok: true, marcado });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao marcar como impresso." });
+  }
+});
+
 // Logout: descarta o cookie de sessão (o access token só vivia na memória do front).
 app.post("/api/logout", (req, res) => {
   limparSessaoCookies(req, res);
