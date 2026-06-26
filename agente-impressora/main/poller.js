@@ -56,7 +56,7 @@ async function umCiclo(opts) {
 function agendar(opts, ms) {
   timer = setTimeout(async () => {
     if (!rodando) return;
-    const proximo = await umCiclo(opts);
+    const proximo = await umCiclo(opts).catch(() => calcBackoff(1));
     if (rodando) agendar(opts, proximo);
   }, ms);
 }
