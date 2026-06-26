@@ -459,3 +459,11 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Lista de Pedidos mais robusta:** se a tela de Pedidos falhar ao carregar (queda de conexão), agora aparece um aviso claro em vez de a tela ficar "muda".
 - **Acessibilidade no PDV:** os modais (item, pagamento, entrega, desconto) passaram a receber o **foco no primeiro campo** ao abrir e foram marcados como diálogo para leitores de tela.
 - **Robustez interna:** conexão com o banco com **SSL sempre ligado**, **número do pedido** com garantia de unicidade no banco (sem duplicata sob acesso simultâneo) e versão mínima do Node fixada no projeto.
+
+## [0.50.0] — Composição selecionável (monte seu prato)
+
+- **Cadastro de item:** a **Composição** agora tem **subgrupos com regras** — em cada subgrupo (ex.: "Proteína", "Guarnição") você marca se a escolha é **obrigatória** e define **quantas** opções o cliente pode escolher (mínimo e máximo). Os **Opcionais** (extras pagos) continuam como antes.
+- **No cardápio digital e no PDV:** o cliente (e o operador no balcão) **monta o prato** escolhendo dentro de cada subgrupo — escolha **única** (bolinha) quando o máximo é 1, ou **múltipla** (caixinha) quando é mais; só dá pra adicionar quando os subgrupos obrigatórios estão completos. As escolhas da composição **não alteram o preço**.
+- **Na comanda da cozinha:** as escolhas saem **agrupadas** por subgrupo (ex.: "Proteína: Frango").
+- **Item "Só no local":** no cardápio digital agora é **só para visualização** — o cliente abre e vê o item, mas não consegue pedir (é vendido só no balcão).
+- **Correções:** o cardápio digital não sai mais do ar quando faltava uma configuração de horário; o **modal do item no celular** ficou mais compacto, com o botão "Adicionar" sempre visível.
