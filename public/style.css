@@ -2973,7 +2973,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   margin-bottom: 8px;
 }
 /* display:inline-flex no proprio seletor `.comp-sg-regras label` (mesma especificidade
@@ -2992,7 +2992,17 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   white-space: nowrap;
 }
 .comp-sg-obrig-lbl { cursor: pointer; }
-.comp-sg-num input { width: 44px; flex: none; }
+/* number com setinhas nativas comia o espaco do digito num campo estreito — escondemos
+   as setas (cross-browser) e centralizamos; assim o valor cabe inteiro em telas menores. */
+.comp-sg-num input {
+  width: 52px;
+  flex: none;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.comp-sg-num input::-webkit-outer-spin-button,
+.comp-sg-num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .comp-sg-nome {
   flex: 1;
@@ -4621,12 +4631,15 @@ html.embed, html.embed body { background: var(--bg-primary); }
 /* Rail de categorias (coluna à esquerda, com ícones) */
 .pdv-cats { display: flex; flex-direction: column; gap: 6px; }
 .pdv-cat {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; text-align: left;
   padding: 11px 13px; border-radius: var(--radius); font-size: 13.5px; font-weight: 600;
   background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border);
   transition: background .15s, color .15s, border-color .15s;
 }
 .pdv-cat svg { flex: none; }
+/* nome longo de categoria quebra dentro do rail (140px) em vez de estourar a largura.
+   white-space:normal anula o nowrap herdado do estilo global de button (senao nao quebra). */
+.pdv-cat span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 .pdv-cat:hover { color: var(--text-primary); border-color: var(--text-secondary); }
 .pdv-cat.ativo { background: var(--accent); border-color: transparent; color: #fff; }
 
@@ -4841,7 +4854,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .pdv { grid-template-columns: 1fr; }
   .pdv-cats { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 8px; scrollbar-width: none; }
   .pdv-cats::-webkit-scrollbar { display: none; }
-  .pdv-cat { width: auto; flex: 0 0 auto; border-radius: 999px; padding: 8px 14px; }
+  .pdv-cat { width: auto; max-width: 70vw; flex: 0 0 auto; border-radius: 999px; padding: 8px 14px; }
+  .pdv-cat span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pdv-formas { grid-template-columns: 1fr; }
   .pdv-fab { bottom: 72px; z-index: 90; }
 }
