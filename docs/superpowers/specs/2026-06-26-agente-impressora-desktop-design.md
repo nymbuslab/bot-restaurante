@@ -163,6 +163,17 @@ Janela única rolável:
 - **Integração/manual:** instalar o `.exe`, logar, detectar, **teste de impressão real**
   (rede + serial/Daruma) e um pedido de ponta a ponta (cai no cardápio web → imprime sozinho).
 
+## Notas de comportamento (v1)
+
+- **`pendentes` usa `recebido_em IS NULL`** como proxy de "pedido online fresco". Efeito: se
+  o operador marcar um pedido do cardápio web como **recebido no caixa** *antes* do agente
+  imprimir, o pedido **sai dos pendentes e não é auto-impresso** (quem já está tratando no
+  caixa não precisa do print automático). Aceitável na v1; documentado aqui.
+- **`LIMIT 50` por ciclo de polling:** é a trava de segurança para a 1ª instalação não
+  imprimir um backlog enorme. Não há perda (ordena por `numero ASC`, drena os mais antigos
+  primeiro), mas um backlog grande sai 50-por-ciclo sem aviso. *Futuro:* o agente/backend pode
+  logar quando vier o teto (50) para dar visibilidade.
+
 ## Fora de escopo (YAGNI por ora)
 
 - **Bluetooth nativo** (BT pareado vira COM, coberto pelo modo Serial).
