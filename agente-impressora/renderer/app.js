@@ -1,0 +1,61 @@
+const $ = (id) => document.getElementById(id);
+function log(m) { const c = $("registros"); c.textContent += (c.textContent ? "\n" : "") + m; c.scrollTop = c.scrollHeight; }
+
+function aplicarConexao(v) {
+  $("campoRede").hidden = v !== "rede";
+  $("campoSerialUsb").hidden = v === "rede";
+  $("campoBaud").hidden = v !== "serial";
+}
+
+async function carregar() {
+  const st = await window.api.authStatus();
+  if (st.logado) { mostrarApp(st); } else { $("telaLogin").hidden = false; $("telaApp").hidden = true; }
+}
+
+function mostrarApp(st) {
+  $("telaLogin").hidden = true; $("telaApp").hidden = false;
+  $("nomeRest").textContent = st.nome || "Restaurante";
+  $("emailRest").textContent = st.email || "";
+  window.api.carregarConfig().then((cfg) => {
+    $("conexao").value = cfg.conexao; aplicarConexao(cfg.conexao);
+    $("alvoRede").value = cfg.conexao === "rede" ? cfg.alvo : "";
+    $("baud").value = cfg.baud; $("corte").value = cfg.corte; $("semAcento").checked = cfg.semAcento;
+    $("viaCozinha").checked = cfg.vias.cozinha; $("viaCupom").checked = cfg.vias.cupom; $("copias").value = cfg.copias;
+  });
+}
+
+function montarCfgDaUI() {
+  const conexao = $("conexao").value;
+  const alvo = conexao === "rede" ? $("alvoRede").value : ($("alvoLista").value || "");
+  return { conexao, alvo, baud: parseInt($("baud").value, 10) || 9600, corte: $("corte").value, semAcento: $("semAcento").checked,
+    vias: { cozinha: $("viaCozinha").checked, cupom: $("viaCupom").checked }, copias: parseInt($("copias").value, 10) || 1 };
+}
+
+$("btnLogin").addEventListener("click", async () => {
+  $("erroLogin").textContent = "";
+  try { const s = await window.api.login($("apiBase").value, $("email").value, $("senha").value); s.email = $("email").value; mostrarApp(s); }
+  catch (e) { $("erroLogin").textContent = e.message || "Falha no login."; }
+});
+$("btnSair").addEventListener("click", async () => { await window.api.sair(); location.reload(); });
+$("conexao").addEventListener("change", (e) => { aplicarConexao(e.target.value); });
+$("btnDetectar").addEventListener("click", async () => {
+  const lista = await window.api.listarImpressoras($("conexao").value);
+  const sel = $("alvoLista"); sel.innerHTML = "";
+  lista.forEach((p) => { const o = document.createElement("option"); o.value = p.path; o.textContent = p.path + (p.fabricante ? " (" + p.fabricante + ")" : ""); sel.appendChild(o); });
+  log(lista.length ? ("Encontradas " + lista.length + " impressora(s).") : "Nenhuma impressora encontrada.");
+});
+$("btnSalvar").addEventListener("click", async () => { await window.api.salvarConfig(montarCfgDaUI()); log("Configuração salva."); });
+$("btnTeste").addEventListener("click", async () => {
+  await window.api.salvarConfig(montarCfgDaUI());
+  try { await window.api.testeImpressao(); log("Teste enviado à impressora."); } catch (e) { log("Falha no teste: " + e.message); }
+});
+
+window.api.onLog(log);
+window.api.onStatus((s) => {
+  const f = $("faixaStatus");
+  if (s.tipo === "ok") { f.textContent = "IMPRESSORA ATIVA — aguardando pedidos"; f.className = "faixa ok"; }
+  else if (s.tipo === "sem-conexao") { f.textContent = "Sem conexão com o servidor"; f.className = "faixa aviso"; }
+  else { f.textContent = "Erro " + (s.http || ""); f.className = "faixa erro"; }
+});
+
+carregar();

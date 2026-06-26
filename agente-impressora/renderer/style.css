@@ -1,0 +1,18 @@
+:root { --bg:#0f1115; --card:#171a21; --bd:#262b36; --tx:#e7e9ee; --mut:#9aa3b2; --ac:#6d5efc; --ok:#1f9d55; --av:#b7791f; --er:#c5303a; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--tx); font-family:Segoe UI, system-ui, sans-serif; font-size:14px; }
+.topo { padding:16px; } .topo h1 { margin:0; font-size:18px; } .topo p { margin:2px 0 0; color:var(--mut); font-size:12px; }
+.card { background:var(--card); border:1px solid var(--bd); border-radius:12px; margin:12px; padding:14px; }
+h2 { margin:0 0 10px; font-size:14px; }
+label { display:block; margin:10px 0 4px; color:var(--mut); font-size:12px; }
+label.check { display:flex; align-items:center; gap:8px; color:var(--tx); }
+input, select { width:100%; padding:9px; background:#0f131a; border:1px solid var(--bd); border-radius:8px; color:var(--tx); }
+input[type=checkbox] { width:auto; }
+button { padding:10px 14px; border-radius:8px; border:1px solid transparent; font-weight:600; cursor:pointer; }
+.primario { background:var(--ac); color:#fff; } .secundario { background:#222734; color:var(--tx); border-color:var(--bd); }
+.botoes { display:flex; gap:8px; margin-top:12px; } .botoes button { flex:1; }
+.restaurante { display:flex; justify-content:space-between; align-items:center; } .restaurante span { display:block; color:var(--mut); font-size:12px; }
+.faixa { margin:12px; padding:10px 14px; border-radius:8px; font-weight:600; background:#222734; }
+.faixa.ok { background:rgba(31,157,85,.15); color:#7ee2a8; } .faixa.aviso { background:rgba(183,121,31,.15); color:#f0c674; } .faixa.erro { background:rgba(197,48,58,.15); color:#f1a0a6; }
+.console { background:#0b0e13; border:1px solid var(--bd); border-radius:8px; padding:10px; height:140px; overflow:auto; font-family:Consolas, monospace; font-size:12px; color:#bcd; white-space:pre-wrap; }
+.erro { color:#f1a0a6; font-size:12px; } fieldset { border:1px solid var(--bd); border-radius:8px; margin:10px 0 0; }
