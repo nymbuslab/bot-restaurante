@@ -282,6 +282,30 @@ app.post("/api/refresh", refreshLimiter, async (req, res) => {
   }
 });
 
+// ---- Agente de impressão desktop ----
+// Diferente do painel (que guarda o refresh em cookie httpOnly), o agente é um app
+// Electron e guarda o refresh no cofre do SO → devolvemos o refresh NO CORPO.
+app.post("/api/agente/login", loginLimiter, async (req, res) => {
+  try {
+    const { email, senha } = req.body || {};
+    const r = await empresas.autenticar(email, senha);
+    if (!r) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+    res.json({ token: r.token, refresh: r.refreshToken, slug: r.slug, nome: r.nome });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao entrar. Tente de novo." });
+  }
+});
+
+app.post("/api/agente/refresh", refreshLimiter, async (req, res) => {
+  try {
+    const r = await empresas.renovarSessao((req.body || {}).refresh);
+    if (!r) return res.status(401).json({ erro: "Sessão expirada. Entre novamente." });
+    res.json({ token: r.token, refresh: r.refreshToken, slug: r.slug, nome: r.nome });
+  } catch (e) {
+    res.status(401).json({ erro: "Sessão expirada. Entre novamente." });
+  }
+});
+
 // Logout: descarta o cookie de sessão (o access token só vivia na memória do front).
 app.post("/api/logout", (req, res) => {
   limparSessaoCookies(req, res);
