@@ -41,6 +41,7 @@ function mapRow(r) {
     criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
     avisadoEm: r.avisado_em ? new Date(r.avisado_em).toISOString() : null,
     recebidoEm: r.recebido_em ? new Date(r.recebido_em).toISOString() : null,
+    impressoEm: r.impresso_em ? new Date(r.impresso_em).toISOString() : null,
   };
 }
 
@@ -120,6 +121,34 @@ async function avisarPedido(dir, id) {
   return r.rows[0] ? new Date(r.rows[0].avisado_em).toISOString() : null;
 }
 
+// Pedidos do cardápio web ainda não impressos pelo agente desktop: não impressos
+// (impresso_em nulo) E ainda não recebidos (recebido_em nulo → exclui PDV/balcão,
+// que nasce recebido). Ordena por numero (imprime na ordem que caíram).
+async function pendentes(dir) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `SELECT * FROM pedidos
+      WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL
+      ORDER BY numero ASC
+      LIMIT 50`,
+    [empId]
+  );
+  return r.rows.map(mapRow);
+}
+
+// Marca o pedido como impresso (idempotente): só atualiza se ainda estava nulo.
+// Retorna true se marcou agora, false se já estava impresso/não existe.
+async function marcarImpresso(dir, numero) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `UPDATE pedidos SET impresso_em = now()
+      WHERE empresa_id = $1 AND numero = $2 AND impresso_em IS NULL
+      RETURNING numero`,
+    [empId, parseInt(numero, 10) || 0]
+  );
+  return r.rowCount > 0;
+}
+
 // Conta pedidos do tenant criados a partir de `inicioISO` (UTC).
 async function contarNoMes(dir, inicioISO) {
   const empId = await empresaId(dir);
@@ -184,4 +213,4 @@ async function contarVendasDoItem(dir, itemId) {
   return r.rows[0] ? r.rows[0].n : 0;
 }
 
-module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem };
+module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem };

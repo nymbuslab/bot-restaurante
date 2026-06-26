@@ -282,6 +282,49 @@ app.post("/api/refresh", refreshLimiter, async (req, res) => {
   }
 });
 
+// ---- Agente de impressão desktop ----
+// Diferente do painel (que guarda o refresh em cookie httpOnly), o agente é um app
+// Electron e guarda o refresh no cofre do SO → devolvemos o refresh NO CORPO.
+app.post("/api/agente/login", loginLimiter, async (req, res) => {
+  try {
+    const { email, senha } = req.body || {};
+    const r = await empresas.autenticar(email, senha);
+    if (!r) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+    res.json({ token: r.token, refresh: r.refreshToken, slug: r.slug, nome: r.nome });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao entrar. Tente de novo." });
+  }
+});
+
+app.post("/api/agente/refresh", refreshLimiter, async (req, res) => {
+  try {
+    const r = await empresas.renovarSessao((req.body || {}).refresh);
+    if (!r) return res.status(401).json({ erro: "Sessão expirada. Entre novamente." });
+    res.json({ token: r.token, refresh: r.refreshToken, slug: r.slug, nome: r.nome });
+  } catch (e) {
+    res.status(401).json({ erro: "Sessão expirada. Entre novamente." });
+  }
+});
+
+// Pedidos novos (cardápio web) que o agente ainda não imprimiu — alvo do polling.
+app.get("/api/agente/pendentes", exigeAuth, async (req, res) => {
+  try {
+    res.json(await pedidos.pendentes(req.tenantDir));
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao consultar pendentes." });
+  }
+});
+
+// O agente confirma que imprimiu (idempotente): não reimprime em reinício/2 agentes.
+app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, async (req, res) => {
+  try {
+    const marcado = await pedidos.marcarImpresso(req.tenantDir, req.params.numero);
+    res.json({ ok: true, marcado });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao marcar como impresso." });
+  }
+});
+
 // Logout: descarta o cookie de sessão (o access token só vivia na memória do front).
 app.post("/api/logout", (req, res) => {
   limparSessaoCookies(req, res);

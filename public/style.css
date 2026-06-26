@@ -1471,6 +1471,17 @@ button:disabled {
 .cfg-secao-cabeca svg { color: var(--accent-fg); flex-shrink: 0; }
 .cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; padding: 0; border: none; }
 .cfg-secao-sub { margin: -6px 0 14px; }
+.impressora-passos { margin: 12px 0 14px; padding-left: 20px; font-size: 14px; color: var(--text-primary); line-height: 1.7; }
+/* Link "Baixar" da seção do app: o visual primário vem do seletor `button {}`,
+   que não pega <a> — então replico aqui. [aria-disabled] = estado "em breve"
+   (sem clique → também evita o "pulo" do href="#"). */
+#impressora-app .primario {
+  display: inline-block; font-size: 13px; font-weight: 600; padding: 9px 16px;
+  background: var(--accent); color: #fff; border: 1px solid transparent;
+  border-radius: var(--radius-sm); text-decoration: none; transition: background 0.15s;
+}
+#impressora-app .primario:hover { background: var(--accent-hover); }
+#impressora-app .primario[aria-disabled="true"] { opacity: 0.5; pointer-events: none; cursor: default; }
 .cfg-vars {
   list-style: none;
   display: grid;
