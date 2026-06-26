@@ -7,30 +7,28 @@ const cardapio = {
     {
       nome: "Espetos",
       itens: [
-        { id: "a1", nome: "Espeto de carne", preco: 8, unidade: "un", grupos: [{ nome: "Adicionais", min: 0, max: 2, opcoes: [{ nome: "Bacon", preco: 3.5 }, { nome: "Queijo", preco: 2 }] }] },
+        { id: "a1", nome: "Espeto de carne", preco: 8, unidade: "un", opcionais: "Bacon | 3.50\nQueijo | 2" },
         { id: "a2", nome: "Picanha (kg)", preco: 80, unidade: "kg", apenasLocal: true },
         { id: "a3", nome: "Indisponível", preco: 5, unidade: "un", disponivel: false },
         { id: "a4", nome: "Arquivado", preco: 5, unidade: "un", arquivado: true },
+        { id: "m1", nome: "Marmitex", preco: 18, unidade: "un", opcionais: "Bacon | 3.50", composicao: [
+          { nome: "Proteínas", obrigatorio: true, min: 1, max: 1, itens: ["Frango", "Carne"] },
+        ] },
       ],
     },
   ],
 };
 
-test("recalcularVenda: item un + opção do grupo, preço pelo cardápio (ignora preço do cliente)", () => {
+test("recalcularVenda: item un + opcionais, preço pelo cardápio (ignora preço do cliente)", () => {
   const r = recalcularVenda(cardapio, [
-    { id: "a1", qtd: 2, preco: 999, opcionais: [{ grupo: "Adicionais", nome: "Bacon" }] },
+    { id: "a1", qtd: 2, preco: 999, opcionais: [{ nome: "Bacon", qtd: 1 }, { nome: "Fantasma", qtd: 5 }] },
   ]);
   assert.equal(r.itens.length, 1);
   assert.equal(r.itens[0].preco, 8);
   assert.equal(r.itens[0].unidade, "un");
-  assert.equal(r.itens[0].opcionais.length, 1);
-  assert.deepEqual(r.itens[0].opcionais[0], { nome: "Bacon", preco: 3.5, qtd: 1, grupo: "Adicionais" });
+  assert.equal(r.itens[0].opcionais.length, 1); // opcional desconhecido descartado
   // (8 + 3.50) * 2 = 23
   assert.equal(r.subtotal, 23);
-});
-
-test("recalcularVenda: opção desconhecida no grupo → lança", () => {
-  assert.throws(() => recalcularVenda(cardapio, [{ id: "a1", qtd: 1, opcionais: [{ grupo: "Adicionais", nome: "Fantasma" }] }]), /inválida/i);
 });
 
 test("recalcularVenda: item por kg usa peso decimal (preço por kg)", () => {
@@ -88,4 +86,16 @@ test("totalComFrete: soma o frete ao total (>= 0)", () => {
   assert.equal(totalComFrete(50, 8), 58);
   assert.equal(totalComFrete(50, 0), 50);
   assert.equal(totalComFrete(50, -3), 50);  // frete negativo é ignorado
+});
+
+test("recalcularVenda: composição válida vai no item, não soma preço", () => {
+  const r = recalcularVenda(cardapio, [
+    { id: "m1", qtd: 1, composicao: [{ grupo: "Proteínas", itens: ["Frango"] }] },
+  ]);
+  assert.equal(r.subtotal, 18);
+  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Proteínas", itens: ["Frango"] }]);
+});
+
+test("recalcularVenda: composição obrigatória ausente lança erro", () => {
+  assert.throws(() => recalcularVenda(cardapio, [{ id: "m1", qtd: 1 }]), /Proteínas/);
 });

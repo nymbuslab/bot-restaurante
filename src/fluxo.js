@@ -68,7 +68,7 @@ function janela(h) {
 
 function estaAberto(tenantDir) {
   const config = store.getConfig(tenantDir);
-  if (!config.atendimento.aberto) return false;
+  if (config.atendimento && config.atendimento.aberto === false) return false;
   const horarios = config.horarios;
   if (!horarios) return true;
   const { dia, min } = agoraBR();

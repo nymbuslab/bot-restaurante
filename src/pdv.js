@@ -6,7 +6,8 @@
 // A orquestração (transação caixa/pedido) vive em src/caixa.js (venderLocal).
 // ============================================================
 
-const cardapioWeb = require("./cardapio-web"); // resolverOpcoesGrupos
+const cardapioWeb = require("./cardapio-web"); // parseOpcionais
+const grupos = require("../public/grupos"); // validação da composição
 
 const cent = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const mil = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
@@ -42,13 +43,24 @@ function recalcularVenda(cardapio, itensPayload) {
     } else {
       qtd = Math.max(1, Math.min(99, parseInt(p && p.qtd, 10) || 1));
     }
-    const opcionais = cardapioWeb.resolverOpcoesGrupos(base, (p && p.opcionais) || []);
+    const opsMap = {};
+    cardapioWeb.parseOpcionais(base.opcionais).forEach((o) => { opsMap[o.nome] = o.preco; });
+    const opcionais = [];
+    ((p && p.opcionais) || []).forEach((o) => {
+      const nome = o && o.nome;
+      if (nome == null || !(nome in opsMap)) return; // ignora opcional desconhecido
+      const oq = Math.max(1, Math.min(20, parseInt(o.qtd, 10) || 1));
+      opcionais.push({ nome, preco: opsMap[nome], qtd: oq });
+    });
+    const aval = grupos.avaliarComposicao(base, p && p.composicao);
+    if (!aval.valido) throw new Error(aval.pendencias[0] || ("Composição inválida em " + base.nome + "."));
     const precoBase = Number(base.preco) || 0;
     const addUnit = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
-    subtotal += (precoBase + addUnit) * qtd;
+    subtotal += (precoBase + addUnit) * qtd; // composição é grátis
     itens.push({
       id: base.id, nome: base.nome, preco: precoBase, qtd,
       unidade: ehKg ? "kg" : "un",
+      composicao: aval.selecoes,
       opcionais, observacao: String((p && p.observacao) || "").slice(0, 200),
     });
   });

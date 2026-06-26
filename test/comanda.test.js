@@ -17,7 +17,7 @@ const pedidoBase = {
   observacao: "entrega rápida",
   itens: [
     { nome: "Burger X", preco: 25, qtd: 2,
-      opcionais: [{ grupo: "Adicionais", nome: "Bacon", preco: 3, qtd: 1 }, { grupo: "Adicionais", nome: "Queijo Extra", preco: 2.5, qtd: 2 }],
+      opcionais: [{ nome: "Bacon", preco: 3, qtd: 1 }, { nome: "Queijo Extra", preco: 2.5, qtd: 2 }],
       observacao: "sem cebola" },
     { nome: "Refrigerante", preco: 5, qtd: 1, opcionais: [], observacao: "" },
   ],
@@ -31,7 +31,6 @@ test("via cozinha: tem cabeçalho, número, itens e observações — SEM preço
   assert.match(cozinha, /2x Burger X/);
   assert.match(cozinha, /Bacon/);
   assert.match(cozinha, /2x Queijo Extra/);
-  assert.match(cozinha, /Adicionais: Bacon, 2x Queijo Extra/); // escolhas agrupadas por grupo
   assert.match(cozinha, /sem cebola/);
   assert.match(cozinha, /entrega rápida/);
   assert.equal(/R\$/.test(cozinha), false, "via cozinha não deve ter preços");
@@ -116,4 +115,17 @@ test("pedido sem itens: não gera dois separadores colados (mostra '(sem itens)'
   const { cozinha, cupom } = montarComanda(ped, config);
   assert.match(cozinha, /\(sem itens\)/);
   assert.match(cupom, /\(sem itens\)/);
+});
+
+test("montarCozinha: imprime as escolhas da composição agrupadas", () => {
+  const pedido = { numero: 1, criadoEm: "2026-06-25T12:00:00Z", tipoEntrega: "Retirada", itens: [
+    { nome: "Marmitex", qtd: 1, composicao: [
+      { grupo: "Proteínas", itens: ["Frango"] },
+      { grupo: "Principais", itens: ["Arroz", "Feijão"] },
+    ], opcionais: [{ nome: "Bacon", qtd: 1 }] },
+  ] };
+  const { cozinha } = montarComanda(pedido, { restaurante: { nome: "X" } });
+  assert.match(cozinha, /Proteínas: Frango/);
+  assert.match(cozinha, /Principais: Arroz, Feijão/);
+  assert.match(cozinha, /\+ Bacon/); // opcional segue como hoje
 });
