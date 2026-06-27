@@ -470,4 +470,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 ## [0.51.0] — Nomes do cardápio padronizados
 
-- **Cadastro de itens:** ao digitar o nome de um **produto, categoria ou opcional**, ele é ajustado automaticamente para um padrão consistente ao sair do campo (ex.: "pastel de queijo" → "Pastel de Queijo", "PASTEL DE CARNE" → "Pastel de Carne"). Conectivos como "de"/"com" ficam minúsculos e medidas/marcas são preservadas (ex.: "Coca-Cola 1,5L"). Você ainda pode reescrever o nome do seu jeito.
+- **Cadastro de itens:** o nome de um **produto, categoria ou opcional** é ajustado automaticamente para um padrão consistente — tanto **ao digitar** (ao sair do campo) quanto **ao salvar o cardápio** (ex.: "pastel de queijo" → "Pastel de Queijo", "PASTEL DE CARNE" → "Pastel de Carne"). Conectivos como "de"/"com" ficam minúsculos e medidas/marcas são preservadas (ex.: "Coca-Cola 1,5L"), então os nomes ficam sempre alinhados.
+
+## [0.52.0] — Cardápio: barra de categorias rolável no celular
+
+- **Cardápio digital (celular):** ao tocar numa categoria, a barra de categorias **rola sozinha** para mostrar a categoria escolhida (para a direita ou para a esquerda), em vez de ficar presa no início e esconder a seleção. Você também pode arrastar a barra livremente.
