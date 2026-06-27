@@ -142,7 +142,7 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
 - [ ] **KDS / tela de cozinha** (M) — depende do status; polling no início, pub-sub ao escalar.
-- [ ] **Estoque simples** (M) — quantidade + baixa no pedido + alerta (item é jsonb, sem migração pesada).
+- [x] **Estoque simples** — ✅ **entregue**: campos estoque/estoque mínimo no item (jsonb, sem migração pesada), **baixa atômica no pedido** (cardápio web + PDV via `store.baixarEstoqueTx` com `FOR UPDATE`) e selos **Esgotado/Baixo**. Estendido com **estoque por VARIAÇÃO** (opções com estoque próprio — ver `CHANGELOG.md` 0.53.0). Ver também a etapa "estoque ativo (3a)" no `CHANGELOG.md`.
 - [x] **Caixa / fechamento** — ✅ **entregue** (Plano Completo): abrir caixa com fundo de troco,
   **recebimento por pedido** (estornável), sangria/suprimento, e **fechamento com conferência de
   dinheiro físico** (esperado em espécie × contado → diferença). Tabelas `caixas`/`caixa_movimentos`
@@ -151,7 +151,7 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 ### Fase 2 — Venda presencial e dinheiro
 
-- [ ] **PDV de balcão / comanda / mesa** (G) — lançar pedido manual no painel; reusa o modelo de pedido.
+- [x] **PDV de balcão** — ✅ **entregue** (Plano Completo): aba **PDV** com grade de produtos + carrinho (opcionais/composição/**variações**/kg), tela de pagamento (desconto R$/%, **split**, troco); a venda vira **pedido recebido** + **baixa de estoque** + movimento no caixa, recalculada no servidor. Ver `CHANGELOG.md` 0.49.0 e [docs/planos-e-frete.md](docs/planos-e-frete.md). **Mesa/comanda** (controle de mesa) segue **fora de escopo** — fica no sistema próprio do restaurante.
 - [ ] **Pagamento real do cliente (Pix/cartão)** (M/G) — gateway novo (não confundir com o Stripe da assinatura).
 
 ### Fase 3 — Os "duros" (esbarram na arquitetura / regulados)
@@ -165,7 +165,12 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   aberto — ver *"Agente local"* abaixo.
 - [ ] **Agente local (impressora + gaveta + TEF)** (G + decisão de arquitetura) — **adiado; implementar
   só sob demanda** (cliente pagante pedindo gaveta/cartão/impressão silenciosa). Levantado com colegas
-  de dev (2026-06-20). Diretrizes travadas para quando for a hora:
+  de dev (2026-06-20).
+  > **Nota (2026-06-27):** uma **v1 enxuta** já foi construída — app desktop **Electron** (`agente-impressora/`,
+  > Plano B): login + cofre do SO, polling de `/api/agente/pendentes`, impressão ESC/POS crua por **Rede
+  > (TCP 9100)** e **Serial (COM)** reusando `public/comanda.js`. **Sem** TEF/fiscal/gaveta/ACBr ainda.
+  > Mergeado na `main`; **pendente publicar o `.exe`** (botão "Baixar (em breve)" no painel). Ver `PROGRESSO.md`.
+  Diretrizes travadas para a versão completa (TEF/fiscal), quando for a hora:
   - **Engine: ACBr** (não reinventar) — `ACBrPosPrinter` (ESC/POS + corte + **gaveta**), `ACBrTEF`,
     `ACBrSAT`/`ACBrNFCe`. Via **ACBrMonitor** (executável controlado por socket/arquivo — sem escrever
     Delphi) ou **ACBrLib** (DLLs chamáveis, inclusive de Node via FFI). O valor do ACBr é **TEF + fiscal**;

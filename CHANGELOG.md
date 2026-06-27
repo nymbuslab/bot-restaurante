@@ -475,3 +475,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.52.0] — Cardápio: barra de categorias rolável no celular
 
 - **Cardápio digital (celular):** ao tocar numa categoria, a barra de categorias **rola sozinha** para mostrar a categoria escolhida (para a direita ou para a esquerda), em vez de ficar presa no início e esconder a seleção. Você também pode arrastar a barra livremente.
+
+## [0.53.0] — Cardápio: variações com preço e estoque ("a partir de")
+
+- **Cadastro de itens:** nova seção **Variações** — opções com **preço e estoque próprios** (ex.: "Refrigerantes 350ml" com vários sabores, cada um com seu preço e estoque). Com variações, o item pode não ter preço fixo.
+- **No cardápio digital e no PDV:** o item aparece como **"a partir de R$ X"**; ao abrir, escolhe-se **uma ou várias** opções com quantidade, e o preço **soma**. Opção sem estoque aparece **esgotada**.
+- **Estoque por opção:** cada variação **dá baixa no próprio estoque** ao vender (no cardápio digital e no PDV) — diferente dos opcionais, que não controlam estoque. A comanda lista as opções escolhidas.

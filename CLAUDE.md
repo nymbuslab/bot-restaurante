@@ -124,6 +124,7 @@ public/
   relatorio-caixa.js  -> PURO (dual-mode Node/browser): monta o relatório de fechamento de caixa 80mm — usado NO SERVIDOR por src/caixa.js — testado em test/relatorio-caixa.test.js
   comanda.js          -> PURO (dual-mode Node/browser): monta as 2 vias (cozinha sem preços / cupom com cabeçalho da marca + rodapé de marketing) — testado em test/comanda.test.js
   grupos.js           -> PURO (dual-mode Node/browser): composição selecionável — normaliza subgrupos + valida escolhas (obrigatório/mín/máx); usado por src/cardapio-web.js e src/pdv.js — testado em test/grupos.test.js
+  variacoes.js        -> PURO (dual-mode): variações do item — opções com preço E estoque próprios ("a partir de R$ X"); normaliza/valida (≥1) + precoAPartir + todasEsgotadas; estoque por opção (item.id::variacao.id) baixado por public/estoque.js; usado por src/cardapio-web.js e src/pdv.js — testado em test/variacoes.test.js
   serial-escpos.js    -> PURO (dual-mode): encoder ESC/POS (init+CP850+avanço+corte legado ESC m/ESC i p/ Daruma) — testado em test/serial-escpos.test.js
   serial.js           -> impressão via Web Serial (COM): conectar/lembrar a porta/escrever os bytes do encoder
   impressao.js        -> orquestra a impressão térmica (roteia serial quando configurado/suportado; senão window.print) — Plano Completo

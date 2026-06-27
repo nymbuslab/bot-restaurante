@@ -285,6 +285,9 @@ Clique em **Editar** (ou **+ Adicionar item**) para abrir o **editor**, onde voc
 - **Composição** — construtor visual: subgrupos (ex.: "Principal") com ingredientes em
   forma de chips (adicionar/remover sem digitar formato).
 - **Opcionais** — linhas com Nome + Preço (ex.: Bacon + R$ 3,50), adicionar/remover.
+- **Variações** — opções com **preço e estoque próprios** (ex.: "Refrigerantes 350ml" com vários
+  sabores). O cliente escolhe uma ou várias, o preço **soma** e o card mostra **"a partir de R$ X"**;
+  cada variação dá **baixa no próprio estoque**. Com variações, o preço base do item pode ser 0.
 - Botão **on/off** de disponibilidade por item: desative quando algo acaba no dia.
 
 > Internamente, composição e opcionais são salvos em texto (`Sub:\n* item` e `Nome | preço`)

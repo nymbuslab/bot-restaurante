@@ -208,7 +208,7 @@ térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x, **Daruma DR700/DR800** e sim
   empurrar o fim do cupom pra fora da guilhotina. Opção "Não cortar" também disponível.
 - **Disparo:** botão **Imprimir comanda** no modal de detalhe do pedido **e** no modal de novo
   pedido abre um **modal de pré-visualização** com as **2 vias** e os botões **Imprimir cozinha**
-  (itens/opcionais/observações, **sem preços**) e **Imprimir cupom** (cliente, endereço, pagamento,
+  (itens/opcionais/variações/observações, **sem preços**) e **Imprimir cupom** (cliente, endereço, pagamento,
   total). Cada via é **uma impressão própria** → corta no fim de cada.
 - **Cupom (marketing):** o cupom traz **cabeçalho** com nome/endereço/telefone da empresa (CEP e
   telefone na mesma linha; data `dd/mm/aaaa - HH:MM`) e **rodapé** com mensagem **personalizável**

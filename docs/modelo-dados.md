@@ -11,7 +11,11 @@
     { "nome": "Proteínas", "obrigatorio": true, "min": 1, "max": 1, "itens": ["Frango", "Carne"] }
   ],
   // opcionais permanece TEXTO `Nome | preço` (acréscimos pagos) — inalterado
-  "opcionais": "Ovo frito | 2.00\nBacon | 3.50" }
+  "opcionais": "Ovo frito | 2.00\nBacon | 3.50",
+  // variacoes = opções com PREÇO e ESTOQUE próprios (ex.: sabores de refrigerante)
+  "variacoes": [
+    { "id": "v_ab12", "nome": "Coca-Cola", "preco": 6.0, "estoque": 12, "estoqueMinimo": 2 }
+  ] }
 ```
 `composicao` é um **array de subgrupos** `[{ nome, obrigatorio, min, max, itens:[string] }]`
 que o cliente seleciona ao montar o pedido. Regras:
@@ -25,6 +29,17 @@ que o cliente seleciona ao montar o pedido. Regras:
 `opcionais` segue como **texto** `Nome | preço` (um por linha), parseado em runtime — são os
 acréscimos **pagos** (steppers) e é o que soma no preço da linha. **Sem migração de schema**: ambos
 moram no mesmo `cardapio` jsonb.
+
+`variacoes` (opcional) é um **array** `[{ id, nome, preco, estoque?, estoqueMinimo? }]` — opções com
+**preço e estoque próprios** (ex.: "Refrigerantes 350ml" com vários sabores). O cliente escolhe
+**várias com quantidade** (somam no preço; o card mostra **"a partir de R$ X"** = menor preço entre as
+disponíveis); item com variações pode ter **preço base 0** e exige **≥1 escolha**. Cada variação **dá
+baixa no próprio estoque** (chave `item.id::variacao.id`), atômica via `store.baixarEstoqueTx` (o
+`FOR UPDATE` no tenant já cobre, pois moram no mesmo jsonb). Helpers puros em `public/variacoes.js`
+(`normalizarVariacoes`/`precoAPartir`/`avaliarVariacoes`/`todasEsgotadas`) + baixa por opção em
+`public/estoque.js`; o **servidor valida/recalcula** (cardápio web + PDV). A projeção pública expõe
+`{ id, nome, preco, esgotado }` + `precoAPartir` (**não vaza a contagem**). Sem migração (mesmo jsonb).
+`estoque` vazio = ilimitado; `0` = esgotado; variação é sempre "un" (não suporta kg).
 
 **Tabela `pedidos`** (Postgres/Supabase, uma só, isolada por `empresa_id`):
 
@@ -75,10 +90,11 @@ só houver `config.atendimento.taxaEntrega`, vale como frete fixo (normalizado p
 **Linha do carrinho / pedido**:
 ```js
 { id, nome, preco, qtd, opcionais: [{nome, preco, qtd}],
-  composicao: [{ grupo, itens:[nome] }], observacao }
+  composicao: [{ grupo, itens:[nome] }], variacoes: [{id, nome, preco, qtd}], observacao }
 ```
-Preço da linha = `(preco + soma de (opcional.preco × opcional.qtd)) * qtd`. O opcional tem
-quantidade (ex.: 2 ovos) — escolhida no cardápio web. **A composição não entra no preço** (é grátis):
+Preço da linha = `(preco + Σ(opcional.preco × qtd) + Σ(variacao.preco × qtd)) * qtd`. O opcional e a
+variação têm quantidade (ex.: 2 ovos / 2 Cocas) — escolhidas no cardápio web/PDV. **A composição não
+entra no preço** (é grátis):
 `composicao` guarda apenas as escolhas do cliente por subgrupo (`{ grupo, itens:[nome] }`), validadas
 no servidor por `public/grupos.js` (`avaliarComposicao`). A comanda da cozinha lista essas escolhas
 agrupadas por subgrupo.
