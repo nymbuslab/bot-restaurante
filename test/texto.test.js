@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { tituloPt } = require("../public/texto");
+const { tituloPt, padronizarNomesCardapio } = require("../public/texto");
 
 test("tituloPt: capitaliza palavras e mantém conectivos minúsculos", () => {
   assert.equal(tituloPt("pastel de queijo"), "Pastel de Queijo");
@@ -42,4 +42,28 @@ test("tituloPt: vazio/nulo devolve string vazia", () => {
   assert.equal(tituloPt(""), "");
   assert.equal(tituloPt(null), "");
   assert.equal(tituloPt(undefined), "");
+});
+
+test("padronizarNomesCardapio: padroniza categoria, item e opcional preservando o resto", () => {
+  const entrada = {
+    categorias: [{
+      nome: "pratos executivos",
+      itens: [{ nome: "bife a cavalo", preco: 25, estoque: 10, opcionais: "bacon EXTRA | 3.00\novo | 2.00" }],
+    }],
+  };
+  const out = padronizarNomesCardapio(entrada);
+  assert.equal(out.categorias[0].nome, "Pratos Executivos");
+  assert.equal(out.categorias[0].itens[0].nome, "Bife a Cavalo");
+  assert.equal(out.categorias[0].itens[0].opcionais, "Bacon Extra | 3.00\nOvo | 2.00");
+  // preserva campos não-nome
+  assert.equal(out.categorias[0].itens[0].preco, 25);
+  assert.equal(out.categorias[0].itens[0].estoque, 10);
+  // não muta o original
+  assert.equal(entrada.categorias[0].nome, "pratos executivos");
+  assert.equal(entrada.categorias[0].itens[0].nome, "bife a cavalo");
+});
+
+test("padronizarNomesCardapio: entrada sem categorias volta intacta", () => {
+  assert.deepEqual(padronizarNomesCardapio({}), {});
+  assert.equal(padronizarNomesCardapio(null), null);
 });

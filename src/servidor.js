@@ -29,6 +29,7 @@ const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
+const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const pdv = require("./pdv");
 
 const app = express();
@@ -1384,7 +1385,9 @@ app.put("/api/cardapio", exigeAuth, async (req, res) => {
   const invalido = validarCardapio(req.body);
   if (invalido) return res.status(400).json({ erro: invalido });
   try {
-    await store.setCardapio(req.tenantDir, req.body);
+    // Padroniza os nomes (categoria/item/opcional) no servidor — toda salvada passa
+    // por aqui, então o cardápio fica consistente no banco (imune a cache/stale panel).
+    await store.setCardapio(req.tenantDir, texto.padronizarNomesCardapio(req.body));
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });

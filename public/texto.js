@@ -43,5 +43,40 @@
     }).join(" ");
   }
 
-  return { tituloPt: tituloPt };
+  // Padroniza a string de opcionais ("Nome | 3.00" por linha) mexendo SÓ no nome
+  // (preserva bullet, espaços e o "| preço").
+  function padronizarOpcionais(str) {
+    if (!str || typeof str !== "string") return str;
+    return str.split("\n").map(function (linha) {
+      if (!linha.trim()) return linha;
+      const idx = linha.indexOf("|");
+      const alvo = idx === -1 ? linha : linha.slice(0, idx);
+      const resto = idx === -1 ? "" : linha.slice(idx); // inclui o "|"
+      const m = alvo.match(/^(\s*(?:[*\-•]\s*)?)(.*?)(\s*)$/);
+      return m[1] + tituloPt(m[2]) + m[3] + resto;
+    }).join("\n");
+  }
+
+  // Recebe um cardápio e devolve um NOVO com os nomes (categoria, item e opcional)
+  // padronizados — não muta o original e preserva todos os outros campos.
+  function padronizarNomesCardapio(cardapio) {
+    if (!cardapio || !Array.isArray(cardapio.categorias)) return cardapio;
+    return Object.assign({}, cardapio, {
+      categorias: cardapio.categorias.map(function (cat) {
+        const c = Object.assign({}, cat);
+        if (typeof c.nome === "string") c.nome = tituloPt(c.nome);
+        if (Array.isArray(c.itens)) {
+          c.itens = c.itens.map(function (item) {
+            const it = Object.assign({}, item);
+            if (typeof it.nome === "string") it.nome = tituloPt(it.nome);
+            if (typeof it.opcionais === "string" && it.opcionais.trim()) it.opcionais = padronizarOpcionais(it.opcionais);
+            return it;
+          });
+        }
+        return c;
+      }),
+    });
+  }
+
+  return { tituloPt: tituloPt, padronizarOpcionais: padronizarOpcionais, padronizarNomesCardapio: padronizarNomesCardapio };
 });
