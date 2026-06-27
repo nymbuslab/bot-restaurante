@@ -28,6 +28,16 @@ test("tituloPt: medida com dígito no começo fica intacta", () => {
   assert.equal(tituloPt("suco 500ml"), "Suco 500ml");
 });
 
+test("tituloPt: preserva a unidade em maiúscula da medida (1,5L não vira 1,5l)", () => {
+  assert.equal(tituloPt("coca-cola 1,5L"), "Coca-Cola 1,5L");
+  assert.equal(tituloPt("fanta laranja 1,5L"), "Fanta Laranja 1,5L");
+});
+
+test("tituloPt: abreviações c/ e s/ (com/sem) ficam minúsculas", () => {
+  assert.equal(tituloPt("agua c/ gas"), "Agua c/ Gas");
+  assert.equal(tituloPt("agua s/gas"), "Agua s/gas");
+});
+
 test("tituloPt: vazio/nulo devolve string vazia", () => {
   assert.equal(tituloPt(""), "");
   assert.equal(tituloPt(null), "");

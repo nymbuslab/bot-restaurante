@@ -29,11 +29,15 @@
 
   // Title Case PT-BR: 1ª palavra sempre capitalizada; conectivos no
   // meio minúsculos; espaços repetidos colapsados; pontas aparadas.
+  // Preserva medidas/números ("1,5L", "350ml") e as abreviações "c/"
+  // e "s/" (com/sem) — não vira "1,5l" nem "C/".
   function tituloPt(str) {
     const limpo = String(str == null ? "" : str).trim().replace(/\s+/g, " ");
     if (!limpo) return "";
     return limpo.split(" ").map(function (palavra, i) {
+      if (/^[0-9]/.test(palavra)) return palavra; // medida/número: não mexe ("1,5L", "350ml")
       const lower = palavra.toLowerCase();
+      if (lower.indexOf("c/") === 0 || lower.indexOf("s/") === 0) return lower; // c/ s/ (com/sem)
       if (i > 0 && MINUSCULAS.has(lower)) return lower;
       return capitalizarToken(palavra);
     }).join(" ");
