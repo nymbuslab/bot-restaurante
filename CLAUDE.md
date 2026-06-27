@@ -120,6 +120,7 @@ public/
   app.js, app-admin.js, footer.js, style.css -> lógica dos painéis, footer e estilos
   endereco-cep.js     -> util: máscara/busca de CEP (ViaCEP) + composição de endereço
   dinheiro.js         -> util: máscara monetária (centavos primeiro) + formatação BR
+  texto.js            -> PURO (dual-mode Node/browser): padroniza nomes (Title Case PT-BR) — usado no editor do cardápio (blur) — testado em test/texto.test.js
   relatorio-caixa.js  -> PURO (dual-mode Node/browser): monta o relatório de fechamento de caixa 80mm — usado NO SERVIDOR por src/caixa.js — testado em test/relatorio-caixa.test.js
   comanda.js          -> PURO (dual-mode Node/browser): monta as 2 vias (cozinha sem preços / cupom com cabeçalho da marca + rodapé de marketing) — testado em test/comanda.test.js
   grupos.js           -> PURO (dual-mode Node/browser): composição selecionável — normaliza subgrupos + valida escolhas (obrigatório/mín/máx); usado por src/cardapio-web.js e src/pdv.js — testado em test/grupos.test.js
