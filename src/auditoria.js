@@ -4,6 +4,22 @@
 // exclusão sobrevive ao apagamento da conta. Não gravar PII no `detalhe`.
 const db = require("./db");
 
+// Retenção (LGPD Art. 15): apaga registros de auditoria com mais de `meses`
+// (24 por padrão). A trilha não tem PII, mas manter para sempre infla a tabela
+// sem necessidade — o valor é temporal (investigação recente). Global, idempotente.
+async function limparAntigos(meses = 24) {
+  try {
+    const r = await db.query(
+      "DELETE FROM auditoria WHERE criado_em < now() - make_interval(months => $1)",
+      [meses]
+    );
+    return r.rowCount;
+  } catch (e) {
+    console.error("auditoria.limparAntigos:", e.message);
+    return 0;
+  }
+}
+
 async function registrar(evento, slug, detalhe) {
   try {
     await db.query(
@@ -15,4 +31,4 @@ async function registrar(evento, slug, detalhe) {
   }
 }
 
-module.exports = { registrar };
+module.exports = { registrar, limparAntigos };

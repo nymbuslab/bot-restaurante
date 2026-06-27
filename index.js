@@ -18,6 +18,7 @@ const sessoes = require("./src/sessoes");
 const pedidos = require("./src/pedidos");
 const clientes = require("./src/clientes");
 const empresas = require("./src/empresas");
+const auditoria = require("./src/auditoria");
 const multiBot = require("./src/multi-bot");
 const PORTA = process.env.PORT || 3000;
 
@@ -64,6 +65,20 @@ async function removerClientesInativos() {
 }
 setTimeout(removerClientesInativos, 60_000);             // 60s após o boot
 setInterval(removerClientesInativos, 24 * 60 * 60 * 1000); // a cada 24h
+
+// Retenção (LGPD Art. 15): apaga registros da trilha de auditoria com mais de
+// 24 meses (já não têm valor para investigação). Global, idempotente.
+const MESES_RETENCAO_AUDITORIA = 24;
+async function limparAuditoria() {
+  try {
+    const n = await auditoria.limparAntigos(MESES_RETENCAO_AUDITORIA);
+    if (n > 0) console.log(`🔒 Retenção: ${n} registro(s) de auditoria > ${MESES_RETENCAO_AUDITORIA} meses apagado(s).`);
+  } catch (e) {
+    console.error("Retenção de auditoria falhou (ignorado):", e.message);
+  }
+}
+setTimeout(limparAuditoria, 75_000);              // 75s após o boot
+setInterval(limparAuditoria, 24 * 60 * 60 * 1000); // a cada 24h
 
 // Higiene de memória: varre as sessões de conversa (em memória) e descarta as
 // inativas há +30min. A expiração do sessoes.js é lazy (só limpa quando a mesma
