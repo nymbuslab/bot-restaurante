@@ -4,13 +4,21 @@ const net = require("net");
 function enviar(buffer, host, porta) {
   return new Promise((resolve, reject) => {
     const sock = new net.Socket();
-    let pronto = false;
+    // settle UMA vez: qualquer erro/timeout (mesmo APÓS o connect) rejeita; o 'close'
+    // depois do end() resolve. Sem isso, um reset/queda no meio do write deixava a
+    // Promise pendurada pra sempre e travava o loop do poller.
+    let settled = false;
+    const falhar = (err) => { if (settled) return; settled = true; sock.destroy(); reject(err); };
+    const ok = () => { if (settled) return; settled = true; resolve(); };
     sock.setTimeout(8000);
-    sock.on("timeout", () => { sock.destroy(); if (!pronto) reject(new Error("timeout conectando " + host + ":" + porta)); });
-    sock.on("error", (e) => { if (!pronto) reject(e); });
+    sock.on("timeout", () => falhar(new Error("timeout na impressora " + host + ":" + porta)));
+    sock.on("error", (e) => falhar(e));
+    sock.on("close", () => ok()); // resolve quando o socket fecha após o end()
     sock.connect(porta, host, () => {
-      pronto = true;
-      sock.write(Buffer.from(buffer), () => sock.end(() => resolve()));
+      sock.write(Buffer.from(buffer), (err) => {
+        if (err) return falhar(err);
+        sock.end(); // FIN após o flush → dispara 'close' → ok()
+      });
     });
   });
 }
