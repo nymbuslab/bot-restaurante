@@ -44,14 +44,19 @@ function caminho() {
   return path.join(app.getPath("userData"), "config.json");
 }
 
+let cache = null; // a config so muda via salvar() neste app -> seguro cachear (o poller le a cada 6s)
+
 function carregar() {
-  try { return normalizarConfig(JSON.parse(fs.readFileSync(caminho(), "utf8"))); }
-  catch (_) { return normalizarConfig({}); }
+  if (cache) return cache;
+  try { cache = normalizarConfig(JSON.parse(fs.readFileSync(caminho(), "utf8"))); }
+  catch (_) { cache = normalizarConfig({}); }
+  return cache;
 }
 
 function salvar(parcial) {
   const cfg = normalizarConfig(parcial);
   fs.writeFileSync(caminho(), JSON.stringify(cfg, null, 2));
+  cache = cfg; // mantem o cache em dia
   return cfg;
 }
 

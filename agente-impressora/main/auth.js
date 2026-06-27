@@ -4,18 +4,20 @@ const path = require("path");
 const api = require("./api");
 
 let sessao = { slug: "", nome: "" };
+let logadoCache = null; // null = ainda nao lido do disco; depois vira boolean (evita ler o disco a cada chamada)
 
 function arqRefresh() {
   const { app } = require("electron");
   return path.join(app.getPath("userData"), "refresh.bin");
 }
 function guardarRefresh(refresh) {
-  try { fs.writeFileSync(arqRefresh(), safeStorage.encryptString(String(refresh || ""))); } catch (_) {}
+  const v = String(refresh || "");
+  try { fs.writeFileSync(arqRefresh(), safeStorage.encryptString(v)); logadoCache = !!v; } catch (_) {}
 }
 function lerRefresh() {
   try { return safeStorage.decryptString(fs.readFileSync(arqRefresh())); } catch (_) { return ""; }
 }
-function limparRefresh() { try { fs.unlinkSync(arqRefresh()); } catch (_) {} }
+function limparRefresh() { try { fs.unlinkSync(arqRefresh()); } catch (_) {} logadoCache = false; }
 
 async function login(apiBase, email, senha) {
   api.setBase(apiBase);
@@ -40,7 +42,10 @@ async function renovar() {
   return true;
 }
 
-function estaLogado() { return !!lerRefresh(); }
+function estaLogado() {
+  if (logadoCache === null) logadoCache = !!lerRefresh(); // 1a vez: le do disco; depois usa o cache
+  return logadoCache;
+}
 function dados() { return sessao; }
 function sair() { limparRefresh(); api.setToken(""); sessao = { slug: "", nome: "" }; }
 

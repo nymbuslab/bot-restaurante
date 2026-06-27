@@ -5,18 +5,26 @@ const transporte = require("./transporte");
 const poller = require("./poller");
 const { montarJob } = require("./print-job");
 
+let janelaAtual = null;
+let registrado = false;
+
 function registrar(janela) {
-  const log = (m) => janela && janela.webContents.send("log", m);
-  const status = (s) => janela && janela.webContents.send("status", s);
+  janelaAtual = janela;
+  if (registrado) return; // ipcMain.handle lanca se chamado 2x p/ o mesmo canal (janela recriada)
+  registrado = true;
+
+  const log = (m) => janelaAtual && janelaAtual.webContents.send("log", m);
+  const status = (s) => janelaAtual && janelaAtual.webContents.send("status", s);
   const opts = { onLog: log, onStatus: status };
 
   ipcMain.handle("auth:login", async (_e, { apiBase, email, senha }) => {
     const s = await auth.login(apiBase, email, senha);
-    config.salvar({ ...config.carregar(), apiBase, email });
+    // persistir apiBase/email e best-effort: erro de disco aqui NAO pode derrubar um login que ja deu certo.
+    try { config.salvar({ ...config.carregar(), apiBase, email }); } catch (_) {}
     poller.iniciar(opts);
     return s;
   });
-  ipcMain.handle("auth:status", () => ({ logado: auth.estaLogado(), ...auth.dados() }));
+  ipcMain.handle("auth:status", () => ({ logado: auth.estaLogado(), ...auth.dados(), email: config.carregar().email }));
   ipcMain.handle("auth:sair", () => { poller.parar(); auth.sair(); return true; });
 
   ipcMain.handle("config:carregar", () => config.carregar());
