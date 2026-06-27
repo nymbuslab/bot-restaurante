@@ -148,6 +148,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 12px 16px; margin: 0 -16px 14px;
   background: rgba(15,17,23,0.92); backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border-subtle); scrollbar-width: none;
+  -webkit-overflow-scrolling: touch; /* deslize com inércia no iOS */
 }
 .cd-cats::-webkit-scrollbar { display: none; }
 .cd-chip {

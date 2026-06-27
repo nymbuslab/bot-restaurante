@@ -134,6 +134,7 @@
     nav.innerHTML = "";
     if (!cats.length) { nav.hidden = true; return; }
     nav.hidden = false;
+    var ativoEl = null; // chip ativo, p/ rolar a barra até ele depois de montar
     // Aba "Todos" (catAtiva === null): lista todas as categorias de uma vez.
     var todos = document.createElement("button");
     todos.type = "button";
@@ -141,6 +142,7 @@
     todos.textContent = "Todos";
     todos.addEventListener("click", function () { catAtiva = null; busca = ""; $("cdBusca").value = ""; renderCategorias(); renderItens(); });
     nav.appendChild(todos);
+    if (catAtiva === null && !busca) ativoEl = todos;
     cats.forEach(function (c) {
       var b = document.createElement("button");
       b.type = "button";
@@ -148,7 +150,14 @@
       b.textContent = c.nome;
       b.addEventListener("click", function () { catAtiva = c.nome; busca = ""; $("cdBusca").value = ""; renderCategorias(); renderItens(); });
       nav.appendChild(b);
+      if (c.nome === catAtiva && !busca) ativoEl = b;
     });
+    // Rola a barra (que foi reconstruída do zero) até centralizar o chip ativo, pra ele
+    // nunca ficar fora da tela no celular. offsetLeft é relativo à própria barra (sticky).
+    if (ativoEl && nav.scrollWidth > nav.clientWidth) {
+      var alvo = ativoEl.offsetLeft - (nav.clientWidth - ativoEl.offsetWidth) / 2;
+      nav.scrollTo({ left: Math.max(0, alvo), behavior: "smooth" });
+    }
   }
 
   function itensVisiveis() {
