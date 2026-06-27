@@ -1,0 +1,24 @@
+appId: com.nymbus.impressora
+productName: Nymbus Impressora
+directories:
+  output: dist
+files:
+  - main/**/*
+  - renderer/**/*
+  - ../public/comanda.js
+  - ../public/serial-escpos.js
+  - package.json
+win:
+  target: nsis
+  artifactName: ${productName} Setup ${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+# SEGURANCA: enquanto o instalador NAO for assinado (sem win.certificateFile/publisherName),
+# o AUTO-UPDATE fica DESLIGADO no main.js (a chamada checkForUpdatesAndNotify foi removida).
+# Este bloco `publish` so deve ser usado com assinatura + verifyUpdateCodeSignature; sem isso,
+# um feed comprometido instalaria binario nao verificado (RCE). Distribuicao = download manual.
+publish:
+  provider: generic
+  url: https://bot-restaurante.fly.dev/downloads/
