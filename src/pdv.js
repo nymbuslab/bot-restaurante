@@ -8,6 +8,7 @@
 
 const cardapioWeb = require("./cardapio-web"); // parseOpcionais
 const grupos = require("../public/grupos"); // validação da composição
+const variacoes = require("../public/variacoes"); // variações (opções com preço+estoque)
 
 const cent = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const mil = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
@@ -54,14 +55,18 @@ function recalcularVenda(cardapio, itensPayload) {
     });
     const aval = grupos.avaliarComposicao(base, p && p.composicao);
     if (!aval.valido) throw new Error(aval.pendencias[0] || ("Composição inválida em " + base.nome + "."));
+    const avalVar = variacoes.avaliarVariacoes(base, p && p.variacoes);
+    if (!avalVar.valido) throw new Error(avalVar.pendencias[0] || ("Escolha uma opção em " + base.nome + "."));
     const precoBase = Number(base.preco) || 0;
     const addUnit = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
-    subtotal += (precoBase + addUnit) * qtd; // composição é grátis
+    subtotal += (precoBase + addUnit + avalVar.addUnit) * qtd; // composição grátis; variações somam
     itens.push({
       id: base.id, nome: base.nome, preco: precoBase, qtd,
       unidade: ehKg ? "kg" : "un",
       composicao: aval.selecoes,
-      opcionais, observacao: String((p && p.observacao) || "").slice(0, 200),
+      opcionais,
+      variacoes: avalVar.selecoes, // [{id,nome,preco,qtd}]
+      observacao: String((p && p.observacao) || "").slice(0, 200),
     });
   });
   return { itens, subtotal: cent(subtotal) };

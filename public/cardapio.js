@@ -39,13 +39,24 @@
   }
   function assinatura(l) {
     var comp = (l.composicao || []).map(function (c) { return c.grupo + ":" + (c.itens || []).slice().sort().join("+"); }).sort().join(",");
-    return l.id + "|" + comp + "|" + (l.opcionais || []).map(function (o) { return o.nome + ":" + (o.qtd || 1); }).sort().join(",") + "|" + (l.observacao || "");
+    var vars = (l.variacoes || []).map(function (v) { return v.id + ":" + (v.qtd || 1); }).sort().join(",");
+    return l.id + "|" + comp + "|" + (l.opcionais || []).map(function (o) { return o.nome + ":" + (o.qtd || 1); }).sort().join(",") + "|" + vars + "|" + (l.observacao || "");
   }
   function precoUnit(l) {
-    return (Number(l.preco) || 0) + (l.opcionais || []).reduce(function (s, o) { return s + (Number(o.preco) || 0) * (o.qtd || 1); }, 0);
+    return (Number(l.preco) || 0)
+      + (l.opcionais || []).reduce(function (s, o) { return s + (Number(o.preco) || 0) * (o.qtd || 1); }, 0)
+      + (l.variacoes || []).reduce(function (s, v) { return s + (Number(v.preco) || 0) * (v.qtd || 1); }, 0);
   }
   // Rótulo de um adicional ("2x Ovo" / "Bacon").
   function opTxt(o) { return (o.qtd > 1 ? o.qtd + "x " : "") + o.nome; }
+  // Rótulo de preço do card: "a partir de R$ X" p/ item com variações; senão o preço (com /kg).
+  function precoLabel(it) {
+    if (it.variacoes && it.variacoes.length) {
+      var pa = (it.precoAPartir != null) ? it.precoAPartir : it.preco;
+      return "a partir de " + money(pa);
+    }
+    return money(it.preco) + (it.unidade === "kg" ? "/kg" : "");
+  }
   function precoLinha(l) { return precoUnit(l) * l.qtd; }
   function subtotal() { return carrinho.reduce(function (s, l) { return s + precoLinha(l); }, 0); }
   function totalItens() { return carrinho.reduce(function (s, l) { return s + l.qtd; }, 0); }
@@ -317,7 +328,7 @@
         '<h3 class="cd-hero-nome">' + esc(it.nome) + "</h3>" +
         (it.desc ? '<p class="cd-hero-desc">' + esc(it.desc) + "</p>" : "") +
         '<div class="cd-hero-rodape">' +
-          '<span class="cd-hero-preco">' + money(it.preco) + (kg ? "/kg" : "") + "</span>" +
+          '<span class="cd-hero-preco">' + precoLabel(it) + "</span>" +
           (naoAdd ? "" : '<span class="cd-add cd-hero-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
@@ -354,7 +365,7 @@
         '<h3 class="cd-card-nome">' + esc(it.nome) + "</h3>" +
         (it.desc ? '<p class="cd-card-desc">' + esc(it.desc) + "</p>" : "") +
         '<div class="cd-card-rodape">' +
-          '<span class="cd-card-preco">' + ICON_PRECO + "<span>" + money(it.preco) + (kg ? "/kg" : "") + "</span></span>" +
+          '<span class="cd-card-preco">' + ICON_PRECO + "<span>" + precoLabel(it) + "</span></span>" +
           (naoAdd ? "" : '<span class="cd-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
@@ -363,12 +374,13 @@
   }
 
   // ---------- Modal de item ----------
-  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}; // modalOps[i] = quantidade do adicional i; modalEscolhas[grupo] = [nome]
+  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}, modalVars = []; // modalOps[i]/modalVars[i] = quantidade; modalEscolhas[grupo] = [nome]
 
   function abrirModal(it) {
     var soVer = !!it.apenasLocal; // item "Só no local": modal só de visualização (não pede)
     var ops = it.opcionais || [];
     modalItem = it; modalQtd = 1; modalOps = ops.map(function () { return 0; });
+    modalVars = (it.variacoes || []).map(function () { return 0; });
     var html =
       '<button class="cd-x" type="button" data-close="modal" aria-label="Fechar">' + IC.x + '</button>' +
       (it.imagem ? '<img class="cd-modal-img" src="' + esc(it.imagem) + '" alt="" />' : "") +
@@ -430,6 +442,24 @@
       });
       html += "</div>";
     }
+    var vars = it.variacoes || [];
+    if (vars.length) {
+      html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Escolha as opções</p>';
+      vars.forEach(function (v, i) {
+        var eg = !!v.esgotado;
+        html += '<div class="cd-op' + (eg ? " cd-op-esgotado" : "") + '">' +
+          '<span class="cd-op-nome">' + esc(v.nome) + (eg ? ' <span class="cd-op-tag">Esgotado</span>' : "") + "</span>" +
+          '<span class="cd-op-preco">' + money(v.preco) + "</span>" +
+          (eg ? "" :
+            '<div class="cd-op-qtd">' +
+              '<button type="button" data-vdec="' + i + '" aria-label="Menos">−</button>' +
+              '<span data-vqtd="' + i + '">0</span>' +
+              '<button type="button" data-vinc="' + i + '" aria-label="Mais">+</button>' +
+            "</div>") +
+          "</div>";
+      });
+      html += "</div>";
+    }
     html +=
       '<label class="cd-campo"><span>Observação (opcional)</span>' +
         '<textarea id="cdModalObs" rows="2" maxlength="200" placeholder="Ex.: sem cebola, ponto da carne…"></textarea></label>' +
@@ -448,6 +478,8 @@
     });
     caixa.querySelectorAll("[data-opinc]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opinc"), 1); }); });
     caixa.querySelectorAll("[data-opdec]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opdec"), -1); }); });
+    caixa.querySelectorAll("[data-vinc]").forEach(function (b) { b.addEventListener("click", function () { mudarVar(+b.getAttribute("data-vinc"), 1); }); });
+    caixa.querySelectorAll("[data-vdec]").forEach(function (b) { b.addEventListener("click", function () { mudarVar(+b.getAttribute("data-vdec"), -1); }); });
     caixa.querySelectorAll("[data-qtd]").forEach(function (b) {
       b.addEventListener("click", function () {
         modalQtd = Math.max(1, Math.min(50, modalQtd + (+b.getAttribute("data-qtd"))));
@@ -482,16 +514,28 @@
     atualizarPrecoModal();
   }
 
+  function mudarVar(i, delta) {
+    modalVars[i] = Math.max(0, Math.min(99, (modalVars[i] || 0) + delta));
+    var span = $("cdModalCaixa").querySelector('[data-vqtd="' + i + '"]');
+    if (span) span.textContent = modalVars[i];
+    atualizarPrecoModal();
+  }
+
   function atualizarPrecoModal() {
     if (!modalItem) return;
     var ops = modalItem.opcionais || [];
     var add = ops.reduce(function (s, o, i) { return s + (Number(o.preco) || 0) * (modalOps[i] || 0); }, 0);
+    var vars = modalItem.variacoes || [];
+    var addV = vars.reduce(function (s, v, i) { return s + (Number(v.preco) || 0) * (modalVars[i] || 0); }, 0);
     var btn = $("cdModalAdd");
-    btn.textContent = "Adicionar · " + money(((Number(modalItem.preco) || 0) + add) * modalQtd);
+    btn.textContent = "Adicionar · " + money(((Number(modalItem.preco) || 0) + add + addV) * modalQtd);
     var esc2 = Object.keys(modalEscolhas).map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; });
     var aval = window.Grupos ? window.Grupos.avaliarComposicao(modalItem, esc2) : { valido: true };
-    btn.disabled = !aval.valido;
-    btn.title = aval.valido ? "" : (aval.pendencias[0] || "");
+    // item COM variações exige ≥1 escolha (senão o total seria só o preço base, geralmente 0)
+    var totalVar = vars.reduce(function (s, v, i) { return s + (modalVars[i] || 0); }, 0);
+    var faltaVar = vars.length > 0 && totalVar === 0;
+    btn.disabled = !aval.valido || faltaVar;
+    btn.title = !aval.valido ? (aval.pendencias[0] || "") : (faltaVar ? "Escolha ao menos 1 opção" : "");
   }
 
   function confirmarModal() {
@@ -499,6 +543,11 @@
     var escolhidos = [];
     ops.forEach(function (o, i) {
       if (modalOps[i] > 0) escolhidos.push({ nome: o.nome, preco: Number(o.preco) || 0, qtd: modalOps[i] });
+    });
+    var vars = modalItem.variacoes || [];
+    var varsEsc = [];
+    vars.forEach(function (v, i) {
+      if (modalVars[i] > 0) varsEsc.push({ id: v.id, nome: v.nome, preco: Number(v.preco) || 0, qtd: modalVars[i] });
     });
     var comp = Object.keys(modalEscolhas)
       .map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; })
@@ -509,6 +558,7 @@
       preco: Number(modalItem.preco) || 0,
       composicao: comp,
       opcionais: escolhidos,
+      variacoes: varsEsc,
       observacao: ($("cdModalObs").value || "").trim(),
       qtd: modalQtd,
     });
@@ -537,11 +587,12 @@
       var div = document.createElement("div");
       div.className = "cd-linha";
       var comp = (l.composicao || []).length ? '<p class="cd-linha-comp">' + esc(l.composicao.map(function (c) { return c.itens.join(", "); }).join(" · ")) + "</p>" : "";
+      var vars = (l.variacoes || []).length ? '<p class="cd-linha-ops">' + esc(l.variacoes.map(opTxt).join(", ")) + "</p>" : "";
       var ops = (l.opcionais || []).length ? '<p class="cd-linha-ops">' + esc(l.opcionais.map(opTxt).join(", ")) + "</p>" : "";
       var obs = l.observacao ? '<p class="cd-linha-obs">📝 ' + esc(l.observacao) + "</p>" : "";
       div.innerHTML =
         '<div class="cd-linha-corpo">' +
-          '<p class="cd-linha-nome">' + esc(l.nome) + "</p>" + comp + ops + obs +
+          '<p class="cd-linha-nome">' + esc(l.nome) + "</p>" + vars + comp + ops + obs +
           '<div class="cd-qtd" style="margin-top:8px">' +
             '<button type="button" data-dec="' + idx + '" aria-label="Menos">−</button>' +
             "<span>" + l.qtd + "</span>" +
@@ -827,7 +878,7 @@
       troco: troco,
       observacao: ($("cdObsPedido").value || "").trim(),
       itens: carrinho.map(function (l) {
-        return { id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd || 1 }; }), observacao: l.observacao || "" };
+        return { id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd || 1 }; }), variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd || 1 }; }), observacao: l.observacao || "" };
       }),
     };
 

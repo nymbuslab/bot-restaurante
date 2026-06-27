@@ -1208,6 +1208,12 @@
           <div id="editor-opcionais-builder" class="opc-builder"></div>
           <button type="button" class="secundario mini" id="editor-opc-add">+ Adicionar opcional</button>
         </div>
+        <div class="campo">
+          <label>Variações</label>
+          <p class="editor-dica">Opções com <strong>preço e estoque próprios</strong> (ex.: sabores de refrigerante). O cliente escolhe uma ou mais, o preço <strong>soma</strong>, e cada opção dá baixa no seu estoque. Deixe o estoque vazio para ilimitado. Com variações, o preço base do item pode ser 0 (vira "a partir de").</p>
+          <div id="editor-variacoes-builder" class="var-builder"></div>
+          <button type="button" class="secundario mini" id="editor-var-add">+ Adicionar variação</button>
+        </div>
       </div>
       <div class="editor-rodape">
         <span class="editor-erro" id="editor-erro"></span>
@@ -1248,6 +1254,7 @@
   <script src="texto.js"></script>
   <script src="busca.js"></script>
   <script src="estoque.js"></script>
+  <script src="variacoes.js"></script>
   <script src="grupos.js"></script>
   <script src="comanda.js"></script>
   <script src="serial-escpos.js"></script>

@@ -34,7 +34,8 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   assert.equal(it.length, 1); // item indisponível some
   assert.deepEqual(it[0], {
     id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: [],
-    opcionais: [{ nome: "Bacon", preco: 3 }], apenasLocal: false, esgotado: false, unidade: "un", destaque: false,
+    opcionais: [{ nome: "Bacon", preco: 3 }], variacoes: [], precoAPartir: null,
+    apenasLocal: false, esgotado: false, unidade: "un", destaque: false,
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
 });
@@ -231,4 +232,35 @@ test("recalcularItens: composição obrigatória ausente lança erro", () => {
   assert.throws(() => cw.recalcularItens(cardComp, [
     { id: 7, qtd: 1, composicao: [{ grupo: "Principais", itens: ["Arroz"] }] },
   ]), /Proteínas/);
+});
+
+// ---- variações (opções com preço + estoque) ----
+const cardVar = { categorias: [ { nome: "Bebidas", itens: [
+  { id: "refr", nome: "Refrigerantes 350ml", preco: 0, variacoes: [
+    { id: "coca", nome: "Coca", preco: 6, estoque: 5 },
+    { id: "guar", nome: "Guaraná", preco: 5, estoque: 0 },
+    { id: "agua", nome: "Água", preco: 4 },
+  ] },
+] } ] };
+
+test("projetarCardapio: expõe variacoes (id/nome/preco/esgotado) + precoAPartir, sem vazar contagem", () => {
+  const it = cw.projetarCardapio(cardVar).categorias[0].itens[0];
+  assert.equal(it.precoAPartir, 4); // menor entre as não esgotadas (agua 4 ilimitada; coca 6; guar esgotada)
+  assert.equal(it.variacoes.length, 3);
+  const coca = it.variacoes.find((v) => v.id === "coca");
+  assert.deepEqual(coca, { id: "coca", nome: "Coca", preco: 6, esgotado: false });
+  assert.equal(it.variacoes.find((v) => v.id === "guar").esgotado, true);
+  assert.equal("estoque" in coca, false); // não vaza contagem
+});
+
+test("recalcularItens: soma o preço das variações escolhidas (base 0)", () => {
+  const r = cw.recalcularItens(cardVar, [
+    { id: "refr", qtd: 2, variacoes: [{ id: "coca", qtd: 1 }, { id: "agua", qtd: 1 }] },
+  ]);
+  assert.equal(r.subtotal, (0 + 6 + 4) * 2); // 20
+  assert.equal(r.itens[0].variacoes.length, 2);
+});
+
+test("recalcularItens: item de variações sem nenhuma escolha lança erro", () => {
+  assert.throws(() => cw.recalcularItens(cardVar, [{ id: "refr", qtd: 1 }]), /ao menos 1|opção/i);
 });

@@ -420,6 +420,8 @@ button.cd-hero { cursor: pointer; }
 .cd-op input { width: 18px; height: 18px; accent-color: var(--accent); }
 .cd-op-nome { flex: 1; font-size: 14px; }
 .cd-op-preco { font-size: 13px; color: var(--accent-fg); font-weight: 700; }
+.cd-op-esgotado { opacity: .55; }
+.cd-op-tag { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
 .cd-op-qtd { flex: none; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); }
 .cd-op-qtd button { width: 30px; height: 30px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
 .cd-op-qtd span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }

@@ -129,3 +129,21 @@ test("montarCozinha: imprime as escolhas da composição agrupadas", () => {
   assert.match(cozinha, /Principais: Arroz, Feijão/);
   assert.match(cozinha, /\+ Bacon/); // opcional segue como hoje
 });
+
+// ---- variações na comanda ----
+test("comanda: variações aparecem na cozinha e somam/imprimem no cupom", () => {
+  const pedido = {
+    numero: 7, criadoEm: "2026-06-27T12:00:00Z", tipoEntrega: "Entrega",
+    total: 22, taxaEntrega: 0,
+    itens: [{ nome: "Refrigerantes 350ml", preco: 0, qtd: 1, variacoes: [
+      { id: "coca", nome: "Coca", preco: 6, qtd: 2 },
+      { id: "guar", nome: "Guaraná", preco: 5, qtd: 2 },
+    ] }],
+  };
+  const { cozinha, cupom } = montarComanda(pedido, { restaurante: { nome: "Teste" } }, {});
+  assert.match(cozinha, /2x Coca/);
+  assert.match(cozinha, /2x Guaraná/);
+  assert.match(cupom, /2x Coca/);
+  // subtotal = (0 + 6*2 + 5*2) * 1 = 22
+  assert.match(cupom, /Subtotal:\s+22,00/);
+});

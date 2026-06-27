@@ -50,3 +50,43 @@ test("aplicarBaixa: desconta, trava em 0, agrega, não muta o original e ignora 
   assert.equal(itens[0].estoque, undefined); // não controlado intacto
   assert.equal(card.categorias[0].itens[1].estoque, 10); // original não mutado
 });
+
+// ---- estoque por VARIAÇÃO ----
+const cardV = { categorias: [ { nome: "Bebidas", itens: [
+  { id: "refr", nome: "Refrigerantes 350ml", preco: 0, variacoes: [
+    { id: "coca", nome: "Coca", preco: 6, estoque: 5, estoqueMinimo: 1 },
+    { id: "guar", nome: "Guaraná", preco: 5, estoque: 0 },
+    { id: "agua", nome: "Água", preco: 4 },                       // ilimitada
+  ] },
+] } ] };
+
+test("validarEstoque (variação): esgotada e over-order rejeitam com rótulo item+sabor", () => {
+  const eg = E.validarEstoque(cardV, [{ id: "refr", qtd: 1, variacoes: [{ id: "guar", qtd: 1 }] }]);
+  assert.equal(eg.ok, false);
+  assert.match(eg.erro, /Refrigerantes 350ml \(Guaraná\).*esgotado/i);
+  const over = E.validarEstoque(cardV, [{ id: "refr", qtd: 1, variacoes: [{ id: "coca", qtd: 6 }] }]);
+  assert.equal(over.ok, false);
+  assert.match(over.erro, /Restam só 5 unidades de Refrigerantes 350ml \(Coca\)/);
+});
+
+test("validarEstoque (variação): dentro do estoque e variação ilimitada passam", () => {
+  assert.equal(E.validarEstoque(cardV, [{ id: "refr", qtd: 1, variacoes: [{ id: "coca", qtd: 5 }] }]).ok, true);
+  assert.equal(E.validarEstoque(cardV, [{ id: "refr", qtd: 1, variacoes: [{ id: "agua", qtd: 99 }] }]).ok, true);
+});
+
+test("validarEstoque (variação): agrega a mesma variação em linhas diferentes", () => {
+  const r = E.validarEstoque(cardV, [
+    { id: "refr", qtd: 1, variacoes: [{ id: "coca", qtd: 3 }] },
+    { id: "refr", qtd: 1, variacoes: [{ id: "coca", qtd: 3 }] },
+  ]);
+  assert.equal(r.ok, false); // 6 > 5
+});
+
+test("aplicarBaixa (variação): desconta a variação certa, trava em 0, ignora ilimitada, não muta original", () => {
+  const out = E.aplicarBaixa(cardV, [{ id: "refr", qtd: 1, variacoes: [{ id: "coca", qtd: 2 }, { id: "agua", qtd: 9 }] }]);
+  const vs = out.categorias[0].itens[0].variacoes;
+  assert.equal(vs.find((v) => v.id === "coca").estoque, 3); // 5 - 2
+  assert.equal(vs.find((v) => v.id === "guar").estoque, 0); // intacta (já 0)
+  assert.equal("estoque" in vs.find((v) => v.id === "agua"), false); // ilimitada intacta
+  assert.equal(cardV.categorias[0].itens[0].variacoes[0].estoque, 5); // original não mutado
+});

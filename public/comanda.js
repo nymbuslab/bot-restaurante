@@ -81,6 +81,7 @@
       (i.composicao || []).forEach((c) => {
         if (c && c.itens && c.itens.length) linhas.push("   " + (c.grupo ? c.grupo + ": " : "") + c.itens.join(", "));
       });
+      (i.variacoes || []).forEach((v) => linhas.push("   " + ((v.qtd && v.qtd > 1) ? v.qtd + "x " : "") + (v.nome || "")));
       opcionaisLinhas(i.opcionais).forEach((l) => linhas.push(l));
       if (i.observacao && i.observacao.trim()) linhas.push("   Obs: " + i.observacao.trim());
       linhas.push("");
@@ -98,7 +99,9 @@
     extras = extras || {};
     const rest = (config && config.restaurante) || {};
     const nome = rest.nome || "Pedido";
-    const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0);
+    const extrasDe = (i) =>
+      (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0) +
+      (i.variacoes || []).reduce((s, v) => s + (v.preco || 0) * (v.qtd || 1), 0);
     const subtotal = (pedido.itens || []).reduce((acc, i) => acc + ((i.preco || 0) + extrasDe(i)) * (i.qtd || 1), 0);
     const taxa = Number(pedido.taxaEntrega) || 0;
     const linhas = [];
@@ -130,6 +133,8 @@
     itensCup.forEach((i) => {
       const sub = ((i.preco || 0) + extrasDe(i)) * (i.qtd || 1);
       linhas.push(linhaValor((i.qtd || 1) + "x " + (i.nome || ""), fmtBR(sub)));
+      const va = (i.variacoes || []).map((v) => (v.qtd > 1 ? v.qtd + "x " : "") + v.nome).join(" / ");
+      if (va) linhas.push("   " + va);
       const op = (i.opcionais || []).map((o) => (o.qtd > 1 ? o.qtd + "x " : "") + o.nome).join(" / ");
       if (op) linhas.push("   " + op);
     });

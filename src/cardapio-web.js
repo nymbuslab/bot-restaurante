@@ -8,6 +8,7 @@
 const crypto = require("crypto");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const grupos = require("../public/grupos"); // normalização da composição (dual-mode)
+const variacoes = require("../public/variacoes"); // variações (opções com preço+estoque)
 
 // Validade do link enviado pelo bot (liga o pedido feito na web ao chatId).
 const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // 6h
@@ -38,6 +39,10 @@ function projetarCardapio(cardapio) {
     const itens = [];
     for (const item of (cat && cat.itens) || []) {
       if (!item || item.disponivel === false || item.arquivado === true) continue;
+      // variações: só os campos públicos por opção (id/nome/preco/esgotado — NÃO vaza a contagem)
+      const vars = variacoes.normalizarVariacoes(item.variacoes).map(function (v) {
+        return { id: v.id, nome: v.nome, preco: v.preco, esgotado: estoque.statusEstoque(v).esgotado };
+      });
       itens.push({
         id: item.id,
         nome: item.nome,
@@ -46,8 +51,11 @@ function projetarCardapio(cardapio) {
         imagem: item.imagem || "",
         composicao: grupos.normalizarGrupos(item.composicao),
         opcionais: parseOpcionais(item.opcionais),
+        variacoes: vars,
+        precoAPartir: variacoes.precoAPartir(item), // null se o item não tem variações
         apenasLocal: item.apenasLocal === true,
-        esgotado: estoque.statusEstoque(item).esgotado,
+        // esgotado se o próprio item zerou OU (item de variações) todas as variações zeraram
+        esgotado: estoque.statusEstoque(item).esgotado || variacoes.todasEsgotadas(item),
         unidade: item.unidade === "kg" ? "kg" : "un",
         destaque: item.destaque === true,
       });
@@ -84,13 +92,17 @@ function recalcularItens(cardapio, itensPayload) {
     });
     const aval = grupos.avaliarComposicao(base, p && p.composicao);
     if (!aval.valido) throw new Error(aval.pendencias[0] || ("Composição inválida em " + base.nome + "."));
+    const avalVar = variacoes.avaliarVariacoes(base, p && p.variacoes);
+    if (!avalVar.valido) throw new Error(avalVar.pendencias[0] || ("Escolha uma opção em " + base.nome + "."));
     const precoBase = Number(base.preco) || 0;
     const addUnit = opcionais.reduce(function (s, o) { return s + o.preco * o.qtd; }, 0);
-    subtotal += (precoBase + addUnit) * qtd; // composição é grátis (não soma)
+    subtotal += (precoBase + addUnit + avalVar.addUnit) * qtd; // composição grátis; variações somam
     itens.push({
       id: base.id, nome: base.nome, preco: precoBase, qtd: qtd,
       composicao: aval.selecoes,
-      opcionais: opcionais, observacao: String((p && p.observacao) || "").slice(0, 200),
+      opcionais: opcionais,
+      variacoes: avalVar.selecoes, // [{id,nome,preco,qtd}] p/ a comanda
+      observacao: String((p && p.observacao) || "").slice(0, 200),
     });
   });
   return { itens: itens, subtotal: subtotal };

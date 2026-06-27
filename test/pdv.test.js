@@ -99,3 +99,21 @@ test("recalcularVenda: composição válida vai no item, não soma preço", () =
 test("recalcularVenda: composição obrigatória ausente lança erro", () => {
   assert.throws(() => recalcularVenda(cardapio, [{ id: "m1", qtd: 1 }]), /Proteínas/);
 });
+
+// ---- variações no PDV ----
+const cardVarPdv = { categorias: [ { nome: "Bebidas", itens: [
+  { id: "refr", nome: "Refrigerantes 350ml", preco: 0, unidade: "un", variacoes: [
+    { id: "coca", nome: "Coca", preco: 6, estoque: 5 },
+    { id: "agua", nome: "Água", preco: 4 },
+  ] },
+] } ] };
+
+test("recalcularVenda: soma variações e grava selecoes", () => {
+  const r = recalcularVenda(cardVarPdv, [{ id: "refr", qtd: 1, variacoes: [{ id: "coca", qtd: 2 }] }]);
+  assert.equal(r.subtotal, 12);
+  assert.equal(r.itens[0].variacoes[0].qtd, 2);
+});
+
+test("recalcularVenda: item de variações sem escolha lança erro", () => {
+  assert.throws(() => recalcularVenda(cardVarPdv, [{ id: "refr", qtd: 1 }]), /ao menos 1|opção/i);
+});

@@ -88,6 +88,7 @@ let editorIi = -1;
 let editorFotoUrl = "";
 let editorComposicao = [];
 let editorOpcionais = [];
+let editorVariacoes = [];
 
 // Identidade visual do cardápio (capa + logo) — estado das prévias
 let identCapaUrl = "";
@@ -1136,6 +1137,12 @@ function novoId() {
   return max + 1;
 }
 
+// id único e estável para uma variação (único DENTRO do item; usado p/ casar o estoque
+// na baixa). Aleatório porque novoId() repetiria entre cliques síncronos (max+1 fixo).
+function novoVarId() {
+  return "v" + Math.random().toString(36).slice(2, 9);
+}
+
 // ============================================================
 // EDITOR DE ITEM (modal)
 // ============================================================
@@ -1170,6 +1177,7 @@ function abrirEditorItem(ci, ii) {
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
+    editorVariacoes = [];
   } else {
     const it = cardapioAtual.categorias[ci].itens[ii];
     $("editor-nome").value = it.nome || "";
@@ -1184,9 +1192,11 @@ function abrirEditorItem(ci, ii) {
     editorFotoUrl = it.imagem || "";
     editorComposicao = (typeof Grupos !== "undefined" ? Grupos.normalizarGrupos(it.composicao) : (Array.isArray(it.composicao) ? it.composicao : []));
     editorOpcionais = parsearOpcionais(it.opcionais || "");
+    editorVariacoes = (typeof Variacoes !== "undefined" ? Variacoes.normalizarVariacoes(it.variacoes) : []);
   }
   renderEditorComposicao();
   renderEditorOpcionais();
+  renderEditorVariacoes();
   aplicarUnidadeEditor();
 
   atualizarPreviewFoto();
@@ -1237,14 +1247,16 @@ function atualizarPreviewFoto() {
 async function salvarEditorItem() {
   const nome  = $("editor-nome").value.trim();
   const preco = Dinheiro.valor("editor-preco");
+  const varsNorm = (typeof Variacoes !== "undefined" ? Variacoes.normalizarVariacoes(editorVariacoes) : []);
 
   if (!nome) {
     $("editor-erro").textContent = "Informe o nome do item.";
     $("editor-nome").focus();
     return;
   }
-  if (!preco || preco <= 0) {
-    $("editor-erro").textContent = "Informe um preço válido maior que zero.";
+  // Item COM variações pode ter preço base 0 (o preço vem das variações escolhidas).
+  if ((!preco || preco <= 0) && !varsNorm.length) {
+    $("editor-erro").textContent = "Informe um preço válido maior que zero (ou adicione variações com preço).";
     $("editor-preco").focus();
     return;
   }
@@ -1272,6 +1284,7 @@ async function salvarEditorItem() {
   const parseEst = (s) => unidade === "kg" ? (parseFloat(s.replace(",", ".")) || 0) : (parseInt(s, 10) || 0);
   if (estoqueRaw !== "") novoItem.estoque = Math.max(0, parseEst(estoqueRaw));
   if (estoqueMinRaw !== "") novoItem.estoqueMinimo = Math.max(0, parseEst(estoqueMinRaw));
+  if (varsNorm.length) novoItem.variacoes = varsNorm;
 
   if (editorIi === -1) {
     cardapioAtual.categorias[novoCi].itens.push(novoItem);
@@ -1605,6 +1618,49 @@ $("editor-opc-add").addEventListener("click", () => {
   editorOpcionais.push({ nome: "", preco: 0 });
   renderEditorOpcionais();
   const inputs = $("editor-opcionais-builder").querySelectorAll(".opc-nome");
+  if (inputs.length) inputs[inputs.length - 1].focus();
+});
+
+// ---- Variações: opções com preço E estoque próprios (ex.: sabores de refrigerante) ----
+function renderEditorVariacoes() {
+  const container = $("editor-variacoes-builder");
+  container.innerHTML = "";
+  editorVariacoes.forEach((v, vi) => {
+    const div = document.createElement("div");
+    div.className = "var-linha";
+    div.innerHTML = `
+      <input class="var-nome" placeholder="Nome (ex.: Coca-Cola)" value="${escapar(v.nome || "")}" data-vi="${vi}" />
+      <div class="opc-preco-wrap"><span class="opc-rs">R$</span>
+        <input type="text" inputmode="numeric" class="opc-preco var-preco" placeholder="0,00" value="${v.preco ? Dinheiro.formatar(v.preco) : ""}" data-vi="${vi}" /></div>
+      <input class="var-est" inputmode="numeric" placeholder="estoque" value="${escapar(v.estoque != null ? String(v.estoque) : "")}" data-vi="${vi}" />
+      <input class="var-estmin" inputmode="numeric" placeholder="mín" value="${escapar(v.estoqueMinimo != null ? String(v.estoqueMinimo) : "")}" data-vi="${vi}" />
+      <button type="button" class="perigo mini var-del" data-vi="${vi}" aria-label="Remover">×</button>
+    `;
+    container.appendChild(div);
+  });
+  container.querySelectorAll(".var-nome").forEach((el) => {
+    el.addEventListener("input", (e) => { editorVariacoes[+e.target.dataset.vi].nome = e.target.value; });
+    el.addEventListener("blur", (e) => { const val = Texto.tituloPt(e.target.value); e.target.value = val; editorVariacoes[+e.target.dataset.vi].nome = val; });
+  });
+  container.querySelectorAll(".var-preco").forEach((el) => {
+    Dinheiro.mascarar(el);
+    el.addEventListener("input", (e) => { editorVariacoes[+e.target.dataset.vi].preco = Dinheiro.valor(e.target); });
+  });
+  container.querySelectorAll(".var-est").forEach((el) =>
+    el.addEventListener("input", (e) => { editorVariacoes[+e.target.dataset.vi].estoque = e.target.value; })
+  );
+  container.querySelectorAll(".var-estmin").forEach((el) =>
+    el.addEventListener("input", (e) => { editorVariacoes[+e.target.dataset.vi].estoqueMinimo = e.target.value; })
+  );
+  container.querySelectorAll(".var-del").forEach((el) =>
+    el.addEventListener("click", (e) => { editorVariacoes.splice(+e.target.dataset.vi, 1); renderEditorVariacoes(); })
+  );
+}
+
+$("editor-var-add").addEventListener("click", () => {
+  editorVariacoes.push({ id: novoVarId(), nome: "", preco: 0 });
+  renderEditorVariacoes();
+  const inputs = $("editor-variacoes-builder").querySelectorAll(".var-nome");
   if (inputs.length) inputs[inputs.length - 1].focus();
 });
 
@@ -3440,7 +3496,8 @@ function pdvParseOpcionais(texto) {
 }
 function pdvPrecoUnit(l) {
   const add = (l.opcionais || []).reduce((s, o) => s + (Number(o.preco) || 0) * (o.qtd || 1), 0);
-  return (Number(l.preco) || 0) + add;
+  const addV = (l.variacoes || []).reduce((s, v) => s + (Number(v.preco) || 0) * (v.qtd || 1), 0);
+  return (Number(l.preco) || 0) + add + addV;
 }
 function pdvPrecoLinha(l) { return pdvPrecoUnit(l) * (Number(l.qtd) || 0); }
 function pdvTotal() { return pdvCart.reduce((s, l) => s + pdvPrecoLinha(l), 0); }
@@ -3527,8 +3584,9 @@ function renderPdvProdutos() {
 function pdvTileClick(item) {
   const ops = pdvParseOpcionais(item.opcionais);
   const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []);
   const ehKg = item.unidade === "kg";
-  if (ops.length || grps.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (ops.length || grps.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs/composição) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao && !(l.composicao && l.composicao.length));
   if (ex) ex.qtd += 1;
@@ -3543,11 +3601,19 @@ let pdvItemCtx = null; // { item, ops, uid|null }
 function abrirPdvItemModal(item, uid) {
   const ops = pdvParseOpcionais(item.opcionais);
   const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []).map((v) => ({
+    id: v.id, nome: v.nome, preco: v.preco,
+    esgotado: window.Estoque ? window.Estoque.statusEstoque(v).esgotado : false,
+  }));
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
-  pdvItemCtx = { item, ops, grps, uid: uid != null ? uid : null, ehKg };
+  pdvItemCtx = { item, ops, grps, vars, uid: uid != null ? uid : null, ehKg };
   const opsQtd = ops.map((o) => {
     const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
+    return found ? found.qtd : 0;
+  });
+  const varsQtd = vars.map((v) => {
+    const found = linha && (linha.variacoes || []).find((x) => x.id === v.id);
     return found ? found.qtd : 0;
   });
   const escIni = {};
@@ -3579,6 +3645,18 @@ function abrirPdvItemModal(item, uid) {
     ops.forEach((o, i) => {
       html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' +
         '<div class="pdv-stepper" data-stepper="op" data-opi="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-op-q">' + opsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
+    });
+    html += "</div>";
+  }
+  if (vars.length) {
+    html += '<div class="pdv-ops"><span class="pdv-ops-tit">Opções</span>';
+    vars.forEach((v, i) => {
+      if (v.esgotado) {
+        html += '<div class="pdv-op pdv-op-esg"><span class="pdv-op-nome">' + pdvEsc(v.nome) + ' <small>(esgotado)</small></span><span class="pdv-op-preco">' + pdvMoney(v.preco) + '</span></div>';
+      } else {
+        html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(v.nome) + '</span><span class="pdv-op-preco">' + pdvMoney(v.preco) + '</span>' +
+          '<div class="pdv-stepper" data-stepper="var" data-vari="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-var-q">' + varsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
+      }
     });
     html += "</div>";
   }
@@ -3618,7 +3696,7 @@ function abrirPdvItemModal(item, uid) {
 function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = null; }
 
 function _pdvLerModalItem() {
-  const { item, ops, ehKg } = pdvItemCtx;
+  const { item, ops, vars, ehKg } = pdvItemCtx;
   let qtd;
   if (ehKg) {
     qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
@@ -3637,21 +3715,30 @@ function _pdvLerModalItem() {
     const itens = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
     if (itens.length) composicao.push({ grupo, itens });
   });
+  const variacoes = [];
+  $("pdvItemCaixa").querySelectorAll('[data-stepper="var"]').forEach((box) => {
+    const i = Number(box.dataset.vari);
+    const q = parseInt(box.querySelector("span").textContent, 10) || 0;
+    if (q > 0 && vars[i]) variacoes.push({ id: vars[i].id, nome: vars[i].nome, preco: vars[i].preco, qtd: q });
+  });
   const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
-  return { item, qtd, composicao, opcionais, observacao, ehKg };
+  return { item, qtd, composicao, opcionais, variacoes, observacao, ehKg };
 }
 function pdvItemRecalc() {
-  const { item, qtd, opcionais } = _pdvLerModalItem();
+  const { item, qtd, opcionais, variacoes } = _pdvLerModalItem();
   const add = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
-  const tot = ((Number(item.preco) || 0) + add) * (Number(qtd) || 0);
+  const addV = (variacoes || []).reduce((s, v) => s + v.preco * v.qtd, 0);
+  const tot = ((Number(item.preco) || 0) + add + addV) * (Number(qtd) || 0);
   const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
 }
 function pdvConfirmarItem() {
-  const { item, qtd, composicao, opcionais, observacao, ehKg } = _pdvLerModalItem();
+  const { item, qtd, composicao, opcionais, variacoes, observacao, ehKg } = _pdvLerModalItem();
   if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
   const aval = window.Grupos ? window.Grupos.avaliarComposicao(item, composicao) : { valido: true };
   if (!aval.valido) { toast(aval.pendencias[0] || "Complete a composição.", "erro"); return; }
-  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: aval.selecoes, opcionais, observacao };
+  // item COM variações exige ≥1 escolha (senão o total seria só o preço base)
+  if ((pdvItemCtx.vars || []).length && !(variacoes || []).length) { toast("Escolha ao menos 1 opção.", "erro"); return; }
+  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: aval.selecoes, opcionais, variacoes, observacao };
   const idx = pdvItemCtx.uid != null ? pdvCart.findIndex((l) => l.uid === pdvItemCtx.uid) : -1;
   if (idx >= 0) pdvCart[idx] = linha; else pdvCart.push(linha);
   fecharPdvItemModal();
@@ -3669,6 +3756,7 @@ function renderPdvCarrinho() {
       const div = document.createElement("div");
       div.className = "pdv-linha";
       const opsTxt = (l.opcionais || []).map((o) => (o.qtd > 1 ? o.qtd + "x " : "") + o.nome).join(", ");
+      const varsTxt = (l.variacoes || []).map((v) => (v.qtd > 1 ? v.qtd + "x " : "") + v.nome).join(", ");
       const compTxt = (l.composicao || []).map((c) => c.itens.join(", ")).filter(Boolean).join(" · ");
       const ehKg = l.unidade === "kg";
       const unit = pdvMoney(pdvPrecoUnit(l)) + (ehKg ? "/kg" : "");
@@ -3681,6 +3769,7 @@ function renderPdvCarrinho() {
           '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
         "</div>" +
         '<span class="pdv-linha-unit">Preço unit: ' + unit + "</span>" +
+        (varsTxt ? '<span class="pdv-linha-ops">' + pdvEsc(varsTxt) + "</span>" : "") +
         (compTxt ? '<span class="pdv-linha-ops">' + pdvEsc(compTxt) + "</span>" : "") +
         (opsTxt ? '<span class="pdv-linha-ops">' + pdvEsc(opsTxt) + "</span>" : "") +
         (l.observacao ? '<span class="pdv-linha-obs">' + pdvEsc(l.observacao) + "</span>" : "") +
@@ -3773,7 +3862,8 @@ function renderPdvPagar() {
   ).join("");
   const itensHtml = pdvCart.map((l) => {
     const q = l.unidade === "kg" ? window.Estoque.formatarQtd(l.qtd, "kg") + " kg" : l.qtd + "x";
-    return '<div class="pdv-resumo-item"><span>' + q + " " + pdvEsc(l.nome) + "</span><span>" + pdvMoney(pdvPrecoLinha(l)) + "</span></div>";
+    const det = (l.variacoes || []).map((v) => (v.qtd > 1 ? v.qtd + "x " : "") + v.nome).join(", ");
+    return '<div class="pdv-resumo-item"><span>' + q + " " + pdvEsc(l.nome) + (det ? ' <small>(' + pdvEsc(det) + ")</small>" : "") + "</span><span>" + pdvMoney(pdvPrecoLinha(l)) + "</span></div>";
   }).join("");
   const html =
     '<button class="pdv-modal-x" type="button" data-pdv-close="pagar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
@@ -4081,7 +4171,7 @@ async function finalizarVendaPdv() {
     : (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
-    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), observacao: l.observacao })),
+    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao: cpf ? ("CPF na nota: " + cpf) : "",

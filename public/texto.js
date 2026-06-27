@@ -70,6 +70,11 @@
             const it = Object.assign({}, item);
             if (typeof it.nome === "string") it.nome = tituloPt(it.nome);
             if (typeof it.opcionais === "string" && it.opcionais.trim()) it.opcionais = padronizarOpcionais(it.opcionais);
+            if (Array.isArray(it.variacoes)) {
+              it.variacoes = it.variacoes.map(function (v) {
+                return (v && typeof v.nome === "string") ? Object.assign({}, v, { nome: tituloPt(v.nome) }) : v;
+              });
+            }
             return it;
           });
         }

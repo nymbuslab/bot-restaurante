@@ -11,6 +11,7 @@ const LIMITE_CONFIG_BYTES = 256 * 1024; // ~256 KB
 const LIMITE_CARDAPIO_BYTES = 512 * 1024; // ~512 KB
 const MAX_CATEGORIAS = 200;
 const MAX_ITENS_POR_CATEGORIA = 500;
+const MAX_VARIACOES_POR_ITEM = 100;
 
 const ehObjetoSimples = (v) => v != null && typeof v === "object" && !Array.isArray(v);
 const tamanhoBytes = (v) => Buffer.byteLength(JSON.stringify(v), "utf8");
@@ -34,6 +35,12 @@ function validarCardapio(body) {
       if (cat.itens !== undefined) {
         if (!Array.isArray(cat.itens)) return "Categoria inválida (itens).";
         if (cat.itens.length > MAX_ITENS_POR_CATEGORIA) return "Itens demais em uma categoria.";
+        for (const it of cat.itens) {
+          if (it && it.variacoes !== undefined) {
+            if (!Array.isArray(it.variacoes)) return "Item inválido (variações).";
+            if (it.variacoes.length > MAX_VARIACOES_POR_ITEM) return "Variações demais em um item.";
+          }
+        }
       }
     }
   }
@@ -59,4 +66,5 @@ module.exports = {
   LIMITE_CARDAPIO_BYTES,
   MAX_CATEGORIAS,
   MAX_ITENS_POR_CATEGORIA,
+  MAX_VARIACOES_POR_ITEM,
 };

@@ -52,6 +52,32 @@
     });
     return mapa;
   }
+  // Variações têm estoque próprio. Chave = id_item + "::" + id_variacao. Sempre "un".
+  function _chaveVar(idItem, idVar) { return String(idItem) + "::" + String(idVar); }
+  function _agregarVariacoes(itensPayload) {
+    const pedV = {};
+    (itensPayload || []).forEach(function (p) {
+      if (!p || p.id == null || !Array.isArray(p.variacoes)) return;
+      p.variacoes.forEach(function (v) {
+        if (!v || v.id == null) return;
+        const k = _chaveVar(p.id, v.id);
+        pedV[k] = (pedV[k] || 0) + Math.max(1, parseInt(v.qtd, 10) || 1);
+      });
+    });
+    return pedV;
+  }
+  function _mapaVariacoes(cardapio) {
+    const mapa = {};
+    ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+      ((c && c.itens) || []).forEach(function (it) {
+        if (!it || !Array.isArray(it.variacoes)) return;
+        it.variacoes.forEach(function (v) {
+          if (v && v.id != null) mapa[_chaveVar(it.id, v.id)] = { variacao: v, itemNome: it.nome };
+        });
+      });
+    });
+    return mapa;
+  }
   function validarEstoque(cardapio, itensPayload) {
     const mapa = _mapaItens(cardapio);
     const ped = _agregar(itensPayload, mapa);
@@ -68,21 +94,50 @@
         return { ok: false, erro: "Restam só " + resta + " de " + base.nome + "." };
       }
     }
+    // estoque por variação (cada opção do item tem o seu) — sempre "un"
+    const mapaV = _mapaVariacoes(cardapio);
+    const pedV = _agregarVariacoes(itensPayload);
+    for (const k in pedV) {
+      const ref = mapaV[k];
+      if (!ref) continue;
+      const stv = statusEstoque(ref.variacao);
+      if (!stv.controlado) continue;
+      const rotulo = ref.itemNome + " (" + ref.variacao.nome + ")";
+      if (stv.quantidade === 0) return { ok: false, erro: rotulo + " está esgotado." };
+      if (pedV[k] > stv.quantidade) return { ok: false, erro: "Restam só " + stv.quantidade + " unidades de " + rotulo + "." };
+    }
     return { ok: true, erro: "" };
   }
   function aplicarBaixa(cardapio, itensPayload) {
     const mapa = _mapaItens(cardapio);
     const ped = _agregar(itensPayload, mapa);
+    const pedV = _agregarVariacoes(itensPayload);
     const categorias = ((cardapio && cardapio.categorias) || []).map(function (c) {
       return Object.assign({}, c, {
         itens: ((c && c.itens) || []).map(function (it) {
-          if (!it || !temControle(it) || !ped[it.id]) return it;
-          const ehKg = it.unidade === "kg";
-          const q = ehKg
-            ? Math.max(0, parseFloat(String(it.estoque).replace(",", ".")) || 0)
-            : Math.max(0, parseInt(it.estoque, 10) || 0);
-          const novo = Math.max(0, q - ped[it.id]);
-          return Object.assign({}, it, { estoque: ehKg ? Math.round(novo * 1000) / 1000 : novo });
+          if (!it) return it;
+          let novoIt = it;
+          // baixa do item-base (un/kg) — como antes
+          if (temControle(it) && ped[it.id]) {
+            const ehKg = it.unidade === "kg";
+            const q = ehKg
+              ? Math.max(0, parseFloat(String(it.estoque).replace(",", ".")) || 0)
+              : Math.max(0, parseInt(it.estoque, 10) || 0);
+            const novo = Math.max(0, q - ped[it.id]);
+            novoIt = Object.assign({}, it, { estoque: ehKg ? Math.round(novo * 1000) / 1000 : novo });
+          }
+          // baixa por variação (sempre "un") — clona só o que mudou
+          if (Array.isArray(it.variacoes) && it.variacoes.length) {
+            const novasVar = it.variacoes.map(function (v) {
+              if (!v || v.id == null || !temControle(v)) return v;
+              const dec = pedV[_chaveVar(it.id, v.id)];
+              if (!dec) return v;
+              const q = Math.max(0, parseInt(v.estoque, 10) || 0);
+              return Object.assign({}, v, { estoque: Math.max(0, q - dec) });
+            });
+            novoIt = Object.assign({}, novoIt, { variacoes: novasVar });
+          }
+          return novoIt;
         }),
       });
     });
