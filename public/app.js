@@ -1081,9 +1081,14 @@ function renderCardapio() {
 }
 
 function ligarEventosCardapio() {
-  document.querySelectorAll(".catNome").forEach((el) =>
-    el.addEventListener("input", (e) => { cardapioAtual.categorias[e.target.dataset.cat].nome = e.target.value; })
-  );
+  document.querySelectorAll(".catNome").forEach((el) => {
+    el.addEventListener("input", (e) => { cardapioAtual.categorias[e.target.dataset.cat].nome = e.target.value; });
+    el.addEventListener("blur", (e) => { // padroniza ao sair do campo (assistivo)
+      const v = Texto.tituloPt(e.target.value);
+      e.target.value = v;
+      cardapioAtual.categorias[e.target.dataset.cat].nome = v;
+    });
+  });
   document.querySelectorAll(".itDisp").forEach((el) =>
     el.addEventListener("change", (e) => { item(e).disponivel = e.target.checked; renderCardapio(); })
   );
@@ -1571,9 +1576,14 @@ function renderEditorOpcionais() {
     container.appendChild(div);
   });
 
-  container.querySelectorAll(".opc-nome").forEach((el) =>
-    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; })
-  );
+  container.querySelectorAll(".opc-nome").forEach((el) => {
+    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; });
+    el.addEventListener("blur", (e) => { // padroniza ao sair do campo (assistivo)
+      const v = Texto.tituloPt(e.target.value);
+      e.target.value = v;
+      editorOpcionais[+e.target.dataset.oi].nome = v;
+    });
+  });
 
   container.querySelectorAll(".opc-preco").forEach((el) => {
     Dinheiro.mascarar(el);
@@ -1587,6 +1597,9 @@ function renderEditorOpcionais() {
     })
   );
 }
+
+// Padroniza o nome do produto ao sair do campo (Title Case PT-BR; assistivo — o save lê este valor).
+$("editor-nome").addEventListener("blur", (e) => { e.target.value = Texto.tituloPt(e.target.value); });
 
 $("editor-opc-add").addEventListener("click", () => {
   editorOpcionais.push({ nome: "", preco: 0 });
