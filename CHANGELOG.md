@@ -490,3 +490,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Novas sub-abas Horários e Pagamentos** (extraídas do Bot) em Configurações.
 - **Editor de item em 4 abas:** Principal / Composições / Opcionais / Variações, com campo opcional **preço de custo**.
 - **Google Stitch MCP** configurado para gerar layouts de tela via IA.
+
+## [0.55.0] — Cardápio web: cards de produto horizontais
+
+- **Cards de produto redesenhados** para o formato **horizontal** (imagem à esquerda, nome e preço à direita), no lugar dos cards verticais com imagem no topo — visual de lista, estilo app de delivery. O título de cada categoria ganhou um filete de destaque.
+- **Correção de quebra de layout:** em telas estreitas (celulares pequenos e a faixa de ~700–1000px no desktop, em 2 colunas), o preço longo "a partir de R$ X" empurrava o botão "+ Adicionar" para fora da borda do card. Agora o botão desce inteiro para a linha de baixo e o preço encurta com reticências, sem cortar nada.

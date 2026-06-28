@@ -159,17 +159,17 @@ button { font-family: inherit; cursor: pointer; }
 .cd-chip:hover { color: var(--text-primary); }
 .cd-chip.ativo { background: var(--accent); border-color: transparent; color: #fff; }
 
-/* ---- Grid de itens (cards verticais) ---- */
-.cd-grid { display: grid; gap: 16px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 700px) { .cd-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 980px) { .cd-grid { grid-template-columns: repeat(4, 1fr); } }
+/* ---- Grid de itens (cards horizontais em 3 colunas no desktop) ---- */
+.cd-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 700px) { .cd-grid { grid-template-columns: repeat(2, 1fr); } }
 .cd-cat-titulo {
-  grid-column: 1 / -1; font-size: 12px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.6px; color: var(--text-secondary); margin: 8px 2px 0;
+  grid-column: 1 / -1; font-size: 14px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-primary); margin: 16px 2px 6px;
+  padding-bottom: 8px; border-bottom: 2px solid var(--accent);
 }
 
 .cd-card {
-  display: flex; flex-direction: column; padding: 0; overflow: hidden; width: 100%;
+  display: flex; flex-direction: row; padding: 0; overflow: hidden; width: 100%;
   border-radius: var(--radius-lg); border: 1px solid var(--border);
   background: var(--bg-surface); text-align: left; color: inherit;
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
@@ -183,8 +183,8 @@ button.cd-card { cursor: pointer; }
 
 /* mídia: imagem grande no topo + gradiente + selos flutuantes */
 .cd-card-media {
-  position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden;
-  background: var(--bg-elevated); flex: none;
+  position: relative; width: 120px; aspect-ratio: 1; overflow: hidden;
+  background: var(--bg-elevated); flex: none; border-radius: 0;
 }
 .cd-card-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
 .cd-card:hover .cd-card-media img { transform: scale(1.06); }
@@ -217,17 +217,24 @@ button.cd-card { cursor: pointer; }
   font-size: 12.5px; color: var(--text-secondary); margin: 5px 0 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.cd-card-rodape { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cd-card-rodape { margin-top: auto; padding-top: 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .cd-card-preco {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 16px; font-weight: 800; color: var(--accent-fg); white-space: nowrap;
+  flex: 1 1 auto; min-width: 0; overflow: hidden;
 }
 .cd-card-preco .cd-preco-ico { flex: none; opacity: 0.9; }
-/* mobile 2-up: empilha preço + botão (largura total) p/ o valor nunca quebrar; preço centralizado */
+.cd-card-preco > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; max-width: 100%; vertical-align: middle; min-width: 0; }
+/* mobile: cards horizontais em lista única (imagem à esquerda) */
 @media (max-width: 699px) {
-  .cd-card-rodape { flex-direction: column; align-items: stretch; gap: 8px; }
-  .cd-card-rodape .cd-card-preco { justify-content: center; }
-  .cd-card-rodape .cd-add { width: 100%; justify-content: center; }
+  .cd-grid { grid-template-columns: 1fr; gap: 12px; }
+  .cd-card-media { width: 100px; }
+  .cd-card-corpo { padding: 10px 12px; }
+  .cd-card-nome { font-size: 14px; }
+  .cd-card-desc { display: none; }
+  .cd-card-rodape { flex-direction: row; align-items: center; padding-top: 8px; gap: 8px; }
+  .cd-card-rodape .cd-card-preco { justify-content: flex-start; font-size: 14px; }
+  .cd-card-rodape .cd-add { width: auto; justify-content: center; padding: 0 10px; height: 30px; font-size: 12px; }
   .cd-capa { height: 150px; }
   .cd-topo { margin-bottom: 48px; }
   .cd-logo { width: 88px; height: 88px; }
@@ -235,8 +242,15 @@ button.cd-card { cursor: pointer; }
   #cdLogoFallback { font-size: 34px; }
   .cd-nome { font-size: 20px; }
   .cd-cart-fab { width: 44px; height: 44px; }
-  /* folga à direita p/ os chips não ficarem sob o carrinho flutuante */
   .cd-cats { padding-right: 64px; }
+}
+/* desktop: cards horizontais em 3 colunas */
+@media (min-width: 700px) {
+  .cd-card-media { width: 130px; }
+  .cd-card-corpo { padding: 14px 16px; }
+  .cd-card-nome { font-size: 15px; }
+  .cd-card-rodape { padding-top: 10px; }
+  .cd-card-rodape .cd-card-preco { font-size: 15px; }
 }
 .cd-card-esgotado { opacity: 0.6; cursor: default; }
 .cd-card-kg { cursor: default; }
