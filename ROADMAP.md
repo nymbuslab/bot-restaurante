@@ -106,7 +106,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
     sangria/estorno/fechar; aprovação de divergência) — exige usuários/perfis por tenant (hoje 1 conta);
     **reabertura de caixa** com trilha de auditoria.
   - **Fora de escopo** (premissa: bot é porta de entrada): NFC-e/fiscal (SAT), controle de estoque,
-    mesas/comandas, venda a prazo/fiado e cancelamento de venda — ficam no sistema próprio do restaurante.
+    venda a prazo/fiado e cancelamento de venda — ficam no sistema próprio do restaurante.
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
     Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
 - [ ] App mobile para o atendente receber pedidos
@@ -151,7 +151,8 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 ### Fase 2 — Venda presencial e dinheiro
 
-- [x] **PDV de balcão** — ✅ **entregue** (Plano Completo): aba **PDV** com grade de produtos + carrinho (opcionais/composição/**variações**/kg), tela de pagamento (desconto R$/%, **split**, troco); a venda vira **pedido recebido** + **baixa de estoque** + movimento no caixa, recalculada no servidor. Ver `CHANGELOG.md` 0.49.0 e [docs/planos-e-frete.md](docs/planos-e-frete.md). **Mesa/comanda** (controle de mesa) segue **fora de escopo** — fica no sistema próprio do restaurante.
+- [x] **PDV de balcão** — ✅ **entregue** (Plano Completo): aba **PDV** com grade de produtos + carrinho (opcionais/composição/**variações**/kg), tela de pagamento (desconto R$/%, **split**, troco); a venda vira **pedido recebido** + **baixa de estoque** + movimento no caixa, recalculada no servidor. Ver `CHANGELOG.md` 0.49.0 e [docs/planos-e-frete.md](docs/planos-e-frete.md).
+- [x] **Mesas / Comandas** — ✅ **entregue** (Plano Completo, v0.57.0): aba **Mesas** com grade de mesas/comandas por status (livre/ocupada/pediu_conta/fechando); abrir mesa, lançar rodadas com grade de produtos do PDV, imprimir cozinha; solicitar conta → bloqueia novos lançamentos; reabrir se o cliente desistir; **taxa de serviço** configurável (%); recebimento parcial (cada pagamento é um movimento no caixa com `mesa_id`); **split** igualitário ou por produto; **pré-conta** impressa (subtotal + taxa + já recebido + rateio); fechar → pedidos marcados como recebidos, mesa volta a livre. Tabelas `mesas` e colunas `pedidos.mesa_id` / `caixa_movimentos.mesa_id`. Ver `CHANGELOG.md` v0.57.0.
 - [ ] **Pagamento real do cliente (Pix/cartão)** (M/G) — gateway novo (não confundir com o Stripe da assinatura).
 
 ### Fase 3 — Os "duros" (esbarram na arquitetura / regulados)
@@ -259,3 +260,4 @@ aplicada. **Requer no ambiente:** `PUBLIC_URL` (`CARDAPIO_LINK_SECRET` virou opc
 - **Confiança no cliente** → preço/total **sempre** recalculados no servidor; nunca devolver jsonb cru.
 - **Token** TTL curto; ausente/expirado → confirmação cai no telefone do checkout.
 - **Loja fechada / bot offline** → bloquear envio / salvar sem confirmar (não perde venda).
+

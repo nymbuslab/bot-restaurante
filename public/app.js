@@ -4639,19 +4639,25 @@ async function carregarMesas() {
   $("mesasVencido").hidden = true;
   $("mesasConteudo").hidden = true;
 
-  // Gate: Plano Completo via GET /api/caixa (retorna 403 se não Completo)
-  const rCaixa = await api("GET", "/api/caixa");
-  if (rCaixa.status === 403) { $("mesasLock").hidden = false; return; }
-  const caixaData = rCaixa.ok ? await rCaixa.json() : {};
-  if (!caixaData.caixa) { $("mesasSemCaixa").hidden = false; return; }
-  if (caixaData.vencido) { $("mesasVencido").hidden = false; return; }
+  try {
+    // Gate: Plano Completo via GET /api/caixa (retorna 403 se não Completo)
+    const rCaixa = await api("GET", "/api/caixa");
+    if (!rCaixa || rCaixa.status === 403) { $("mesasLock").hidden = false; return; }
+    const caixaData = rCaixa.ok ? await rCaixa.json() : {};
+    if (!caixaData.caixa) { $("mesasSemCaixa").hidden = false; return; }
+    if (caixaData.caixa.vencido) { $("mesasVencido").hidden = false; return; }
 
-  const rMesas = await api("GET", "/api/mesas");
-  if (!rMesas.ok) { toast("Erro ao carregar mesas.", "erro"); return; }
-  const mesasData = await rMesas.json();
-  mesaState.lista = mesasData.mesas || [];
-  $("mesasConteudo").hidden = false;
-  renderMesasGrade();
+    const rMesas = await api("GET", "/api/mesas");
+    if (!rMesas || rMesas.status === 403) { $("mesasLock").hidden = false; return; }
+    if (!rMesas.ok) { toast("Erro ao carregar mesas.", "erro"); $("mesasSemCaixa").hidden = false; return; }
+    const mesasData = await rMesas.json();
+    mesaState.lista = mesasData.mesas || [];
+    $("mesasConteudo").hidden = false;
+    renderMesasGrade();
+  } catch (e) {
+    toast("Erro ao conectar. Tente recarregar a página.", "erro");
+    $("mesasSemCaixa").hidden = false;
+  }
 }
 
 function renderMesasGrade() {
