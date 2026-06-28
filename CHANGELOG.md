@@ -499,3 +499,13 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.56.0] — Cardápio: reordenar variações
 
 - **Cadastro de itens:** cada variação ganhou setas ▲/▼ para **subir ou descer** sua posição na lista, definindo a ordem em que as opções aparecem no cardápio digital e no PDV.
+
+## [0.57.0] — Mesas e Comandas (Plano Completo)
+
+- **Nova aba Mesas** no painel administrativo (Plano Completo, exige caixa aberto): controle de mesas e comandas por turno, integrado ao caixa do dia.
+- **Grade de mesas automática:** informe a quantidade e o sistema monta a grade em linhas e colunas. Cada mesa é um card retangular com o número no centro e cor por status — cinza (livre), verde (ocupada), âmbar (pediu a conta), roxo (em fechamento). Controle de tamanho via slider e toggle para exibir total consumido + duração.
+- **Abertura e lançamento de rodadas:** ao clicar na mesa, abre um painel lateral com as abas Itens (histórico de rodadas) e Lançar (grade de produtos do cardápio, carrinho inline, observação). O preço é sempre recalculado no servidor com baixa de estoque atômica.
+- **Recebimento parcial e fechamento de conta:** modal de pagamento aceita qualquer forma (Dinheiro, Pix, Cartão…); pode receber parcialmente (vários clientes pagando o seu) ou fechar a conta de uma vez. Totais exibem subtotal + taxa de serviço + total, com barra de recebido/falta atualizada a cada pagamento.
+- **Taxa de serviço configurável** por estabelecimento (% salva em config, capturada na abertura da mesa e incluída no total e na pré-conta).
+- **Configurar mesas:** modal para adicionar mesas em lote (número → cria Mesa 01, Mesa 02…; ou nomes livres separados por vírgula) e remover mesas livres.
+- **Pré-conta** impressa via `Comanda.montarPreConta` (não fiscal): lista de itens agregados de todas as rodadas, subtotal, taxa de serviço, total, recebido/falta.

@@ -199,6 +199,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "assinatura") carregarAssinatura();
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
+    if (btn.dataset.aba === "mesas") carregarMesas();
   });
 });
 
@@ -4614,5 +4615,613 @@ async function inicial() {
     history.replaceState(null, "", location.pathname);
   }
 }
+// ============================================================
+// MESAS / COMANDAS
+// ============================================================
+var mesaState = {
+  lista: [],
+  selecionadaId: null,
+  detalhe: null,
+  mostrarInfo: false,
+  tamanho: 110,
+  cart: [],
+  modo: "itens",
+  cfgPendentes: [],
+};
+var mesasPdvCatAtual = "";
+var mesasInitDone = false;
+var mesaPagarModo = "fechar";
+
+async function carregarMesas() {
+  mesasInitListeners();
+  $("mesasLock").hidden = true;
+  $("mesasSemCaixa").hidden = true;
+  $("mesasVencido").hidden = true;
+  $("mesasConteudo").hidden = true;
+
+  // Gate: Plano Completo via GET /api/caixa (retorna 403 se não Completo)
+  const rCaixa = await api("GET", "/api/caixa");
+  if (rCaixa.status === 403) { $("mesasLock").hidden = false; return; }
+  const caixaData = rCaixa.ok ? await rCaixa.json() : {};
+  if (!caixaData.caixa) { $("mesasSemCaixa").hidden = false; return; }
+  if (caixaData.vencido) { $("mesasVencido").hidden = false; return; }
+
+  const rMesas = await api("GET", "/api/mesas");
+  if (!rMesas.ok) { toast("Erro ao carregar mesas.", "erro"); return; }
+  const mesasData = await rMesas.json();
+  mesaState.lista = mesasData.mesas || [];
+  $("mesasConteudo").hidden = false;
+  renderMesasGrade();
+}
+
+function renderMesasGrade() {
+  const grade = $("mesasGrade");
+  if (!grade) return;
+  grade.style.setProperty("--mesa-sz", mesaState.tamanho + "px");
+  const labelMap = { livre: "ABRIR", ocupada: "OCUPADA", pediu_conta: "CONTA", fechando: "FECHANDO" };
+  grade.innerHTML = "";
+  if (!mesaState.lista.length) {
+    grade.innerHTML = '<p class="sub" style="text-align:center;padding:32px 0;grid-column:1/-1">Nenhuma mesa cadastrada. Clique em <strong>Configurar</strong> para adicionar.</p>';
+    return;
+  }
+  mesaState.lista.forEach(function (m) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mesa-card" + (m.status !== "livre" ? " s-" + m.status : "") + (m.id === mesaState.selecionadaId ? " ativa" : "");
+    btn.dataset.id = m.id;
+    var infoHtml = "";
+    if (mesaState.mostrarInfo && m.status !== "livre") {
+      var tot = pdvMoney(m.totalConsumido || 0);
+      var dur = m.abertaEm ? mesaDuracao(m.abertaEm) : "";
+      infoHtml = '<span class="mesa-card-info">' + tot + (dur ? "<br>" + dur : "") + "</span>";
+    }
+    btn.innerHTML =
+      '<span class="mesa-card-status">' + (labelMap[m.status] || m.status.toUpperCase()) + "</span>" +
+      '<span class="mesa-card-num">' + pdvEsc(m.nome) + "</span>" +
+      infoHtml;
+    btn.addEventListener("click", function () { mesaSelecionarCard(m.id); });
+    grade.appendChild(btn);
+  });
+}
+
+function mesaDuracao(iso) {
+  var mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 60) return mins + "min";
+  var h = Math.floor(mins / 60), m2 = mins % 60;
+  return h + "h" + (m2 ? String(m2).padStart(2, "0") : "");
+}
+
+function mesaFmtHora(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+  } catch (_) { return ""; }
+}
+
+async function mesaSelecionarCard(id) {
+  mesaState.selecionadaId = id;
+  renderMesasGrade();
+  var r = await api("GET", "/api/mesas/" + id);
+  if (!r.ok) { toast("Erro ao carregar mesa.", "erro"); return; }
+  mesaState.detalhe = await r.json();
+  mesaState.modo = "itens";
+  mesaState.cart = [];
+  abrirMesaPainel();
+}
+
+function abrirMesaPainel() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  $("mesaPainelNome").textContent = "Mesa " + d.nome;
+  $("mesaPainelSub").textContent = d.abertaEm ? "Aberta às " + mesaFmtHora(d.abertaEm) : "Livre";
+  var badge = $("mesaPainelBadge");
+  badge.className = "mesa-status-badge s-" + d.status;
+  var badgeLabel = { livre: "LIVRE", ocupada: "OCUPADA", pediu_conta: "PEDIU CONTA", fechando: "FECHANDO" };
+  badge.textContent = badgeLabel[d.status] || d.status.toUpperCase();
+  $("mesasPainelOverlay").classList.add("visivel");
+  $("mesasPainel").classList.add("aberto");
+  mesaMudarAba(mesaState.modo || "itens");
+  renderMesaAcoes();
+  renderMesaTotais();
+}
+
+function fecharMesaPainel() {
+  mesaState.selecionadaId = null;
+  $("mesasPainel").classList.remove("aberto");
+  $("mesasPainelOverlay").classList.remove("visivel");
+  renderMesasGrade();
+}
+
+function mesaMudarAba(aba) {
+  mesaState.modo = aba;
+  document.querySelectorAll(".mesa-aba-btn").forEach(function (b) {
+    b.classList.toggle("ativo", b.dataset.mesaAba === aba);
+  });
+  $("mesaAbaItens").hidden = aba !== "itens";
+  $("mesaAbaLancar").hidden = aba !== "lancar";
+  if (aba === "itens") renderMesaItens();
+  if (aba === "lancar") mesaCarregarGrade();
+}
+
+function renderMesaItens() {
+  var d = mesaState.detalhe;
+  var lista = $("mesaItensLista");
+  var peds = (d && d.pedidos || []).filter(function (p) { return p.status !== "cancelado"; });
+  if (!peds.length) {
+    lista.innerHTML = '<p class="sub" style="text-align:center;padding:32px 0">Nenhum item lançado ainda.</p>';
+    return;
+  }
+  var html = "";
+  peds.forEach(function (p, i) {
+    var hora = p.criadoEm ? mesaFmtHora(p.criadoEm) : "";
+    html += '<div class="mesa-rodada">';
+    html += '<div class="mesa-rodada-cab">Rodada ' + (i + 1) + (hora ? " — " + hora : "") + "</div>";
+    (p.itens || []).forEach(function (item) {
+      var preco = pdvMoney((Number(item.preco) || 0) * (item.qtd || 1));
+      html +=
+        '<div class="mesa-rodada-item">' +
+        '<span class="mesa-rodada-item-esq"><span class="mesa-rodada-item-qtd">' + (item.qtd || 1) + "x </span>" +
+        '<span class="mesa-rodada-item-nome">' + pdvEsc(item.nome || "") + "</span></span>" +
+        '<span class="mesa-rodada-item-preco">' + preco + "</span>" +
+        "</div>";
+    });
+    html += "</div>";
+  });
+  lista.innerHTML = html;
+}
+
+function renderMesaTotais() {
+  var d = mesaState.detalhe;
+  var el = $("mesaTotais");
+  if (!d || d.status === "livre") { el.innerHTML = ""; return; }
+  var resumo = d.resumo || {};
+  var recebido = d.recebido || 0;
+  var falta = d.falta || 0;
+  var html = "";
+  html += '<div class="mesa-tot-linha"><span>Subtotal</span><span>' + pdvMoney(resumo.subtotal || 0) + "</span></div>";
+  if ((resumo.taxaServico || 0) > 0) {
+    html += '<div class="mesa-tot-linha"><span>Taxa serviço (' + (d.taxaServico || 0) + '%)</span><span>' + pdvMoney(resumo.taxaServico) + "</span></div>";
+  }
+  html += '<div class="mesa-tot-linha total"><span>TOTAL</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>";
+  if (recebido > 0) {
+    html += '<div class="mesa-tot-linha recebido"><span>Recebido</span><span>' + pdvMoney(recebido) + "</span></div>";
+    html += '<div class="mesa-tot-linha falta"><span>Falta</span><span>' + pdvMoney(falta) + "</span></div>";
+  }
+  el.innerHTML = html;
+}
+
+function renderMesaAcoes() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var row = $("mesaAcoesRow");
+  var imprimir = $("btnMesaImprimirConta");
+  var parcial = $("btnMesaReceberParcial");
+  var fechar = $("btnMesaFecharConta");
+  row.innerHTML = "";
+  if (d.status === "livre") {
+    var btnAbrir = document.createElement("button");
+    btnAbrir.type = "button";
+    btnAbrir.className = "primario";
+    btnAbrir.textContent = "Abrir Mesa";
+    btnAbrir.addEventListener("click", mesaAbrir);
+    row.appendChild(btnAbrir);
+    imprimir.hidden = true; parcial.hidden = true; fechar.hidden = true;
+  } else {
+    imprimir.hidden = false; parcial.hidden = false; fechar.hidden = false;
+    if (d.status === "ocupada") {
+      var btnSol = document.createElement("button");
+      btnSol.type = "button"; btnSol.className = "secundario";
+      btnSol.textContent = "Solicitar Conta";
+      btnSol.addEventListener("click", mesaSolicitarConta);
+      var btnCan = document.createElement("button");
+      btnCan.type = "button"; btnCan.className = "secundario";
+      btnCan.style.color = "var(--error)"; btnCan.style.borderColor = "var(--error)";
+      btnCan.textContent = "Cancelar";
+      btnCan.addEventListener("click", mesaCancelar);
+      row.appendChild(btnSol); row.appendChild(btnCan);
+    } else if (d.status === "pediu_conta" || d.status === "fechando") {
+      var btnRe = document.createElement("button");
+      btnRe.type = "button"; btnRe.className = "secundario";
+      btnRe.textContent = "Reabrir";
+      btnRe.addEventListener("click", mesaReabrir);
+      row.appendChild(btnRe);
+    }
+  }
+}
+
+async function mesaAbrir() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/abrir");
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao abrir mesa.", "erro"); return; }
+  var m = await r.json();
+  mesaState.detalhe = Object.assign({}, mesaState.detalhe, m, { pedidos: [], resumo: { subtotal: 0, taxaServico: 0, total: 0 }, recebido: 0, falta: 0 });
+  await mesaAtualizarLista();
+  abrirMesaPainel();
+}
+
+async function mesaSolicitarConta() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/solicitar-conta");
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro.", "erro"); return; }
+  await mesaRecarregarDetalhe(d.id);
+}
+
+async function mesaReabrir() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/reabrir");
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao reabrir.", "erro"); return; }
+  await mesaRecarregarDetalhe(d.id);
+  toast("Mesa reaberta.");
+}
+
+async function mesaCancelar() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var conf = await confirmar("Cancelar mesa " + d.nome + "?", "Os pedidos serão cancelados e a mesa liberada sem receber.", "Cancelar mesa", "Voltar");
+  if (!conf) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar");
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao cancelar.", "erro"); return; }
+  toast("Mesa " + d.nome + " cancelada.");
+  fecharMesaPainel();
+  await mesaAtualizarLista();
+}
+
+async function mesaRecarregarDetalhe(id) {
+  var r = await api("GET", "/api/mesas/" + id);
+  if (!r.ok) return;
+  mesaState.detalhe = await r.json();
+  abrirMesaPainel();
+  await mesaAtualizarLista();
+}
+
+async function mesaAtualizarLista() {
+  var r = await api("GET", "/api/mesas");
+  if (!r.ok) return;
+  var data = await r.json();
+  mesaState.lista = data.mesas || [];
+  renderMesasGrade();
+}
+
+/* ---- Aba Lançar ---- */
+function mesaCarregarGrade() {
+  var cats = $("mesaCats");
+  var grade = $("mesaGrid");
+  if (!cats || !grade) return;
+  cats.innerHTML = "";
+  grade.innerHTML = "";
+  mesasPdvCatAtual = mesasPdvCatAtual || "";
+  mesaRenderGrade(mesasPdvCatAtual);
+  $("mesaBusca").value = "";
+}
+
+function mesaRenderGrade(cat) {
+  mesasPdvCatAtual = cat || "";
+  var grade = $("mesaGrid");
+  var cats = $("mesaCats");
+  var busca = (($("mesaBusca") || {}).value || "").trim().toLowerCase();
+  var cardapio = cardapioAtual || { categorias: [] };
+  // render cat pills
+  cats.innerHTML = "";
+  var catNomes = cardapio.categorias.map(function (c) { return c.nome; }).filter(function (n, i, a) { return a.indexOf(n) === i; });
+  catNomes.forEach(function (cn) {
+    var b = document.createElement("button");
+    b.type = "button"; b.role = "tab";
+    b.className = "pdv-cat" + (cn === mesasPdvCatAtual ? " ativo" : "");
+    b.textContent = cn;
+    b.addEventListener("click", function () { mesasPdvCatAtual = cn; mesaRenderGrade(cn); });
+    cats.appendChild(b);
+  });
+  // render items
+  grade.innerHTML = "";
+  var itens = cardapio.categorias.reduce(function (acc, c) {
+    (c.itens || []).forEach(function (i) { acc.push(Object.assign({}, i, { _cat: c.nome })); });
+    return acc;
+  }, []);
+  if (busca) {
+    itens = itens.filter(function (i) { return (i.nome || "").toLowerCase().indexOf(busca) !== -1; });
+  } else if (mesasPdvCatAtual) {
+    itens = itens.filter(function (i) { return i._cat === mesasPdvCatAtual; });
+  }
+  itens.forEach(function (item) {
+    if (!item.disponivel) return;
+    var tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "pdv-tile";
+    tile.innerHTML = '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
+      '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + "</span>";
+    tile.addEventListener("click", function () { mesaAdicionarItem(item); });
+    grade.appendChild(tile);
+  });
+}
+
+function mesaAdicionarItem(item) {
+  var d = mesaState.detalhe;
+  if (!d || d.status === "livre") { toast("Abra a mesa antes de lançar.", "erro"); return; }
+  if (d.status === "pediu_conta" || d.status === "fechando") { toast("Mesa em fechamento. Reabra para lançar.", "erro"); return; }
+  var idx = mesaState.cart.findIndex(function (c) { return c.id === item.id; });
+  if (idx >= 0) {
+    mesaState.cart[idx].qtd++;
+  } else {
+    mesaState.cart.push(Object.assign({}, item, { qtd: 1, opcionais: [], variacoes: [] }));
+  }
+  renderMesaCart();
+}
+
+function renderMesaCart() {
+  var cart = mesaState.cart;
+  var el = $("mesaCarrinho");
+  var itensEl = $("mesaCartItens");
+  if (!el) return;
+  el.hidden = cart.length === 0;
+  if (!cart.length) return;
+  itensEl.innerHTML = cart.map(function (c, i) {
+    return '<div class="mesa-cart-linha">' +
+      '<span class="mesa-cart-linha-nome">' + c.qtd + "x " + pdvEsc(c.nome) + "</span>" +
+      '<span class="mesa-cart-linha-preco">' + pdvMoney(c.preco * c.qtd) + "</span>" +
+      '<button type="button" class="mesa-cart-rm" data-idx="' + i + '" aria-label="Remover">&times;</button>' +
+      "</div>";
+  }).join("");
+  itensEl.querySelectorAll(".mesa-cart-rm").forEach(function (b) {
+    b.addEventListener("click", function () {
+      mesaState.cart.splice(Number(b.dataset.idx), 1);
+      renderMesaCart();
+    });
+  });
+}
+
+async function mesaLancarRodada() {
+  var d = mesaState.detalhe;
+  if (!d || !mesaState.cart.length) return;
+  var obs = (($("mesaObs") || {}).value || "").trim();
+  var btn = $("mesaLancarRodada");
+  btn.disabled = true; btn.textContent = "Lançando…";
+  var r = await api("POST", "/api/mesas/" + d.id + "/pedido", {
+    itens: mesaState.cart.map(function (c) {
+      return { id: c.id, nome: c.nome, preco: c.preco, qtd: c.qtd, opcionais: c.opcionais || [], variacoes: c.variacoes || [] };
+    }),
+    observacao: obs,
+  });
+  btn.disabled = false; btn.textContent = "Lançar Rodada";
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao lançar rodada.", "erro"); return; }
+  toast("Rodada lançada!");
+  mesaState.cart = [];
+  if ($("mesaObs")) $("mesaObs").value = "";
+  renderMesaCart();
+  await mesaRecarregarDetalhe(d.id);
+  mesaMudarAba("itens");
+}
+
+/* ---- Configurar Mesas ---- */
+function abrirConfigurarMesas() {
+  mesaState.cfgPendentes = [];
+  if ($("mesasTaxaCfg")) $("mesasTaxaCfg").value = "";
+  if ($("mesasAddInput")) $("mesasAddInput").value = "";
+  renderMesasConfigLista();
+  $("mesasConfigOverlay").hidden = false;
+}
+
+function fecharConfigurarMesas() {
+  $("mesasConfigOverlay").hidden = true;
+}
+
+function mesasAdicionarNomes() {
+  var raw = (($("mesasAddInput") || {}).value || "").trim();
+  if (!raw) return;
+  var n = Number(raw);
+  var nomes = [];
+  if (!isNaN(n) && n > 0 && n <= 50) {
+    for (var i = 1; i <= n; i++) nomes.push(String(i).padStart(2, "0"));
+  } else {
+    nomes = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+  mesaState.cfgPendentes = mesaState.cfgPendentes.concat(nomes);
+  if ($("mesasAddInput")) $("mesasAddInput").value = "";
+  renderMesasConfigLista();
+}
+
+function renderMesasConfigLista() {
+  var el = $("mesasConfigLista");
+  if (!el) return;
+  var existentes = mesaState.lista.map(function (m) {
+    return '<span class="mesa-tag">' + pdvEsc(m.nome) +
+      (m.status === "livre"
+        ? '<button type="button" class="mesa-tag-rm" data-id="' + m.id + '" aria-label="Remover mesa ' + pdvEsc(m.nome) + '">&times;</button>'
+        : "") +
+      "</span>";
+  }).join("");
+  var pendentes = mesaState.cfgPendentes.map(function (n, i) {
+    return '<span class="mesa-tag" style="opacity:.7">' + pdvEsc(n) +
+      '<button type="button" class="mesa-tag-rm" data-idx="' + i + '" aria-label="Remover">&times;</button>' +
+      "</span>";
+  }).join("");
+  el.innerHTML = existentes + pendentes;
+  el.querySelectorAll(".mesa-tag-rm[data-id]").forEach(function (b) {
+    b.addEventListener("click", async function () {
+      var id = Number(b.dataset.id);
+      var ok = await api("DELETE", "/api/mesas/" + id);
+      if (!ok.ok) { var e2 = await ok.json().catch(function () { return {}; }); toast(e2.erro || "Não foi possível remover (mesa ocupada?).", "erro"); return; }
+      mesaState.lista = mesaState.lista.filter(function (m) { return m.id !== id; });
+      renderMesasConfigLista();
+      renderMesasGrade();
+    });
+  });
+  el.querySelectorAll(".mesa-tag-rm[data-idx]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      mesaState.cfgPendentes.splice(Number(b.dataset.idx), 1);
+      renderMesasConfigLista();
+    });
+  });
+}
+
+async function salvarConfigurarMesas() {
+  var taxa = (($("mesasTaxaCfg") || {}).value || "").trim();
+  var body = {};
+  if (mesaState.cfgPendentes.length) body.nomes = mesaState.cfgPendentes.slice();
+  if (taxa !== "") body.taxaServico = Number(taxa);
+  if (!body.nomes && body.taxaServico == null) { fecharConfigurarMesas(); return; }
+  var r = await api("POST", "/api/mesas/config", body);
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao salvar.", "erro"); return; }
+  mesaState.cfgPendentes = [];
+  toast("Configurações salvas!");
+  await mesaAtualizarLista();
+  fecharConfigurarMesas();
+}
+
+/* ---- Pagamento / Recebimento ---- */
+function abrirMesaPagar(modo) {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  mesaPagarModo = modo || "fechar";
+  var caixa = $("mesasPagarCaixa");
+  var resumo = d.resumo || {};
+  var recebido = d.recebido || 0;
+  var falta = d.falta != null ? d.falta : Math.max(0, (resumo.total || 0) - recebido);
+  var titulo = modo === "parcial" ? "Receber Parcial" : "Fechar Conta";
+  caixa.innerHTML =
+    '<div class="pdv-modal-cab"><h3>' + titulo + "</h3>" +
+    '<button type="button" class="pdv-modal-fechar" id="mesasPagarFechar" aria-label="Fechar">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+    "</button></div>" +
+    '<div class="pdv-modal-corpo">' +
+    '<div class="mesa-pagar-resumo">' +
+    '<div class="mesa-pagar-linha total"><span>Total</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>" +
+    (recebido > 0 ? '<div class="mesa-pagar-linha recebido"><span>Já recebido</span><span>' + pdvMoney(recebido) + "</span></div>" : "") +
+    '<div class="mesa-pagar-linha falta"><span>Falta</span><span id="mesaPgFaltaVal">' + pdvMoney(falta) + "</span></div>" +
+    "</div>" +
+    '<div class="campo"><label>Forma de pagamento</label>' +
+    '<select id="mesaPgForma"><option>Dinheiro</option><option>Cartão Débito</option><option>Cartão Crédito</option><option>Pix</option><option>Outros</option></select>' +
+    "</div>" +
+    '<div class="campo"><label>Valor (R$)</label>' +
+    '<input type="text" id="mesaPgValor" placeholder="0,00" inputmode="decimal" autocomplete="off" />' +
+    "</div>" +
+    "</div>" +
+    '<div class="pdv-modal-rodape">' +
+    '<button type="button" class="secundario" id="mesasPagarFechar2">Cancelar</button>' +
+    '<button type="button" class="primario" id="btnMesaConfirmarPag">' + (modo === "parcial" ? "Registrar" : "Fechar conta") + "</button>" +
+    "</div>";
+  $("mesasPagarOverlay").hidden = false;
+  $("mesasPagarFechar").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
+  $("mesasPagarFechar2").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
+  var valInput = $("mesaPgValor");
+  if (valInput) {
+    valInput.addEventListener("input", function () {
+      var v = valInput.value.replace(/\D/g, "");
+      if (!v) { valInput.value = ""; return; }
+      valInput.value = (Number(v) / 100).toFixed(2).replace(".", ",");
+    });
+    valInput.focus();
+  }
+  $("btnMesaConfirmarPag").addEventListener("click", function () { mesaConfirmarPagamento(falta, resumo.total || 0); });
+}
+
+async function mesaConfirmarPagamento(faltaOrig, totalMesa) {
+  var d = mesaState.detalhe;
+  var forma = (($("mesaPgForma") || {}).value) || "Outros";
+  var valorStr = ((($("mesaPgValor") || {}).value) || "").replace(",", ".");
+  var valor = Math.round(parseFloat(valorStr) * 100) / 100;
+  if (!valor || valor <= 0) { toast("Informe o valor.", "erro"); return; }
+  var btn = $("btnMesaConfirmarPag");
+  btn.disabled = true;
+  if (mesaPagarModo === "parcial") {
+    var r = await api("POST", "/api/mesas/" + d.id + "/receber-parcial", { forma: forma, valor: valor });
+    btn.disabled = false;
+    if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro.", "erro"); return; }
+    mesaState.detalhe = await r.json();
+    $("mesasPagarOverlay").hidden = true;
+    toast("Recebido " + pdvMoney(valor) + " em " + forma + ".");
+    abrirMesaPainel();
+    await mesaAtualizarLista();
+  } else {
+    var r2 = await api("POST", "/api/mesas/" + d.id + "/pagar", { pagamentos: [{ forma: forma, valor: valor }] });
+    btn.disabled = false;
+    if (!r2.ok) { var e2 = await r2.json().catch(function () { return {}; }); toast(e2.erro || "Erro ao fechar.", "erro"); return; }
+    $("mesasPagarOverlay").hidden = true;
+    toast("Mesa " + d.nome + " fechada!");
+    fecharMesaPainel();
+    await mesaAtualizarLista();
+  }
+}
+
+async function mesaIniciarFechamento() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/fechar-conta");
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro.", "erro"); return; }
+  mesaState.detalhe = await r.json();
+  abrirMesaPainel();
+  abrirMesaPagar("fechar");
+}
+
+function mesaImprimirConta() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  if (typeof Comanda === "undefined" || !Comanda.montarPreConta) { toast("Módulo de impressão não disponível.", "erro"); return; }
+  var texto = Comanda.montarPreConta(
+    { nome: d.nome },
+    d.pedidos || [],
+    {
+      subtotal: (d.resumo && d.resumo.subtotal) || 0,
+      taxaServico: (d.resumo && d.resumo.taxaServico) || 0,
+      taxaPct: d.taxaServico || 0,
+      total: (d.resumo && d.resumo.total) || 0,
+      recebido: d.recebido || 0,
+      falta: d.falta || 0,
+      quando: new Date().toISOString(),
+    },
+    configAtual
+  );
+  if (typeof Impressao !== "undefined" && Impressao.imprimir) {
+    Impressao.imprimir(texto, "pre-conta");
+  } else {
+    var w = window.open("", "_blank", "width=420,height=640");
+    if (w) {
+      var pre = w.document.createElement("pre");
+      pre.style.fontFamily = "monospace";
+      pre.style.fontSize = "13px";
+      pre.textContent = texto;
+      w.document.body.appendChild(pre);
+      w.print();
+      w.close();
+    }
+  }
+}
+
+/* ---- Init (wired once) ---- */
+function mesasInitListeners() {
+  if (mesasInitDone) return;
+  mesasInitDone = true;
+  $("mesasPainelFechar").addEventListener("click", fecharMesaPainel);
+  $("mesasPainelOverlay").addEventListener("click", fecharMesaPainel);
+  $("mesaAbaItensBtn").addEventListener("click", function () { mesaMudarAba("itens"); });
+  $("mesaAbaLancarBtn").addEventListener("click", function () { mesaMudarAba("lancar"); });
+  $("btnMesaImprimirConta").addEventListener("click", mesaImprimirConta);
+  $("btnMesaReceberParcial").addEventListener("click", function () { abrirMesaPagar("parcial"); });
+  $("btnMesaFecharConta").addEventListener("click", mesaIniciarFechamento);
+  $("mesasMostrarInfo").addEventListener("change", function (e) {
+    mesaState.mostrarInfo = e.target.checked;
+    renderMesasGrade();
+  });
+  $("mesasTamanho").addEventListener("input", function (e) {
+    mesaState.tamanho = Number(e.target.value);
+    renderMesasGrade();
+  });
+  $("btnConfigurarMesas").addEventListener("click", abrirConfigurarMesas);
+  $("mesasConfigBg").addEventListener("click", fecharConfigurarMesas);
+  $("mesasConfigFechar").addEventListener("click", fecharConfigurarMesas);
+  $("mesasConfigFechar2").addEventListener("click", fecharConfigurarMesas);
+  $("btnMesasAdd").addEventListener("click", mesasAdicionarNomes);
+  $("mesasAddInput").addEventListener("keydown", function (e) { if (e.key === "Enter") mesasAdicionarNomes(); });
+  $("btnMesasSalvarCfg").addEventListener("click", salvarConfigurarMesas);
+  $("mesasPagarBg").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
+  $("btnMesasIrCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
+  $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
+  $("btnVerPlanosMesas").addEventListener("click", function () { document.querySelector("[data-aba='assinatura']").click(); });
+  $("mesaLancarRodada").addEventListener("click", mesaLancarRodada);
+  $("mesaCancelarCart").addEventListener("click", function () { mesaState.cart = []; renderMesaCart(); });
+  $("mesaBusca").addEventListener("input", function () { mesaRenderGrade(mesasPdvCatAtual); });
+}
+
 // Boot: obtém a sessão pelo cookie (refresh) e só então carrega o painel.
 iniciarSessao().then((ok) => { if (ok) inicial(); });

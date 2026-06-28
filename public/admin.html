@@ -39,6 +39,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="13" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></svg>
           <span>PDV</span>
         </button>
+        <button data-aba="mesas">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="9" height="9" rx="1"/><rect x="13" y="3" width="9" height="9" rx="1"/><rect x="2" y="14" width="9" height="9" rx="1"/><rect x="13" y="14" width="9" height="9" rx="1"/></svg>
+          <span>Mesas</span>
+        </button>
         <button data-aba="caixa">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
           <span>Caixa</span>
@@ -886,6 +890,139 @@
     <div class="pdv-modal" id="pdvDescOverlay" hidden>
       <div class="pdv-modal-overlay" data-pdv-close="desc"></div>
       <div class="pdv-modal-caixa" id="pdvDescCaixa" role="dialog" aria-modal="true" aria-label="Desconto"></div>
+    </div>
+
+    <!-- MESAS / COMANDAS (Plano Completo) -->
+    <section class="aba" id="aba-mesas">
+      <!-- gate: plano -->
+      <div class="caixa-lock" id="mesasLock" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h3>Mesas é do Plano Completo</h3>
+        <p class="sub">Controle de mesas e comandas: abra, lance rodadas, imprima a conta e feche. Disponível no Plano Completo.</p>
+        <button type="button" class="secundario" id="btnVerPlanosMesas">Ver planos</button>
+      </div>
+      <!-- gate: sem caixa -->
+      <div class="pdv-semcaixa" id="mesasSemCaixa" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+        <h3>Abra o caixa para usar Mesas</h3>
+        <p class="sub">O controle de mesas registra recebimentos no caixa do dia. Abra o caixa primeiro.</p>
+        <button type="button" class="primario" id="btnMesasIrCaixa">Ir para o Caixa</button>
+      </div>
+      <!-- gate: caixa vencido -->
+      <div class="pdv-semcaixa" id="mesasVencido" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <h3>Feche o caixa do dia anterior</h3>
+        <p class="sub">Há um caixa aberto de outro dia. Feche-o no Caixa e abra um novo para usar Mesas hoje.</p>
+        <button type="button" class="primario" id="btnMesasVencidoCaixa">Ir para o Caixa</button>
+      </div>
+      <!-- conteúdo principal -->
+      <div id="mesasConteudo" hidden>
+        <div class="mesas-topo">
+          <h2>Mesas / Comandas</h2>
+          <button type="button" class="secundario mini" id="btnConfigurarMesas">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Configurar
+          </button>
+        </div>
+        <div class="mesas-grade" id="mesasGrade"></div>
+        <div class="mesas-controles">
+          <label class="mesas-toggle-label">
+            <span class="switch"><input type="checkbox" id="mesasMostrarInfo" /></span>
+            Exibir Total e Duração
+          </label>
+          <div class="mesas-controles-dir">
+            <span class="mesas-slider-label">Tamanho:</span>
+            <input type="range" id="mesasTamanho" class="mesas-slider" min="80" max="180" value="110" step="10" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mesa: overlay + drawer lateral -->
+    <div class="mesa-painel-overlay" id="mesasPainelOverlay"></div>
+    <aside class="mesa-painel" id="mesasPainel" role="dialog" aria-modal="true" aria-label="Mesa">
+      <div class="mesa-painel-topo">
+        <button type="button" class="mesa-painel-fechar" id="mesasPainelFechar" aria-label="Fechar painel da mesa">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="mesa-painel-titulo">
+          <h2 id="mesaPainelNome">Mesa</h2>
+          <p class="mesa-painel-sub" id="mesaPainelSub">Livre</p>
+        </div>
+        <span class="mesa-status-badge s-livre" id="mesaPainelBadge">LIVRE</span>
+      </div>
+      <div class="mesa-abas">
+        <button type="button" class="mesa-aba-btn ativo" data-mesa-aba="itens" id="mesaAbaItensBtn">Itens</button>
+        <button type="button" class="mesa-aba-btn" data-mesa-aba="lancar" id="mesaAbaLancarBtn">Lançar</button>
+      </div>
+      <div class="mesa-painel-conteudo" id="mesaAbaItens">
+        <div id="mesaItensLista"></div>
+      </div>
+      <div class="mesa-painel-conteudo" id="mesaAbaLancar" hidden>
+        <div class="pdv-cats" id="mesaCats" role="tablist" aria-label="Categorias"></div>
+        <div class="pdv-busca" style="margin-top:8px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="mesaBusca" type="search" placeholder="Buscar item…" autocomplete="off" />
+        </div>
+        <div class="pdv-grid" id="mesaGrid"></div>
+        <div class="mesa-carrinho" id="mesaCarrinho" hidden>
+          <div class="mesa-cart-itens" id="mesaCartItens"></div>
+          <div class="mesa-cart-obs">
+            <input type="text" id="mesaObs" placeholder="Observação da rodada (opcional)" autocomplete="off" />
+          </div>
+          <div class="mesa-cart-acoes">
+            <button type="button" class="secundario" id="mesaCancelarCart">Cancelar</button>
+            <button type="button" class="primario" id="mesaLancarRodada">Lançar Rodada</button>
+          </div>
+        </div>
+      </div>
+      <div class="mesa-acoes-row" id="mesaAcoesRow"></div>
+      <div class="mesa-painel-rodape">
+        <div class="mesa-rodape-totais" id="mesaTotais"></div>
+        <div class="mesa-rodape-acoes">
+          <button type="button" class="secundario" id="btnMesaImprimirConta" hidden>Imprimir Conta</button>
+          <button type="button" class="secundario" id="btnMesaReceberParcial" hidden>Receber Parcial</button>
+          <button type="button" class="primario" id="btnMesaFecharConta" hidden>Fechar Conta</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Mesas: modal configurar -->
+    <div class="pdv-modal" id="mesasConfigOverlay" hidden>
+      <div class="pdv-modal-overlay" id="mesasConfigBg"></div>
+      <div class="pdv-modal-caixa" role="dialog" aria-modal="true" aria-label="Configurar Mesas">
+        <div class="pdv-modal-cab">
+          <h3>Configurar Mesas</h3>
+          <button type="button" class="pdv-modal-fechar" id="mesasConfigFechar" aria-label="Fechar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="pdv-modal-corpo">
+          <div class="campo">
+            <label for="mesasTaxaCfg">Taxa de serviço padrão (%)</label>
+            <input type="number" id="mesasTaxaCfg" min="0" max="100" step="0.5" placeholder="10" />
+            <small class="sub">Aplicada ao abrir novas mesas. Não altera mesas já abertas.</small>
+          </div>
+          <div class="sep" style="height:1px;background:var(--border-subtle);margin:16px 0;"></div>
+          <p class="campo-label" style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Adicionar mesas</p>
+          <div class="mesas-add-row">
+            <input type="text" id="mesasAddInput" placeholder="5  ou  Bar 1, Bar 2, Varanda" autocomplete="off" />
+            <button type="button" class="primario" id="btnMesasAdd">Adicionar</button>
+          </div>
+          <p class="sub" style="margin-top:6px">Informe um número (cria Mesa 01, 02…) ou nomes separados por vírgula.</p>
+          <div class="mesas-lista-tags" id="mesasConfigLista"></div>
+        </div>
+        <div class="pdv-modal-rodape">
+          <button type="button" class="secundario" id="mesasConfigFechar2">Fechar</button>
+          <button type="button" class="primario" id="btnMesasSalvarCfg">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mesas: modal pagamento / recebimento parcial -->
+    <div class="pdv-modal" id="mesasPagarOverlay" hidden>
+      <div class="pdv-modal-overlay" id="mesasPagarBg"></div>
+      <div class="pdv-modal-caixa" role="dialog" aria-modal="true" aria-label="Receber pagamento" id="mesasPagarCaixa"></div>
     </div>
 
     <section class="aba" id="aba-caixa">

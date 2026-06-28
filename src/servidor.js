@@ -31,6 +31,8 @@ const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const pdv = require("./pdv");
+const mesas = require("./mesas");       // lógica pura (total/split/falta)
+const mesasDb = require("./mesas-db");  // CRUD + recebimento parcial/fechamento
 
 const app = express();
 
@@ -1633,6 +1635,239 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
   } catch (e) {
     // Erros de validação (recalcular/desconto/split/caixa) → 400 com a mensagem.
     res.status(400).json({ erro: e.message || "Falha ao registrar a venda." });
+  }
+});
+
+// ============================ MESAS & COMANDAS ============================
+// Gate = Plano Completo (mesmo do PDV, via exigePdv). Salão presencial: cada
+// rodada vira um pedido com mesa_id (não recebido até o fechamento). Recebimento
+// parcial e taxa de serviço apoiados em mesas.js (puro) + mesas-db.js.
+
+function taxaServicoPadrao(dir) {
+  const cfg = store.getConfig(dir) || {};
+  const t = cfg.mesas && cfg.mesas.taxaServico;
+  return t == null ? 10 : Math.max(0, Math.min(100, Number(t) || 0));
+}
+
+// Monta o detalhe completo de uma mesa: dados + pedidos + resumo (com taxa) +
+// recebido (parciais) + falta. Reusado pelas rotas de detalhe/fechamento.
+async function detalheMesa(dir, mesaId) {
+  const mesa = await mesasDb.buscarPorId(dir, mesaId);
+  if (!mesa) return null;
+  const peds = await mesasDb.pedidosDaMesa(dir, mesaId);
+  const resumo = mesas.calcularTotalMesa(peds, mesa.taxaServico);
+  const recebido = await mesasDb.recebidoDaMesa(dir, mesaId);
+  const falta = Math.max(0, Math.round((resumo.total - recebido) * 100) / 100);
+  return { ...mesa, pedidos: peds, resumo, recebido, falta };
+}
+
+app.get("/api/mesas", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    res.json({ mesas: await mesasDb.listar(req.tenantDir), taxaServico: taxaServicoPadrao(req.tenantDir) });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao listar mesas." });
+  }
+});
+
+app.get("/api/mesas/:id", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const d = await detalheMesa(req.tenantDir, Number(req.params.id));
+    if (!d) return res.status(404).json({ erro: "Mesa não encontrada." });
+    res.json(d);
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao carregar a mesa." });
+  }
+});
+
+// Criar mesas em lote (body.nomes) e/ou salvar a taxa de serviço padrão.
+app.post("/api/mesas/config", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const b = req.body || {};
+    let criadas = [];
+    if (Array.isArray(b.nomes) && b.nomes.length) criadas = await mesasDb.criarEmLote(req.tenantDir, b.nomes);
+    if (b.taxaServico != null) {
+      await store.ensure(req.tenantDir);
+      const cfg = store.getConfig(req.tenantDir) || {};
+      cfg.mesas = Object.assign({}, cfg.mesas, { taxaServico: Math.max(0, Math.min(100, Number(b.taxaServico) || 0)) });
+      await store.setConfig(req.tenantDir, cfg);
+    }
+    res.json({ ok: true, mesas: criadas });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao configurar mesas." });
+  }
+});
+
+app.delete("/api/mesas/:id", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const ok = await mesasDb.remover(req.tenantDir, Number(req.params.id));
+    if (!ok) return res.status(400).json({ erro: "Só é possível remover mesas livres." });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao remover a mesa." });
+  }
+});
+
+app.post("/api/mesas/:id/abrir", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    await store.ensure(req.tenantDir);
+    const mesa = await mesasDb.abrir(req.tenantDir, Number(req.params.id), taxaServicoPadrao(req.tenantDir));
+    if (!mesa) return res.status(400).json({ erro: "Mesa não encontrada ou já está aberta." });
+    res.json(mesa);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao abrir a mesa." });
+  }
+});
+
+// Lança uma rodada: recalcula no servidor, baixa estoque atômico e salva o pedido
+// vinculado à mesa (não recebido). A impressão da cozinha é disparada pelo painel.
+app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesaId = Number(req.params.id);
+    const b = req.body || {};
+    if (!Array.isArray(b.itens) || !b.itens.length) return res.status(400).json({ erro: "Pedido vazio." });
+    const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
+    if (!mesa) return res.status(404).json({ erro: "Mesa não encontrada." });
+    if (mesa.status === "livre") return res.status(400).json({ erro: "Abra a mesa antes de lançar pedidos." });
+    if (mesa.status === "pediu_conta" || mesa.status === "fechando") {
+      return res.status(400).json({ erro: "A mesa está em fechamento. Reabra a mesa para lançar novos itens." });
+    }
+    await store.ensure(req.tenantDir);
+    const cardapio = store.getCardapio(req.tenantDir);
+    const estCheck = estoque.validarEstoque(cardapio, b.itens);
+    if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
+    const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const novoCardapio = await store.baixarEstoqueTx(client, req.tenantDir, b.itens);
+      const pedido = await pedidos.salvarPedido(req.tenantDir, {
+        cliente: "Mesa " + mesa.nome,
+        tipoEntrega: "Balcão",
+        itens,
+        total: subtotal,
+        observacao: String(b.observacao || "").slice(0, 200),
+        mesaId,
+      }, client);
+      await mesasDb.vincularPedido(req.tenantDir, mesaId, null, client);
+      await client.query("COMMIT");
+      store.sincronizarCardapio(req.tenantDir, novoCardapio);
+      res.json({ ok: true, pedido });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao lançar o pedido na mesa." });
+  }
+});
+
+// Cliente pediu a conta (bloqueia novos lançamentos; reabrível).
+app.post("/api/mesas/:id/solicitar-conta", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesa = await mesasDb.atualizarStatus(req.tenantDir, Number(req.params.id), "pediu_conta", "ocupada");
+    if (!mesa) return res.status(400).json({ erro: "Mesa não está ocupada." });
+    res.json(mesa);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao solicitar a conta." });
+  }
+});
+
+// Operador inicia o fechamento (→ fechando, bloqueia lançamentos). Devolve o
+// detalhe com resumo/recebido/falta para a tela de pagamento.
+app.post("/api/mesas/:id/fechar-conta", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesaId = Number(req.params.id);
+    const atual = await mesasDb.buscarPorId(req.tenantDir, mesaId);
+    if (!atual || atual.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
+    if (atual.status !== "fechando") await mesasDb.atualizarStatus(req.tenantDir, mesaId, "fechando");
+    res.json(await detalheMesa(req.tenantDir, mesaId));
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao iniciar o fechamento." });
+  }
+});
+
+app.post("/api/mesas/:id/reabrir", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesa = await mesasDb.reabrir(req.tenantDir, Number(req.params.id));
+    if (!mesa) return res.status(400).json({ erro: "A mesa não está em fechamento." });
+    res.json(mesa);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao reabrir a mesa." });
+  }
+});
+
+// Recebimento PARCIAL: lança um pagamento e devolve recebido/falta atualizados.
+app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesaId = Number(req.params.id);
+    const b = req.body || {};
+    const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
+    if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
+    await mesasDb.receberParcial(req.tenantDir, mesaId, { forma: b.forma, valor: b.valor }, mesa.nome);
+    res.json(await detalheMesa(req.tenantDir, mesaId));
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao receber o pagamento." });
+  }
+});
+
+// Fechamento FINAL: valida que recebido + pagamentos cobrem o total e libera a mesa.
+app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesaId = Number(req.params.id);
+    const b = req.body || {};
+    const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
+    if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
+    const peds = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
+    if (!peds.filter((p) => p.status !== "cancelado").length) return res.status(400).json({ erro: "A mesa não possui pedidos." });
+    const resumo = mesas.calcularTotalMesa(peds, mesa.taxaServico);
+    const { total } = pdv.aplicarDesconto(resumo.total, b.desconto);
+    const recebidoAntes = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);
+    const pagamentos = Array.isArray(b.pagamentos) ? b.pagamentos : [];
+    const somaAgora = pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+    if (recebidoAntes + somaAgora + 0.01 < total) {
+      return res.status(400).json({ erro: "Pagamento insuficiente para fechar a conta." });
+    }
+    const fechada = await mesasDb.finalizarFechamento(req.tenantDir, mesaId, { pagamentos }, mesa.nome);
+    res.json({ ok: true, mesa: fechada });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao fechar a conta." });
+  }
+});
+
+app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesa = await mesasDb.cancelar(req.tenantDir, Number(req.params.id));
+    if (!mesa) return res.status(404).json({ erro: "Mesa não encontrada." });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao cancelar a mesa." });
+  }
+});
+
+// Transfere/junta: move pedidos (body.pedidoIds vazio = todos) p/ a mesa destino.
+app.post("/api/mesas/:id/transferir/:destinoId", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const b = req.body || {};
+    await mesasDb.transferir(req.tenantDir, Number(req.params.id), Number(req.params.destinoId), b.pedidoIds);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao transferir." });
   }
 });
 

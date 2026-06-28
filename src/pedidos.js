@@ -42,6 +42,7 @@ function mapRow(r) {
     avisadoEm: r.avisado_em ? new Date(r.avisado_em).toISOString() : null,
     recebidoEm: r.recebido_em ? new Date(r.recebido_em).toISOString() : null,
     impressoEm: r.impresso_em ? new Date(r.impresso_em).toISOString() : null,
+    mesaId: r.mesa_id == null ? null : r.mesa_id,
   };
 }
 
@@ -53,10 +54,10 @@ async function salvarPedido(dir, pedido, client) {
   const exec = client ? (sql, p) => client.query(sql, p) : (sql, p) => db.query(sql, p);
   const r = await exec(
     `INSERT INTO pedidos
-       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao)
+       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, mesa_id)
      VALUES
        ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)
+        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12)
      RETURNING numero, criado_em`,
     [
       empId,
@@ -70,6 +71,7 @@ async function salvarPedido(dir, pedido, client) {
       JSON.stringify(pedido.itens || []),
       pedido.total || 0,
       pedido.observacao || "",
+      pedido.mesaId || null,
     ]
   );
   const row = r.rows[0];
@@ -123,12 +125,13 @@ async function avisarPedido(dir, id) {
 
 // Pedidos do cardápio web ainda não impressos pelo agente desktop: não impressos
 // (impresso_em nulo) E ainda não recebidos (recebido_em nulo → exclui PDV/balcão,
-// que nasce recebido). Ordena por numero (imprime na ordem que caíram).
+// que nasce recebido) E sem mesa (mesa_id nulo → pedido de salão imprime pelo painel
+// no lançamento, não pelo agente). Ordena por numero (imprime na ordem que caíram).
 async function pendentes(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
     `SELECT * FROM pedidos
-      WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL
+      WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL AND mesa_id IS NULL
       ORDER BY numero ASC
       LIMIT 50`,
     [empId]

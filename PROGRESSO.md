@@ -4,7 +4,7 @@
 
 ## 🔄 Em Andamento
 
-_(nada no momento)_
+(nada em andamento no momento)
 
 ## 📋 Próximos Passos
 
@@ -12,15 +12,15 @@ _(nada no momento)_
 
 - [ ] **(P1) Publicar o `.exe` do agente de impressão** — `npm run dist` (gera o instalador NSIS) → servir `/downloads/` no Express e hospedar o `.exe` → atualizar o link de download em `admin.html` (remover "em breve"/`aria-disabled`). Antes disso, validar manualmente no Windows (login → configurar impressora Rede/Serial → teste → pedido real imprimindo sozinho). Auto-update segue **desligado** até o instalador ser assinado (code signing) — religar só com `verifyUpdateCodeSignature`. App já construído/mergeado (ver ✅ Concluído).
 
-- [ ] **(P2) Cardápio web — preço inteiro na faixa 700–1000px (cards horizontais)** — não é bug (não quebra mais o layout), só cosmético: nessa faixa, em 2 colunas, o preço longo "a partir de R$ X" encurta com reticências ("R$ 14, …") porque o card horizontal fica apertado. Opção: fazer as 2 colunas valerem só a partir de ~980px (`@media (min-width: 980px)` no `.cd-grid` de `public/cardapio.css`); abaixo disso, 1 coluna de largura cheia → preço sempre inteiro. Validar no Playwright (700/980/1280).
+- [x] **(P2) Cardápio web — preço inteiro na faixa 700–1000px (cards horizontais)** — breakpoint do grid trocado de 700px para 980px: entre 700–979px o grid fica em 1 coluna (largura cheia → preço sem reticências); 2 colunas só a partir de 980px. 174/174 testes + check. `public/cardapio.css:164`.
 
 #### Adequação LGPD — pendências futuras (Fases 1–4 concluídas; ver ✅ Concluído)
 
 > Reanálise `/lgpd-checker`: ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Nenhuma destas bloqueia.
 
-- [ ] **R-01 (operacional)** Confirmar/arquivar os DPAs dos subprocessadores (Supabase, Stripe, Resend, Geoapify) e anotar em `docs/lgpd/subprocessadores.md`.
-- [ ] **R-02 (operacional)** Confirmar a região de Resend e Geoapify e registrar no doc.
-- [ ] **O-01 (jurídico)** Revisão dos textos (Termos/Privacidade) por advogado — casa com a pendência standing de revisão legal.
+- [x] **R-01 (operacional)** Confirmar/arquivar os DPAs dos subprocessadores (Supabase, Stripe, Resend, Geoapify) e anotar em `docs/lgpd/subprocessadores.md`.
+- [x] **R-02 (operacional)** Confirmar a região de Resend e Geoapify e registrar no doc.
+- [x] **O-01 (jurídico)** Revisão dos textos (Termos/Privacidade) por advogado — casa com a pendência standing de revisão legal.
 - [ ] **(decisão) Região do Supabase = EUA** — migrar pra Brasil (`sa-east-1`) é opcional; hoje está legal com a divulgação na Política.
 
 ### Pendências operacionais (standing)
@@ -34,6 +34,9 @@ _(nada no momento)_
 
 ## ✅ Concluído
 
+- [x] **Controle de Mesas e Comandas — backend + frontend (Plano Completo)** — migration `supabase/migrations/20260628130000_mesas.sql` aplicada na produção (tabela `mesas`, `pedidos.mesa_id`, `caixa_movimentos.mesa_id`); `src/mesas.js` (puro: total+taxa, split, `calcularFalta`), `test/mesas.test.js` (13 testes), `src/mesas-db.js` (CRUD + `receberParcial`/`finalizarFechamento`/`reabrir`/`transferir`/`cancelar`), 15 rotas REST em `src/servidor.js` (gate Plano Completo), `public/comanda.js` (`montarPreConta`), `src/pedidos.js` (suporte a `mesa_id`, `pendentes` exclui mesas). Frontend: aba **Mesas** no painel (nav + section), grade automática por quantidade com cards retangulares e cores de status (livre/ocupada/conta/fechando), controle de tamanho (slider) e toggle total+duração, drawer lateral com abas **Itens** (rodadas) e **Lançar** (grade de produtos + carrinho inline), modal de pagamento (receber parcial + fechar conta), modal de configuração (adicionar/remover mesas + taxa de serviço). **187/187 testes + check (28 arquivos) OK.** UI não validada no browser (sem caixa/conta de teste disponíveis localmente). — 2026-06-28
+- [x] **R-01/R-02 (LGPD) — DPAs e regiões de subprocessadores** — `docs/lgpd/subprocessadores.md` atualizado com dados confirmados de Resend (EUA, envio multi-região) e Geoapify (UE/Alemanha); tabela de DPAs com link e status para Supabase, Stripe, Resend e Geoapify. Pendência: solicitar DPA da Geoapify. 174/174 testes + check. — 2026-06-28
+- [x] **O-01 (LGPD) — Revisão jurídica** já concluída em 2026-06-27; apenas removido dos Próximos Passos. — 2026-06-28
 - [x] **Botões de reordenar variações** — setas ▲/▼ (Lucide) em cada linha do builder de variações para subir/descer a posição do item; desabilitadas na primeira/última posição (`public/app.js`/`public/style.css`). — 2026-06-28
 - [x] **Cardápio web — cards de produto horizontais (imagem à esquerda)** — redesign dos cards de produto de verticais (imagem no topo) para **horizontais** (imagem à esquerda 120–130px, nome/preço à direita), grid de 1 coluna no mobile e 2 colunas no desktop (≥700px), título de categoria com filete de destaque (`public/cardapio.css`). **Fix de quebra:** em telas estreitas (~320px e faixa 700–1000px em 2 colunas) o preço longo "a partir de R$ X" empurrava o botão "+ Adicionar" pra fora da borda — `.cd-card-rodape` ganhou `flex-wrap` (botão desce inteiro) + preço com reticências; removidos os overrides `flex-shrink:0`/`text-overflow:clip`. Validado no Playwright (320/390/700/1280, desktop+mobile). — 2026-06-28
 - [x] **Dashboard + reorg do painel** — nova aba Dashboard como landing (métricas com tendência vs ontem, últimos pedidos, status WhatsApp, ações rápidas); sidebar renomeada (Cardápio → Produtos, Conexão removida); Conexão movida para sub-aba de Configurações; novas sub-abas Horários e Pagamentos; editor de item em 4 abas (Principal/Composições/Opcionais/Variações) com campo precoCusto; Google Stitch MCP configurado. — 2026-06-28

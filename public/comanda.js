@@ -161,5 +161,57 @@
     return { cozinha: montarCozinha(pedido, config), cupom: montarCupom(pedido, config, extras) };
   }
 
-  return { montarComanda, montarCozinha, montarCupom, fmtBR };
+  // Pré-conta (espelho) da mesa: NÃO-FISCAL. Agrega os itens de todas as rodadas,
+  // mostra subtotal + taxa de serviço + total e, se houver, "já recebido / falta"
+  // e a divisão por pessoa. `opts`: { subtotal, taxaServico, taxaPct, total,
+  // recebido, falta, quando(iso), split:{ partes:[{pessoa, valor}] } }.
+  function montarPreConta(mesa, pedidos, opts, config) {
+    opts = opts || {};
+    const rest = (config && config.restaurante) || {};
+    const nome = rest.nome || "Mesa";
+    const extrasDe = (i) =>
+      (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0) +
+      (i.variacoes || []).reduce((s, v) => s + (v.preco || 0) * (v.qtd || 1), 0);
+    const linhas = [];
+    linhas.push(centro(nome.toUpperCase()));
+    linhas.push(centro("PRÉ-CONTA (NÃO FISCAL)"));
+    linhas.push(sep("="));
+    linhas.push(linhaValor("Mesa: " + ((mesa && mesa.nome) || ""), dataHoraBR(opts.quando)));
+    linhas.push(sep("-"));
+    // Agrega itens iguais (mesmo nome + preço unitário) de todas as rodadas.
+    const mapa = {};
+    (pedidos || []).filter((p) => p.status !== "cancelado").forEach((p) => {
+      (p.itens || []).forEach((i) => {
+        const unit = (i.preco || 0) + extrasDe(i);
+        const chave = (i.nome || "") + "|" + unit;
+        if (!mapa[chave]) mapa[chave] = { nome: i.nome || "", qtd: 0, unit };
+        mapa[chave].qtd += (i.qtd || 1);
+      });
+    });
+    const itens = Object.values(mapa);
+    if (!itens.length) linhas.push("(sem itens)");
+    itens.forEach((i) => linhas.push(linhaValor(i.qtd + "x " + i.nome, fmtBR(i.unit * i.qtd))));
+    linhas.push(sep("-"));
+    linhas.push(linhaValor("Subtotal:", fmtBR(opts.subtotal)));
+    if ((Number(opts.taxaServico) || 0) > 0) {
+      const pct = opts.taxaPct ? " (" + (Number(opts.taxaPct) || 0) + "%)" : "";
+      linhas.push(linhaValor("Taxa servico" + pct + ":", fmtBR(opts.taxaServico)));
+    }
+    linhas.push(linhaValor("TOTAL:", fmtBR(opts.total)));
+    if ((Number(opts.recebido) || 0) > 0) {
+      linhas.push(linhaValor("Ja recebido:", fmtBR(opts.recebido)));
+      linhas.push(linhaValor("FALTA:", fmtBR(opts.falta)));
+    }
+    const partes = opts.split && Array.isArray(opts.split.partes) ? opts.split.partes : [];
+    if (partes.length) {
+      linhas.push(sep("-"));
+      linhas.push("Divisao da conta:");
+      partes.forEach((p) => linhas.push(linhaValor("  " + (p.pessoa || ""), fmtBR(p.valor != null ? p.valor : p.subtotal))));
+    }
+    linhas.push(sep("="));
+    linhas.push(centro("Conferencia - nao e cupom fiscal"));
+    return linhas.join("\n");
+  }
+
+  return { montarComanda, montarCozinha, montarCupom, montarPreConta, fmtBR };
 });
