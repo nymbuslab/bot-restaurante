@@ -4935,8 +4935,8 @@ function mesaRenderGrade(cat) {
     var tile = document.createElement("button");
     tile.type = "button";
     tile.className = "pdv-tile";
-    tile.innerHTML = '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
-      '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + "</span>";
+    tile.innerHTML = '<div class="pdv-tile-corpo"><span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
+      '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + "</span></div>";
     tile.addEventListener("click", function () { mesaAdicionarItem(item); });
     grade.appendChild(tile);
   });
