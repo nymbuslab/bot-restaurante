@@ -12,6 +12,8 @@ _(nada no momento)_
 
 - [ ] **(P1) Publicar o `.exe` do agente de impressão** — `npm run dist` (gera o instalador NSIS) → servir `/downloads/` no Express e hospedar o `.exe` → atualizar o link de download em `admin.html` (remover "em breve"/`aria-disabled`). Antes disso, validar manualmente no Windows (login → configurar impressora Rede/Serial → teste → pedido real imprimindo sozinho). Auto-update segue **desligado** até o instalador ser assinado (code signing) — religar só com `verifyUpdateCodeSignature`. App já construído/mergeado (ver ✅ Concluído).
 
+- [ ] **(P2) Cardápio web — preço inteiro na faixa 700–1000px (cards horizontais)** — não é bug (não quebra mais o layout), só cosmético: nessa faixa, em 2 colunas, o preço longo "a partir de R$ X" encurta com reticências ("R$ 14, …") porque o card horizontal fica apertado. Opção: fazer as 2 colunas valerem só a partir de ~980px (`@media (min-width: 980px)` no `.cd-grid` de `public/cardapio.css`); abaixo disso, 1 coluna de largura cheia → preço sempre inteiro. Validar no Playwright (700/980/1280).
+
 #### Adequação LGPD — pendências futuras (Fases 1–4 concluídas; ver ✅ Concluído)
 
 > Reanálise `/lgpd-checker`: ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Nenhuma destas bloqueia.
@@ -26,6 +28,7 @@ _(nada no momento)_
 - **(produto) Pedido de teste #3** no `sabor-d-casa` pode ser apagado pelo painel (resíduo do cardápio web; `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` já setados e no ar na v28).
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.
+- **(git) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já está pushado na `main`, então não foi amendado. Inócuo; só fica o registro caso se queira limpar o histórico depois (rebase/reword exige reescrita do histórico remoto).
 
 > **Limpeza `session-*` no Fly (P2): RESOLVIDA/moot** — o volume `bot_dados` foi **destruído** no redeploy de 2026-06-15 (app stateless, sem volume); o fs do container é efêmero e nasce limpo a cada boot. Não há resíduo do whatsapp-web.js para limpar. Item removido dos Próximos Passos.
 
