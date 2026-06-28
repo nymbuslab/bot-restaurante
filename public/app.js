@@ -1176,6 +1176,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-estoque-min").value = "";
     $("editor-unidade").value = "un";
     $("editor-destaque").checked = false;
+    $("editor-cozinha").checked = false;
     editorFotoUrl = "";
     editorComposicao = [];
     editorOpcionais = [];
@@ -1192,6 +1193,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-estoque-min").value = it.estoqueMinimo != null ? it.estoqueMinimo : "";
     $("editor-unidade").value = it.unidade === "kg" ? "kg" : "un";
     $("editor-destaque").checked = it.destaque === true;
+    $("editor-cozinha").checked = it.cozinha === true;
     editorFotoUrl = it.imagem || "";
     editorComposicao = (typeof Grupos !== "undefined" ? Grupos.normalizarGrupos(it.composicao) : (Array.isArray(it.composicao) ? it.composicao : []));
     editorOpcionais = parsearOpcionais(it.opcionais || "");
@@ -1291,6 +1293,7 @@ async function salvarEditorItem() {
   const unidade = $("editor-unidade").value === "kg" ? "kg" : "un";
   if (unidade === "kg") novoItem.unidade = "kg";
   if ($("editor-destaque").checked) novoItem.destaque = true;
+  if ($("editor-cozinha").checked) novoItem.cozinha = true;
   const estoqueRaw = $("editor-estoque").value.trim();
   const estoqueMinRaw = $("editor-estoque-min").value.trim();
   const parseEst = (s) => unidade === "kg" ? (parseFloat(s.replace(",", ".")) || 0) : (parseInt(s, 10) || 0);
@@ -4331,9 +4334,14 @@ async function finalizarVendaPdv() {
   btn.textContent = "Confirmar pagamento";
   if (!r) return;
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
+  const vd = await r.json().catch(() => ({}));
   toast("✓ Venda registrada — disponível em Pedidos.");
-  // A venda é salva como pedido "Balcão" recebido; aparece na aba Pedidos para
-  // conferência/reimpressão. Não abrimos modal de impressão automaticamente.
+  // Impressão automática de cozinha (sem modal) para itens marcados como "Imprime na cozinha".
+  const _itensCoz = pdvCart.filter((l) => { const it = pdvAcharItem(l.id); return it && it.cozinha === true; });
+  if (_itensCoz.length && window.Comanda && window.Impressao && window.Impressao.imprimirCozinha) {
+    const _pedCoz = { numero: (vd.pedido && vd.pedido.numero) || "", criadoEm: new Date().toISOString(), tipoEntrega: pdvTipoEntrega || "Balcão", itens: _itensCoz.map((l) => ({ nome: l.nome, qtd: l.qtd, composicao: l.composicao || [], opcionais: l.opcionais || [], variacoes: l.variacoes || [], observacao: l.observacao || "" })) };
+    window.Impressao.imprimirCozinha(window.Comanda.montarCozinha(_pedCoz, configAtual), configAtual);
+  }
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
@@ -4947,6 +4955,12 @@ async function mesaLancarDoPdv() {
       return;
     }
     toast("Itens lançados na mesa!");
+    // Impressão automática de cozinha (sem modal) para itens marcados como "Imprime na cozinha".
+    var _itensCozMesa = pdvCart.filter(function (l) { var it = pdvAcharItem(l.id); return it && it.cozinha === true; });
+    if (_itensCozMesa.length && window.Comanda && window.Impressao && window.Impressao.imprimirCozinha) {
+      var _pedCozMesa = { numero: mesaModoNome || "", criadoEm: new Date().toISOString(), tipoEntrega: "Balcão", itens: _itensCozMesa.map(function (l) { return { nome: l.nome, qtd: l.qtd, composicao: l.composicao || [], opcionais: l.opcionais || [], variacoes: l.variacoes || [], observacao: l.observacao || "" }; }) };
+      window.Impressao.imprimirCozinha(window.Comanda.montarCozinha(_pedCozMesa, configAtual), configAtual);
+    }
     var idMesa = mesaModoId;
     pdvCart = []; pdvDesconto = null;
     desativarMesaModoPdv();

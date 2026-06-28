@@ -4,6 +4,13 @@
   let vias = { cozinha: "", cupom: "" };
   let impCfg = {}; // config.impressao do tenant (metodo/baud/semAcento)
 
+  // Imprime a via de cozinha diretamente, sem abrir o modal de prévia.
+  // Configura o impCfg com a config do tenant antes de rotear.
+  function imprimirCozinha(texto, config) {
+    impCfg = (config && config.impressao) || {};
+    imprimirTexto(texto);
+  }
+
   // Roteia: serial (Web Serial) se configurado e suportado; senão window.print.
   function imprimirTexto(texto) {
     if (impCfg.metodo === "serial" && global.Serial && global.Serial.suportado()) {
@@ -92,5 +99,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", ligar);
   else ligar();
 
-  global.Impressao = { abrirPreview, abrirRelatorio };
+  global.Impressao = { abrirPreview, abrirRelatorio, imprimirCozinha };
 })(window);
