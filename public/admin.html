@@ -26,7 +26,11 @@
       </div>
 
       <nav>
-        <button class="ativo" data-aba="pedidos">
+        <button class="ativo" data-aba="dashboard">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button data-aba="pedidos">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           <span>Pedidos</span>
           <span class="nav-badge" id="badge-pedidos" hidden>0</span>
@@ -41,11 +45,7 @@
         </button>
         <button data-aba="cardapio">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
-          <span>Cardápio</span>
-        </button>
-        <button data-aba="conexao">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          <span>Conexão</span>
+          <span>Produtos</span>
         </button>
         <button data-aba="config">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -88,53 +88,117 @@
       </header>
 
       <main>
-    <!-- CONEXÃO -->
-    <section class="aba" id="aba-conexao">
-      <div class="conexao-topo">
-        <h2 class="conexao-titulo">Conexão WhatsApp</h2>
-        <p class="sub">Gerencie a integração do seu atendimento automático</p>
-      </div>
-      <div class="conexao-grid">
-        <div class="card conexao-passos">
-          <h3 class="conexao-passos-titulo">Como conectar</h3>
-          <ol class="passos-lista">
-            <li><span class="passo-num">1</span><span>Abra o WhatsApp no seu celular</span></li>
-            <li><span class="passo-num">2</span><span>Toque em <strong>Aparelhos conectados</strong> nas configurações</span></li>
-            <li><span class="passo-num">3</span><span>Toque em <strong>Conectar um aparelho</strong> e aponte para o QR Code</span></li>
-          </ol>
-          <div class="conexao-dica">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
-            <p><strong>Dica:</strong> Use um número dedicado para evitar bloqueios em disparos massivos.</p>
+    <!-- DASHBOARD -->
+    <section class="aba ativa" id="aba-dashboard">
+      <div class="dash-header">
+        <div>
+          <h2 class="dash-saudacao" id="dashSaudacao">Carregando...</h2>
+          <div class="dash-sub">
+            <span class="dash-status-badge" id="dashStatusBadge">
+              <span class="dash-dot" id="dashDot"></span>
+              <span id="dashStatusTexto">—</span>
+            </span>
+            <span class="dash-data" id="dashData"></span>
           </div>
         </div>
-        <div class="conexao-painel" id="statusBox">Carregando status...</div>
+      </div>
+
+      <!-- Métricas -->
+      <div class="metricas-cards dash-metricas">
+        <div class="metrica-card destaque" id="dashMetricaPedidos">
+          <div class="metrica-topo">
+            <span class="metrica-label">Pedidos Hoje</span>
+            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+          </div>
+          <div class="metrica-num">
+            <span class="metrica-valor" id="dashPedidosHoje">—</span>
+            <span class="metrica-trend" id="dashTrendPedidos"></span>
+          </div>
+          <div class="metrica-ontem" id="dashComparativo"></div>
+        </div>
+        <div class="metrica-card">
+          <div class="metrica-topo">
+            <span class="metrica-label">Faturamento Hoje</span>
+            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+          </div>
+          <span class="metrica-valor" id="dashFaturamento">—</span>
+        </div>
+        <div class="metrica-card">
+          <div class="metrica-topo">
+            <span class="metrica-label">Ticket Médio</span>
+            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          </div>
+          <span class="metrica-valor" id="dashTicketMedio">—</span>
+        </div>
+      </div>
+
+      <!-- Grid meio: últ. pedidos + widgets -->
+      <div class="dash-grid">
+        <!-- Últimos pedidos -->
+        <div class="card dash-pedidos-card">
+          <div class="dash-card-cabeca">
+            <h3>Últimos Pedidos</h3>
+            <button class="secundario mini" id="dashVerTodos">Ver todos</button>
+          </div>
+          <div class="dash-tabela-wrap">
+            <table class="dash-tabela">
+              <thead>
+                <tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Status</th></tr>
+              </thead>
+              <tbody id="dashPedidosBody">
+                <tr><td colspan="4" class="dash-vazio">Nenhum pedido hoje.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Widgets laterais -->
+        <div class="dash-widgets">
+          <!-- Status WhatsApp -->
+          <div class="card dash-whats">
+            <div class="dash-whats-header">
+              <div class="dash-whats-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div>
+                <h4>WhatsApp</h4>
+                <span class="dash-whats-status" id="dashWhatsStatus">—</span>
+              </div>
+              <span class="dash-dot-conectado" id="dashWhatsDot"></span>
+            </div>
+            <p class="dash-whats-num" id="dashWhatsNum"></p>
+          </div>
+
+          <!-- Ações rápidas -->
+          <div class="card dash-acoes">
+            <h4>Ações rápidas</h4>
+            <button class="dash-acao-btn" data-aba="pedidos">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Ver Pedidos
+            </button>
+            <button class="dash-acao-btn" data-aba="cardapio">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
+              Gerenciar Cardápio
+            </button>
+            <button class="dash-acao-btn" data-aba="config">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Configurações
+            </button>
+          </div>
+
+          <!-- Atividade recente -->
+          <div class="card dash-atividade">
+            <h4>Atividade recente</h4>
+            <div id="dashAtividade">
+              <p class="dash-vazio">Nenhuma atividade nas últimas horas.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- CARDÁPIO -->
+    <!-- CARDÁPIO / PRODUTOS -->
     <section class="aba" id="aba-cardapio">
-      <div class="card cardapio-link-card" id="cardapioLinkCard">
-        <div class="cardapio-link-info">
-          <span class="cardapio-link-icone">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
-          </span>
-          <div>
-            <h3 class="cardapio-link-titulo">Seu cardápio digital</h3>
-            <p class="sub">Compartilhe o link ou imprima o QR Code para as mesas — os pedidos chegam aqui automaticamente.</p>
-            <div class="cardapio-link-url" id="cardapioLinkUrl">Carregando link…</div>
-          </div>
-        </div>
-        <div class="cardapio-link-acoes">
-          <button class="secundario" id="btnCopiarLink">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span id="btnCopiarLinkTxt">Copiar link</span>
-          </button>
-          <button class="secundario" id="btnVerQr">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
-            Ver QR Code
-          </button>
-        </div>
-      </div>
       <div class="cardapio-topo">
         <div class="cardapio-topo-texto">
           <h2 class="cardapio-titulo">Gestão de Itens</h2>
@@ -177,6 +241,22 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1.5-5h15L21 9"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M3 9h18"/><path d="M9 20v-6h6v6"/></svg>
           <span>Empresa</span>
         </button>
+        <button type="button" data-sub="cardapio" role="tab">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          <span>Cardápio</span>
+        </button>
+        <button type="button" data-sub="horarios" role="tab">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Horários</span>
+        </button>
+        <button type="button" data-sub="pagamentos" role="tab">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+          <span>Pagamentos</span>
+        </button>
+        <button type="button" data-sub="conexao" role="tab">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          <span>Conexão</span>
+        </button>
         <button type="button" data-sub="bot" role="tab">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
           <span>Bot</span>
@@ -193,48 +273,6 @@
 
       <!-- ============ SUB-ABA: EMPRESA ============ -->
       <div class="cfg-sub ativa" id="cfg-sub-empresa">
-        <!-- Identidade visual (capa + logo do cardápio web) -->
-        <div class="cfg-secao">
-          <div class="cfg-secao-cabeca">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <h3>Identidade visual</h3>
-          </div>
-          <p class="sub cfg-secao-sub">A capa e a logo aparecem no topo do seu cardápio web, para o cliente. A prévia abaixo mostra como vai ficar.</p>
-          <div class="card">
-            <div class="ident-preview">
-              <div class="ident-capa" id="identCapaBox">
-                <img id="identCapaImg" alt="Capa do cardápio" hidden />
-                <div id="identCapaPh" class="ident-capa-ph">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  <span>Sem capa</span>
-                </div>
-              </div>
-              <div class="ident-logo" id="identLogoBox">
-                <img id="identLogoImg" alt="Logo" hidden />
-                <span id="identLogoPh" class="ident-logo-ph" aria-hidden="true">?</span>
-              </div>
-            </div>
-            <div class="ident-acoes">
-              <div class="ident-grupo">
-                <div class="ident-grupo-cab"><strong>Capa</strong><span class="ident-dica">Recomendado: 1200×400px (larga)</span></div>
-                <div class="ident-botoes">
-                  <button class="secundario mini" id="identCapaBtn" type="button">Enviar capa</button>
-                  <button class="perigo mini" id="identCapaRemover" type="button">Remover</button>
-                </div>
-                <input type="file" id="identCapaInput" accept="image/jpeg,image/png,image/webp" />
-              </div>
-              <div class="ident-grupo">
-                <div class="ident-grupo-cab"><strong>Logo</strong><span class="ident-dica">Recomendado: 500×500px (quadrada)</span></div>
-                <div class="ident-botoes">
-                  <button class="secundario mini" id="identLogoBtn" type="button">Enviar logo</button>
-                  <button class="perigo mini" id="identLogoRemover" type="button">Remover</button>
-                </div>
-                <input type="file" id="identLogoInput" accept="image/jpeg,image/png,image/webp" />
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Dados do Restaurante -->
         <div class="cfg-secao">
           <div class="cfg-secao-cabeca">
@@ -363,6 +401,147 @@
         </div>
       </div>
 
+      <!-- ============ SUB-ABA: CARDÁPIO ============ -->
+      <div class="cfg-sub" id="cfg-sub-cardapio">
+        <!-- Identidade visual (capa + logo do cardápio web) -->
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <h3>Identidade visual</h3>
+          </div>
+          <p class="sub cfg-secao-sub">A capa e a logo aparecem no topo do seu cardápio web, para o cliente. A prévia abaixo mostra como vai ficar.</p>
+          <div class="card">
+            <div class="ident-preview">
+              <div class="ident-capa" id="identCapaBox">
+                <img id="identCapaImg" alt="Capa do cardápio" hidden />
+                <div id="identCapaPh" class="ident-capa-ph">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span>Sem capa</span>
+                </div>
+              </div>
+              <div class="ident-logo" id="identLogoBox">
+                <img id="identLogoImg" alt="Logo" hidden />
+                <span id="identLogoPh" class="ident-logo-ph" aria-hidden="true">?</span>
+              </div>
+            </div>
+            <div class="ident-acoes">
+              <div class="ident-grupo">
+                <div class="ident-grupo-cab"><strong>Capa</strong><span class="ident-dica">Recomendado: 1200×400px (larga)</span></div>
+                <div class="ident-botoes">
+                  <button class="secundario mini" id="identCapaBtn" type="button">Enviar capa</button>
+                  <button class="perigo mini" id="identCapaRemover" type="button">Remover</button>
+                </div>
+                <input type="file" id="identCapaInput" accept="image/jpeg,image/png,image/webp" />
+              </div>
+              <div class="ident-grupo">
+                <div class="ident-grupo-cab"><strong>Logo</strong><span class="ident-dica">Recomendado: 500×500px (quadrada)</span></div>
+                <div class="ident-botoes">
+                  <button class="secundario mini" id="identLogoBtn" type="button">Enviar logo</button>
+                  <button class="perigo mini" id="identLogoRemover" type="button">Remover</button>
+                </div>
+                <input type="file" id="identLogoInput" accept="image/jpeg,image/png,image/webp" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seu cardápio digital -->
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
+            <h3>Seu cardápio digital</h3>
+          </div>
+          <p class="sub cfg-secao-sub">Compartilhe o link ou imprima o QR Code para as mesas — os pedidos chegam aqui automaticamente.</p>
+          <div class="card">
+            <div class="cardapio-link-info">
+              <div class="cardapio-link-url" id="cardapioLinkUrl">Carregando link…</div>
+            </div>
+            <div class="cardapio-link-acoes">
+              <button class="secundario" id="btnCopiarLink">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span id="btnCopiarLinkTxt">Copiar link</span>
+              </button>
+              <button class="secundario" id="btnVerQr">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3"/><path d="M21 14v.01"/><path d="M14 21h.01"/><path d="M17 21h4v-4"/></svg>
+                Ver QR Code
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SUB-ABA: HORÁRIOS ============ -->
+      <div class="cfg-sub" id="cfg-sub-horarios">
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <h3>Horário de Funcionamento</h3>
+          </div>
+          <p class="sub cfg-secao-sub">O bot responde "fechado" fora desses horários. O toggle <strong>Aberto</strong> na aba Bot substitui tudo quando desligado.</p>
+          <div class="card cfg-horarios-card">
+            <table class="tabela-horarios">
+              <thead>
+                <tr>
+                  <th>Dia</th>
+                  <th>Abre</th>
+                  <th>Fecha</th>
+                  <th>Fechado</th>
+                </tr>
+              </thead>
+              <tbody id="horariosBody"></tbody>
+            </table>
+            <div class="campo cfg-horario-texto">
+              <label>Horário (texto exibido ao cliente)</label>
+              <input id="cfgHorario" readonly placeholder="Gerado automaticamente do horário de funcionamento" />
+              <span class="cfg-horario-hint">Gerado automaticamente a partir da tabela acima — sempre atualizado.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SUB-ABA: PAGAMENTOS ============ -->
+      <div class="cfg-sub" id="cfg-sub-pagamentos">
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
+            <h3>Formas de Pagamento</h3>
+          </div>
+          <p class="sub cfg-secao-sub">Configure os métodos de pagamento aceitos nos pedidos do cardápio.</p>
+          <div class="card">
+            <div class="campo">
+              <label>Métodos de Pagamento Aceitos</label>
+              <div id="pagamentosContainer" class="cfg-pagamentos"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SUB-ABA: CONEXÃO ============ -->
+      <div class="cfg-sub" id="cfg-sub-conexao">
+        <div class="cfg-secao">
+          <div class="cfg-secao-cabeca">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <h3>Conexão WhatsApp</h3>
+          </div>
+          <p class="sub cfg-secao-sub">Gerencie a integração do seu atendimento automático</p>
+          <div class="conexao-grid">
+            <div class="card conexao-passos">
+              <h3 class="conexao-passos-titulo">Como conectar</h3>
+              <ol class="passos-lista">
+                <li><span class="passo-num">1</span><span>Abra o WhatsApp no seu celular</span></li>
+                <li><span class="passo-num">2</span><span>Toque em <strong>Aparelhos conectados</strong> nas configurações</span></li>
+                <li><span class="passo-num">3</span><span>Toque em <strong>Conectar um aparelho</strong> e aponte para o QR Code</span></li>
+              </ol>
+              <div class="conexao-dica">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+                <p><strong>Dica:</strong> Use um número dedicado para evitar bloqueios em disparos massivos.</p>
+              </div>
+            </div>
+            <div class="conexao-painel" id="statusBox">Carregando status...</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ============ SUB-ABA: BOT ============ -->
       <div class="cfg-sub" id="cfg-sub-bot">
         <!-- Status do Atendimento (destaque) -->
@@ -402,49 +581,6 @@
           <div class="card cfg-msg"><label>Pedido Pronto — Entrega <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoEntrega"></textarea></div>
           <div class="card cfg-msg"><label>Pedido Pronto — Retirada <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoRetirada"></textarea></div>
         </div>
-      </div>
-
-      <!-- Horário de Funcionamento -->
-      <div class="cfg-secao">
-        <div class="cfg-secao-cabeca">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <h3>Horário de Funcionamento</h3>
-        </div>
-        <p class="sub cfg-secao-sub">O bot responde "fechado" fora desses horários. O toggle <strong>Aberto</strong> acima substitui tudo quando desligado.</p>
-        <div class="card cfg-horarios-card">
-          <table class="tabela-horarios">
-            <thead>
-              <tr>
-                <th>Dia</th>
-                <th>Abre</th>
-                <th>Fecha</th>
-                <th>Fechado</th>
-              </tr>
-            </thead>
-            <tbody id="horariosBody"></tbody>
-          </table>
-          <div class="campo cfg-horario-texto">
-            <label>Horário (texto exibido ao cliente)</label>
-            <input id="cfgHorario" readonly placeholder="Gerado automaticamente do horário de funcionamento" />
-            <span class="cfg-horario-hint">Gerado automaticamente a partir da tabela acima — sempre atualizado.</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Formas de Pagamento -->
-      <div class="cfg-secao">
-        <div class="cfg-secao-cabeca">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>
-          <h3>Formas de Pagamento</h3>
-        </div>
-        <div class="card">
-          <div class="campo">
-            <label>Métodos de Pagamento Aceitos</label>
-            <div id="pagamentosContainer" class="cfg-pagamentos"></div>
-          </div>
-        </div>
-      </div>
-
       </div><!-- /cfg-sub-bot -->
 
       <!-- ============ SUB-ABA: ENTREGA ============ -->
@@ -619,39 +755,15 @@
     </section>
 
     <!-- PEDIDOS -->
-    <section class="aba ativa" id="aba-pedidos">
+    <section class="aba" id="aba-pedidos">
       <div class="pedidos-topo">
         <div>
           <h2>Pedidos recebidos</h2>
-          <p class="sub">Histórico e métricas do período selecionado.</p>
+          <p class="sub">Histórico de pedidos do período selecionado.</p>
         </div>
         <div class="pedidos-acoes">
           <button class="secundario mini" id="btnExportarPedidos">⤓ Exportar</button>
           <button class="secundario mini" id="btnAtualizarPedidos">↺ Atualizar</button>
-        </div>
-      </div>
-
-      <!-- Métricas do período (cálculo real sobre pedidos.db) -->
-      <div class="metricas-cards">
-        <div class="metrica-card destaque">
-          <div class="metrica-topo">
-            <span class="metrica-label">Total de pedidos</span>
-            <span class="metrica-trend" id="metTrendIcon"></span>
-          </div>
-          <div class="metrica-num">
-            <span class="metrica-valor" id="metTotal">0</span>
-            <span class="metrica-unidade">pedidos</span>
-          </div>
-          <span class="metrica-comparativo" id="metComparativo" style="display:none"></span>
-          <span class="metrica-subtitulo">Total registrado no período selecionado.</span>
-        </div>
-        <div class="metrica-card">
-          <span class="metrica-label">Média diária</span>
-          <span class="metrica-valor" id="metMedia">0</span>
-        </div>
-        <div class="metrica-card">
-          <span class="metrica-label">Ticket médio</span>
-          <span class="metrica-valor" id="metTicket">R$ 0,00</span>
         </div>
       </div>
 
@@ -1140,7 +1252,7 @@
     </div>
   </div>
 
-  <!-- Modal de edição de item do cardápio -->
+  <!-- Modal de edição de item do cardápio (3 abas) -->
   <div id="editor-overlay" class="modal-overlay" style="display:none">
     <div class="modal-caixa editor-caixa">
       <div class="editor-header">
@@ -1150,71 +1262,104 @@
         </div>
         <button class="secundario mini" id="editor-fechar">✕</button>
       </div>
-      <div class="editor-corpo">
-        <div class="editor-foto-col">
-          <div class="editor-foto-bloco">
-            <img id="editor-foto-preview" alt="Foto do item" />
-            <div id="editor-foto-placeholder">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              <span>Sem foto</span>
+
+      <!-- NAV DE ABAS -->
+      <div class="editor-tabs" id="editor-tabs-nav">
+        <button type="button" class="editor-tab ativo" data-tab="principal">Principal</button>
+        <button type="button" class="editor-tab" data-tab="composicoes">Composições</button>
+        <button type="button" class="editor-tab" data-tab="opcionais">Opcionais</button>
+        <button type="button" class="editor-tab" data-tab="variacoes">Variações</button>
+      </div>
+
+      <!-- PAINEL PRINCIPAL -->
+      <div class="editor-panel ativo" id="panel-principal">
+        <div class="editor-corpo">
+          <div class="editor-foto-col">
+            <div class="editor-foto-bloco">
+              <img id="editor-foto-preview" alt="Foto do item" />
+              <div id="editor-foto-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span>Sem foto</span>
+              </div>
+            </div>
+            <div class="editor-foto-acoes">
+              <button class="secundario mini" id="editor-foto-btn">Enviar foto</button>
+              <button class="perigo mini" id="editor-foto-remover">Remover</button>
+            </div>
+            <input type="file" id="editor-foto-input" accept="image/jpeg,image/png,image/webp" />
+          </div>
+          <div class="editor-campos-col">
+            <div class="campo"><label for="editor-nome">Nome do item</label><input id="editor-nome" placeholder="Ex.: Marmitex P" /></div>
+            <div class="linha">
+              <div class="campo"><label for="editor-preco-custo">Preço custo (R$)</label><input type="text" inputmode="numeric" id="editor-preco-custo" placeholder="0,00" /></div>
+              <div class="campo"><label for="editor-preco">Preço venda (R$)</label><input type="text" inputmode="numeric" id="editor-preco" placeholder="0,00" /></div>
+            </div>
+            <p class="editor-dica" style="margin:-4px 0 8px">Se usar variações, deixe os preços acima como R$ 0,00 — o valor virá da variação escolhida.</p>
+            <div class="campo"><label for="editor-categoria">Categoria</label><select id="editor-categoria"></select></div>
+            <div class="campo"><label for="editor-desc">Descrição</label><textarea id="editor-desc" rows="2" placeholder="Descrição curta do item (opcional)"></textarea></div>
+          </div>
+        </div>
+        <div class="editor-extra">
+          <div class="editor-flags">
+            <div class="campo toggle">
+              <input type="checkbox" id="editor-disponivel" />
+              <label for="editor-disponivel">Disponível para pedidos</label>
+            </div>
+            <div class="campo toggle">
+              <input type="checkbox" id="editor-entrega" />
+              <label for="editor-entrega">Disponível para entrega</label>
+            </div>
+            <div class="campo toggle">
+              <input type="checkbox" id="editor-destaque" />
+              <label for="editor-destaque">Destaque no cardápio</label>
             </div>
           </div>
-          <div class="editor-foto-acoes">
-            <button class="secundario mini" id="editor-foto-btn">Enviar foto</button>
-            <button class="perigo mini" id="editor-foto-remover">Remover</button>
-          </div>
-          <input type="file" id="editor-foto-input" accept="image/jpeg,image/png,image/webp" />
-        </div>
-        <div class="editor-campos-col">
-          <div class="campo"><label for="editor-nome">Nome do item</label><input id="editor-nome" placeholder="Ex.: Marmitex P" /></div>
+          <p class="editor-dica" id="editor-entrega-dica">Desligado: o item aparece no cardápio com o aviso "Só no local" e não pode ser pedido para entrega.</p>
           <div class="linha">
-            <div class="campo"><label for="editor-preco">Preço (R$)</label><input type="text" inputmode="numeric" id="editor-preco" placeholder="0,00" /></div>
-            <div class="campo"><label for="editor-categoria">Categoria</label><select id="editor-categoria"></select></div>
+            <div class="campo"><label for="editor-unidade">Unidade</label><select id="editor-unidade"><option value="un">Unidade (un)</option><option value="kg">Peso (kg)</option></select></div>
+            <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /></div>
+            <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
           </div>
-          <div class="campo"><label for="editor-desc">Descrição</label><textarea id="editor-desc" rows="2" placeholder="Descrição curta do item (opcional)"></textarea></div>
+          <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local (pesado no balcão) — não entra em pedido online.</p>
         </div>
       </div>
-      <div class="editor-extra">
-        <div class="editor-flags">
-          <div class="campo toggle">
-            <input type="checkbox" id="editor-disponivel" />
-            <label for="editor-disponivel">Disponível para pedidos</label>
+
+      <!-- PAINEL COMPOSIÇÕES -->
+      <div class="editor-panel" id="panel-composicoes">
+        <div class="editor-panel-scroll">
+          <div class="campo">
+            <label>Composição</label>
+            <div id="editor-composicao-builder" class="comp-builder"></div>
+            <button type="button" class="secundario mini" id="editor-comp-add-subgrupo">+ Adicionar subgrupo</button>
           </div>
-          <div class="campo toggle">
-            <input type="checkbox" id="editor-entrega" />
-            <label for="editor-entrega">Disponível para entrega</label>
-          </div>
-          <div class="campo toggle">
-            <input type="checkbox" id="editor-destaque" />
-            <label for="editor-destaque">Destaque no cardápio</label>
-          </div>
-        </div>
-        <p class="editor-dica" id="editor-entrega-dica">Desligado: o item aparece no cardápio com o aviso "Só no local" e não pode ser pedido para entrega.</p>
-        <div class="linha">
-          <div class="campo"><label for="editor-unidade">Unidade</label><select id="editor-unidade"><option value="un">Unidade (un)</option><option value="kg">Peso (kg)</option></select></div>
-          <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /></div>
-          <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
-        </div>
-        <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local (pesado no balcão) — não entra em pedido online.</p>
-      </div>
-      <div class="editor-textareas">
-        <div class="campo">
-          <label>Composição</label>
-          <div id="editor-composicao-builder" class="comp-builder"></div>
-          <button type="button" class="secundario mini" id="editor-comp-add-subgrupo">+ Adicionar subgrupo</button>
-        </div>
-        <div class="campo">
-          <label>Opcionais</label>
-          <div id="editor-opcionais-builder" class="opc-builder"></div>
-          <button type="button" class="secundario mini" id="editor-opc-add">+ Adicionar opcional</button>
-        </div>
-        <div class="campo">
-          <label>Variações</label>
-          <p class="editor-dica">Opções com <strong>preço e estoque próprios</strong> (ex.: sabores de refrigerante). O cliente escolhe uma ou mais, o preço <strong>soma</strong>, e cada opção dá baixa no seu estoque. Deixe o estoque vazio para ilimitado. Com variações, o preço base do item pode ser 0 (vira "a partir de").</p>
-          <div id="editor-variacoes-builder" class="var-builder"></div>
-          <button type="button" class="secundario mini" id="editor-var-add">+ Adicionar variação</button>
         </div>
       </div>
+
+      <!-- PAINEL OPCIONAIS -->
+      <div class="editor-panel" id="panel-opcionais">
+        <div class="editor-panel-scroll">
+          <div class="campo">
+            <label>Opcionais (com preço extra)</label>
+            <p class="editor-dica">Itens que o cliente pode adicionar por um valor extra. Ex.: "Adicionar queijo R$ 3,00", "Adicionar bacon R$ 2,50".</p>
+            <div id="editor-opcionais-builder" class="opc-builder"></div>
+            <button type="button" class="secundario mini" id="editor-opc-add">+ Adicionar opcional</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINEL VARIAÇÕES -->
+      <div class="editor-panel" id="panel-variacoes">
+        <div class="editor-panel-scroll">
+          <div class="campo">
+            <label>Variações</label>
+            <p class="editor-dica">Cadastre vários itens parecidos dentro de um só. Ex.: crie "Refrigerantes 350ml" e coloque dentro Coca, Coca Zero, Fanta... Cada um com seu preço e estoque. No cardápio aparece um item só, e o cliente escolhe o sabor.</p>
+            <div id="editor-variacoes-builder" class="var-builder"></div>
+            <button type="button" class="secundario mini" id="editor-var-add">+ Adicionar variação</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
       <div class="editor-rodape">
         <span class="editor-erro" id="editor-erro"></span>
         <button class="secundario" id="editor-cancelar">Cancelar</button>

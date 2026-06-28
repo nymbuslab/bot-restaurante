@@ -16,7 +16,6 @@ _(nada no momento)_
 
 > Reanálise `/lgpd-checker`: ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Nenhuma destas bloqueia.
 
-- [ ] **R-03 (código)** Job de retenção da trilha de auditoria: apagar registros de `auditoria` com +24 meses (junto dos jobs de retenção no `index.js`). _Único item de código restante._
 - [ ] **R-01 (operacional)** Confirmar/arquivar os DPAs dos subprocessadores (Supabase, Stripe, Resend, Geoapify) e anotar em `docs/lgpd/subprocessadores.md`.
 - [ ] **R-02 (operacional)** Confirmar a região de Resend e Geoapify e registrar no doc.
 - [ ] **O-01 (jurídico)** Revisão dos textos (Termos/Privacidade) por advogado — casa com a pendência standing de revisão legal.
@@ -32,6 +31,7 @@ _(nada no momento)_
 
 ## ✅ Concluído
 
+- [x] **R-03 (LGPD) — retenção da trilha de auditoria** — `auditoria.limparAntigos(meses=24)` apaga registros de `auditoria` com +24 meses (DELETE por `criado_em`, índice `auditoria_criado_em_idx`; trilha sem PII, valor temporal); agendado no `index.js` (75s após boot + a cada 24h), best-effort no padrão dos jobs de retenção de pedidos/clientes. **Único item de código restante da adequação LGPD.** 174/174 testes + check. Commit `c8d4c6a`. — 2026-06-27
 - [x] **Stripe go-live — teste E2E com cartão real + estorno** — teste de ponta a ponta validado: cadastro → checkout → `trialing`/`active` com cartão real → conferência dos eventos no webhook → estorno. Stripe em produção (live), cobrando de verdade, sem pendências. — 2026-06-27
 - [x] **Revisão jurídica dos textos legais (Termos/Privacidade)** — Termos e Privacidade revisados por advogado, refletindo o fluxo do cardápio web, limite de responsabilidade, prazo de retenção e figura do DPO. Documentos legalmente conformes. — 2026-06-27
 - [x] **Variações no item do cardápio (opções com preço + estoque)** — feature estilo iFood "a partir de R$ X": item sem preço fixo lista variações (ex.: sabores de refrigerante); o cliente/PDV escolhe várias com quantidade, o preço soma, e **cada variação dá baixa no próprio estoque** (chave `item.id::variacao.id`, atômica via `baixarEstoqueTx`) — o que opcionais/composição não faziam. Nova seção "Variações" no editor (nome/preço/estoque/mín; preço base 0 permitido). Módulo puro `public/variacoes.js` (normalizar/`precoAPartir`/`avaliarVariacoes` regra ≥1/`todasEsgotadas`); projeção+recálculo em `cardapio-web.js`/`pdv.js` (sem vazar contagem); front cliente + PDV + comanda. **174/174 testes + check.** Validado no navegador ponta a ponta: ids únicos, soma, bloqueio sem escolha, baixa por variação (Laranja 4→2). **Ressalva:** só vale pros clientes após `fly deploy`. — 2026-06-27

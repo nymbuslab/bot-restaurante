@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // LÓGICA DO PAINEL (front-end)
 // ============================================================
 
@@ -194,8 +194,8 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (aj) aj.classList.remove("ativo");
     btn.classList.add("ativo");
     $("aba-" + btn.dataset.aba).classList.add("ativa");
+    if (btn.dataset.aba === "dashboard") carregarDashboard();
     if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
-    if (btn.dataset.aba === "conexao") atualizarStatus();
     if (btn.dataset.aba === "assinatura") carregarAssinatura();
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
@@ -882,7 +882,7 @@ async function resetarBot() {
 }
 
 setInterval(() => {
-  if ($("aba-conexao").classList.contains("ativa")) atualizarStatus();
+  if ($("cfg-sub-conexao").classList.contains("ativa")) atualizarStatus();
 }, 4000);
 
 // ============================================================
@@ -1166,6 +1166,7 @@ function abrirEditorItem(ci, ii) {
 
   if (ii === -1) {
     $("editor-nome").value = "";
+    $("editor-preco-custo").value = "";
     $("editor-preco").value = "";
     $("editor-desc").value = "";
     $("editor-disponivel").checked = true;
@@ -1181,6 +1182,7 @@ function abrirEditorItem(ci, ii) {
   } else {
     const it = cardapioAtual.categorias[ci].itens[ii];
     $("editor-nome").value = it.nome || "";
+    Dinheiro.setValor("editor-preco-custo", it.precoCusto);
     Dinheiro.setValor("editor-preco", it.preco);
     $("editor-desc").value = it.desc || "";
     $("editor-disponivel").checked = it.disponivel !== false;
@@ -1194,6 +1196,12 @@ function abrirEditorItem(ci, ii) {
     editorOpcionais = parsearOpcionais(it.opcionais || "");
     editorVariacoes = (typeof Variacoes !== "undefined" ? Variacoes.normalizarVariacoes(it.variacoes) : []);
   }
+  // Abre na aba Principal
+  $("editor-tabs-nav").querySelectorAll(".editor-tab").forEach((t) => t.classList.remove("ativo"));
+  $("editor-tabs-nav").querySelector('[data-tab="principal"]').classList.add("ativo");
+  document.querySelectorAll(".editor-panel").forEach((p) => p.classList.remove("ativo"));
+  document.getElementById("panel-principal").classList.add("ativo");
+
   renderEditorComposicao();
   renderEditorOpcionais();
   renderEditorVariacoes();
@@ -1264,6 +1272,8 @@ async function salvarEditorItem() {
   $("editor-erro").textContent = "";
   const novoCi = +$("editor-categoria").value;
 
+  const precoCusto = Dinheiro.valor("editor-preco-custo");
+
   const novoItem = {
     id:          editorIi === -1 ? novoId() : cardapioAtual.categorias[editorCi].itens[editorIi].id,
     nome,
@@ -1275,6 +1285,7 @@ async function salvarEditorItem() {
     opcionais:   serializarOpcionais(editorOpcionais),
     imagem:      editorFotoUrl,
   };
+  if (precoCusto > 0) novoItem.precoCusto = precoCusto;
 
   const unidade = $("editor-unidade").value === "kg" ? "kg" : "un";
   if (unidade === "kg") novoItem.unidade = "kg";
@@ -1341,6 +1352,18 @@ $("editor-overlay").addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("editor-overlay").style.display !== "none") fecharEditorItem();
+});
+// Navegação entre abas do editor
+$("editor-tabs-nav").addEventListener("click", (e) => {
+  const tab = e.target.closest(".editor-tab");
+  if (!tab) return;
+  const tabName = tab.dataset.tab;
+  if (!tabName) return;
+  $("editor-tabs-nav").querySelectorAll(".editor-tab").forEach((t) => t.classList.remove("ativo"));
+  tab.classList.add("ativo");
+  document.querySelectorAll(".editor-panel").forEach((p) => p.classList.remove("ativo"));
+  const panel = document.getElementById("panel-" + tabName);
+  if (panel) panel.classList.add("ativo");
 });
 
 $("editor-foto-btn").addEventListener("click", () => $("editor-foto-input").click());
@@ -1932,6 +1955,7 @@ if (window.EnderecoCep) {
 if (window.Dinheiro) {
   Dinheiro.mascarar("cfgTaxaEntrega");
   Dinheiro.mascarar("editor-preco");
+  Dinheiro.mascarar("editor-preco-custo");
 }
 
 $("btnDescartarConfig").addEventListener("click", async () => {
@@ -2032,6 +2056,7 @@ document.querySelectorAll(".cfg-subnav button").forEach((btn) => {
     document.querySelectorAll(".cfg-sub").forEach((s) => s.classList.remove("ativa"));
     btn.classList.add("ativo");
     $("cfg-sub-" + btn.dataset.sub).classList.add("ativa");
+    if (btn.dataset.sub === "conexao") atualizarStatus();
   });
 });
 
@@ -2773,6 +2798,148 @@ $("formExcluir").addEventListener("submit", async (e) => {
   }
 });
 
+// Ícones de tendência para o comparativo do dashboard
+const ICO_TREND_UP = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+const ICO_TREND_DOWN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`;
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function carregarDashboard() {
+  try {
+    const r = await api("GET", "/api/pedidos");
+    if (!r) return;
+    const pedidos = await r.json();
+    const agora = new Date();
+    const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    const hoje = pedidos.filter(p => new Date(p.criadoEm) >= inicioHoje);
+    const totalPedidos = hoje.length;
+    const totalFaturamento = hoje.reduce((s, p) => s + (p.total || 0), 0);
+    const ticketMedio = totalPedidos > 0 ? totalFaturamento / totalPedidos : 0;
+
+    // Comparativo com ontem
+    const inicioOntem = new Date(inicioHoje.getTime() - 86400000);
+    const totalOntem = pedidos.filter(p => {
+      const d = new Date(p.criadoEm);
+      return d >= inicioOntem && d < inicioHoje;
+    }).length;
+    const diferenca = totalPedidos - totalOntem;
+
+    const rStatus = await api("GET", "/api/status");
+    let whatsStatus = "desconectado";
+    let whatsNum = "";
+    if (rStatus && rStatus.ok) {
+      const s = await rStatus.json();
+      whatsStatus = s.status;
+      whatsNum = s.numero || "";
+    }
+
+    // Saudação
+    const h = $("dashSaudacao");
+    if (h) h.textContent = "Olá, " + painelNome;
+
+    // Status badge + data
+    const realAberto = lojaAbertaAgora(configAtual);
+    const dot = $("dashDot");
+    const stxt = $("dashStatusTexto");
+    if (dot && stxt) {
+      dot.className = "dash-dot " + (realAberto ? "aberto" : "fechado");
+      stxt.textContent = realAberto ? "ABERTO" : "FECHADO";
+    }
+    const dData = $("dashData");
+    if (dData) dData.textContent = agora.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }) + " • " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+    // Métricas
+    if ($("dashPedidosHoje")) $("dashPedidosHoje").textContent = totalPedidos;
+    if ($("dashFaturamento")) $("dashFaturamento").textContent = "R$ " + moedaBR(totalFaturamento);
+    if ($("dashTicketMedio")) $("dashTicketMedio").textContent = "R$ " + moedaBR(ticketMedio);
+    const trend = $("dashTrendPedidos");
+    if (trend) {
+      if (diferenca > 0) {
+        trend.innerHTML = ICO_TREND_UP + '<span>+' + diferenca + '</span>';
+        trend.className = "metrica-trend subiu";
+      } else if (diferenca < 0) {
+        trend.innerHTML = ICO_TREND_DOWN + '<span>' + diferenca + '</span>';
+        trend.className = "metrica-trend desceu";
+      } else {
+        trend.textContent = "0";
+        trend.className = "metrica-trend";
+      }
+      trend.title = "vs ontem";
+    }
+    // Comparativo textual "Ontem: X · N% maior/menor"
+    const cmp = $("dashComparativo");
+    if (cmp) {
+      const pct = totalOntem > 0 ? Math.round((diferenca / totalOntem) * 100) : (totalPedidos > 0 ? 100 : 0);
+      const sinal = diferenca > 0 ? (pct + "% maior") : diferenca < 0 ? (Math.abs(pct) + "% menor") : "igual";
+      cmp.textContent = "Ontem " + totalOntem + " · " + sinal;
+    }
+
+    // Últimos 5 pedidos
+    const ultimos = hoje.slice(-5).reverse();
+    const body = $("dashPedidosBody");
+    if (body) {
+      if (ultimos.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" class="dash-vazio">Nenhum pedido hoje.</td></tr>';
+      } else {
+        body.innerHTML = ultimos.map(p => {
+          const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+          const tipoTag = p.tipoEntrega === "Entrega" ? "Entrega" : "Retirada";
+          return `<tr class="dash-tr">
+            <td class="dash-td-numero"><strong>#${p.numero}</strong><span class="dash-td-hora">${hora}</span></td>
+            <td>${escapar(p.cliente) || "—"}</td>
+            <td class="dash-td-total">R$ ${moedaBR(p.total)}</td>
+            <td><span class="tag tag-${tipoTag === "Entrega" ? "entrega" : "retirada"}">${tipoTag}</span></td>
+          </tr>`;
+        }).join("");
+      }
+    }
+
+    // WhatsApp status
+    const ws = $("dashWhatsStatus");
+    const wd = $("dashWhatsDot");
+    const wn = $("dashWhatsNum");
+    if (ws && wd && wn) {
+      if (whatsStatus === "conectado") {
+        ws.textContent = "Conectado";
+        wd.className = "dash-dot-conectado on";
+        wn.textContent = whatsNum ? formatarNumeroWa(whatsNum) : "";
+      } else {
+        ws.textContent = "Desconectado";
+        wd.className = "dash-dot-conectado off";
+        wn.textContent = "Toque em Conexão para conectar";
+      }
+    }
+
+    // Atividade recente
+    const atv = $("dashAtividade");
+    if (atv) {
+      if (ultimos && ultimos.length > 0) {
+        const ult = ultimos[0];
+        const hora = new Date(ult.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        atv.innerHTML = `<div class="dash-atv-item"><span class="dash-atv-hora">${hora}</span><span>Novo pedido <strong>#${ult.numero}</strong> de ${escapar(ult.cliente)}</span></div>`;
+      } else {
+        atv.innerHTML = '<p class="dash-vazio">Nenhuma atividade nas últimas horas.</p>';
+      }
+    }
+  } catch (e) {
+    console.error("Dashboard error:", e);
+  }
+}
+
+// Navegação rápida dos botões de ação do dashboard
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".dash-acao-btn");
+  if (btn && btn.dataset.aba) {
+    const navBtn = document.querySelector("nav button[data-aba='" + btn.dataset.aba + "']");
+    if (navBtn) navBtn.click();
+  }
+  const verTodos = e.target.closest("#dashVerTodos");
+  if (verTodos) {
+    const navBtn = document.querySelector("nav button[data-aba='pedidos']");
+    if (navBtn) navBtn.click();
+  }
+});
+
 // ============================================================
 // PEDIDOS
 // ============================================================
@@ -2940,55 +3107,13 @@ function animarTroca(el) {
   el.classList.add("fade-troca");
 }
 
-// Ícones de tendência (Lucide) para o comparativo do card destaque
-const ICO_TREND_UP = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
-const ICO_TREND_DOWN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`;
-
-// Período imediatamente anterior, de mesma duração (para o comparativo real).
-function periodoAnteriorRange(range) {
-  if (!range.ini) return { ini: null, fim: null, dias: range.dias };
-  const fim = new Date(range.ini.getTime() - 1);
-  const ini = new Date(range.ini.getTime() - range.dias * 86400000);
-  return { ini, fim, dias: range.dias };
-}
-function labelComparativo() {
-  if (filtros.periodo === "hoje") return "vs ontem";
-  if (filtros.periodo === "7dias") return "vs 7 dias anteriores";
-  return "vs período anterior";
-}
-
 function renderPedidos(animar = false) {
   const range = periodoRange();
 
-  // Conjunto base = período + tipo → define as MÉTRICAS (a busca não entra aqui).
+  // Conjunto base = período + tipo (a busca não entra aqui).
   const base = pedidosCache.filter(
     (p) => noPeriodo(p, range) && (filtros.tipo === "todos" || p.tipoEntrega === filtros.tipo)
   );
-
-  const total = base.length;
-  const media = total / range.dias;
-  const somaTotais = base.reduce((s, p) => s + (p.total || 0), 0);
-  const ticket = total ? somaTotais / total : 0;
-  $("metTotal").textContent = total;
-  $("metMedia").textContent = media.toFixed(1).replace(".", ",");
-  $("metTicket").textContent = "R$ " + moedaBR(ticket);
-
-  // Comparativo REAL vs período anterior equivalente (contagem de pedidos).
-  const rangeAnt = periodoAnteriorRange(range);
-  const totalAnt = pedidosCache.filter(
-    (p) => noPeriodo(p, rangeAnt) && (filtros.tipo === "todos" || p.tipoEntrega === filtros.tipo)
-  ).length;
-  const compEl = $("metComparativo");
-  const trendEl = $("metTrendIcon");
-  if (totalAnt > 0) {
-    const pct = Math.round(((total - totalAnt) / totalAnt) * 100);
-    const sobe = pct >= 0;
-    if (compEl) { compEl.textContent = `${sobe ? "↑" : "↓"} ${Math.abs(pct)}% ${labelComparativo()}`; compEl.style.display = ""; }
-    if (trendEl) trendEl.innerHTML = sobe ? ICO_TREND_UP : ICO_TREND_DOWN;
-  } else {
-    if (compEl) compEl.style.display = "none"; // sem base anterior → não mostra %
-    if (trendEl) trendEl.innerHTML = ICO_TREND_UP;
-  }
 
   // Lista exibida = base + busca (nome / telefone / nº do pedido).
   const termo = filtros.busca.trim().toLowerCase();
@@ -4445,7 +4570,8 @@ document.addEventListener("keydown", (e) => {
 async function inicial() {
   setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
   setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
-  carregarPedidos();   // Pedidos é a aba inicial (home)
+  carregarDashboard(); // Dashboard é a aba inicial
+  carregarPedidos();   // pré-carrega pedidos em background
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
   if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }

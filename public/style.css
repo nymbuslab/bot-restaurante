@@ -1685,18 +1685,14 @@ button:disabled {
   justify-content: space-between;
   gap: 10px;
 }
-.metrica-trend {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--secondary-subtle);
-  color: var(--secondary);
-  flex-shrink: 0;
-}
+
+
 .metrica-num { display: flex; align-items: baseline; gap: 8px; }
+.metrica-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; white-space: nowrap; background: var(--secondary-subtle); color: var(--secondary); padding: 4px 8px; border-radius: var(--radius-sm); }
+.metrica-trend.subiu { background: var(--success-subtle); color: var(--success); }
+.metrica-trend.desceu { background: var(--danger-subtle); color: var(--danger); }
+.metrica-trend span { line-height: 1; }
+.metrica-ontem { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .metrica-card.destaque .metrica-valor {
   font-size: 46px;
   color: var(--accent-fg);
@@ -2946,6 +2942,37 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   font-size: 13px;
   font-weight: 500;
 }
+
+/* ---- Editor: abas ---- */
+.editor-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: fit-content;
+  margin: 12px 24px 0;
+}
+.editor-tab {
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.editor-tab:hover { color: var(--text-primary); }
+.editor-tab.ativo { background: var(--accent); color: #fff; }
+
+/* ---- Editor: painéis ---- */
+.editor-panel { display: none; }
+.editor-panel.ativo { display: block; height: 400px; overflow-y: auto; }
+.editor-panel-scroll { padding: 20px 24px; }
 
 /* ---------- Construtor de Composição ---------- */
 .comp-builder {
@@ -4866,4 +4893,262 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .pdv-cat { width: auto; max-width: 70vw; flex: 0 0 auto; border-radius: 999px; padding: 8px 14px; }
   .pdv-formas { grid-template-columns: 1fr; }
   .pdv-fab { bottom: 72px; z-index: 90; }
+}
+
+/* =============================================
+   DASHBOARD
+   ============================================= */
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+.dash-saudacao {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.dash-sub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.dash-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+}
+.dash-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dash-dot.aberto { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
+.dash-dot.fechado { background: var(--text-disabled); }
+.dash-data {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.dash-metricas {
+  margin-bottom: 20px;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.dash-metricas .metrica-card.destaque {
+  grid-column: auto;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.dash-pedidos-card .card {
+  padding: 16px 20px;
+}
+.dash-card-cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.dash-card-cabeca h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.dash-tabela-wrap {
+  overflow-x: auto;
+}
+.dash-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.dash-tabela thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 0 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dash-tabela tbody td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.dash-tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+.dash-tr:hover {
+  background: transparent;
+}
+.dash-td-numero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash-td-numero strong {
+  font-size: 14px;
+}
+.dash-td-hora {
+  font-size: 11px;
+  color: var(--text-disabled);
+}
+.dash-td-total {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dash-vazio {
+  font-size: 13px;
+  color: var(--text-disabled);
+  text-align: center;
+  padding: 24px 0;
+}
+.dash-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dash-whats .card {
+  padding: 16px 20px;
+}
+.dash-whats-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dash-whats-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+.dash-whats-header h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  flex: 1;
+}
+.dash-whats-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.dash-dot-conectado {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+}
+.dash-dot-conectado.on {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  animation: dash-pulse 2s infinite;
+}
+.dash-dot-conectado.off {
+  background: var(--text-disabled);
+}
+@keyframes dash-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+.dash-whats-num {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+.dash-acoes .card {
+  padding: 16px 20px;
+}
+.dash-acoes h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
+}
+.dash-acao-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  margin-bottom: 6px;
+}
+.dash-acao-btn:last-child { margin-bottom: 0; }
+.dash-acao-btn:hover {
+  border-color: var(--accent);
+  background: rgba(99, 68, 188, 0.06);
+  color: var(--accent-fg);
+}
+.dash-acao-btn svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+.dash-acao-btn:hover svg {
+  color: var(--accent);
+}
+.dash-atividade .card {
+  padding: 16px 20px;
+}
+.dash-atividade h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
+}
+.dash-atv-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: 6px 0;
+}
+.dash-atv-hora {
+  font-size: 11px;
+  color: var(--text-disabled);
+  white-space: nowrap;
+  min-width: 42px;
+}
+/* Dashboard responsivo */
+@media (max-width: 1100px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .dash-metricas { grid-template-columns: 1fr; }
+  .dash-metricas .metrica-card.destaque .metrica-valor { font-size: 36px; }
 }
