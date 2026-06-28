@@ -95,7 +95,7 @@ async function lerTodos(dir) {
 async function ultimo(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT numero, cliente, itens, total FROM pedidos WHERE empresa_id = $1 ORDER BY id DESC LIMIT 1",
+    "SELECT numero, cliente, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id IS NULL ORDER BY id DESC LIMIT 1",
     [empId]
   );
   const row = r.rows[0];
