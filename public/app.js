@@ -4347,7 +4347,7 @@ if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => a
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("btnPdvVencidoCaixa")) $("btnPdvVencidoCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
-if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", abrirPdvPagar);
+if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", function () { if (mesaModoId) mesaLancarDoPdv(); else abrirPdvPagar(); });
 if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", () => { pdvCart = []; pdvDesconto = null; renderPdvCarrinho(); });
 if ($("pdvFab")) $("pdvFab").addEventListener("click", () => { $("pdvCarrinho").classList.add("aberto"); $("pdvFab").classList.add("oculto"); });
 if ($("pdvCartFechar")) $("pdvCartFechar").addEventListener("click", () => { $("pdvCarrinho").classList.remove("aberto"); $("pdvFab").classList.remove("oculto"); });
@@ -4631,6 +4631,8 @@ var mesaState = {
 var mesasPdvCatAtual = "";
 var mesasInitDone = false;
 var mesaPagarModo = "fechar";
+var mesaModoId = null;
+var mesaModoNome = "";
 
 async function carregarMesas() {
   mesasInitListeners();
@@ -4743,34 +4745,30 @@ function mesaMudarAba(aba) {
     b.classList.toggle("ativo", b.dataset.mesaAba === aba);
   });
   $("mesaAbaItens").hidden = aba !== "itens";
-  $("mesaAbaLancar").hidden = aba !== "lancar";
+  $("mesaAbaLancar").hidden = true;
   if (aba === "itens") renderMesaItens();
-  if (aba === "lancar") mesaCarregarGrade();
+  if (aba === "lancar") ativarMesaModoPdv();
 }
 
 function renderMesaItens() {
   var d = mesaState.detalhe;
   var lista = $("mesaItensLista");
   var peds = (d && d.pedidos || []).filter(function (p) { return p.status !== "cancelado"; });
-  if (!peds.length) {
+  var todos = [];
+  peds.forEach(function (p) { (p.itens || []).forEach(function (i) { todos.push(i); }); });
+  if (!todos.length) {
     lista.innerHTML = '<p class="sub" style="text-align:center;padding:32px 0">Nenhum item lançado ainda.</p>';
     return;
   }
   var html = "";
-  peds.forEach(function (p, i) {
-    var hora = p.criadoEm ? mesaFmtHora(p.criadoEm) : "";
-    html += '<div class="mesa-rodada">';
-    html += '<div class="mesa-rodada-cab">Rodada ' + (i + 1) + (hora ? " — " + hora : "") + "</div>";
-    (p.itens || []).forEach(function (item) {
-      var preco = pdvMoney((Number(item.preco) || 0) * (item.qtd || 1));
-      html +=
-        '<div class="mesa-rodada-item">' +
-        '<span class="mesa-rodada-item-esq"><span class="mesa-rodada-item-qtd">' + (item.qtd || 1) + "x </span>" +
-        '<span class="mesa-rodada-item-nome">' + pdvEsc(item.nome || "") + "</span></span>" +
-        '<span class="mesa-rodada-item-preco">' + preco + "</span>" +
-        "</div>";
-    });
-    html += "</div>";
+  todos.forEach(function (item) {
+    var preco = pdvMoney((Number(item.preco) || 0) * (item.qtd || 1));
+    html +=
+      '<div class="mesa-rodada-item">' +
+      '<span class="mesa-rodada-item-esq"><span class="mesa-rodada-item-qtd">' + (item.qtd || 1) + "x </span>" +
+      '<span class="mesa-rodada-item-nome">' + pdvEsc(item.nome || "") + "</span></span>" +
+      '<span class="mesa-rodada-item-preco">' + preco + "</span>" +
+      "</div>";
   });
   lista.innerHTML = html;
 }
@@ -4890,7 +4888,80 @@ async function mesaAtualizarLista() {
   renderMesasGrade();
 }
 
-/* ---- Aba Lançar ---- */
+/* ---- Modo PDV para mesa ---- */
+function ativarMesaModoPdv() {
+  var d = mesaState.detalhe;
+  if (!d || d.status === "livre") { toast("Abra a mesa antes de lançar.", "aviso"); mesaMudarAba("itens"); return; }
+  if (d.status === "pediu_conta" || d.status === "fechando") { toast("Mesa em fechamento. Reabra para lançar.", "aviso"); mesaMudarAba("itens"); return; }
+  mesaModoId = d.id;
+  mesaModoNome = d.nome;
+  // Banner no topo do PDV
+  if (!$("pdvMesaBanner")) {
+    var abaPdv = $("aba-pdv");
+    var banner = document.createElement("div");
+    banner.id = "pdvMesaBanner";
+    banner.className = "pdv-mesa-banner";
+    banner.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>' +
+      '<span>Lançando para <strong>Mesa ' + pdvEsc(mesaModoNome) + '</strong></span>' +
+      '<button type="button" class="secundario mini" id="pdvMesaCancelar">Cancelar</button>';
+    if (abaPdv) abaPdv.insertBefore(banner, abaPdv.firstChild);
+    var cancelBtn = $("pdvMesaCancelar");
+    if (cancelBtn) cancelBtn.addEventListener("click", desativarMesaModoPdv);
+  }
+  var cobrar = $("pdvCobrar");
+  if (cobrar) cobrar.textContent = "Enviar para Mesa";
+  pdvCart = []; pdvDesconto = null; renderPdvCarrinho();
+  fecharMesaPainel();
+  var pdvBtn = document.querySelector("nav button[data-aba='pdv']");
+  if (pdvBtn) pdvBtn.click();
+}
+
+function desativarMesaModoPdv() {
+  mesaModoId = null;
+  mesaModoNome = "";
+  var banner = $("pdvMesaBanner");
+  if (banner) banner.remove();
+  var cobrar = $("pdvCobrar");
+  if (cobrar) cobrar.textContent = "Cobrar";
+}
+
+async function mesaLancarDoPdv() {
+  if (!pdvCart.length) { toast("Carrinho vazio.", "aviso"); return; }
+  var btn = $("pdvCobrar");
+  if (btn) btn.disabled = true;
+  try {
+    var itens = pdvCart.map(function (l) {
+      return {
+        id: l.id, qtd: l.qtd,
+        composicao: l.composicao || [],
+        opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd }; }),
+        variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd }; }),
+        observacao: l.observacao || ""
+      };
+    });
+    var r = await api("POST", "/api/mesas/" + mesaModoId + "/pedido", { itens: itens });
+    if (!r.ok) {
+      var e = await r.json().catch(function () { return {}; });
+      toast(e.erro || "Erro ao lançar na mesa.", "erro");
+      return;
+    }
+    toast("Itens lançados na mesa!");
+    var idMesa = mesaModoId;
+    pdvCart = []; pdvDesconto = null;
+    desativarMesaModoPdv();
+    renderPdvCarrinho();
+    var mesaNavBtn = document.querySelector("nav button[data-aba='mesas']");
+    if (mesaNavBtn) mesaNavBtn.click();
+    setTimeout(function () { mesaSelecionarCard(idMesa); }, 200);
+  } catch (err) {
+    toast("Erro ao lançar na mesa.", "erro");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ---- Aba Lançar (legado — mantido para não quebrar referências) ---- */
 function mesaCarregarGrade() {
   var cats = $("mesaCats");
   var grade = $("mesaGrid");
@@ -5224,9 +5295,6 @@ function mesasInitListeners() {
   $("btnMesasIrCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnVerPlanosMesas").addEventListener("click", function () { document.querySelector("[data-aba='assinatura']").click(); });
-  $("mesaLancarRodada").addEventListener("click", mesaLancarRodada);
-  $("mesaCancelarCart").addEventListener("click", function () { mesaState.cart = []; renderMesaCart(); });
-  $("mesaBusca").addEventListener("input", function () { mesaRenderGrade(mesasPdvCatAtual); });
 }
 
 // Boot: obtém a sessão pelo cookie (refresh) e só então carrega o painel.
