@@ -31,6 +31,7 @@ _(nada no momento)_
 
 ## ✅ Concluído
 
+- [x] **Dashboard + reorg do painel** — nova aba Dashboard como landing (métricas com tendência vs ontem, últimos pedidos, status WhatsApp, ações rápidas); sidebar renomeada (Cardápio → Produtos, Conexão removida); Conexão movida para sub-aba de Configurações; novas sub-abas Horários e Pagamentos; editor de item em 4 abas (Principal/Composições/Opcionais/Variações) com campo precoCusto; Google Stitch MCP configurado. — 2026-06-28
 - [x] **R-03 (LGPD) — retenção da trilha de auditoria** — `auditoria.limparAntigos(meses=24)` apaga registros de `auditoria` com +24 meses (DELETE por `criado_em`, índice `auditoria_criado_em_idx`; trilha sem PII, valor temporal); agendado no `index.js` (75s após boot + a cada 24h), best-effort no padrão dos jobs de retenção de pedidos/clientes. **Único item de código restante da adequação LGPD.** 174/174 testes + check. Commit `c8d4c6a`. — 2026-06-27
 - [x] **Stripe go-live — teste E2E com cartão real + estorno** — teste de ponta a ponta validado: cadastro → checkout → `trialing`/`active` com cartão real → conferência dos eventos no webhook → estorno. Stripe em produção (live), cobrando de verdade, sem pendências. — 2026-06-27
 - [x] **Revisão jurídica dos textos legais (Termos/Privacidade)** — Termos e Privacidade revisados por advogado, refletindo o fluxo do cardápio web, limite de responsabilidade, prazo de retenção e figura do DPO. Documentos legalmente conformes. — 2026-06-27

@@ -481,3 +481,12 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Cadastro de itens:** nova seção **Variações** — opções com **preço e estoque próprios** (ex.: "Refrigerantes 350ml" com vários sabores, cada um com seu preço e estoque). Com variações, o item pode não ter preço fixo.
 - **No cardápio digital e no PDV:** o item aparece como **"a partir de R$ X"**; ao abrir, escolhe-se **uma ou várias** opções com quantidade, e o preço **soma**. Opção sem estoque aparece **esgotada**.
 - **Estoque por opção:** cada variação **dá baixa no próprio estoque** ao vender (no cardápio digital e no PDV) — diferente dos opcionais, que não controlam estoque. A comanda lista as opções escolhidas.
+
+## [0.54.0] — Dashboard + reorg do painel
+
+- **Nova aba Dashboard** como tela inicial: saudação, status WhatsApp, 3 métricas (Pedidos Hoje/Faturamento/Ticket Médio) com **comparativo vs ontem** (setas ↑↓), tabela de últimos pedidos, ações rápidas e atividade recente.
+- **Sidebar reformulada:** Dashboard em 1º, Cardápio renomeado para **Produtos**, Conexão removida da sidebar.
+- **Conexão movida** para sub-aba dentro de **Configurações**.
+- **Novas sub-abas Horários e Pagamentos** (extraídas do Bot) em Configurações.
+- **Editor de item em 4 abas:** Principal / Composições / Opcionais / Variações, com campo opcional **preço de custo**.
+- **Google Stitch MCP** configurado para gerar layouts de tela via IA.
