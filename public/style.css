@@ -3143,6 +3143,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .var-nome { flex: 1 1 140px; font-size: 13px; min-width: 0; }
 .var-est { width: 70px; font-size: 13px; text-align: center; }
 .var-estmin { width: 56px; font-size: 13px; text-align: center; }
+.var-order { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; flex-shrink: 0; }
+.var-order:hover:not(:disabled) { background: var(--bg-hover); }
+.var-order:disabled { opacity: 0.3; cursor: default; }
 
 /* ---------- Mobile: bordas de edição sempre visíveis ---------- */
 @media (hover: none) {
