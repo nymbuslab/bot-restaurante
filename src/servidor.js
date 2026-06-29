@@ -1859,6 +1859,23 @@ app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
   }
 });
 
+// Cancela um item individual de um pedido da mesa.
+app.post("/api/mesas/:id/cancelar-item", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const mesaId = Number(req.params.id);
+    const b = req.body || {};
+    if (!b.pedidoId || b.itemIdx == null) return res.status(400).json({ erro: "pedidoId e itemIdx são obrigatórios." });
+    const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
+    if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
+    if (mesa.status === "fechando") return res.status(400).json({ erro: "Conta já iniciada. Reabra a mesa para cancelar itens." });
+    await mesasDb.cancelarItem(req.tenantDir, mesaId, Number(b.pedidoId), Number(b.itemIdx));
+    res.json(await detalheMesa(req.tenantDir, mesaId));
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao cancelar o item." });
+  }
+});
+
 // Transfere/junta: move pedidos (body.pedidoIds vazio = todos) p/ a mesa destino.
 app.post("/api/mesas/:id/transferir/:destinoId", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;

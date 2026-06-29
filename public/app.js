@@ -4763,22 +4763,53 @@ function renderMesaItens() {
   var lista = $("mesaItensLista");
   var peds = (d && d.pedidos || []).filter(function (p) { return p.status !== "cancelado"; });
   var todos = [];
-  peds.forEach(function (p) { (p.itens || []).forEach(function (i) { todos.push(i); }); });
+  peds.forEach(function (p) {
+    (p.itens || []).forEach(function (item, idx) {
+      todos.push({ item: item, pedidoId: p.id, idx: idx });
+    });
+  });
   if (!todos.length) {
     lista.innerHTML = '<p class="sub" style="text-align:center;padding:32px 0">Nenhum item lançado ainda.</p>';
     return;
   }
+  var canDel = d && d.status !== "fechando";
   var html = "";
-  todos.forEach(function (item) {
+  todos.forEach(function (entry) {
+    var item = entry.item;
     var preco = pdvMoney((Number(item.preco) || 0) * (item.qtd || 1));
+    var delBtn = canDel
+      ? '<button class="mesa-item-del" data-pedido-id="' + entry.pedidoId + '" data-item-idx="' + entry.idx + '" title="Cancelar item" aria-label="Cancelar item">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>' +
+        '</button>'
+      : '';
     html +=
       '<div class="mesa-rodada-item">' +
       '<span class="mesa-rodada-item-esq"><span class="mesa-rodada-item-qtd">' + (item.qtd || 1) + "x </span>" +
       '<span class="mesa-rodada-item-nome">' + pdvEsc(item.nome || "") + "</span></span>" +
       '<span class="mesa-rodada-item-preco">' + preco + "</span>" +
+      delBtn +
       "</div>";
   });
   lista.innerHTML = html;
+  lista.querySelectorAll(".mesa-item-del").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      mesaCancelarItem(Number(btn.dataset.pedidoId), Number(btn.dataset.itemIdx));
+    });
+  });
+}
+
+async function mesaCancelarItem(pedidoId, itemIdx) {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar-item", { pedidoId: pedidoId, itemIdx: itemIdx });
+  if (!r || !r.ok) {
+    var e = await (r && r.json().catch(function () { return {}; })) || {};
+    toast(e.erro || "Erro ao cancelar o item.", "erro");
+    return;
+  }
+  mesaState.detalhe = await r.json();
+  renderMesaItens();
+  renderMesaTotais();
 }
 
 function renderMesaTotais() {

@@ -294,10 +294,41 @@ async function salvarQrToken(dir, mesaId, token) {
   await db.query("UPDATE mesas SET qr_code_token = $1 WHERE empresa_id = $2 AND id = $3", [token, empId, mesaId]);
 }
 
+// Remove um único item de um pedido da mesa. Recalcula o total do pedido;
+// se o pedido ficar sem itens, marca-o como cancelado.
+async function cancelarItem(dir, mesaId, pedidoId, itemIdx) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "SELECT id, itens FROM pedidos WHERE id=$1 AND empresa_id=$2 AND mesa_id=$3 AND status<>'cancelado'",
+    [pedidoId, empId, mesaId]
+  );
+  if (!r.rows[0]) throw new Error("Pedido não encontrado nesta mesa.");
+  const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
+  if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
+  itens.splice(itemIdx, 1);
+  if (!itens.length) {
+    await db.query(
+      "UPDATE pedidos SET itens='[]'::jsonb, total=0, status='cancelado' WHERE id=$1",
+      [pedidoId]
+    );
+  } else {
+    const novoTotal = Math.round(itens.reduce((s, i) => {
+      const extras =
+        (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0) +
+        (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
+      return s + ((i.preco || 0) + extras) * (i.qtd || 1);
+    }, 0) * 100) / 100;
+    await db.query(
+      "UPDATE pedidos SET itens=$1, total=$2 WHERE id=$3",
+      [JSON.stringify(itens), novoTotal, pedidoId]
+    );
+  }
+}
+
 function esquecer(slug) { delete idCache[slug]; }
 
 module.exports = {
   listar, buscarPorId, criarEmLote, remover, abrir, atualizarStatus, reabrir,
   vincularPedido, pedidosDaMesa, recebidoDaMesa, receberParcial, finalizarFechamento,
-  cancelar, transferir, salvarQrToken, esquecer,
+  cancelar, transferir, salvarQrToken, esquecer, cancelarItem,
 };
