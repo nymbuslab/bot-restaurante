@@ -161,7 +161,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---- Grid de itens (cards horizontais em 3 colunas no desktop) ---- */
 .cd-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
-@media (min-width: 700px) { .cd-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 980px) { .cd-grid { grid-template-columns: repeat(2, 1fr); } }
 .cd-cat-titulo {
   grid-column: 1 / -1; font-size: 14px; font-weight: 800; text-transform: uppercase;
   letter-spacing: 1px; color: var(--text-primary); margin: 16px 2px 6px;
