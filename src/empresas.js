@@ -10,6 +10,7 @@ const fs = require("fs");
 const db = require("./db");
 const store = require("./store");
 const pedidos = require("./pedidos");
+const impressaoFila = require("./impressao-fila");
 const auditoria = require("./auditoria");
 const clientes = require("./clientes");
 const { supabaseAdmin, supabaseAnon } = require("./supabase");
@@ -411,6 +412,7 @@ async function excluir(slug) {
 
   store.esquecer(slug);
   pedidos.esquecer(slug);
+  impressaoFila.esquecer(slug); // cache de empresa_id (a fila já cai na cascata do DELETE)
   clientes.esquecer(slug); // limpa o cache de empresa_id (clientes/enderecos já caem na cascata)
 
   // Limpa imagens do tenant no Storage (best-effort; falha logada p/ reconciliação).

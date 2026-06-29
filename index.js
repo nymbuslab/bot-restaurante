@@ -16,6 +16,7 @@ const servidor = require("./src/servidor");
 const { limparSessoesAntigas, slugsComSessao } = require("./src/wa-auth");
 const sessoes = require("./src/sessoes");
 const pedidos = require("./src/pedidos");
+const impressaoFila = require("./src/impressao-fila");
 const clientes = require("./src/clientes");
 const empresas = require("./src/empresas");
 const auditoria = require("./src/auditoria");
@@ -79,6 +80,21 @@ async function limparAuditoria() {
 }
 setTimeout(limparAuditoria, 75_000);              // 75s após o boot
 setInterval(limparAuditoria, 24 * 60 * 60 * 1000); // a cada 24h
+
+// Higiene da fila de impressão: apaga trabalhos já impressos com mais de 7 dias
+// (a fila é volátil; o histórico de impressão fica em pedidos/caixas). Global,
+// idempotente. Boot + 24h.
+const DIAS_RETENCAO_FILA_IMPRESSAO = 7;
+async function limparFilaImpressao() {
+  try {
+    const n = await impressaoFila.limparAntigos(DIAS_RETENCAO_FILA_IMPRESSAO);
+    if (n > 0) console.log(`🧹 Fila de impressão: ${n} trabalho(s) impresso(s) > ${DIAS_RETENCAO_FILA_IMPRESSAO} dias apagado(s).`);
+  } catch (e) {
+    console.error("Limpeza da fila de impressão falhou (ignorado):", e.message);
+  }
+}
+setTimeout(limparFilaImpressao, 90_000);              // 90s após o boot
+setInterval(limparFilaImpressao, 24 * 60 * 60 * 1000); // a cada 24h
 
 // Higiene de memória: varre as sessões de conversa (em memória) e descarta as
 // inativas há +30min. A expiração do sessoes.js é lazy (só limpa quando a mesma
