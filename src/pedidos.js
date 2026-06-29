@@ -197,6 +197,45 @@ async function anonimizarAntigos(meses = 12) {
   return r.rowCount;
 }
 
+// Cancela um pedido inteiro (não recebido). Seta status='cancelado'.
+async function cancelarPedido(dir, pedidoId) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "UPDATE pedidos SET status = 'cancelado' WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado' RETURNING id",
+    [empId, pedidoId]
+  );
+  if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou já cancelado.");
+}
+
+// Remove um item de um pedido (não recebido), recalcula total.
+// Se ficar sem itens, cancela o pedido inteiro.
+async function cancelarItemPedido(dir, pedidoId, itemIdx) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    "SELECT id, itens FROM pedidos WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado'",
+    [empId, pedidoId]
+  );
+  if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou cancelado.");
+  const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
+  if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
+  itens.splice(itemIdx, 1);
+  if (!itens.length) {
+    await db.query(
+      "UPDATE pedidos SET itens='[]'::jsonb, total=0, status='cancelado' WHERE id=$1",
+      [pedidoId]
+    );
+  } else {
+    const novoTotal = Math.round(itens.reduce((s, i) => {
+      const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0);
+      return s + ((i.preco || 0) + extras) * (i.qtd || 1);
+    }, 0) * 100) / 100;
+    await db.query(
+      "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
+      [JSON.stringify(itens), novoTotal, pedidoId]
+    );
+  }
+}
+
 // Antes (SQLite) liberava o handle do arquivo antes de apagar a pasta.
 // No Postgres não há handle local — no-op mantido por compatibilidade.
 function fecharConexao(_dir) {}
@@ -216,4 +255,4 @@ async function contarVendasDoItem(dir, itemId) {
   return r.rows[0] ? r.rows[0].n : 0;
 }
 
-module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem };
+module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido };

@@ -4633,6 +4633,30 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .selo-pag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; vertical-align: 1px; white-space: nowrap; }
 .selo-pago { background: rgba(52,211,153,0.14); color: #34d399; }
 .selo-areceber { background: rgba(251,191,36,0.14); color: #fbbf24; }
+.selo-cancelado { background: rgba(239,68,68,0.14); color: #ef4444; }
+
+/* Botão de cancelar item no modal de pedido */
+.ped-item { align-items: center; }
+.ped-item-del {
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  margin-left: 8px; width: 26px; height: 26px; padding: 0;
+  background: transparent; border: none; border-radius: var(--radius-sm);
+  color: var(--text-disabled); cursor: pointer; transition: color .15s, background .15s;
+}
+.ped-item-del:hover { color: var(--danger); background: rgba(239,68,68,.1); }
+
+/* Banner de pedido cancelado no topo do modal */
+.ped-cancelado-banner {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: rgba(239,68,68,.1); color: #ef4444; font-size: 13px; font-weight: 600;
+}
+
+/* Botão "Cancelar pedido" nas ações do modal */
+.btn-cancelar-pedido {
+  color: var(--danger); background: transparent; border: 1px solid rgba(239,68,68,.35);
+}
+.btn-cancelar-pedido:hover { background: rgba(239,68,68,.1); border-color: var(--danger); }
 
 /* ---- Modal de pré-visualização de impressão ---- */
 /* Acima dos outros modais (1000): é aberto de dentro do modal de detalhe do pedido. */

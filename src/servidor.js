@@ -1484,6 +1484,27 @@ app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
   }
 });
 
+app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
+  try {
+    await pedidos.cancelarPedido(req.tenantDir, Number(req.params.id));
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao cancelar o pedido." });
+  }
+});
+
+app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (b.itemIdx == null) return res.status(400).json({ erro: "itemIdx é obrigatório." });
+    await pedidos.cancelarItemPedido(req.tenantDir, Number(req.params.id), Number(b.itemIdx));
+    const pedido = await pedidos.lerPorId(req.tenantDir, Number(req.params.id));
+    res.json(pedido);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao cancelar o item." });
+  }
+});
+
 // ---- Caixa (Plano Completo) ----
 // Gate: caixa é recurso de servidor → barra no backend (não só no front).
 async function exigeCaixa(req, res) {

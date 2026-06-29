@@ -3069,8 +3069,9 @@ function tagTipo(p) {
     : `<span class="tag tag-retirada"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Retirada</span>`;
 }
 
-// Selo de pagamento (só Plano Completo): mostra se o pedido já foi recebido no caixa.
+// Selo de pagamento: mostra status do pedido (cancelado para todos; recebido/a receber para Completo).
 function seloPagamento(p) {
+  if (p.status === "cancelado") return '<span class="selo-pag selo-cancelado">Cancelado</span>';
   if (planoAtual !== "completo") return "";
   return p.recebidoEm
     ? '<span class="selo-pag selo-pago">Recebido</span>'
@@ -3151,7 +3152,11 @@ function renderPedidos(animar = false) {
   });
   // Filtro de pagamento (só Plano Completo) — não afeta as métricas acima.
   if (planoAtual === "completo" && filtros.pagamento !== "todos") {
-    lista = lista.filter((p) => filtros.pagamento === "recebidos" ? !!p.recebidoEm : !p.recebidoEm);
+    lista = lista.filter((p) =>
+      filtros.pagamento === "recebidos"
+        ? !!p.recebidoEm
+        : !p.recebidoEm && p.status !== "cancelado"
+    );
   }
 
   listaPedidosAtual = lista;
@@ -3277,11 +3282,17 @@ function abrirModalPedido(p) {
   const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0);
   const subtotal = p.itens.reduce((acc, i) => acc + (i.preco + extrasDe(i)) * i.qtd, 0);
 
-  // Itens como cards de leitura (qtd Nx, nome, opcionais como subitens, preço à direita)
-  const itensHtml = p.itens.map((i) => {
+  const podeModificar = !p.recebidoEm && p.status !== "cancelado";
+  const ICO_LIXEIRA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+
+  // Itens como cards de leitura — com botão de cancelar item se pedido modificável
+  const itensHtml = p.itens.map((i, idx) => {
     const sub = (i.preco + extrasDe(i)) * i.qtd;
     const opcHtml = (i.opcionais && i.opcionais.length)
       ? `<div class="ped-item-opc">${i.opcionais.map((o) => "+ " + (o.qtd > 1 ? o.qtd + "x " : "") + escapar(o.nome)).join("<br>")}</div>`
+      : "";
+    const delBtn = podeModificar
+      ? `<button class="ped-item-del" data-item-idx="${idx}" title="Cancelar item" aria-label="Cancelar item">${ICO_LIXEIRA}</button>`
       : "";
     return `<div class="ped-item">
       <span class="ped-item-qtd">${escapar(String(i.qtd))}x</span>
@@ -3290,6 +3301,7 @@ function abrirModalPedido(p) {
         ${opcHtml}
       </div>
       <span class="ped-item-preco">R$ ${moedaBR(sub)}</span>
+      ${delBtn}
     </div>`;
   }).join("");
 
@@ -3328,7 +3340,12 @@ function abrirModalPedido(p) {
       : "Retirada no balcão";
   }
 
+  const canceladoBanner = p.status === "cancelado"
+    ? `<div class="ped-cancelado-banner"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Este pedido foi cancelado</div>`
+    : "";
+
   $("pedido-detalhe-corpo").innerHTML = `
+    ${canceladoBanner}
     <div class="ped-det-grid">
       <div class="ped-det-col">
         <div class="ped-bloco">
@@ -3374,6 +3391,35 @@ function abrirModalPedido(p) {
 
   montarAcoes(p);
 
+  // Wiring dos botões de cancelar item individual
+  if (podeModificar) {
+    $("pedido-detalhe-corpo").querySelectorAll(".ped-item-del").forEach(function (btn) {
+      btn.addEventListener("click", async function (e) {
+        e.stopPropagation();
+        var idx = Number(btn.dataset.itemIdx);
+        var nome = (pedidoModalAtual.itens[idx] || {}).nome || "item";
+        var ok = await confirmar(
+          "Cancelar item?",
+          "Remover \"" + nome + "\" do pedido. Esta ação não pode ser desfeita.",
+          "Cancelar item"
+        );
+        if (!ok) return;
+        var r = await api("POST", "/api/pedidos/" + pedidoModalAtual.id + "/cancelar-item", { itemIdx: idx });
+        if (!r || !r.ok) {
+          var d = await (r && r.json().catch(function () { return {}; })) || {};
+          toast(d.erro || "Erro ao cancelar o item.", "erro");
+          return;
+        }
+        var novoPedido = await r.json();
+        var ci = pedidosCache.findIndex(function (x) { return x.id === novoPedido.id; });
+        if (ci !== -1) pedidosCache[ci] = novoPedido;
+        pedidoModalAtual = novoPedido;
+        abrirModalPedido(novoPedido);
+        renderPedidos();
+      });
+    });
+  }
+
   const overlay = $("pedido-overlay");
   overlay.style.display = "flex";
   overlay.classList.remove("saindo");
@@ -3411,7 +3457,7 @@ function montarAcoes(p) {
 
   // Recebimento no caixa (Plano Completo). É AQUI (no pedido) que se recebe o
   // pagamento; o estorno fica na aba Caixa.
-  if (planoAtual === "completo") {
+  if (planoAtual === "completo" && p.status !== "cancelado") {
     if (p.recebidoEm) {
       const sel = document.createElement("span");
       sel.className = "pedido-avisado";
@@ -3428,6 +3474,34 @@ function montarAcoes(p) {
       });
       cont.appendChild(extra);
     }
+  }
+
+  // Botão de cancelar pedido — disponível se não recebido e não cancelado
+  if (!p.recebidoEm && p.status !== "cancelado") {
+    const btnCancelar = document.createElement("button");
+    btnCancelar.className = "btn-cancelar-pedido mini";
+    btnCancelar.textContent = "Cancelar pedido";
+    btnCancelar.addEventListener("click", async () => {
+      const ok = await confirmar(
+        "Cancelar pedido #" + p.numero + "?",
+        "O pedido será marcado como cancelado. Esta ação não pode ser desfeita.",
+        "Cancelar pedido"
+      );
+      if (!ok) return;
+      const r = await api("POST", "/api/pedidos/" + p.id + "/cancelar");
+      if (!r || !r.ok) {
+        const d = r ? await r.json().catch(() => ({})) : {};
+        toast(d.erro || "Erro ao cancelar o pedido.", "erro");
+        return;
+      }
+      p.status = "cancelado";
+      const ci = pedidosCache.findIndex((x) => x.id === p.id);
+      if (ci !== -1) pedidosCache[ci].status = "cancelado";
+      toast("Pedido #" + p.numero + " cancelado.");
+      fecharModalPedido();
+      renderPedidos();
+    });
+    cont.appendChild(btnCancelar);
   }
 }
 
