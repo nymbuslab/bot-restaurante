@@ -5,8 +5,12 @@ function ehDinheiro(forma) {
 }
 
 function resumoCaixa(caixa, movimentos) {
-  const recebidoPorForma = {};
+  // Vendas ficam BRUTAS (recebidoPorForma/totalRecebido) e os cancelamentos são
+  // rastreados à parte (canceladoPorForma/cancelamentos) — transparência anti-fraude:
+  // o relatório/extrato mostra a venda E o cancelamento, e o total deduz o cancelado.
+  const recebidoPorForma = {}, canceladoPorForma = {};
   let totalRecebido = 0, recebidoDinheiro = 0, suprimentos = 0, sangrias = 0;
+  let cancelamentos = 0, canceladoDinheiro = 0;
   for (const m of movimentos || []) {
     const v = Number(m.valor) || 0;
     if (m.tipo === "recebimento") {
@@ -14,6 +18,11 @@ function resumoCaixa(caixa, movimentos) {
       recebidoPorForma[forma] = (recebidoPorForma[forma] || 0) + v;
       totalRecebido += v;
       if (ehDinheiro(forma)) recebidoDinheiro += v;
+    } else if (m.tipo === "cancelamento") {
+      const forma = m.forma_pagamento || "Outros";
+      canceladoPorForma[forma] = (canceladoPorForma[forma] || 0) + v;
+      cancelamentos += v;
+      if (ehDinheiro(forma)) canceladoDinheiro += v;
     } else if (m.tipo === "suprimento") {
       suprimentos += v;
     } else if (m.tipo === "sangria") {
@@ -21,8 +30,12 @@ function resumoCaixa(caixa, movimentos) {
     }
   }
   const fundo = Number(caixa && caixa.fundo_troco) || 0;
-  const esperadoEspecie = fundo + recebidoDinheiro + suprimentos - sangrias;
-  return { recebidoPorForma, totalRecebido, recebidoDinheiro, suprimentos, sangrias, esperadoEspecie };
+  // Espécie esperada na gaveta: tira o dinheiro que foi devolvido em cancelamentos.
+  const esperadoEspecie = fundo + recebidoDinheiro + suprimentos - sangrias - canceladoDinheiro;
+  return {
+    recebidoPorForma, totalRecebido, recebidoDinheiro, suprimentos, sangrias,
+    cancelamentos, canceladoPorForma, canceladoDinheiro, esperadoEspecie,
+  };
 }
 
 function calcularDiferenca(esperadoEspecie, contadoDinheiro) {
@@ -39,18 +52,21 @@ function totalContagem(contagem) {
   return centavos / 100;
 }
 
-// Esperado em cartão/pix = tudo que foi recebido menos o que entrou em dinheiro.
+// Esperado em cartão/pix = recebido eletrônico menos o cancelado eletrônico.
 function esperadoEletronico(resumo) {
   const r = resumo || {};
-  return (Number(r.totalRecebido) || 0) - (Number(r.recebidoDinheiro) || 0);
+  const recebElet = (Number(r.totalRecebido) || 0) - (Number(r.recebidoDinheiro) || 0);
+  const cancElet = (Number(r.cancelamentos) || 0) - (Number(r.canceladoDinheiro) || 0);
+  return recebElet - cancElet;
 }
 
 // Total que deveria estar no caixa (espécie + eletrônico):
-// saldo inicial + suprimento + vendas (todas as formas) - sangria.
+// saldo inicial + suprimento + vendas (todas as formas) - sangria - cancelamentos.
 function totalEmCaixa(caixa, resumo) {
   const fundo = Number(caixa && caixa.fundo_troco) || 0;
   const r = resumo || {};
-  return fundo + (Number(r.suprimentos) || 0) + (Number(r.totalRecebido) || 0) - (Number(r.sangrias) || 0);
+  return fundo + (Number(r.suprimentos) || 0) + (Number(r.totalRecebido) || 0)
+    - (Number(r.sangrias) || 0) - (Number(r.cancelamentos) || 0);
 }
 
 module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa };

@@ -58,18 +58,32 @@
     L.push(sep("-"));
 
     // Movimentos
+    const totalCancelado = Number(d.totalCancelado) || 0;
     L.push(linhaValor("Saldo Inicial", "R$ " + fmtBR(d.fundoTroco)));
     L.push(linhaValor("Suprimento", "R$ " + fmtBR(d.suprimentos)));
     L.push(linhaValor("Retirada", "- R$ " + fmtBR(d.sangrias)));
+    if (totalCancelado > 0) L.push(linhaValor("Cancelamentos", "- R$ " + fmtBR(totalCancelado)));
     L.push(sep("-"));
 
     let totalVendas = 0;
-    for (const k in recebido) totalVendas += Number(recebido[k]) || 0;
+    for (const k in recebido) totalVendas += Number(recebido[k]) || 0; // vendas BRUTAS
     const totalCaixa = (Number(d.fundoTroco) || 0) + (Number(d.suprimentos) || 0)
-      + totalVendas - (Number(d.sangrias) || 0);
+      + totalVendas - (Number(d.sangrias) || 0) - totalCancelado;
     L.push(linhaValor("Total de Vendas", "R$ " + fmtBR(totalVendas)));
+    if (totalCancelado > 0) L.push(linhaValor("(-) Cancelado", "- R$ " + fmtBR(totalCancelado)));
     L.push(linhaValor("Total em Caixa", "R$ " + fmtBR(totalCaixa)));
     L.push(sep("="));
+
+    // CANCELAMENTOS (detalhe) — rastro anti-fraude: cada pedido pago cancelado.
+    const cancs = Array.isArray(d.cancelamentos) ? d.cancelamentos : [];
+    if (cancs.length) {
+      L.push("CANCELAMENTOS");
+      cancs.forEach((c) => {
+        const rotulo = (c.descricao || "Cancelamento") + (c.forma ? " (" + c.forma + ")" : "");
+        L.push(linhaValor(rotulo, "- R$ " + fmtBR(c.valor)));
+      });
+      L.push(sep("="));
+    }
 
     // FECHAMENTO OPERADOR — dinheiro contado + eletrônico informado
     L.push("FECHAMENTO OPERADOR");

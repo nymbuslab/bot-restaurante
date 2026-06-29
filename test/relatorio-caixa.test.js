@@ -63,3 +63,17 @@ test("relatório: recebimento de forma fora da lista vira 'Outros'", () => {
   const txt = Relatorio.montarRelatorioFechamento(d);
   assert.match(txt, /Outros\s+R\$ 5,00/);
 });
+
+test("relatório: cancelamentos deduzem do total e listam o detalhe", () => {
+  const d = dadosBase();
+  d.totalCancelado = 30; // um pedido pago em dinheiro foi cancelado
+  d.cancelamentos = [{ descricao: "Cancelamento pedido #7", forma: "Dinheiro", valor: 30 }];
+  d.contadoDinheiro = 130; // 160 - 30 devolvidos
+  const txt = Relatorio.montarRelatorioFechamento(d);
+  assert.match(txt, /Cancelamentos\s+- R\$ 30,00/);
+  assert.match(txt, /Total de Vendas\s+R\$ 180,00/);     // bruto mantém
+  assert.match(txt, /Total em Caixa\s+R\$ 210,00/);      // 240 - 30
+  assert.match(txt, /CANCELAMENTOS/);
+  assert.match(txt, /Cancelamento pedido #7 \(Dinheiro\)\s+- R\$ 30,00/);
+  assert.match(txt, /CONFERIDO/);                         // 130 dinheiro + 80 elet = 210
+});

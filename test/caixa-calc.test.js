@@ -56,8 +56,31 @@ test("esperadoEletronico: total recebido menos o que entrou em dinheiro", () => 
   assert.equal(esperadoEletronico({ totalRecebido: 180, recebidoDinheiro: 100 }), 80);
 });
 
-test("totalEmCaixa: fundo + suprimento + vendas - sangria", () => {
+test("totalEmCaixa: fundo + suprimento + vendas - sangria - cancelamentos", () => {
   const c = { fundo_troco: 50 };
-  const r = { totalRecebido: 180, suprimentos: 20, sangrias: 10 };
-  assert.equal(totalEmCaixa(c, r), 240);
+  const r = { totalRecebido: 180, suprimentos: 20, sangrias: 10, cancelamentos: 30 };
+  assert.equal(totalEmCaixa(c, r), 210); // 50 + 180 + 20 - 10 - 30
+});
+
+test("resumoCaixa: cancelamento deduz por forma do total e da espécie", () => {
+  const movsC = [
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 50 },
+    { tipo: "recebimento", forma_pagamento: "Pix", valor: 20 },
+    { tipo: "cancelamento", forma_pagamento: "Dinheiro", valor: 50 }, // devolve a venda em dinheiro
+  ];
+  const r = resumoCaixa({ fundo_troco: 100 }, movsC);
+  assert.equal(r.totalRecebido, 70);              // bruto: 50 + 20
+  assert.equal(r.cancelamentos, 50);              // cancelado
+  assert.equal(r.canceladoDinheiro, 50);
+  assert.equal(r.canceladoPorForma["Dinheiro"], 50);
+  // espécie: 100 + 50 (dinheiro) + 0 - 0 - 50 (cancelado dinheiro) = 100
+  assert.equal(r.esperadoEspecie, 100);
+  // total em caixa: 100 + 70 - 50 = 120
+  assert.equal(totalEmCaixa({ fundo_troco: 100 }, r), 120);
+});
+
+test("esperadoEletronico: desconta o cancelado eletrônico", () => {
+  const r = { totalRecebido: 180, recebidoDinheiro: 100, cancelamentos: 30, canceladoDinheiro: 0 };
+  // recebido elet = 80; cancelado elet = 30 → 50
+  assert.equal(esperadoEletronico(r), 50);
 });

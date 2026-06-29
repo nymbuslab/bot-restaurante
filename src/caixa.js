@@ -209,6 +209,53 @@ async function estornarRecebimento(dir, pedidoId) {
   }
 }
 
+// Cancela um pedido JÁ RECEBIDO mantendo o rastro (anti-fraude): não apaga o
+// recebimento; insere um movimento de 'cancelamento' por forma recebida (mesma
+// forma/valor) que DEDUZ do caixa, e marca o pedido como cancelado. Exige caixa
+// aberto e que o recebimento do pedido esteja NESTE caixa (não mexe em caixa fechado).
+async function cancelarRecebido(dir, pedidoId) {
+  const empId = await empresaId(dir);
+  const caixa = await caixaAberto(dir);
+  if (!caixa) throw new Error("Abra o caixa para cancelar um pedido pago.");
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const ped = await client.query(
+      "SELECT numero, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, pedidoId]
+    );
+    if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
+    if (ped.rows[0].status === "cancelado") throw new Error("Pedido já cancelado.");
+    const numero = ped.rows[0].numero;
+    // Recebimentos deste pedido NESTE caixa (espelha forma/valor no cancelamento).
+    const recs = await client.query(
+      "SELECT forma_pagamento, valor FROM caixa_movimentos WHERE caixa_id = $1 AND pedido_id = $2 AND tipo = 'recebimento' AND empresa_id = $3",
+      [caixa.id, pedidoId, empId]
+    );
+    if (!recs.rows.length) {
+      throw new Error("O recebimento deste pedido não está no caixa aberto (talvez de um caixa já fechado). Não é possível cancelar com reflexo no caixa.");
+    }
+    for (const r of recs.rows) {
+      await client.query(
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
+         VALUES ($1, $2, 'cancelamento', $3, $4, $5, $6)`,
+        [caixa.id, empId, r.forma_pagamento, Number(r.valor) || 0, pedidoId, "Cancelamento pedido #" + numero]
+      );
+    }
+    await client.query(
+      "UPDATE pedidos SET status = 'cancelado' WHERE empresa_id = $1 AND id = $2",
+      [empId, pedidoId]
+    );
+    await client.query("COMMIT");
+    return { ok: true, cancelado: true };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 async function registrarMovimento(dir, { tipo, valor, descricao }) {
   const empId = await empresaId(dir);
   if (tipo !== "sangria" && tipo !== "suprimento") throw new Error("Tipo inválido.");
@@ -316,6 +363,10 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
   await store.ensure(dir);
   const cfg = store.getConfig(dir) || {};
   const formaDinheiro = (cfg.pagamentos || []).find((f) => calc.ehDinheiro(f)) || "Dinheiro";
+  // Cancelamentos do turno (rastro no relatório): cada um com descrição/forma/valor.
+  const cancelamentos = movimentos
+    .filter((m) => m.tipo === "cancelamento")
+    .map((m) => ({ descricao: m.descricao || "Cancelamento", forma: m.forma_pagamento || "Outros", valor: Number(m.valor) || 0 }));
   const relatorio = relatorioCaixa.montarRelatorioFechamento({
     restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
     abertoEm: new Date(caixa.aberto_em).toISOString(),
@@ -327,6 +378,8 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     fundoTroco: Number(caixa.fundo_troco) || 0,
     suprimentos: resumo.suprimentos || 0,
     sangrias: resumo.sangrias || 0,
+    cancelamentos,
+    totalCancelado: resumo.cancelamentos || 0,
     contadoDinheiro,
     eletronicoPorForma,
   });
@@ -397,6 +450,6 @@ async function detalheCaixa(dir, id) {
 function esquecer(slug) { delete idCache[slug]; }
 
 module.exports = {
-  caixaAberto, abrirCaixa, receberPedido, venderLocal, estornarRecebimento, registrarMovimento,
+  caixaAberto, abrirCaixa, receberPedido, venderLocal, estornarRecebimento, cancelarRecebido, registrarMovimento,
   resumo, fecharCaixa, listarCaixas, detalheCaixa, esquecer,
 };
