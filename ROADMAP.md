@@ -106,7 +106,11 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
     sangria/estorno/fechar; aprovação de divergência) — exige usuários/perfis por tenant (hoje 1 conta);
     **reabertura de caixa** com trilha de auditoria.
   - **Fora de escopo** (premissa: bot é porta de entrada): NFC-e/fiscal (SAT), controle de estoque,
-    venda a prazo/fiado e cancelamento de venda — ficam no sistema próprio do restaurante.
+    venda a prazo/fiado — ficam no sistema próprio do restaurante.
+    > **Atualização (2026-06-29):** o **cancelamento de venda** saiu do "fora de escopo" — foi
+    > **implementado** a pedido do dono como controle **anti-fraude** (CHANGELOG 0.60.0): cancelar um
+    > pedido pago deduz no caixa **mantendo o rastro** (movimento `cancelamento`, não apaga o recebimento),
+    > aparece no extrato e no relatório de fechamento. Estoque, fiado e fiscal seguem fora.
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
     Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
 - [ ] App mobile para o atendente receber pedidos
@@ -171,6 +175,13 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   > Plano B): login + cofre do SO, polling de `/api/agente/pendentes`, impressão ESC/POS crua por **Rede
   > (TCP 9100)** e **Serial (COM)** reusando `public/comanda.js`. **Sem** TEF/fiscal/gaveta/ACBr ainda.
   > Mergeado na `main`; **pendente publicar o `.exe`** (botão "Baixar (em breve)" no painel). Ver `PROGRESSO.md`.
+  >
+  > **Atualização (2026-06-29 — CHANGELOG 0.59.0):** o agente virou o **canal de impressão de todos os
+  > fluxos** — além do delivery, imprime **PDV, Mesas e Caixa** via **fila genérica** (`impressao_fila`, o
+  > servidor renderiza o texto e enfileira) + **reimpressão**. A tela Configurações → Impressora virou
+  > **download do agente** (config migrou pro app) e há rota `GET /downloads/nymbus-impressora.exe`. O
+  > caminho **navegador** (`window.print`/serial) ainda dispara junto — remoção = **Fase 3** (ver `PROGRESSO.md`).
+  > Segue **pendente** hospedar o `.exe` em produção e validar no Windows. **Sem** TEF/fiscal/gaveta ainda.
   Diretrizes travadas para a versão completa (TEF/fiscal), quando for a hora:
   - **Engine: ACBr** (não reinventar) — `ACBrPosPrinter` (ESC/POS + corte + **gaveta**), `ACBrTEF`,
     `ACBrSAT`/`ACBrNFCe`. Via **ACBrMonitor** (executável controlado por socket/arquivo — sem escrever

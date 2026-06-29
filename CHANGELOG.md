@@ -509,3 +509,32 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Taxa de serviço configurável** por estabelecimento (% salva em config, capturada na abertura da mesa e incluída no total e na pré-conta).
 - **Configurar mesas:** modal para adicionar mesas em lote (número → cria Mesa 01, Mesa 02…; ou nomes livres separados por vírgula) e remover mesas livres.
 - **Pré-conta** impressa via `Comanda.montarPreConta` (não fiscal): lista de itens agregados de todas as rodadas, subtotal, taxa de serviço, total, recebido/falta.
+
+## [0.57.1] — Mesas: comanda acumulada e correções
+
+- **Comanda acumulada:** adicionar itens a uma mesa agora **acumula** tudo num único pedido da sessão (igual ao modelo de mercado), em vez de criar um pedido novo a cada rodada — o histórico fica coeso e o relatório de pedidos limpo.
+- **Cancelar lançamento:** fechar a tela de adicionar itens numa mesa agora volta para a mesa (em vez de ficar na tela do PDV).
+
+## [0.58.0] — Cancelar pedido e item individual
+
+- **Cancelar pedido:** botão "Cancelar pedido" no modal de detalhes para pedidos ainda não recebidos (PDV, cardápio web e mesas). A ação exige confirmação.
+- **Cancelar item:** ícone de lixeira em cada linha do pedido para remover um item; o total é recalculado automaticamente. Cancelar o último item cancela o pedido inteiro.
+- **Badge "Cancelado":** pedidos cancelados aparecem com etiqueta vermelha na lista (todos os planos) e somem do filtro "A receber".
+- **Painel retém a última aba:** ao recarregar o painel, o sistema volta para a aba que estava aberta (PDV, Mesas, Pedidos…) em vez de sempre abrir o Dashboard.
+
+## [0.59.0] — Agente de impressão imprime PDV, mesas e caixa
+
+- **Impressão automática ampliada:** o aplicativo **Nymbus Impressora** passa a imprimir sozinho não só os pedidos do delivery, mas também as **vendas do PDV**, as **comandas de mesa** e o **relatório de fechamento do caixa** — sem abrir nada no navegador.
+- **Reimprimir comanda:** botão para reenviar a comanda (cozinha + cupom) de um pedido para a impressora, útil quando o papel acaba ou a impressão falha.
+- **Nova tela Configurações → Impressora:** virou uma página de **download do agente** com passo a passo ("Como usar"). A configuração da impressora (porta, corte) agora fica no próprio aplicativo. O botão baixa o instalador para Windows.
+
+## [0.60.0] — Cancelamento de pedido pago com registro no caixa
+
+- **Cancelar pedido pago:** agora é possível cancelar um pedido **já recebido**. O valor é **deduzido do caixa** e o cancelamento fica **registrado** (a venda e o cancelamento aparecem no extrato) — controle anti-fraude, em vez de o pedido simplesmente sumir. Exige caixa aberto.
+- **Relatório de fechamento** passa a listar os **cancelamentos** do turno e descontá-los do total.
+- **Saldo inicial** (valor de abertura do caixa) agora aparece como uma linha no extrato de movimentações.
+- **Filtro "Cancelados"** na aba Pedidos para auditar o que foi cancelado.
+
+## [0.61.0] — Dashboard: Visão de Vendas
+
+- **Nova seção "Visão de Vendas"** no Dashboard com quatro cards de faturamento: **Vendas Hoje, Vendas Ontem, Últimos 7 dias e Venda Mês**. Pedidos cancelados não entram na conta.

@@ -95,7 +95,8 @@ src/
   stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas, trocaPlano (upgrade/downgrade)
   planos.js           -> mapa PURO de planos (Essencial/Completo): PLANO_INFO + planoDoPrice (price→plano)
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
-  servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso)
+  servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso + FILA genérica /api/agente/fila·:id/impresso) + reimprimir (POST /api/pedidos/:id/reimprimir) + download do agente (GET /downloads/nymbus-impressora.exe)
+  impressao-fila.js   -> fila de impressão GENÉRICA (tabela impressao_fila): o servidor renderiza o TEXTO das vias e enfileira (PDV/Mesas/Caixa/reimpressão); o agente busca, imprime e marca. Delivery NÃO usa (segue pelo polling de `pedidos`)
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
   wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
@@ -107,7 +108,7 @@ src/
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
   pedidos.js          -> tabela `pedidos` no Postgres, isolada por empresa_id (async)
-  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar; fechamento com contagem de cédulas + conferência cartão/Pix; NÃO fecha com vendas do turno a receber; monta o relatório 80mm no servidor (via relatorio-caixa.js); `venderLocal` (PDV: pedido "Balcão" recebido + 1 movimento por forma, transação); isolado por empresa_id
+  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar; `cancelarRecebido` (cancela pedido PAGO mantendo rastro: insere movimento `cancelamento` que deduz, não apaga o recebimento); fechamento com contagem de cédulas + conferência cartão/Pix (relatório lista CANCELAMENTOS); NÃO fecha com vendas do turno a receber; monta o relatório 80mm no servidor (via relatorio-caixa.js); `venderLocal` (PDV: pedido "Balcão" recebido + 1 movimento por forma, transação); isolado por empresa_id
   caixa-calc.js       -> PURO: cálculos do caixa (resumo por forma, esperado em espécie/eletrônico, total em caixa, total da contagem de cédulas, diferença) — testado em test/caixa-calc.test.js
   pdv.js              -> PURO: PDV (vendas no local, Completo) — recalcular venda (kg+opcionais), aplicar desconto (R$/%), validar split, troco, resumo de pagamento — testado em test/pdv.test.js
 public/
@@ -132,7 +133,7 @@ public/
   cardapio.html/.js/.css -> cardápio web público (/c/:slug): cards premium + vitrine de Destaques em carrossel; monta o pedido (carrinho/checkout) e envia ao backend
 supabase/migrations/  -> schema versionado (npx supabase db push)
 scripts/setup-storage.js -> cria o bucket público de imagens (npm run setup-storage)
-agente-impressora/    -> app desktop Electron (Plano B): imprime pedidos do cardápio web automaticamente numa térmica (Rede 9100 / Serial COM), reusa public/comanda.js+serial-escpos.js, consome /api/agente/*. Plano: docs/superpowers/plans/2026-06-26-agente-impressora-electron.md
+agente-impressora/    -> app desktop Electron (Plano B): imprime automaticamente numa térmica (Rede 9100 / Serial COM). Consome /api/agente/pendentes (delivery — monta a comanda) E /api/agente/fila (PDV/Mesas/Caixa/reimpressão — texto já renderizado). Reusa public/comanda.js+serial-escpos.js via vendor/ (copy-shared.js no build). Poll a cada 3s. Plano: docs/superpowers/plans/2026-06-26-agente-impressora-electron.md
 ```
 
 **Fluxo de dados:** painel edita config/cardápio via API → `store.setConfig/setCardapio` grava
