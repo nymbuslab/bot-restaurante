@@ -545,3 +545,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **"Reimprimir comanda"** no pedido reenvia a comanda para a impressora; na mesa, **"Imprimir Conta"** reenvia a pré-conta.
 - O **relatório de fechamento** do caixa abre apenas para conferência na tela (a impressão sai pelo agente).
 - A **Central de Ajuda** foi atualizada para o novo fluxo (instalar o agente).
+
+## [0.63.0] — Dashboard mais enxuto, com análises
+
+- **Saudação no topo:** "Olá, [restaurante]" + status (Aberto/Fechado) + data/hora ficam no cabeçalho; o card de saudação saiu do Dashboard.
+- **Nova seção de análises** no Dashboard: gráficos de **Evolução diária (30 dias)** e **Evolução mensal (12 meses)**, **10 mais vendidos**, **Ranking de grupos** e **Visão geral** (Pedidos, Entregas, Itens lançados, Ticket médio) — tudo do mês atual, sem contar cancelados.
+- Dashboard ficou focado em métricas: saíram "Últimos Pedidos", "WhatsApp", "Ações rápidas" e "Atividade recente" do painel inicial (o status do WhatsApp continua em Configurações → Conexão).

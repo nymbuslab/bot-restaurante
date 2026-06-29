@@ -506,6 +506,7 @@ header {
   align-items: center;
   gap: 14px;
 }
+.header-data { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
 
 .header-direita {
   display: flex;
@@ -3213,6 +3214,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 
   header { padding: 0 16px; }
   .header-sair { display: inline-flex; } /* Sair acessível no header (mobile) */
+  .header-data { display: none; } /* data/hora some no mobile (header aperta) */
 
   /* Pedidos: métricas compactas (destaque full-width), troca tabela → cards */
   .metricas-cards { grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -5000,6 +5002,31 @@ html.embed, html.embed body { background: var(--bg-primary); }
   gap: 16px;
   align-items: start;
 }
+
+/* ---- Análises do Dashboard (gráficos + widgets) ---- */
+.dash-card-sub { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.dash-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.dash-chart-card.card { padding: 16px 18px; }
+.dash-chart { height: 88px; margin-top: 10px; }
+.dash-chart svg { width: 100%; height: 100%; display: block; }
+.dash-bar { fill: var(--secondary); }
+.dash-analise-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: start; }
+.dash-top { list-style: none; margin: 2px 0 0; padding: 0; counter-reset: dtop; display: flex; flex-direction: column; gap: 9px; }
+.dash-top li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary); }
+.dash-top li:not(.dash-vazio)::before { counter-increment: dtop; content: counter(dtop); width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--accent-fg); background: var(--accent-subtle); border-radius: 50%; }
+.dash-top-nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-top-val { color: var(--secondary); font-weight: 600; white-space: nowrap; }
+.dash-rank { display: flex; flex-direction: column; gap: 11px; }
+.dash-rank-linha { display: grid; grid-template-columns: minmax(56px, 1fr) 80px 30px; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary); }
+.dash-rank-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-rank-barra { height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; }
+.dash-rank-barra > span { display: block; height: 100%; background: var(--accent-fg); border-radius: 3px; }
+.dash-rank-qtd { font-weight: 700; color: var(--text-secondary); text-align: right; }
+.dash-visao { display: flex; flex-direction: column; gap: 10px; }
+.dash-visao-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+.dash-visao-linha strong { color: var(--text-primary); font-size: 16px; font-weight: 700; }
+@media (max-width: 980px) { .dash-analise-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px) { .dash-charts-grid, .dash-analise-grid { grid-template-columns: 1fr; } }
 .dash-pedidos-card .card {
   padding: 16px 20px;
 }

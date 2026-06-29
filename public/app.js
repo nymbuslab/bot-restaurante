@@ -35,7 +35,7 @@ async function iniciarSessao() {
     CHAVE_PEDIDO_VISTO = "pedidoVisto:" + painelSlug;
     pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0);
     const h = document.getElementById("headerNome");
-    if (h && painelNome) h.textContent = painelNome;
+    if (h && painelNome) h.textContent = "Olá, " + painelNome;
     return true;
   } catch (e) { location.href = "login.html"; return false; }
 }
@@ -160,6 +160,17 @@ function atualizarBadgeAtendimento(aberto) {
   badge.className = "badge-atendimento " + (aberto ? "aberto" : "fechado");
   texto.textContent = aberto ? "Aberto" : "Fechado";
 }
+
+// Data/hora no header (atualiza sozinha). Mostra "DD/MM • HH:MM".
+function atualizarHeaderData() {
+  const el = $("headerData");
+  if (!el) return;
+  const agora = new Date();
+  el.textContent = agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    + " • " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+atualizarHeaderData();
+setInterval(atualizarHeaderData, 30000);
 
 // Dias indexados por getDay() (0=dom) — para o estado real de abertura.
 const DIAS_KEY = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
@@ -2833,42 +2844,8 @@ async function carregarDashboard() {
     const pedidos = await r.json();
     const agora = new Date();
     const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
-    const hoje = pedidos.filter(p => new Date(p.criadoEm) >= inicioHoje);
-    const totalPedidos = hoje.length;
-    const totalFaturamento = hoje.reduce((s, p) => s + (p.total || 0), 0);
-    const ticketMedio = totalPedidos > 0 ? totalFaturamento / totalPedidos : 0;
 
-    // Comparativo com ontem
-    const inicioOntem = new Date(inicioHoje.getTime() - 86400000);
-    const totalOntem = pedidos.filter(p => {
-      const d = new Date(p.criadoEm);
-      return d >= inicioOntem && d < inicioHoje;
-    }).length;
-    const diferenca = totalPedidos - totalOntem;
-
-    const rStatus = await api("GET", "/api/status");
-    let whatsStatus = "desconectado";
-    let whatsNum = "";
-    if (rStatus && rStatus.ok) {
-      const s = await rStatus.json();
-      whatsStatus = s.status;
-      whatsNum = s.numero || "";
-    }
-
-    // Saudação
-    const h = $("dashSaudacao");
-    if (h) h.textContent = "Olá, " + painelNome;
-
-    // Status badge + data
-    const realAberto = lojaAbertaAgora(configAtual);
-    const dot = $("dashDot");
-    const stxt = $("dashStatusTexto");
-    if (dot && stxt) {
-      dot.className = "dash-dot " + (realAberto ? "aberto" : "fechado");
-      stxt.textContent = realAberto ? "ABERTO" : "FECHADO";
-    }
-    const dData = $("dashData");
-    if (dData) dData.textContent = agora.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }) + " • " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    // (Saudação + status + data agora ficam no header global — sem card no Dashboard.)
 
     // Visão de Vendas — faturamento por janela. Exclui cancelados (não é venda).
     const vendasAtivas = pedidos.filter((p) => p.status !== "cancelado");
@@ -2892,71 +2869,93 @@ async function carregarDashboard() {
     const mesLabel = agora.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
     setVendaCard("dashVendaMes", vMes, "dashVendaMesSub", mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1));
 
-    // Últimos 5 pedidos
-    const ultimos = hoje.slice(-5).reverse();
-    const body = $("dashPedidosBody");
-    if (body) {
-      if (ultimos.length === 0) {
-        body.innerHTML = '<tr><td colspan="4" class="dash-vazio">Nenhum pedido hoje.</td></tr>';
-      } else {
-        body.innerHTML = ultimos.map(p => {
-          const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-          const tipoTag = p.tipoEntrega === "Entrega" ? "Entrega" : "Retirada";
-          return `<tr class="dash-tr">
-            <td class="dash-td-numero"><strong>#${p.numero}</strong><span class="dash-td-hora">${hora}</span></td>
-            <td>${escapar(p.cliente) || "—"}</td>
-            <td class="dash-td-total">R$ ${moedaBR(p.total)}</td>
-            <td><span class="tag tag-${tipoTag === "Entrega" ? "entrega" : "retirada"}">${tipoTag}</span></td>
-          </tr>`;
-        }).join("");
-      }
+    // ---- Análises: gráficos (30 dias / 12 meses) + widgets do mês ----
+    const serieDia = [];
+    for (let i = 29; i >= 0; i--) {
+      const d0 = new Date(inicioHoje.getTime() - i * 86400000);
+      const d1 = new Date(d0.getTime() + 86400000);
+      serieDia.push(fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= d0 && d < d1; })));
     }
+    renderBarras("dashChartDia", serieDia);
+    const serieMes = [];
+    for (let i = 11; i >= 0; i--) {
+      const m0 = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const m1 = new Date(agora.getFullYear(), agora.getMonth() - i + 1, 1);
+      serieMes.push(fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= m0 && d < m1; })));
+    }
+    renderBarras("dashChartMes", serieMes);
 
-    // WhatsApp status
-    const ws = $("dashWhatsStatus");
-    const wd = $("dashWhatsDot");
-    const wn = $("dashWhatsNum");
-    if (ws && wd && wn) {
-      if (whatsStatus === "conectado") {
-        ws.textContent = "Conectado";
-        wd.className = "dash-dot-conectado on";
-        wn.textContent = whatsNum ? formatarNumeroWa(whatsNum) : "";
-      } else {
-        ws.textContent = "Desconectado";
-        wd.className = "dash-dot-conectado off";
-        wn.textContent = "Toque em Conexão para conectar";
-      }
+    // Agregados do mês (exclui cancelados). Garante o cardápio p/ mapear o grupo do item.
+    const doMes = vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicioMes);
+    if (!cardapioAtual || !cardapioAtual.categorias || !cardapioAtual.categorias.length) {
+      const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
     }
+    const catId = {}, catNome = {};
+    ((cardapioAtual && cardapioAtual.categorias) || []).forEach((c) => (c.itens || []).forEach((it) => {
+      if (it.id != null) catId[it.id] = c.nome;
+      if (it.nome) catNome[it.nome] = c.nome;
+    }));
+    const prodMap = {}, grupoMap = {};
+    doMes.forEach((p) => (p.itens || []).forEach((i) => {
+      const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0)
+        + (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
+      const qtd = i.qtd || 1;
+      const nome = i.nome || "—";
+      if (!prodMap[nome]) prodMap[nome] = { nome, qtd: 0, valor: 0 };
+      prodMap[nome].qtd += qtd;
+      prodMap[nome].valor += ((i.preco || 0) + extras) * qtd;
+      const cat = catId[i.id] || catNome[i.nome] || "Outros";
+      grupoMap[cat] = (grupoMap[cat] || 0) + qtd;
+    }));
+    // 10 mais vendidos (por faturamento)
+    const top10 = Object.values(prodMap).sort((a, b) => b.valor - a.valor).slice(0, 10);
+    const elTop = $("dashTop10");
+    if (elTop) elTop.innerHTML = top10.length
+      ? top10.map((t) => `<li><span class="dash-top-nome">${escapar(t.nome)}</span><span class="dash-top-val">R$ ${moedaBR(t.valor)}</span></li>`).join("")
+      : '<li class="dash-vazio">Sem vendas no mês.</li>';
+    // Ranking de grupos (por quantidade)
+    const ranking = Object.entries(grupoMap).map(([nome, qtd]) => ({ nome, qtd })).sort((a, b) => b.qtd - a.qtd).slice(0, 6);
+    const maxG = Math.max(1, ...ranking.map((r) => r.qtd));
+    const elRank = $("dashRankGrupos");
+    if (elRank) elRank.innerHTML = ranking.length
+      ? ranking.map((r) => `<div class="dash-rank-linha"><span class="dash-rank-nome">${escapar(r.nome)}</span><span class="dash-rank-barra"><span style="width:${Math.round((r.qtd / maxG) * 100)}%"></span></span><span class="dash-rank-qtd">${r.qtd}</span></div>`).join("")
+      : '<p class="dash-vazio">Sem vendas no mês.</p>';
+    // Visão geral (mês)
+    const nPedidos = doMes.length;
+    const nEntregas = doMes.filter((p) => p.tipoEntrega === "Entrega").length;
+    const nItens = doMes.reduce((s, p) => s + (p.itens || []).reduce((x, i) => x + (i.qtd || 1), 0), 0);
+    const ticket = nPedidos ? fatDe(doMes) / nPedidos : 0;
+    const elVisao = $("dashVisaoGeral");
+    if (elVisao) elVisao.innerHTML = [
+      ["Pedidos", String(nPedidos)],
+      ["Entregas", String(nEntregas)],
+      ["Itens lançados", String(nItens)],
+      ["Ticket médio", "R$ " + moedaBR(ticket)],
+    ].map(([l, v]) => `<div class="dash-visao-linha"><span>${l}</span><strong>${escapar(v)}</strong></div>`).join("");
 
-    // Atividade recente
-    const atv = $("dashAtividade");
-    if (atv) {
-      if (ultimos && ultimos.length > 0) {
-        const ult = ultimos[0];
-        const hora = new Date(ult.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        atv.innerHTML = `<div class="dash-atv-item"><span class="dash-atv-hora">${hora}</span><span>Novo pedido <strong>#${ult.numero}</strong> de ${escapar(ult.cliente)}</span></div>`;
-      } else {
-        atv.innerHTML = '<p class="dash-vazio">Nenhuma atividade nas últimas horas.</p>';
-      }
-    }
   } catch (e) {
     console.error("Dashboard error:", e);
   }
 }
 
-// Navegação rápida dos botões de ação do dashboard
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".dash-acao-btn");
-  if (btn && btn.dataset.aba) {
-    const navBtn = document.querySelector("nav button[data-aba='" + btn.dataset.aba + "']");
-    if (navBtn) navBtn.click();
-  }
-  const verTodos = e.target.closest("#dashVerTodos");
-  if (verTodos) {
-    const navBtn = document.querySelector("nav button[data-aba='pedidos']");
-    if (navBtn) navBtn.click();
-  }
-});
+// Mini gráfico de barras (SVG puro, sem lib). serie = array de valores.
+function renderBarras(id, serie) {
+  const el = $(id);
+  if (!el) return;
+  const dados = Array.isArray(serie) ? serie : [];
+  const max = Math.max(1, ...dados);
+  const n = dados.length || 1;
+  const slot = 100 / n;
+  const bw = slot * 0.68;
+  const off = (slot - bw) / 2;
+  const bars = dados.map((v, idx) => {
+    const h = max > 0 ? (Number(v) || 0) / max * 96 : 0;
+    const x = idx * slot + off;
+    const y = 100 - Math.max(h, 0.6);
+    return `<rect class="dash-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${bw.toFixed(2)}" height="${Math.max(h, 0.6).toFixed(2)}" rx="0.6"></rect>`;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${bars}</svg>`;
+}
 
 // ============================================================
 // PEDIDOS

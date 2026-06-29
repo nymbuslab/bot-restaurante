@@ -77,11 +77,12 @@
     <div class="conteudo">
       <header>
         <div class="header-esquerda">
-          <h1 id="headerNome">Bot Restaurante</h1>
+          <h1 id="headerNome">Olá!</h1>
           <span id="badgeAtendimento" class="badge-atendimento" style="display:none">
             <span class="dot"></span>
             <span id="badgeAtendimentoTexto">—</span>
           </span>
+          <span id="headerData" class="header-data"></span>
         </div>
         <div class="header-direita">
           <button type="button" class="btn-som" id="btnSomPedido" title="Som de novo pedido" aria-pressed="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
@@ -94,18 +95,6 @@
       <main>
     <!-- DASHBOARD -->
     <section class="aba ativa" id="aba-dashboard">
-      <div class="dash-header">
-        <div>
-          <h2 class="dash-saudacao" id="dashSaudacao">Carregando...</h2>
-          <div class="dash-sub">
-            <span class="dash-status-badge" id="dashStatusBadge">
-              <span class="dash-dot" id="dashDot"></span>
-              <span id="dashStatusTexto">—</span>
-            </span>
-            <span class="dash-data" id="dashData"></span>
-          </div>
-        </div>
-      </div>
 
       <!-- Visão de Vendas -->
       <h3 class="dash-secao-titulo">Visão de Vendas</h3>
@@ -144,69 +133,34 @@
         </div>
       </div>
 
-      <!-- Grid meio: últ. pedidos + widgets -->
-      <div class="dash-grid">
-        <!-- Últimos pedidos -->
-        <div class="card dash-pedidos-card">
-          <div class="dash-card-cabeca">
-            <h3>Últimos Pedidos</h3>
-            <button class="secundario mini" id="dashVerTodos">Ver todos</button>
-          </div>
-          <div class="dash-tabela-wrap">
-            <table class="dash-tabela">
-              <thead>
-                <tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Status</th></tr>
-              </thead>
-              <tbody id="dashPedidosBody">
-                <tr><td colspan="4" class="dash-vazio">Nenhum pedido hoje.</td></tr>
-              </tbody>
-            </table>
-          </div>
+      <!-- Gráficos de evolução -->
+      <div class="dash-charts-grid">
+        <div class="card dash-chart-card">
+          <div class="dash-card-cabeca"><h3>Evolução diária</h3><span class="dash-card-sub">30 dias</span></div>
+          <div class="dash-chart" id="dashChartDia"></div>
         </div>
-
-        <!-- Widgets laterais -->
-        <div class="dash-widgets">
-          <!-- Status WhatsApp -->
-          <div class="card dash-whats">
-            <div class="dash-whats-header">
-              <div class="dash-whats-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              </div>
-              <div>
-                <h4>WhatsApp</h4>
-                <span class="dash-whats-status" id="dashWhatsStatus">—</span>
-              </div>
-              <span class="dash-dot-conectado" id="dashWhatsDot"></span>
-            </div>
-            <p class="dash-whats-num" id="dashWhatsNum"></p>
-          </div>
-
-          <!-- Ações rápidas -->
-          <div class="card dash-acoes">
-            <h4>Ações rápidas</h4>
-            <button class="dash-acao-btn" data-aba="pedidos">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              Ver Pedidos
-            </button>
-            <button class="dash-acao-btn" data-aba="cardapio">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
-              Gerenciar Cardápio
-            </button>
-            <button class="dash-acao-btn" data-aba="config">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Configurações
-            </button>
-          </div>
-
-          <!-- Atividade recente -->
-          <div class="card dash-atividade">
-            <h4>Atividade recente</h4>
-            <div id="dashAtividade">
-              <p class="dash-vazio">Nenhuma atividade nas últimas horas.</p>
-            </div>
-          </div>
+        <div class="card dash-chart-card">
+          <div class="dash-card-cabeca"><h3>Evolução mensal</h3><span class="dash-card-sub">12 meses</span></div>
+          <div class="dash-chart" id="dashChartMes"></div>
         </div>
       </div>
+
+      <!-- Análises do mês -->
+      <div class="dash-analise-grid">
+        <div class="card">
+          <div class="dash-card-cabeca"><h3>10 mais vendidos</h3><span class="dash-card-sub">este mês</span></div>
+          <ol class="dash-top" id="dashTop10"><li class="dash-vazio">Sem vendas no mês.</li></ol>
+        </div>
+        <div class="card">
+          <div class="dash-card-cabeca"><h3>Ranking de grupos</h3><span class="dash-card-sub">este mês</span></div>
+          <div class="dash-rank" id="dashRankGrupos"><p class="dash-vazio">Sem vendas no mês.</p></div>
+        </div>
+        <div class="card">
+          <div class="dash-card-cabeca"><h3>Visão geral</h3><span class="dash-card-sub">este mês</span></div>
+          <div class="dash-visao" id="dashVisaoGeral"></div>
+        </div>
+      </div>
+
     </section>
 
     <!-- CARDÁPIO / PRODUTOS -->
