@@ -1472,6 +1472,14 @@ button:disabled {
 .cfg-secao-cabeca h3 { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; padding: 0; border: none; }
 .cfg-secao-sub { margin: -6px 0 14px; }
 .impressora-passos { margin: 12px 0 14px; padding-left: 20px; font-size: 14px; color: var(--text-primary); line-height: 1.7; }
+/* Tela de download do agente (sub-aba Impressora) */
+#impressora-app .card { margin-bottom: 14px; }
+#impressora-app .card:last-child { margin-bottom: 0; }
+.impressora-card-titulo { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px; padding: 0; border: none; text-transform: none; letter-spacing: 0; }
+.impressora-beneficios { list-style: none; margin: 12px 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.impressora-beneficios li { position: relative; padding-left: 26px; font-size: 14px; color: var(--text-primary); line-height: 1.5; }
+.impressora-beneficios li::before { content: ""; position: absolute; left: 0; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-subtle); }
+.impressora-beneficios li::after { content: ""; position: absolute; left: 5px; top: 7px; width: 5px; height: 8px; border: solid var(--accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
 /* Link "Baixar" da seção do app: o visual primário vem do seletor `button {}`,
    que não pega <a> — então replico aqui. [aria-disabled] = estado "em breve"
    (sem clique → também evita o "pulo" do href="#"). */
@@ -2030,6 +2038,11 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 
 .modal-overlay.saindo { animation: fadeOut 0.15s ease both; }
+
+/* Diálogos de confirmação ficam ACIMA de qualquer outro modal (todos compartilham
+   z-index 1000; sem isto, a confirmação aberta a partir de um modal — ex.: cancelar
+   pedido — renderiza ATRÁS dele por estar antes no DOM). */
+#modal-overlay, #item-del-overlay, #caixa-modal-overlay { z-index: 1200; }
 
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
@@ -4572,6 +4585,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .cx-tabela th:nth-child(5), .cx-tabela .caixa-tab-valor { text-align: right; }
 .cx-td-hora { white-space: nowrap; color: var(--text-secondary); }
 .cx-row-sangria td { color: var(--accent-fg); }
+.cx-row-abertura td { color: var(--text-secondary); font-style: italic; }
 /* "Caixas anteriores": respiro do extrato + entrada suave (fade/slide). */
 .cx-hist { margin-top: 16px; animation: cxHistIn .22s ease both; }
 @keyframes cxHistIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
@@ -4976,6 +4990,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .dash-metricas .metrica-card.destaque {
   grid-column: auto;
 }
+.dash-vendas { grid-template-columns: repeat(4, 1fr); }
+.dash-secao-titulo { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; padding: 0; border: none; text-transform: none; letter-spacing: 0; }
+@media (max-width: 1024px) { .dash-vendas { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px)  { .dash-vendas { grid-template-columns: 1fr; } }
 .dash-grid {
   display: grid;
   grid-template-columns: 1.5fr 1fr;

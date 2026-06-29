@@ -107,32 +107,40 @@
         </div>
       </div>
 
-      <!-- Métricas -->
-      <div class="metricas-cards dash-metricas">
-        <div class="metrica-card destaque" id="dashMetricaPedidos">
-          <div class="metrica-topo">
-            <span class="metrica-label">Pedidos Hoje</span>
-            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
-          </div>
-          <div class="metrica-num">
-            <span class="metrica-valor" id="dashPedidosHoje">—</span>
-            <span class="metrica-trend" id="dashTrendPedidos"></span>
-          </div>
-          <div class="metrica-ontem" id="dashComparativo"></div>
-        </div>
+      <!-- Visão de Vendas -->
+      <h3 class="dash-secao-titulo">Visão de Vendas</h3>
+      <div class="metricas-cards dash-metricas dash-vendas">
         <div class="metrica-card">
           <div class="metrica-topo">
-            <span class="metrica-label">Faturamento Hoje</span>
+            <span class="metrica-label">Vendas Hoje</span>
             <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
           </div>
-          <span class="metrica-valor" id="dashFaturamento">—</span>
+          <span class="metrica-valor" id="dashVendasHoje">—</span>
+          <div class="metrica-ontem" id="dashVendasHojeSub"></div>
         </div>
         <div class="metrica-card">
           <div class="metrica-topo">
-            <span class="metrica-label">Ticket Médio</span>
-            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="metrica-label">Vendas Ontem</span>
+            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
           </div>
-          <span class="metrica-valor" id="dashTicketMedio">—</span>
+          <span class="metrica-valor" id="dashVendasOntem">—</span>
+          <div class="metrica-ontem" id="dashVendasOntemSub"></div>
+        </div>
+        <div class="metrica-card">
+          <div class="metrica-topo">
+            <span class="metrica-label">Últimos 7 dias</span>
+            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+          </div>
+          <span class="metrica-valor" id="dashVendas7">—</span>
+          <div class="metrica-ontem" id="dashVendas7Sub"></div>
+        </div>
+        <div class="metrica-card">
+          <div class="metrica-topo">
+            <span class="metrica-label">Venda Mês</span>
+            <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+          </div>
+          <span class="metrica-valor" id="dashVendaMes">—</span>
+          <div class="metrica-ontem" id="dashVendaMesSub"></div>
         </div>
       </div>
 
@@ -585,6 +593,7 @@
           <div class="card cfg-msg"><label>Pedido Pronto — Entrega <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoEntrega"></textarea></div>
           <div class="card cfg-msg"><label>Pedido Pronto — Retirada <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoRetirada"></textarea></div>
         </div>
+      </div><!-- /cfg-secao Mensagens -->
       </div><!-- /cfg-sub-bot -->
 
       <!-- ============ SUB-ABA: ENTREGA ============ -->
@@ -657,56 +666,38 @@
         <div class="cfg-secao">
           <div class="cfg-secao-cabeca">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            <h3>Impressão de pedidos</h3>
+            <h3>Nymbus Impressora</h3>
           </div>
-          <p class="sub cfg-secao-sub">Imprima a comanda do pedido numa impressora térmica 80mm (ex.: Elgin i7/i8, Epson T20x, Daruma DR700/DR800). O botão <strong>Imprimir comanda</strong> aparece ao abrir um pedido. Escolha a impressora na 1ª impressão — o navegador lembra depois.</p>
+          <p class="sub cfg-secao-sub">Imprima os pedidos automaticamente na cozinha. Instale o agente no computador ligado à impressora — pedidos do delivery, vendas do PDV, comandas de mesa e o fechamento do caixa saem sozinhos, sem abrir nada no navegador.</p>
 
           <div class="cfg-frete-upsell" id="impressoraLock" hidden>
-            <p>A <strong>impressão de pedidos</strong> faz parte do <strong>Plano Completo</strong>.</p>
+            <p>A <strong>impressão automática</strong> faz parte do <strong>Plano Completo</strong>.</p>
             <button type="button" class="mini" id="btnVerPlanosImpressora">Ver planos</button>
           </div>
 
-          <div class="card" id="impressoraConfig" hidden>
-            <p class="sub">Para imprimir: abra um pedido (aba <strong>Pedidos</strong> ou o aviso de novo pedido), clique em <strong>Imprimir comanda</strong> e escolha a via na pré-visualização — <strong>Cozinha</strong> (sem preços) ou <strong>Cupom</strong> (cliente, endereço, pagamento e total). Cada via sai numa impressão e a impressora corta no fim de cada.</p>
-            <p class="sub">Para imprimir <strong>automático, sem a caixa de diálogo</strong> (útil num PC dedicado), inicie o Chrome com <code>--kiosk-printing</code> e deixe a térmica como impressora padrão do Windows.</p>
-            <div class="campo"><label for="cfgImprMetodo">Método de impressão</label>
-              <select id="cfgImprMetodo"><option value="navegador">Navegador (USB / impressora com driver)</option><option value="serial">Porta serial (COM)</option></select>
+          <div id="impressora-app" hidden>
+            <div class="card impressora-baixar">
+              <h3 class="impressora-card-titulo">Baixe o aplicativo de impressão</h3>
+              <p class="campo-ajuda">Instale o <strong>Nymbus Impressora</strong> no computador conectado à impressora. Faça login com esta mesma conta, escolha a impressora e os pedidos passam a imprimir automaticamente. A configuração da impressora (USB, Rede/Wi-Fi ou Serial/COM) e do corte fica no próprio app.</p>
+              <ul class="impressora-beneficios">
+                <li>Funciona com impressoras USB, rede/Wi-Fi e serial (COM).</li>
+                <li>Configuração salva no próprio aplicativo.</li>
+                <li>Impressão automática de delivery, PDV, mesas e caixa.</li>
+              </ul>
+              <a id="btn-baixar-impressora" class="primario" href="/downloads/nymbus-impressora.exe" download>Baixar Nymbus Impressora</a>
+              <p class="campo-ajuda">Compatível com Windows.</p>
             </div>
-            <div id="cfgImprSerial" hidden>
-              <div class="linha">
-                <div class="campo"><label for="cfgImprBaud">Baud rate</label><input type="text" inputmode="numeric" id="cfgImprBaud" value="9600" /></div>
-                <div class="campo"><label for="cfgImprCorte">Corte do papel</label>
-                  <select id="cfgImprCorte"><option value="parcial">Parcial (picote)</option><option value="total">Total</option><option value="nenhum">Não cortar</option></select>
-                </div>
-                <div class="campo toggle"><input type="checkbox" id="cfgImprSemAcento" /><label for="cfgImprSemAcento">Sem acento (se a impressora trocar os caracteres)</label></div>
-              </div>
-              <button type="button" class="secundario mini" id="cfgImprConectar">Conectar impressora</button>
-              <span class="cfg-impr-status" id="cfgImprStatus"></span>
-              <p class="editor-dica" id="cfgImprAviso" hidden>Este navegador não suporta impressão serial — use o Chrome ou Edge no computador.</p>
+            <div class="card">
+              <h3 class="impressora-card-titulo">Como usar</h3>
+              <ol class="impressora-passos">
+                <li>Baixe e instale o app no computador do restaurante.</li>
+                <li>Abra o Nymbus Impressora e entre com o login do painel.</li>
+                <li>Escolha a impressora (USB, Rede ou Serial/COM) e faça um teste.</li>
+                <li>Pronto: delivery, PDV, mesas e caixa imprimem sozinhos.</li>
+              </ol>
             </div>
-            <div class="campo">
-              <label for="cfgImprRodape">Mensagem no rodapé do cupom</label>
-              <textarea id="cfgImprRodape" rows="2" maxlength="160" placeholder="Obrigado pela preferência! Volte sempre."></textarea>
-              <p class="editor-dica">Aparece no fim do cupom do cliente. O nome, endereço e telefone (do topo) e o link do cardápio (logo abaixo) entram automaticamente.</p>
-            </div>
+          </div>
         </div>
-
-        <section class="cfg-secao" id="impressora-app">
-          <h3>App de impressão automática (recomendado)</h3>
-          <p class="campo-ajuda">
-            Instale o <strong>Nymbus Impressora</strong> no computador ligado à impressora.
-            Faça login com esta mesma conta, escolha a impressora e os pedidos novos passam a
-            imprimir <strong>automaticamente</strong>, sem abrir a tela de impressão do navegador.
-          </p>
-          <a id="btn-baixar-impressora" class="primario" href="#" aria-disabled="true">Baixar (em breve)</a>
-          <ol class="impressora-passos">
-            <li>Baixe e instale o app no computador do restaurante.</li>
-            <li>Abra o Nymbus Impressora e entre com o login do painel.</li>
-            <li>Clique em "Detectar impressoras" e escolha a sua (USB, Rede ou Serial/COM).</li>
-            <li>Faça um teste de impressão. Pronto: os pedidos novos imprimem sozinhos.</li>
-          </ol>
-          <p class="campo-ajuda">A impressão pelo navegador continua disponível como alternativa.</p>
-        </section>
       </div>
 
 
@@ -792,6 +783,7 @@
           <option value="todos">Todo pagamento</option>
           <option value="areceber">A receber</option>
           <option value="recebidos">Recebidos</option>
+          <option value="cancelados">Cancelados</option>
         </select>
         <div class="busca-wrap">
           <span class="busca-icone">

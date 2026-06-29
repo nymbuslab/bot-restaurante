@@ -1865,13 +1865,7 @@ function preencherConfig() {
   atualizarChipStatus(realAberto);
   renderHorarios();
   renderPagamentos();
-  const imp = c.impressao || {};
-  $("cfgImprMetodo").value = imp.metodo === "serial" ? "serial" : "navegador";
-  $("cfgImprBaud").value = imp.baud || 9600;
-  $("cfgImprCorte").value = imp.corte === "total" || imp.corte === "nenhum" ? imp.corte : "parcial";
-  $("cfgImprSemAcento").checked = imp.semAcento === true;
-  if ($("cfgImprRodape")) $("cfgImprRodape").value = imp.rodape || "";
-  aplicarMetodoImpr();
+  renderImpressoraGate(); // sub-aba Impressora: Completo vê o download; Essencial, o upsell
 }
 
 // Rótulo da chave (ABERTO/FECHADO PARA PEDIDOS) — reflete só a posição do toggle manual.
@@ -1986,28 +1980,6 @@ $("btnDescartarConfig").addEventListener("click", async () => {
   toast("Alterações descartadas.");
 });
 
-// Sub-aba Impressora: mostra/oculta os campos serial + status.
-function aplicarMetodoImpr() {
-  const serial = $("cfgImprMetodo").value === "serial";
-  $("cfgImprSerial").hidden = !serial;
-  if (serial && window.Serial) {
-    $("cfgImprAviso").hidden = window.Serial.suportado();
-    const st = window.Serial.status();
-    $("cfgImprStatus").textContent = st.conectada ? "Conectada" : "";
-  }
-}
-$("cfgImprMetodo").addEventListener("change", aplicarMetodoImpr);
-$("cfgImprConectar").addEventListener("click", async () => {
-  try {
-    await window.Serial.conectar(parseInt($("cfgImprBaud").value, 10) || 9600);
-    $("cfgImprStatus").textContent = "Conectada";
-    toast("Impressora conectada.");
-  } catch (e) {
-    $("cfgImprStatus").textContent = "";
-    toast(e.message || "Falha ao conectar.", "erro");
-  }
-});
-
 $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.restaurante.nome = $("cfgNome").value;
   configAtual.restaurante.telefone = $("cfgTelefone").value;
@@ -2053,12 +2025,8 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (!configAtual.mensagens.pedidoPronto) configAtual.mensagens.pedidoPronto = {};
   configAtual.mensagens.pedidoPronto.entrega  = $("cfgMsgProntoEntrega").value;
   configAtual.mensagens.pedidoPronto.retirada = $("cfgMsgProntoRetirada").value;
-  if (!configAtual.impressao) configAtual.impressao = {};
-  configAtual.impressao.metodo = $("cfgImprMetodo").value === "serial" ? "serial" : "navegador";
-  configAtual.impressao.baud = parseInt($("cfgImprBaud").value, 10) || 9600;
-  configAtual.impressao.corte = $("cfgImprCorte").value;
-  configAtual.impressao.semAcento = $("cfgImprSemAcento").checked;
-  configAtual.impressao.rodape = $("cfgImprRodape") ? $("cfgImprRodape").value.trim() : "";
+  // A config de impressão (serial/corte/sem-acento) agora vive no app agente; o
+  // painel não a edita mais. configAtual.impressao é preservado como veio do banco.
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
@@ -2123,13 +2091,13 @@ if ($("freteModoRaioLabel")) {
   });
 }
 
-// ---- Sub-aba Impressora: Completo vê a config; Essencial vê o cadeado/upsell ----
+// ---- Sub-aba Impressora: Completo vê o download do agente; Essencial vê o upsell ----
 function renderImpressoraGate() {
   const completo = planoAtual === "completo";
   const lock = $("impressoraLock");
-  const cfg = $("impressoraConfig");
+  const app = $("impressora-app");
   if (lock) lock.hidden = completo;
-  if (cfg) cfg.hidden = !completo;
+  if (app) app.hidden = !completo;
 }
 
 if ($("btnVerPlanosImpressora")) {
@@ -2275,7 +2243,8 @@ function renderCaixaAberto(data) {
   const totalCartaoPix = totalRecebido - recebidoDinheiro;
   const suprimentos = Number(r.suprimentos) || 0;
   const sangrias = Number(r.sangrias) || 0;
-  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias; // gaveta (esperado geral)
+  const cancelamentos = Number(r.cancelamentos) || 0;
+  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (esperado geral)
   const totalFaturamento = totalRecebido;
 
   const dataHoraCurta = (iso) => iso
@@ -2292,15 +2261,19 @@ function renderCaixaAberto(data) {
     .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f] || 0)}</span></div>`)
     .join("");
 
-  // Extrato do turno: recebimentos (estornáveis) + sangrias/suprimentos.
-  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento" };
+  // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
+  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento" };
+  const ehNeg = (t) => t === "sangria" || t === "cancelamento";
   const linhasMov = (data.movimentos || []).map((m) => {
-    const ehSangria = m.tipo === "sangria";
-    const rowCls = m.tipo === "recebimento" ? "" : (ehSangria ? "cx-row-mov cx-row-sangria" : "cx-row-mov");
-    const num = m.tipo === "recebimento" ? "#" + (m.numero != null ? m.numero : "—") : "—";
-    const cliente = m.tipo === "recebimento" ? escapar(m.cliente || "—") : (m.descricao ? escapar(m.descricao) : "—");
-    const valorTxt = (ehSangria ? "−R$ " : "R$ ") + fmtBRn(m.valor);
-    const forma = m.tipo === "recebimento" ? escapar(m.forma || "—") : "—";
+    const neg = ehNeg(m.tipo);
+    const rowCls = m.tipo === "recebimento" ? "" : "cx-row-mov" + (neg ? " cx-row-sangria" : "");
+    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento";
+    const num = temPedido ? "#" + (m.numero != null ? m.numero : "—") : "—";
+    const cliente = m.tipo === "recebimento" ? escapar(m.cliente || "—")
+      : (m.tipo === "cancelamento" ? escapar(m.cliente || m.descricao || "Cancelamento")
+        : (m.descricao ? escapar(m.descricao) : "—"));
+    const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
+    const forma = temPedido ? escapar(m.forma || "—") : "—";
     const acao = m.tipo === "recebimento"
       ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
     return `<tr class="${rowCls}">
@@ -2308,13 +2281,23 @@ function renderCaixaAberto(data) {
       <td>${num}</td>
       <td>${tipoLabel[m.tipo] || m.tipo}</td>
       <td>${cliente}</td>
-      <td class="caixa-tab-valor${ehSangria ? " caixa-tab-neg" : ""}">${valorTxt}</td>
+      <td class="caixa-tab-valor${neg ? " caixa-tab-neg" : ""}">${valorTxt}</td>
       <td>${forma}</td>
       <td class="caixa-tab-acao">${acao}</td>
     </tr>`;
   }).join("");
-  const tabelaMov = (data.movimentos && data.movimentos.length)
-    ? `<table class="cx-tabela"><thead><tr><th>Hora</th><th>Nº</th><th>Tipo</th><th>Cliente</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>${linhasMov}</tbody></table>`
+  // Saldo inicial (abertura) entra como 1ª linha cronológica → no fim da lista (ordem decrescente).
+  const linhaAbertura = fundo > 0 ? `<tr class="cx-row-mov cx-row-abertura">
+      <td class="cx-td-hora">${dataHoraCurta(data.caixa.abertoEm)}</td>
+      <td>—</td>
+      <td>Saldo inicial</td>
+      <td>Abertura do caixa</td>
+      <td class="caixa-tab-valor">R$ ${fmtBRn(fundo)}</td>
+      <td>Dinheiro</td>
+      <td class="caixa-tab-acao"></td>
+    </tr>` : "";
+  const tabelaMov = ((data.movimentos && data.movimentos.length) || fundo > 0)
+    ? `<table class="cx-tabela"><thead><tr><th>Hora</th><th>Nº</th><th>Tipo</th><th>Cliente</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>${linhasMov}${linhaAbertura}</tbody></table>`
     : "<p class='sub'>Nenhuma movimentação neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
 
   cont.innerHTML = `
@@ -2871,31 +2854,27 @@ async function carregarDashboard() {
     const dData = $("dashData");
     if (dData) dData.textContent = agora.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }) + " • " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-    // Métricas
-    if ($("dashPedidosHoje")) $("dashPedidosHoje").textContent = totalPedidos;
-    if ($("dashFaturamento")) $("dashFaturamento").textContent = "R$ " + moedaBR(totalFaturamento);
-    if ($("dashTicketMedio")) $("dashTicketMedio").textContent = "R$ " + moedaBR(ticketMedio);
-    const trend = $("dashTrendPedidos");
-    if (trend) {
-      if (diferenca > 0) {
-        trend.innerHTML = ICO_TREND_UP + '<span>+' + diferenca + '</span>';
-        trend.className = "metrica-trend subiu";
-      } else if (diferenca < 0) {
-        trend.innerHTML = ICO_TREND_DOWN + '<span>' + diferenca + '</span>';
-        trend.className = "metrica-trend desceu";
-      } else {
-        trend.textContent = "0";
-        trend.className = "metrica-trend";
-      }
-      trend.title = "vs ontem";
-    }
-    // Comparativo textual "Ontem: X · N% maior/menor"
-    const cmp = $("dashComparativo");
-    if (cmp) {
-      const pct = totalOntem > 0 ? Math.round((diferenca / totalOntem) * 100) : (totalPedidos > 0 ? 100 : 0);
-      const sinal = diferenca > 0 ? (pct + "% maior") : diferenca < 0 ? (Math.abs(pct) + "% menor") : "igual";
-      cmp.textContent = "Ontem " + totalOntem + " · " + sinal;
-    }
+    // Visão de Vendas — faturamento por janela. Exclui cancelados (não é venda).
+    const vendasAtivas = pedidos.filter((p) => p.status !== "cancelado");
+    const fatDe = (lista) => lista.reduce((s, p) => s + (p.total || 0), 0);
+    const inicioOntemV = new Date(inicioHoje.getTime() - 86400000);
+    const inicio7 = new Date(inicioHoje.getTime() - 6 * 86400000); // últimos 7 dias (inclui hoje)
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const vHoje = fatDe(vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicioHoje));
+    const vOntem = fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= inicioOntemV && d < inicioHoje; }));
+    const v7 = fatDe(vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicio7));
+    const vMes = fatDe(vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicioMes));
+    const dataBR = (d) => d.toLocaleDateString("pt-BR");
+    const dataCurta = (d) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    const setVendaCard = (idVal, valor, idSub, sub) => {
+      if ($(idVal)) $(idVal).textContent = "R$ " + moedaBR(valor);
+      if ($(idSub)) $(idSub).textContent = sub || "";
+    };
+    setVendaCard("dashVendasHoje", vHoje, "dashVendasHojeSub", dataBR(inicioHoje));
+    setVendaCard("dashVendasOntem", vOntem, "dashVendasOntemSub", dataBR(inicioOntemV));
+    setVendaCard("dashVendas7", v7, "dashVendas7Sub", dataCurta(inicio7) + " a " + dataCurta(inicioHoje));
+    const mesLabel = agora.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    setVendaCard("dashVendaMes", vMes, "dashVendaMesSub", mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1));
 
     // Últimos 5 pedidos
     const ultimos = hoje.slice(-5).reverse();
@@ -3153,9 +3132,9 @@ function renderPedidos(animar = false) {
   // Filtro de pagamento (só Plano Completo) — não afeta as métricas acima.
   if (planoAtual === "completo" && filtros.pagamento !== "todos") {
     lista = lista.filter((p) =>
-      filtros.pagamento === "recebidos"
-        ? !!p.recebidoEm
-        : !p.recebidoEm && p.status !== "cancelado"
+      filtros.pagamento === "recebidos" ? !!p.recebidoEm
+        : filtros.pagamento === "cancelados" ? p.status === "cancelado"
+        : /* areceber */ !p.recebidoEm && p.status !== "cancelado"
     );
   }
 
@@ -3476,15 +3455,19 @@ function montarAcoes(p) {
     }
   }
 
-  // Botão de cancelar pedido — disponível se não recebido e não cancelado
-  if (!p.recebidoEm && p.status !== "cancelado") {
+  // Botão de cancelar pedido — disponível se ainda não cancelado. Para pedido PAGO,
+  // o cancelamento deduz no caixa (com registro) — confirmação reforçada.
+  if (p.status !== "cancelado") {
+    const pago = !!p.recebidoEm;
     const btnCancelar = document.createElement("button");
     btnCancelar.className = "btn-cancelar-pedido mini";
     btnCancelar.textContent = "Cancelar pedido";
     btnCancelar.addEventListener("click", async () => {
       const ok = await confirmar(
         "Cancelar pedido #" + p.numero + "?",
-        "O pedido será marcado como cancelado. Esta ação não pode ser desfeita.",
+        pago
+          ? "Este pedido já foi PAGO. Ao cancelar, o valor será deduzido do caixa (com registro) e o pedido fica marcado como cancelado. Exige caixa aberto. Esta ação não pode ser desfeita."
+          : "O pedido será marcado como cancelado. Esta ação não pode ser desfeita.",
         "Cancelar pedido"
       );
       if (!ok) return;
@@ -3500,6 +3483,8 @@ function montarAcoes(p) {
       toast("Pedido #" + p.numero + " cancelado.");
       fecharModalPedido();
       renderPedidos();
+      // Pago: o caixa mudou (dedução) — atualiza a tela do caixa se estiver carregada.
+      if (pago && typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
     });
     cont.appendChild(btnCancelar);
   }

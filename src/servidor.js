@@ -33,6 +33,8 @@ const texto = require("../public/texto");     // dual-mode Node/browser (padroni
 const pdv = require("./pdv");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
 const mesasDb = require("./mesas-db");  // CRUD + recebimento parcial/fechamento
+const impressaoFila = require("./impressao-fila"); // fila genérica consumida pelo agente
+const Comanda = require("../public/comanda");      // dual-mode: monta as vias no servidor p/ enfileirar
 
 const app = express();
 
@@ -325,6 +327,37 @@ app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, async (req, res) => 
     res.json({ ok: true, marcado });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao marcar como impresso." });
+  }
+});
+
+// Fila GENÉRICA (PDV/Mesas/Caixa/reimpressão): cada item já traz o TEXTO das vias.
+app.get("/api/agente/fila", exigeAuth, async (req, res) => {
+  try {
+    res.json(await impressaoFila.pendentes(req.tenantDir));
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao consultar a fila." });
+  }
+});
+
+app.post("/api/agente/fila/:id/impresso", exigeAuth, async (req, res) => {
+  try {
+    const marcado = await impressaoFila.marcarImpresso(req.tenantDir, req.params.id);
+    res.json({ ok: true, marcado });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao marcar a fila como impressa." });
+  }
+});
+
+// Download do agente de impressão (Windows). Serve o instalador .exe mais recente
+// de agente-impressora/dist sob um nome estável (resiliente à versão no arquivo).
+app.get("/downloads/nymbus-impressora.exe", (req, res) => {
+  try {
+    const dir = path.join(__dirname, "..", "agente-impressora", "dist");
+    const exe = require("fs").readdirSync(dir).find((f) => f.toLowerCase().endsWith(".exe"));
+    if (!exe) return res.status(404).send("Instalador indisponível no momento.");
+    res.download(path.join(dir, exe), "Nymbus Impressora Setup.exe");
+  } catch (e) {
+    res.status(404).send("Instalador indisponível no momento.");
   }
 });
 
@@ -1486,8 +1519,18 @@ app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
 
 app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
   try {
-    await pedidos.cancelarPedido(req.tenantDir, Number(req.params.id));
-    res.json({ ok: true });
+    const id = Number(req.params.id);
+    const pedido = await pedidos.lerPorId(req.tenantDir, id);
+    if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+    if (pedido.recebidoEm) {
+      // Pedido PAGO: cancela mantendo o rastro e deduz no caixa (exige caixa aberto).
+      // Caixa é recurso do Plano Completo → gate de servidor.
+      if (!(await exigeCaixa(req, res))) return;
+      await caixa.cancelarRecebido(req.tenantDir, id);
+    } else {
+      await pedidos.cancelarPedido(req.tenantDir, id);
+    }
+    res.json({ ok: true, recebido: !!pedido.recebidoEm });
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao cancelar o pedido." });
   }
@@ -1502,6 +1545,23 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
     res.json(pedido);
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao cancelar o item." });
+  }
+});
+
+// Reimpressão manual: re-enfileira a comanda (cozinha + cupom) do pedido para o
+// agente. Substitui o antigo "Imprimir comanda" do navegador.
+app.post("/api/pedidos/:id/reimprimir", exigeAuth, async (req, res) => {
+  try {
+    const pedido = await pedidos.lerPorId(req.tenantDir, Number(req.params.id));
+    if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+    await store.ensure(req.tenantDir);
+    const cfg = store.getConfig(req.tenantDir) || {};
+    const link = baseUrlDe(req) + "/c/" + req.slug;
+    const { cozinha, cupom } = Comanda.montarComanda(pedido, cfg, { linkCardapio: link });
+    await impressaoFila.enfileirar(req.tenantDir, "reimpressao", [cozinha, cupom]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao reimprimir." });
   }
 });
 
@@ -1551,8 +1611,14 @@ app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
 
 app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.fecharCaixa(req.tenantDir, { contagem: req.body.contagem, eletronico: req.body.eletronico })); }
-  catch (e) { res.status(400).json({ erro: e.message }); }
+  try {
+    const resultado = await caixa.fecharCaixa(req.tenantDir, { contagem: req.body.contagem, eletronico: req.body.eletronico });
+    // Enfileira o relatório de fechamento (texto montado no servidor) p/ o agente imprimir.
+    try {
+      if (resultado && resultado.relatorio) await impressaoFila.enfileirar(req.tenantDir, "caixa", [resultado.relatorio]);
+    } catch (e) { console.error("enfileirar impressão caixa:", e.message); }
+    res.json(resultado);
+  } catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
 // "historico" ANTES de ":id" (senão cairia no parâmetro).
@@ -1603,6 +1669,15 @@ app.post("/api/pdv/frete", exigeAuth, async (req, res) => {
   }
 });
 
+// Filtra os itens (já recalculados) cujo item de cardápio está marcado p/ imprimir
+// na cozinha (`it.cozinha === true`) — só esses entram na via da cozinha.
+function itensDeCozinha(cardapio, itens) {
+  const ids = new Set();
+  ((cardapio && cardapio.categorias) || []).forEach((c) =>
+    ((c && c.itens) || []).forEach((it) => { if (it && it.cozinha === true) ids.add(it.id); }));
+  return (itens || []).filter((i) => ids.has(i.id));
+}
+
 app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
@@ -1651,6 +1726,17 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     });
     // A baixa de estoque é ATÔMICA dentro de caixa.venderLocal (mesma transação da
     // venda) — sem best-effort fora de transação (evita lost-update/oversell).
+
+    // Enfileira a via da cozinha p/ o agente imprimir (best-effort: nunca derruba a
+    // venda já gravada). Só itens marcados "Imprime na cozinha".
+    try {
+      const cozItens = itensDeCozinha(cardapio, itens);
+      if (cozItens.length) {
+        const cfg = store.getConfig(req.tenantDir) || {};
+        const pedCoz = { numero: pedido.numero, criadoEm: new Date().toISOString(), tipoEntrega, itens: cozItens };
+        await impressaoFila.enfileirar(req.tenantDir, "pdv-cozinha", [Comanda.montarCozinha(pedCoz, cfg)]);
+      }
+    } catch (e) { console.error("enfileirar impressão PDV:", e.message); }
 
     res.json({ ok: true, pedido });
   } catch (e) {
@@ -1776,6 +1862,15 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
       }, client);
       await client.query("COMMIT");
       store.sincronizarCardapio(req.tenantDir, novoCardapio);
+      // Enfileira a via da cozinha da rodada (best-effort, fora da transação).
+      try {
+        const cozItens = itensDeCozinha(cardapio, itens);
+        if (cozItens.length) {
+          const cfg = store.getConfig(req.tenantDir) || {};
+          const pedCoz = { numero: mesa.nome, criadoEm: new Date().toISOString(), tipoEntrega: "Balcão", itens: cozItens };
+          await impressaoFila.enfileirar(req.tenantDir, "mesa-cozinha", [Comanda.montarCozinha(pedCoz, cfg)]);
+        }
+      } catch (e) { console.error("enfileirar impressão mesa:", e.message); }
       res.json({ ok: true });
     } catch (e) {
       await client.query("ROLLBACK");
@@ -1812,6 +1907,34 @@ app.post("/api/mesas/:id/fechar-conta", exigeAuth, async (req, res) => {
     res.json(await detalheMesa(req.tenantDir, mesaId));
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao iniciar o fechamento." });
+  }
+});
+
+// Envia a PRÉ-CONTA (espelho, não-fiscal) da mesa para a fila de impressão do agente.
+app.post("/api/mesas/:id/imprimir-conta", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const d = await detalheMesa(req.tenantDir, Number(req.params.id));
+    if (!d) return res.status(404).json({ erro: "Mesa não encontrada." });
+    const cfg = store.getConfig(req.tenantDir) || {};
+    const texto = Comanda.montarPreConta(
+      { nome: d.nome },
+      d.pedidos || [],
+      {
+        subtotal: (d.resumo && d.resumo.subtotal) || 0,
+        taxaServico: (d.resumo && d.resumo.taxaServico) || 0,
+        taxaPct: d.taxaServico || 0,
+        total: (d.resumo && d.resumo.total) || 0,
+        recebido: d.recebido || 0,
+        falta: d.falta || 0,
+        quando: new Date().toISOString(),
+      },
+      cfg
+    );
+    await impressaoFila.enfileirar(req.tenantDir, "mesa-conta", [texto]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao enviar a conta para impressão." });
   }
 });
 
