@@ -161,13 +161,12 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 ### Fase 3 — Os "duros" (esbarram na arquitetura / regulados)
 
-- [x] **Impressão (comanda de cozinha + cupom)** — ✅ **entregue parcialmente** (caminho navegador):
-  botão **"Imprimir comanda"** no painel imprime 2 vias (cozinha sem preços + cupom completo) numa
-  **térmica 80mm** via `window.print()` + CSS `@page 80mm`, compatível com qualquer impressora com
-  driver (Elgin i7/i8, Epson T20x…). Exclusivo do **Plano Completo**; toggle "cortar entre as vias"
-  em Configurações → Impressora. Ver `CHANGELOG.md` 0.29.0 e [docs/planos-e-frete.md](docs/planos-e-frete.md).
-  **Futuro:** ESC/POS via agente local para corte fino/silencioso, **gaveta** e impressão sem painel
-  aberto — ver *"Agente local"* abaixo.
+- [x] **Impressão (comanda de cozinha + cupom)** — ✅ **entregue via AGENTE** (Plano Completo). O caminho
+  navegador inicial (`window.print()`/Web Serial, CHANGELOG 0.29.0/0.40.0) foi **substituído** pelo app
+  desktop **Nymbus Impressora**, que imprime **todos** os fluxos automaticamente (delivery + PDV + Mesas +
+  Caixa) via fila genérica; o caminho navegador foi **removido** (CHANGELOG 0.62.0). Ver *"Agente local"*
+  abaixo e [docs/planos-e-frete.md](docs/planos-e-frete.md). **Futuro:** gaveta + TEF + impressão sem
+  painel aberto (já entregue: impressão sem painel aberto).
 - [ ] **Agente local (impressora + gaveta + TEF)** (G + decisão de arquitetura) — **adiado; implementar
   só sob demanda** (cliente pagante pedindo gaveta/cartão/impressão silenciosa). Levantado com colegas
   de dev (2026-06-20).
@@ -180,8 +179,8 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   > fluxos** — além do delivery, imprime **PDV, Mesas e Caixa** via **fila genérica** (`impressao_fila`, o
   > servidor renderiza o texto e enfileira) + **reimpressão**. A tela Configurações → Impressora virou
   > **download do agente** (config migrou pro app) e há rota `GET /downloads/nymbus-impressora.exe`. O
-  > caminho **navegador** (`window.print`/serial) ainda dispara junto — remoção = **Fase 3** (ver `PROGRESSO.md`).
-  > Segue **pendente** hospedar o `.exe` em produção e validar no Windows. **Sem** TEF/fiscal/gaveta ainda.
+  > caminho **navegador** (`window.print`/serial) foi **REMOVIDO** na Fase 3 (CHANGELOG 0.62.0) — o agente é
+  > o único canal. Segue **pendente** hospedar o `.exe` em produção e validar no Windows. **Sem** TEF/fiscal/gaveta ainda.
   Diretrizes travadas para a versão completa (TEF/fiscal), quando for a hora:
   - **Engine: ACBr** (não reinventar) — `ACBrPosPrinter` (ESC/POS + corte + **gaveta**), `ACBrTEF`,
     `ACBrSAT`/`ACBrNFCe`. Via **ACBrMonitor** (executável controlado por socket/arquivo — sem escrever

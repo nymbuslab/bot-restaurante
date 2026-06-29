@@ -191,12 +191,12 @@ commit + push, e aprovação antes da fase seguinte.
 > Spec/plano: `docs/superpowers/specs/2026-06-20-impressao-termica-design.md` e
 > `docs/superpowers/plans/2026-06-20-impressao-termica.md`.
 
-> ⚠️ **Em migração para o AGENTE (CHANGELOG 0.59.0):** o app desktop **Nymbus Impressora** passou a
-> imprimir **todos** os fluxos automaticamente (delivery + **PDV + Mesas + Caixa**) via **fila genérica**
+> ⚠️ **Impressão é 100% via AGENTE (CHANGELOG 0.59.0 + 0.62.0):** o app desktop **Nymbus Impressora**
+> imprime **todos** os fluxos automaticamente (delivery + **PDV + Mesas + Caixa**) via **fila genérica**
 > (`impressao_fila` — o servidor renderiza o texto e enfileira; o agente busca e imprime). A tela
-> **Configurações → Impressora** virou **página de download do agente** — a config da impressora (porta,
-> corte) migrou para o app. O **caminho navegador** descrito abaixo (`window.print`/Web Serial) **ainda
-> existe e dispara junto** (transitório); a remoção é a **Fase 3** (ver `PROGRESSO.md`). Os módulos puros
+> **Configurações → Impressora** é a **página de download do agente** — a config da impressora (porta,
+> corte, sem-acento) fica no app. O **caminho navegador** (`window.print`/Web Serial, `impressao.js`/`serial.js`)
+> foi **REMOVIDO** na Fase 3 — a descrição abaixo é **histórica**. Os módulos puros
 > `comanda.js`/`serial-escpos.js`/`relatorio-caixa.js` permanecem (usados no servidor e no agente).
 
 Além do frete por raio, o **Plano Completo** libera a **impressão de pedido** numa impressora

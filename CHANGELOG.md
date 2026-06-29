@@ -538,3 +538,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.61.0] — Dashboard: Visão de Vendas
 
 - **Nova seção "Visão de Vendas"** no Dashboard com quatro cards de faturamento: **Vendas Hoje, Vendas Ontem, Últimos 7 dias e Venda Mês**. Pedidos cancelados não entram na conta.
+
+## [0.62.0] — Impressão 100% pelo agente (fim da impressão pelo navegador)
+
+- **A impressão pelo navegador foi removida:** toda impressão (delivery, PDV, mesas e caixa) agora passa **exclusivamente pelo aplicativo Nymbus Impressora**. Some o passo de confirmar a janela de impressão e a configuração de porta serial no painel — tudo fica no app.
+- **"Reimprimir comanda"** no pedido reenvia a comanda para a impressora; na mesa, **"Imprimir Conta"** reenvia a pré-conta.
+- O **relatório de fechamento** do caixa abre apenas para conferência na tela (a impressão sai pelo agente).
+- A **Central de Ajuda** foi atualizada para o novo fluxo (instalar o agente).
