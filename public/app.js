@@ -330,14 +330,20 @@ async function visualizarNovoPedido() {
 
 if ($("np-fechar")) $("np-fechar").addEventListener("click", fecharNovoPedido);
 if ($("np-visualizar")) $("np-visualizar").addEventListener("click", visualizarNovoPedido);
-// Imprimir comanda a partir do modal de novo pedido: o objeto do poll é leve
-// (só nº/cliente/itens/total), então resolve o pedido completo no cache antes.
+// Reimprimir a comanda do pedido pelo agente (re-enfileira no servidor). O objeto
+// do poll é leve, então resolve o pedido completo no cache para pegar o id.
+async function reimprimirPedido(id) {
+  if (!id) return;
+  const r = await api("POST", "/api/pedidos/" + id + "/reimprimir");
+  if (r && r.ok) toast("Comanda enviada para impressão.");
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao reimprimir.", "erro"); }
+}
 if ($("np-imprimir")) {
   $("np-imprimir").addEventListener("click", async () => {
     if (planoAtual !== "completo") { abrirUpsell("impressao"); return; }
     await carregarPedidos();
     const p = pedidosCache.find((x) => x.numero === novoPedidoNumeroAtual);
-    if (p && window.Impressao) window.Impressao.abrirPreview(p, configAtual, { linkCardapio: _linkCardapio });
+    if (p) reimprimirPedido(p.id);
   });
 }
 
@@ -2532,6 +2538,18 @@ function renderFechamentoCaixa(data) {
   renderLista(); recalcDinheiro(); recalcEletronico();
 }
 
+// Visualização read-only do relatório de fechamento (a impressão é do agente).
+function verRelatorio(titulo, texto) {
+  const ov = $("relatorio-overlay");
+  if (!ov) return;
+  if ($("relatorio-titulo")) $("relatorio-titulo").textContent = titulo || "Relatório";
+  if ($("relatorio-prev")) $("relatorio-prev").textContent = texto || "";
+  ov.style.display = "flex";
+}
+function fecharRelatorio() { const ov = $("relatorio-overlay"); if (ov) ov.style.display = "none"; }
+if ($("relatorio-fechar")) $("relatorio-fechar").addEventListener("click", fecharRelatorio);
+if ($("relatorio-overlay")) $("relatorio-overlay").addEventListener("click", (e) => { if (e.target === $("relatorio-overlay")) fecharRelatorio(); });
+
 async function fecharCaixaFinal(data, contagem, lancamentos) {
   // O relatório é montado no SERVIDOR (fonte única e autoritativa); o front só
   // envia a conferência e recebe o texto pronto pra prévia/impressão.
@@ -2540,9 +2558,7 @@ async function fecharCaixaFinal(data, contagem, lancamentos) {
   const res = await r.json();
   const dif = res.diferenca;
   toast(dif === 0 ? "✓ Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
-  if (res.relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
-    window.Impressao.abrirRelatorio("Relatório de fechamento", res.relatorio);
-  }
+  if (res.relatorio) verRelatorio("Relatório de fechamento", res.relatorio);
   carregarCaixa();
 }
 
@@ -2586,8 +2602,8 @@ async function verHistoricoCaixa() {
   sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
     const item = lista.find((c) => String(c.id) === el.dataset.id);
     el.addEventListener("click", () => {
-      if (item && item.relatorio && window.Impressao && window.Impressao.abrirRelatorio) {
-        window.Impressao.abrirRelatorio("Relatório — " + new Date(item.fechadoEm).toLocaleString("pt-BR"), item.relatorio);
+      if (item && item.relatorio) {
+        verRelatorio("Relatório — " + new Date(item.fechadoEm).toLocaleString("pt-BR"), item.relatorio);
       } else {
         toast("Relatório indisponível para este fechamento.");
       }
@@ -3544,7 +3560,7 @@ $("pedido-overlay").addEventListener("click", (e) => {
 if ($("btnImprimirPedido")) {
   $("btnImprimirPedido").addEventListener("click", () => {
     if (planoAtual !== "completo") { abrirUpsell("impressao"); return; }
-    if (pedidoModalAtual && window.Impressao) window.Impressao.abrirPreview(pedidoModalAtual, configAtual, { linkCardapio: _linkCardapio });
+    if (pedidoModalAtual) reimprimirPedido(pedidoModalAtual.id);
   });
 }
 
@@ -4396,12 +4412,7 @@ async function finalizarVendaPdv() {
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
   const vd = await r.json().catch(() => ({}));
   toast("✓ Venda registrada — disponível em Pedidos.");
-  // Impressão automática de cozinha (sem modal) para itens marcados como "Imprime na cozinha".
-  const _itensCoz = pdvCart.filter((l) => { const it = pdvAcharItem(l.id); return it && it.cozinha === true; });
-  if (_itensCoz.length && window.Comanda && window.Impressao && window.Impressao.imprimirCozinha) {
-    const _pedCoz = { numero: (vd.pedido && vd.pedido.numero) || "", criadoEm: new Date().toISOString(), tipoEntrega: pdvTipoEntrega || "Balcão", itens: _itensCoz.map((l) => ({ nome: l.nome, qtd: l.qtd, composicao: l.composicao || [], opcionais: l.opcionais || [], variacoes: l.variacoes || [], observacao: l.observacao || "" })) };
-    window.Impressao.imprimirCozinha(window.Comanda.montarCozinha(_pedCoz, configAtual), configAtual);
-  }
+  // A comanda da cozinha é enfileirada no servidor e impressa pelo agente (sem modal).
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
@@ -5069,12 +5080,7 @@ async function mesaLancarDoPdv() {
       return;
     }
     toast("Itens lançados na mesa!");
-    // Impressão automática de cozinha (sem modal) para itens marcados como "Imprime na cozinha".
-    var _itensCozMesa = pdvCart.filter(function (l) { var it = pdvAcharItem(l.id); return it && it.cozinha === true; });
-    if (_itensCozMesa.length && window.Comanda && window.Impressao && window.Impressao.imprimirCozinha) {
-      var _pedCozMesa = { numero: mesaModoNome || "", criadoEm: new Date().toISOString(), tipoEntrega: "Balcão", itens: _itensCozMesa.map(function (l) { return { nome: l.nome, qtd: l.qtd, composicao: l.composicao || [], opcionais: l.opcionais || [], variacoes: l.variacoes || [], observacao: l.observacao || "" }; }) };
-      window.Impressao.imprimirCozinha(window.Comanda.montarCozinha(_pedCozMesa, configAtual), configAtual);
-    }
+    // A comanda da cozinha da rodada é enfileirada no servidor e impressa pelo agente.
     var idMesa = mesaModoId;
     desativarMesaModoPdv(false);
     var mesaNavBtn = document.querySelector("nav button[data-aba='mesas']");
@@ -5357,38 +5363,13 @@ async function mesaIniciarFechamento() {
   abrirMesaPagar("fechar");
 }
 
-function mesaImprimirConta() {
+async function mesaImprimirConta() {
   var d = mesaState.detalhe;
-  if (!d) return;
-  if (typeof Comanda === "undefined" || !Comanda.montarPreConta) { toast("Módulo de impressão não disponível.", "erro"); return; }
-  var texto = Comanda.montarPreConta(
-    { nome: d.nome },
-    d.pedidos || [],
-    {
-      subtotal: (d.resumo && d.resumo.subtotal) || 0,
-      taxaServico: (d.resumo && d.resumo.taxaServico) || 0,
-      taxaPct: d.taxaServico || 0,
-      total: (d.resumo && d.resumo.total) || 0,
-      recebido: d.recebido || 0,
-      falta: d.falta || 0,
-      quando: new Date().toISOString(),
-    },
-    configAtual
-  );
-  if (typeof Impressao !== "undefined" && Impressao.imprimir) {
-    Impressao.imprimir(texto, "pre-conta");
-  } else {
-    var w = window.open("", "_blank", "width=420,height=640");
-    if (w) {
-      var pre = w.document.createElement("pre");
-      pre.style.fontFamily = "monospace";
-      pre.style.fontSize = "13px";
-      pre.textContent = texto;
-      w.document.body.appendChild(pre);
-      w.print();
-      w.close();
-    }
-  }
+  if (!d || !d.id) return;
+  // O servidor monta a pré-conta e enfileira para o agente imprimir.
+  var r = await api("POST", "/api/mesas/" + d.id + "/imprimir-conta");
+  if (r && r.ok) toast("Conta enviada para impressão.");
+  else { var e = r ? await r.json().catch(function () { return {}; }) : {}; toast(e.erro || "Falha ao enviar a conta.", "erro"); }
 }
 
 /* ---- Init (wired once) ---- */
