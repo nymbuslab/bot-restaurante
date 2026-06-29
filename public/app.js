@@ -4778,7 +4778,7 @@ function renderMesaItens() {
     var item = entry.item;
     var preco = pdvMoney((Number(item.preco) || 0) * (item.qtd || 1));
     var delBtn = canDel
-      ? '<button class="mesa-item-del" data-pedido-id="' + entry.pedidoId + '" data-item-idx="' + entry.idx + '" title="Cancelar item" aria-label="Cancelar item">' +
+      ? '<button class="mesa-item-del" data-pedido-id="' + entry.pedidoId + '" data-item-idx="' + entry.idx + '" data-nome-item="' + pdvEsc(item.nome || "") + '" title="Cancelar item" aria-label="Cancelar item">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>' +
         '</button>'
       : '';
@@ -4793,12 +4793,18 @@ function renderMesaItens() {
   lista.innerHTML = html;
   lista.querySelectorAll(".mesa-item-del").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      mesaCancelarItem(Number(btn.dataset.pedidoId), Number(btn.dataset.itemIdx));
+      mesaCancelarItem(Number(btn.dataset.pedidoId), Number(btn.dataset.itemIdx), btn.dataset.nomeItem);
     });
   });
 }
 
-async function mesaCancelarItem(pedidoId, itemIdx) {
+async function mesaCancelarItem(pedidoId, itemIdx, nomeItem) {
+  var conf = await confirmar(
+    "Cancelar item?",
+    "Remover \"" + (nomeItem || "item") + "\" da conta da mesa. Esta ação não pode ser desfeita.",
+    "Cancelar item"
+  );
+  if (!conf) return;
   var d = mesaState.detalhe;
   if (!d) return;
   var r = await api("POST", "/api/mesas/" + d.id + "/cancelar-item", { pedidoId: pedidoId, itemIdx: itemIdx });

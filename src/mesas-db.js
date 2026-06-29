@@ -319,7 +319,7 @@ async function cancelarItem(dir, mesaId, pedidoId, itemIdx) {
       return s + ((i.preco || 0) + extras) * (i.qtd || 1);
     }, 0) * 100) / 100;
     await db.query(
-      "UPDATE pedidos SET itens=$1, total=$2 WHERE id=$3",
+      "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
       [JSON.stringify(itens), novoTotal, pedidoId]
     );
   }
