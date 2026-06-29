@@ -1747,18 +1747,15 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
     try {
       await client.query("BEGIN");
       const novoCardapio = await store.baixarEstoqueTx(client, req.tenantDir, b.itens);
-      const pedido = await pedidos.salvarPedido(req.tenantDir, {
-        cliente: "Mesa " + mesa.nome,
-        tipoEntrega: "Balcão",
+      await mesasDb.lancarItens(req.tenantDir, mesaId, {
         itens,
         total: subtotal,
+        cliente: "Mesa " + mesa.nome,
         observacao: String(b.observacao || "").slice(0, 200),
-        mesaId,
       }, client);
-      await mesasDb.vincularPedido(req.tenantDir, mesaId, null, client);
       await client.query("COMMIT");
       store.sincronizarCardapio(req.tenantDir, novoCardapio);
-      res.json({ ok: true, pedido });
+      res.json({ ok: true });
     } catch (e) {
       await client.query("ROLLBACK");
       throw e;

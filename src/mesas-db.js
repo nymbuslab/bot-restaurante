@@ -294,6 +294,47 @@ async function salvarQrToken(dir, mesaId, token) {
   await db.query("UPDATE mesas SET qr_code_token = $1 WHERE empresa_id = $2 AND id = $3", [token, empId, mesaId]);
 }
 
+// Lança itens na mesa usando comanda acumulada: se já existe pedido 'novo' aberto,
+// acumula os itens nele; caso contrário, insere um novo pedido.
+// Isso garante 1 pedido por sessão de mesa (padrão da indústria — open check).
+async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, client) {
+  const empId = await empresaId(dir);
+  const exec = client ? (s, p) => client.query(s, p) : (s, p) => db.query(s, p);
+
+  const existing = await exec(
+    "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' ORDER BY id ASC LIMIT 1",
+    [empId, mesaId]
+  );
+
+  if (existing.rows[0]) {
+    const itensAntigos = existing.rows[0].itens || [];
+    const todosItens = [...itensAntigos, ...itens];
+    const novoTotal = Number(existing.rows[0].total) + (total || 0);
+    await exec(
+      "UPDATE pedidos SET itens = $1::jsonb, total = $2 WHERE id = $3",
+      [JSON.stringify(todosItens), novoTotal, existing.rows[0].id]
+    );
+  } else {
+    await exec(
+      `INSERT INTO pedidos
+         (empresa_id, numero, status, cliente, tipo_entrega, itens, total, observacao, mesa_id)
+       VALUES
+         ($1, (SELECT COALESCE(MAX(numero), 0) + 1 FROM pedidos WHERE empresa_id = $1), 'novo',
+          $2, 'Balcão', $3::jsonb, $4, $5, $6)`,
+      [empId, cliente || "", JSON.stringify(itens), total || 0, observacao || "", mesaId]
+    );
+  }
+
+  // Recalcula total_consumido da mesa
+  await exec(
+    `UPDATE mesas m SET total_consumido = (
+        SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado')
+       WHERE m.empresa_id = $1 AND m.id = $2`,
+    [empId, mesaId]
+  );
+}
+
 // Remove um único item de um pedido da mesa. Recalcula o total do pedido;
 // se o pedido ficar sem itens, marca-o como cancelado.
 async function cancelarItem(dir, mesaId, pedidoId, itemIdx) {
@@ -329,6 +370,6 @@ function esquecer(slug) { delete idCache[slug]; }
 
 module.exports = {
   listar, buscarPorId, criarEmLote, remover, abrir, atualizarStatus, reabrir,
-  vincularPedido, pedidosDaMesa, recebidoDaMesa, receberParcial, finalizarFechamento,
+  vincularPedido, lancarItens, pedidosDaMesa, recebidoDaMesa, receberParcial, finalizarFechamento,
   cancelar, transferir, salvarQrToken, esquecer, cancelarItem,
 };
