@@ -5,8 +5,7 @@ directories:
 files:
   - main/**/*
   - renderer/**/*
-  - ../public/comanda.js
-  - ../public/serial-escpos.js
+  - vendor/**/*
   - package.json
 win:
   target: nsis

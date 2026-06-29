@@ -1,7 +1,7 @@
 // agente-impressora/test/print-job.test.js
 const test = require("node:test");
 const assert = require("node:assert");
-const { montarJob } = require("../main/print-job");
+const { montarJob, montarJobDeVias } = require("../main/print-job");
 
 const pedido = {
   numero: 42, cliente: "Joao", telefone: "11999", tipoEntrega: "Entrega",
@@ -38,4 +38,17 @@ test("montarJob: corte 'nenhum' nao adiciona ESC m nem ESC i no fim", () => {
   const fim = Array.from(b.slice(-2));
   assert.notDeepEqual(fim, [0x1B, 0x6D]); // nao termina em ESC m
   assert.notDeepEqual(fim, [0x1B, 0x69]); // nem ESC i
+});
+
+test("montarJobDeVias: 1 buffer ESC/POS por via nao-vazia (init ESC @)", () => {
+  const job = montarJobDeVias(["RELATORIO\nLinha 1", "CUPOM\nLinha 2"], { corte: "parcial", semAcento: false });
+  assert.equal(job.length, 2);
+  job.forEach((b) => { assert.ok(b instanceof Uint8Array); assert.ok(b.length > 5); });
+  assert.equal(job[0][0], 0x1B); assert.equal(job[0][1], 0x40); // ESC @
+});
+
+test("montarJobDeVias: descarta vias vazias e entrada nao-array", () => {
+  assert.equal(montarJobDeVias(["", "   ", "Texto"], {}).length, 1);
+  assert.equal(montarJobDeVias(null, {}).length, 0);
+  assert.equal(montarJobDeVias(undefined, {}).length, 0);
 });

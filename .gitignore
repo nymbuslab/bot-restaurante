@@ -14,3 +14,7 @@ baileys-*/
 
 # Artefatos de validação visual (Playwright MCP)
 .playwright-mcp/
+
+# Agente de impressão (Electron) — artefatos de build
+agente-impressora/dist/
+agente-impressora/vendor/

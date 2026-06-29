@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/",
-    "dist": "electron-builder"
+    "dist": "node copy-shared.js && electron-builder"
   },
   "author": "Nymbus",
   "license": "UNLICENSED",
