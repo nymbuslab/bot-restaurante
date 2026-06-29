@@ -200,6 +200,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
+    try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
 
@@ -4597,7 +4598,7 @@ document.addEventListener("keydown", (e) => {
 async function inicial() {
   setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
   setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
-  carregarDashboard(); // Dashboard é a aba inicial
+  carregarDashboard(); // carrega dados do dashboard em background (sempre)
   carregarPedidos();   // pré-carrega pedidos em background
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
@@ -4622,6 +4623,15 @@ async function inicial() {
     toast("Pagamento não concluído. Você pode tentar de novo quando quiser.", "erro");
     history.replaceState(null, "", location.pathname);
   }
+
+  // Restaura a última aba visitada (persiste entre refreshes via localStorage).
+  try {
+    var ultimaAba = localStorage.getItem("ultimaAba");
+    if (ultimaAba && ultimaAba !== "dashboard") {
+      var btnUltimaAba = document.querySelector("nav button[data-aba='" + ultimaAba + "']");
+      if (btnUltimaAba) btnUltimaAba.click();
+    }
+  } catch (_) {}
 }
 // ============================================================
 // MESAS / COMANDAS
