@@ -4962,13 +4962,21 @@ function ativarMesaModoPdv() {
   if (pdvBtn) pdvBtn.click();
 }
 
-function desativarMesaModoPdv() {
+function desativarMesaModoPdv(voltarParaMesa) {
+  var idMesa = mesaModoId;
   mesaModoId = null;
   mesaModoNome = "";
+  pdvCart = []; pdvDesconto = null;
   var banner = $("pdvMesaBanner");
   if (banner) banner.remove();
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Cobrar";
+  renderPdvCarrinho();
+  if (voltarParaMesa !== false && idMesa) {
+    var mesaNavBtn = document.querySelector("nav button[data-aba='mesas']");
+    if (mesaNavBtn) mesaNavBtn.click();
+    setTimeout(function () { mesaSelecionarCard(idMesa); }, 200);
+  }
 }
 
 async function mesaLancarDoPdv() {
@@ -4999,9 +5007,7 @@ async function mesaLancarDoPdv() {
       window.Impressao.imprimirCozinha(window.Comanda.montarCozinha(_pedCozMesa, configAtual), configAtual);
     }
     var idMesa = mesaModoId;
-    pdvCart = []; pdvDesconto = null;
-    desativarMesaModoPdv();
-    renderPdvCarrinho();
+    desativarMesaModoPdv(false);
     var mesaNavBtn = document.querySelector("nav button[data-aba='mesas']");
     if (mesaNavBtn) mesaNavBtn.click();
     setTimeout(function () { mesaSelecionarCard(idMesa); }, 200);
