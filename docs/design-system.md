@@ -93,6 +93,26 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 - Sem laranja: a marca é roxo (`--accent`) + ciano (`--secondary`); status em cores semânticas.
 - Antes de redesenhar uma tela, consultar `design/UI.md` (referência visual + o que NÃO construir).
 
+## Valores monetários (padrão único)
+
+Toda tela com valor em R$ usa o util `public/dinheiro.js` (`window.Dinheiro`) — **não** rolar máscara nem formatação à mão. Formato BR único: **vírgula nos centavos, ponto no milhar** (`1.234,56`).
+
+**Inputs (digitação de valor):**
+
+- `<input type="text" inputmode="numeric">` + `Dinheiro.mascarar(campoOuId)` → máscara "centavos primeiro" (`1`→`0,01`, `1000`→`10,00`, `123456`→`1.234,56`).
+- Ler: `Dinheiro.valor(campo)` (número em reais). Preencher: `Dinheiro.setValor(campo, reais)`.
+- **Nunca** `type=number` nem `parseFloat(value)` direto — quebram com vírgula/milhar.
+- Carregar `<script src="dinheiro.js">` na página (já está em `admin.html`, `cadastro.html`, `cardapio.html`).
+
+**Exibição (valor já calculado):**
+
+- `Dinheiro.formatar(reais)` → `"1.234,56"` · `Dinheiro.comPrefixo(reais)` → `"R$ 1.234,56"`.
+- Em `public/app.js` use os atalhos `moedaBR(v)` (= `Dinheiro.formatar`) e `fmtBRn(v)` (delega ao util, preserva o sinal) — ambos **com separador de milhar**. Não reintroduzir `toFixed(2).replace(".", ",")` (perde o milhar).
+
+**Impressos (dual-mode Node/browser):** `comanda.js` e `relatorio-caixa.js` rodam **no servidor** (sem `window.Dinheiro`), então têm um `fmtBR` próprio que **espelha** o formato do util (milhar incluso). Ao mexer, manter o espelhamento.
+
+**Exceções (não são dinheiro, ficam fora do `dinheiro.js`):** valores em **%** (taxa de serviço, desconto percentual) e **peso em kg** — campos numéricos comuns.
+
 ## Padrões de layout reutilizáveis (redesign Nymbus Pedidos)
 
 Padrões consolidados no redesign do painel. Reaproveitar nas próximas telas — não reinventar.

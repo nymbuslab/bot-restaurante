@@ -173,7 +173,7 @@ fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é im
 - Não expor senhas em respostas da API.
 - Todo código novo passa `tenantDir` explicitamente — sem estado global de tenant.
 - Ao adicionar nova rota à API, usar `exigeAuth` e referenciar `req.tenantDir`.
-- **Campo de dinheiro** sempre via `dinheiro.js` (centavos primeiro); **endereço** via `endereco-cep.js`.
+- **Valores monetários** — padrão **único** `dinheiro.js` (`window.Dinheiro`): inputs `type=text inputmode=numeric` + `Dinheiro.mascarar`/`Dinheiro.valor` (máscara "centavos primeiro"; **nunca** `type=number`/`parseFloat`); exibição via `Dinheiro.formatar`/`comPrefixo` — no `app.js` os atalhos `moedaBR`/`fmtBRn` delegam ao util → sempre `1.234,56` **com separador de milhar**; impressos dual-mode (`comanda.js`/`relatorio-caixa.js`) têm `fmtBR` que **espelha** o formato. Toda tela nova com R$ segue isso. Detalhe e exceções (% e kg) em [docs/design-system.md](docs/design-system.md). **Endereço** via `endereco-cep.js`.
 - **CSP estrita (helmet):** todo JS do front é **externo** — **nunca** adicionar `<script>` inline nem
   handler inline (`onclick=`, `onsubmit=`) no HTML (a CSP bloqueia; usar `addEventListener` em `.js`).
   Origem externa nova (CDN/API) exige liberar a diretiva correspondente no `helmet` de `src/servidor.js`.

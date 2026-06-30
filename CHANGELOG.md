@@ -556,3 +556,18 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Ao finalizar uma venda no PDV**, a impressão sai **automaticamente** pelo agente: o **cupom da venda** imprime **sempre** e a **via da cozinha** quando a venda tem itens marcados "Imprime na cozinha". Antes só a via da cozinha era enviada.
 - **Sem aviso de "novo pedido":** a venda de balcão **não abre mais** o pop-up de novo pedido (nem toca o som) — é venda direta. Pedidos recebidos pelo WhatsApp continuam avisando normalmente.
+
+## [0.65.0] — Tela de Pedidos: resumo, canal e ações rápidas
+
+- **Resumo do período** no topo da lista: **Nº de pedidos, Faturamento, Ticket médio e Cancelados** — recalculado conforme os filtros (período/tipo/canal/busca).
+- **Pedido cancelado em destaque** na lista (esmaecido + total riscado), para auditar de relance.
+- **Prévia dos itens** na linha/card (ex.: "2x X-Burger · 1x Coca 2L") — dá pra ver o pedido sem abrir.
+- **Canal de origem:** nova coluna e filtro **WhatsApp / Balcão / Mesa**.
+- **Ações rápidas no hover** (desktop): **Reimprimir comanda** e **Receber pagamento** direto na linha, sem abrir o pedido (Receber pede confirmação).
+- **Correções:** cancelar um item de pedido com entrega não desconta mais a taxa por engano; "Reimprimir" deixa de aparecer em pedido cancelado.
+
+## [0.66.0] — Formato de dinheiro unificado (com separador de milhar)
+
+- **Valores em R$ no mesmo padrão em todo o sistema:** `R$ 1.234,56` (com ponto de milhar). Antes a tela de **Caixa** mostrava sem o ponto (`R$ 1500,00`).
+- O campo de **valor no pagamento de Mesa** passou a usar a mesma máscara dos demais campos de dinheiro.
+- **Cupons e relatório impressos** também ganharam o separador de milhar.
