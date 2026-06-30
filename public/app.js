@@ -2124,7 +2124,9 @@ if ($("btnVerPlanosImpressora")) {
 }
 
 // ================= Caixa (Plano Completo) =================
-function fmtBRn(n) { return (Number(n) || 0).toFixed(2).replace(".", ","); }
+// Exibição BR sem prefixo, padrão único (dinheiro.js) — "1.234,56" com milhar.
+// Preserva o sinal (o util usa Math.abs); os chamadores que já põem "−R$" passam positivo.
+function fmtBRn(n) { n = Number(n) || 0; return (n < 0 ? "-" : "") + Dinheiro.formatar(n); }
 
 const SVG_CAIXA_REGISTRADORA = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M5 10V6a2 2 0 0 1 2-2h7l3 3v3"/><line x1="7" y1="14" x2="9" y2="14"/><line x1="11.5" y1="14" x2="13.5" y2="14"/><line x1="16" y1="14" x2="18" y2="14"/><line x1="7" y1="17.5" x2="9" y2="17.5"/><line x1="11.5" y1="17.5" x2="13.5" y2="17.5"/><line x1="16" y1="17.5" x2="18" y2="17.5"/></svg>`;
 const SVG_OPERADOR = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
@@ -5418,7 +5420,7 @@ function abrirMesaPagar(modo) {
     '<select id="mesaPgForma"><option>Dinheiro</option><option>Cartão Débito</option><option>Cartão Crédito</option><option>Pix</option><option>Outros</option></select>' +
     "</div>" +
     '<div class="campo"><label>Valor (R$)</label>' +
-    '<input type="text" id="mesaPgValor" placeholder="0,00" inputmode="decimal" autocomplete="off" />' +
+    '<input type="text" id="mesaPgValor" placeholder="0,00" inputmode="numeric" autocomplete="off" />' +
     "</div>" +
     "</div>" +
     '<div class="pdv-modal-rodape">' +
@@ -5430,11 +5432,7 @@ function abrirMesaPagar(modo) {
   $("mesasPagarFechar2").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
   var valInput = $("mesaPgValor");
   if (valInput) {
-    valInput.addEventListener("input", function () {
-      var v = valInput.value.replace(/\D/g, "");
-      if (!v) { valInput.value = ""; return; }
-      valInput.value = (Number(v) / 100).toFixed(2).replace(".", ",");
-    });
+    if (window.Dinheiro) Dinheiro.mascarar(valInput); // padrão único (centavos primeiro + milhar)
     valInput.focus();
   }
   $("btnMesaConfirmarPag").addEventListener("click", function () { mesaConfirmarPagamento(falta, resumo.total || 0); });
@@ -5443,8 +5441,7 @@ function abrirMesaPagar(modo) {
 async function mesaConfirmarPagamento(faltaOrig, totalMesa) {
   var d = mesaState.detalhe;
   var forma = (($("mesaPgForma") || {}).value) || "Outros";
-  var valorStr = ((($("mesaPgValor") || {}).value) || "").replace(",", ".");
-  var valor = Math.round(parseFloat(valorStr) * 100) / 100;
+  var valor = window.Dinheiro ? Dinheiro.valor("mesaPgValor") : 0;
   if (!valor || valor <= 0) { toast("Informe o valor.", "erro"); return; }
   var btn = $("btnMesaConfirmarPag");
   btn.disabled = true;

@@ -7,8 +7,14 @@
 })(typeof self !== "undefined" ? self : this, function () {
   const LARGURA = 48;
 
+  // Formato BR único da plataforma (espelha public/dinheiro.js): milhar com ponto,
+  // centavos com vírgula — "1.234,56". Dual-mode (Node/browser); preserva o sinal.
   function fmtBR(n) {
-    return (Number(n) || 0).toFixed(2).replace(".", ",");
+    n = Number(n) || 0;
+    var neg = n < 0 ? "-" : "";
+    var cents = Math.round(Math.abs(n) * 100);
+    var dec = String(cents % 100).padStart(2, "0");
+    return neg + Math.floor(cents / 100).toLocaleString("pt-BR") + "," + dec;
   }
   function sep(ch) { return (ch || "-").repeat(LARGURA); }
   function centro(txt) {
