@@ -16,8 +16,9 @@
 
 > Origem: análise da aba **Pedidos** vs. ERPs do segmento (iFood Gestor, Saipos, Goomer, Anota AI, Consumer/Menew). Fronteira de produto mantida: **ciclo do pedido (preparo→pronto→saiu→entregue / KDS) é de sistema externo** — NÃO virar KDS. Foco: ler o movimento, agir rápido, controlar perda/fraude. A tela já tem filtros (período/tipo/pagamento), busca, selo de pagamento, badge "NOVO", **som de novo pedido**, paginação e exportar — não mexer nisso.
 
-- [ ] **(P1) Canal de origem (coluna + filtro)** — distinguir **WhatsApp/cardápio web · Balcão (PDV) · Mesa** (hoje caem juntos; "Tipo" só diz Entrega/Retirada). Mesa dá pra inferir por `mesa_id`; **Balcão × WhatsApp precisa de marcador no backend** (campo de origem no pedido) → médio esforço. Responde "quanto vendi por canal?".
 - [ ] **(P2) Ações rápidas na linha (hover)** — Reimprimir / Receber pagamento sem abrir o modal (padrão dos ERPs: operador resolve na lista).
+
+> **Evolução (opcional) — campo `origem` no banco:** o canal hoje é **inferido** (ver ✅), com uma borda: venda de PDV feita como Entrega/Retirada é rotulada "WhatsApp". Se a borda incomodar, adicionar coluna `pedidos.origem` (migration) preenchida nos 3 pontos de criação (PDV/web/mesa) torna o canal 100% confiável.
 
 #### Adequação LGPD — pendências futuras (Fases 1–4 concluídas; ver ✅ Concluído)
 
@@ -36,6 +37,7 @@
 
 ## ✅ Concluído
 
+- [x] **Tela de Pedidos — P1 canal de origem (coluna + filtro, inferido)** — nova coluna **Canal** (chip neutro com ícone colorido: WhatsApp/Balcão/Mesa) e filtro "Todos os canais" na barra; o resumo do período respeita o filtro. Canal **inferido** sem migration: `mesa_id` → Mesa, `tipoEntrega === "Balcão"` → Balcão (só o PDV produz), resto → WhatsApp. **Borda conhecida:** venda de PDV como Entrega/Retirada cai como "WhatsApp" (PDV é majoritariamente balcão); conserto robusto = coluna `pedidos.origem` (anotado em Próximos Passos). Helper puro `canalPedido`. Validado no Playwright (desktop + mobile, 3 canais). 175/175 testes + check. — 2026-06-29
 - [x] **Tela de Pedidos — P1 prévia dos itens na linha/card** — segunda linha discreta sob o nome do cliente (tabela) e no card (mobile) com resumo compacto do pedido (`2x X-Burger · 1x Coca 2L · 1x Batata +2` — 3 primeiros + "+N"), p/ escanear sem abrir o modal. Helper `previaItens`, 1 linha com reticências, tom `--text-secondary`; esmaece junto no pedido cancelado. Validado no Playwright (desktop + mobile). 175/175 testes + check. — 2026-06-29
 - [x] **Tela de Pedidos — 2 P0 (resumo do período + cancelado distinto na lista)** — barra de resumo do recorte filtrado acima da lista (**Pedidos · Faturamento · Ticket médio · Cancelados**), 100% client-side a partir da lista já filtrada (faturamento/ticket excluem cancelados; "Cancelados" em vermelho quando >0); pedido cancelado fica **esmaecido + total riscado** na tabela e no card mobile (anti-fraude visível na lista). Reusa os tokens do design system (cards do Dashboard). Validado no Playwright (desktop 1280 + mobile 420, resumo vira 2×2). 175/175 testes + check. — 2026-06-29
 - [x] **Pedidos — recálculo mantém a taxa ao cancelar item + reimprimir só em pedido ativo** — `cancelarItemPedido` voltava a taxa de entrega de fora do total ao remover um item; agora soma `taxa_entrega` de volta. Modal de pedido cancelado deixou de exibir "Reimprimir comanda" (vira só leitura). 175/175 testes + check. — 2026-06-29
