@@ -317,10 +317,12 @@ transação o **pedido** (tipo Balcão/Entrega/Retirada, `endereco`/`telefone`/`
 `recebido_em`) + **1 movimento de recebimento por forma** no caixa + **baixa de estoque ATÔMICA**
 (`store.baixarEstoqueTx`: `FOR UPDATE` no tenant + revalida + decrementa; falta de estoque desfaz a
 venda) — tudo num só commit. A
-venda aparece em **Pedidos** (selo do tipo/Recebido) e no **Caixa** (Vendas por forma). A confirmação
-é **silenciosa** — o pedido fica na aba **Pedidos** para conferência e **reimpressão** (botão
-"Imprimir comanda"; a comanda já imprime tipo + endereço + taxa); o PDV **não** abre modal de
-impressão ao finalizar. Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
+venda aparece em **Pedidos** (selo do tipo/Recebido) e no **Caixa** (Vendas por forma). Ao finalizar,
+o **agente imprime automaticamente** o **cupom da venda (sempre)** + a **via da cozinha (quando há
+item marcado "Imprime na cozinha")**, enfileirados em `impressao_fila` (tipo `pdv`, ordem cozinha→cupom);
+o PDV **não** passa pelo modal de novo pedido (venda direta — o `finalizarVendaPdv` avança o nº
+conhecido/visto, sem alerta/som da própria venda). O pedido fica em **Pedidos** para conferência e
+**reimpressão**. Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
 mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/pdv.js`
 (`test/pdv.test.js`); tela em `public/app.js` (`carregarPdv`/`renderPdv*`).
 

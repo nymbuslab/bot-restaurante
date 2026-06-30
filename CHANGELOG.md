@@ -551,3 +551,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Saudação no topo:** "Olá, [restaurante]" + status (Aberto/Fechado) + data/hora ficam no cabeçalho; o card de saudação saiu do Dashboard.
 - **Nova seção de análises** no Dashboard: gráficos de **Evolução diária (30 dias)** e **Evolução mensal (12 meses)**, **10 mais vendidos**, **Ranking de grupos** e **Visão geral** (Pedidos, Entregas, Itens lançados, Ticket médio) — tudo do mês atual, sem contar cancelados.
 - Dashboard ficou focado em métricas: saíram "Últimos Pedidos", "WhatsApp", "Ações rápidas" e "Atividade recente" do painel inicial (o status do WhatsApp continua em Configurações → Conexão).
+
+## [0.64.0] — PDV imprime sozinho (cupom + cozinha), sem pop-up
+
+- **Ao finalizar uma venda no PDV**, a impressão sai **automaticamente** pelo agente: o **cupom da venda** imprime **sempre** e a **via da cozinha** quando a venda tem itens marcados "Imprime na cozinha". Antes só a via da cozinha era enviada.
+- **Sem aviso de "novo pedido":** a venda de balcão **não abre mais** o pop-up de novo pedido (nem toca o som) — é venda direta. Pedidos recebidos pelo WhatsApp continuam avisando normalmente.
