@@ -3096,6 +3096,21 @@ function canalTag(p) {
   return `<span class="canal-tag ${cls}">${ICO_CANAL[c]} ${c}</span>`;
 }
 
+// Ações rápidas na linha (desktop, hover) — só Plano Completo. Reimprimir (não
+// cancelado) e Receber pagamento (não recebido e não cancelado). Resolve o pedido
+// pelo id no cache no handler, então a célula só precisa do data-pid.
+const ICO_PRINTER = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+const ICO_MONEY = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>';
+function linhaAcoesHtml(p) {
+  if (planoAtual !== "completo") return "";
+  if (p.status === "cancelado") return `<td class="ped-acoes-cel"></td>`;
+  let btns = `<button class="ped-acao-btn" data-acao="reimprimir" data-pid="${p.id}" title="Reimprimir comanda" aria-label="Reimprimir comanda">${ICO_PRINTER}</button>`;
+  if (!p.recebidoEm) {
+    btns += `<button class="ped-acao-btn" data-acao="receber" data-pid="${p.id}" title="Receber pagamento" aria-label="Receber pagamento">${ICO_MONEY}</button>`;
+  }
+  return `<td class="ped-acoes-cel"><div class="ped-acoes">${btns}</div></td>`;
+}
+
 // Prévia compacta dos itens do pedido p/ escanear sem abrir o modal:
 // "2x Buffet Kg · 1x Coca 2L". Mostra os 3 primeiros e "+N" se houver mais.
 function previaItens(itens) {
@@ -3252,9 +3267,10 @@ function renderListaPedidos(lista) {
   // Resumo do recorte atual (não cancelados p/ faturamento/ticket) acima da lista.
   const resumo = resumoPedidosHtml(lista);
 
-  // Desktop: tabela escaneável
+  // Desktop: tabela escaneável. Coluna "Ações" só no Completo (ações são desse plano).
+  const acoesTh = planoAtual === "completo" ? '<th class="ped-acoes-th">Ações</th>' : "";
   let tabela = `<table class="pedidos-tabela"><thead><tr>
-    <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Canal</th><th>Tipo</th><th class="col-total">Total</th>
+    <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Canal</th><th>Tipo</th><th class="col-total">Total</th>${acoesTh}
     </tr></thead><tbody>`;
   pagina.forEach((p) => {
     const novo = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
@@ -3266,7 +3282,7 @@ function renderListaPedidos(lista) {
       <td>${escapar(telefoneFmt(p))}</td>
       <td>${canalTag(p)}</td>
       <td>${tagTipo(p)}</td>
-      <td class="ped-total">R$ ${moedaBR(p.total)}</td>
+      <td class="ped-total">R$ ${moedaBR(p.total)}</td>${linhaAcoesHtml(p)}
     </tr>`;
   });
   tabela += "</tbody></table>";
@@ -3301,6 +3317,34 @@ function renderListaPedidos(lista) {
       if (!p) return;
       if (pedidosNovosDestaque.delete(p.numero)) renderPedidos(); // visto → remove o "NOVO" na hora
       abrirModalPedido(p);
+    })
+  );
+
+  // Ações rápidas no hover (desktop, Plano Completo) — não abrem o modal (stopPropagation).
+  cont.querySelectorAll(".ped-acao-btn").forEach((b) =>
+    b.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const p = pedidosCache.find((x) => String(x.id) === b.dataset.pid);
+      if (!p) return;
+      if (b.dataset.acao === "reimprimir") { reimprimirPedido(p.id); return; }
+      // Receber: dinheiro + clique fácil no hover → confirmação (o modal recebe em 1 clique).
+      const ok = await confirmar(
+        "Receber pagamento",
+        "Receber R$ " + moedaBR(p.total) + " de #" + p.numero + " (" + (p.pagamento || "Outros") + ")? Exige caixa aberto.",
+        "Receber"
+      );
+      if (!ok) return;
+      const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
+      if (r && r.ok) {
+        const ci = pedidosCache.findIndex((x) => x.id === p.id);
+        if (ci !== -1) pedidosCache[ci].recebidoEm = new Date().toISOString();
+        toast("✓ Recebido no caixa!");
+        renderPedidos();
+        if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
+      } else {
+        const d = r ? await r.json().catch(() => ({})) : {};
+        toast(d.erro || "Abra o caixa primeiro.", "erro");
+      }
     })
   );
 

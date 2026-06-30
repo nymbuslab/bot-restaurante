@@ -1915,6 +1915,27 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .canal-mesa svg   { color: #f59e0b; }
 .pedido-card-tags { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
+/* Ações rápidas na linha (desktop, Plano Completo) — aparecem ao passar o mouse */
+.ped-acoes-th { width: 1%; white-space: nowrap; text-align: right; }
+.pedidos-tabela .ped-acoes-cel { text-align: right; white-space: nowrap; }
+.ped-acoes { display: inline-flex; gap: 6px; justify-content: flex-end; opacity: 0; transition: opacity 0.12s ease; }
+.pedido-linha:hover .ped-acoes, .ped-acoes:focus-within { opacity: 1; }
+.ped-acao-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.ped-acao-btn:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--accent-fg); }
+.ped-acao-btn svg { flex-shrink: 0; }
+
 /* Resumo do recorte (4 estatísticas) — compacto, casa com os tokens do design system */
 .pedidos-resumo {
   display: grid;
