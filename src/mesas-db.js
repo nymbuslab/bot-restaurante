@@ -317,10 +317,10 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
   } else {
     await exec(
       `INSERT INTO pedidos
-         (empresa_id, numero, status, cliente, tipo_entrega, itens, total, observacao, mesa_id)
+         (empresa_id, numero, status, cliente, tipo_entrega, itens, total, observacao, mesa_id, origem)
        VALUES
          ($1, (SELECT COALESCE(MAX(numero), 0) + 1 FROM pedidos WHERE empresa_id = $1), 'novo',
-          $2, 'Balcão', $3::jsonb, $4, $5, $6)`,
+          $2, 'Balcão', $3::jsonb, $4, $5, $6, 'mesa')`,
       [empId, cliente || "", JSON.stringify(itens), total || 0, observacao || "", mesaId]
     );
   }

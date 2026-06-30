@@ -149,10 +149,10 @@ async function venderLocal(dir, venda) {
     const novoCardapio = await store.baixarEstoqueTx(client, dir, itens);
     const ped = await client.query(
       `INSERT INTO pedidos
-         (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, recebido_em)
+         (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, origem, recebido_em)
        VALUES
          ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-          $2, $3, '', $4, $5, $6, $7, $8::jsonb, $9, $10, $11, now())
+          $2, $3, '', $4, $5, $6, $7, $8::jsonb, $9, $10, $11, 'pdv', now())
        RETURNING id, numero, criado_em, recebido_em`,
       [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );

@@ -43,6 +43,7 @@ function mapRow(r) {
     recebidoEm: r.recebido_em ? new Date(r.recebido_em).toISOString() : null,
     impressoEm: r.impresso_em ? new Date(r.impresso_em).toISOString() : null,
     mesaId: r.mesa_id == null ? null : r.mesa_id,
+    origem: r.origem || "web",
   };
 }
 
