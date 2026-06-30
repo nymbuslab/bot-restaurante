@@ -1875,6 +1875,46 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .pedidos-tabela .ped-total { text-align: right; }
 .pedidos-tabela .ped-total { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
 
+/* Pedido cancelado: linha/card esmaecidos + total riscado (anti-fraude visível na lista) */
+.pedidos-tabela .pedido-linha.cancelado td { opacity: 0.55; }
+.pedidos-tabela .pedido-linha.cancelado .ped-total,
+.pedido-card.cancelado .pedido-card-total { text-decoration: line-through; }
+.pedido-card.cancelado { opacity: 0.6; }
+
+/* Resumo do recorte (4 estatísticas) — compacto, casa com os tokens do design system */
+.pedidos-resumo {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ped-resumo-cel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
+}
+.ped-resumo-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+.ped-resumo-valor {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+}
+.ped-resumo-cel.alerta .ped-resumo-valor { color: var(--error); }
+@media (max-width: 760px) { .pedidos-resumo { grid-template-columns: 1fr 1fr; } }
+
 /* Paginação da lista */
 .pedidos-paginacao {
   display: flex;

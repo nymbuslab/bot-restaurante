@@ -3072,6 +3072,32 @@ function seloPagamento(p) {
     : '<span class="selo-pag selo-areceber">A receber</span>';
 }
 
+// Resumo do recorte atual (já filtrado por período/tipo/pagamento/busca). Faturamento e
+// ticket consideram só pedidos NÃO cancelados (consistente com o Dashboard); "pedidos" e
+// "cancelados" são disjuntos e somam o total da lista.
+function resumoPedidos(lista) {
+  let pedidos = 0, faturamento = 0, cancelados = 0;
+  for (const p of lista) {
+    if (p.status === "cancelado") { cancelados++; continue; }
+    pedidos++;
+    faturamento += p.total || 0;
+  }
+  const ticket = pedidos ? faturamento / pedidos : 0;
+  return { pedidos, faturamento, ticket, cancelados };
+}
+
+function resumoPedidosHtml(lista) {
+  const r = resumoPedidos(lista);
+  const cel = (label, valor, extra) =>
+    `<div class="ped-resumo-cel${extra ? " " + extra : ""}"><span class="ped-resumo-label">${label}</span><span class="ped-resumo-valor">${valor}</span></div>`;
+  return `<div class="pedidos-resumo">
+    ${cel("Pedidos", String(r.pedidos))}
+    ${cel("Faturamento", "R$ " + moedaBR(r.faturamento))}
+    ${cel("Ticket médio", "R$ " + moedaBR(r.ticket))}
+    ${cel("Cancelados", String(r.cancelados), r.cancelados > 0 ? "alerta" : "")}
+  </div>`;
+}
+
 // Data/hora relativa: "Hoje, HH:MM" / "Ontem, HH:MM" / "DD/MM/AAAA, HH:MM" (sem segundos)
 function dataHoraFmt(criadoEm) {
   const d = new Date(criadoEm);
@@ -3186,13 +3212,17 @@ function renderListaPedidos(lista) {
   const ini = (paginaPedidos - 1) * PEDIDOS_POR_PAGINA;
   const pagina = lista.slice(ini, ini + PEDIDOS_POR_PAGINA);
 
+  // Resumo do recorte atual (não cancelados p/ faturamento/ticket) acima da lista.
+  const resumo = resumoPedidosHtml(lista);
+
   // Desktop: tabela escaneável
   let tabela = `<table class="pedidos-tabela"><thead><tr>
     <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Tipo</th><th class="col-total">Total</th>
     </tr></thead><tbody>`;
   pagina.forEach((p) => {
     const novo = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
-    tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}" data-id="${p.id}">
+    const canc = p.status === "cancelado" ? " cancelado" : "";
+    tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}${canc}" data-id="${p.id}">
       <td class="ped-num">#${p.numero}${novo}</td>
       <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
       <td>${escapar(p.cliente)} ${seloPagamento(p)}</td>
@@ -3208,7 +3238,8 @@ function renderListaPedidos(lista) {
   pagina.forEach((p) => {
     const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const novoC = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
-    cards += `<div class="pedido-card${novoC ? " pedido-card-novo" : ""}" data-id="${p.id}">
+    const cancC = p.status === "cancelado" ? " cancelado" : "";
+    cards += `<div class="pedido-card${novoC ? " pedido-card-novo" : ""}${cancC}" data-id="${p.id}">
       <div class="pedido-card-topo">
         <span class="pedido-card-num">#${p.numero}${novoC} • ${hora}</span>
         ${tagTipo(p)}
@@ -3222,7 +3253,7 @@ function renderListaPedidos(lista) {
   });
   cards += "</div>";
 
-  cont.innerHTML = tabela + cards + paginacaoHtml(lista.length, totalPaginas, ini, pagina.length);
+  cont.innerHTML = resumo + tabela + cards + paginacaoHtml(lista.length, totalPaginas, ini, pagina.length);
 
   // Linha (desktop) ou card (mobile) → abre o detalhe existente.
   cont.querySelectorAll("[data-id]").forEach((el) =>
