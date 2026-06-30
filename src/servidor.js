@@ -1727,15 +1727,16 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     // A baixa de estoque é ATÔMICA dentro de caixa.venderLocal (mesma transação da
     // venda) — sem best-effort fora de transação (evita lost-update/oversell).
 
-    // Enfileira a via da cozinha p/ o agente imprimir (best-effort: nunca derruba a
-    // venda já gravada). Só itens marcados "Imprime na cozinha".
+    // Impressão automática pelo agente (best-effort: nunca derruba a venda já gravada).
+    // PDV é venda direta: o CUPOM da venda sai SEMPRE; a via da COZINHA só quando há
+    // itens marcados "Imprime na cozinha". Ordem: cozinha (preparo) e depois cupom.
     try {
+      const cfg = store.getConfig(req.tenantDir) || {};
       const cozItens = itensDeCozinha(cardapio, itens);
-      if (cozItens.length) {
-        const cfg = store.getConfig(req.tenantDir) || {};
-        const pedCoz = { numero: pedido.numero, criadoEm: new Date().toISOString(), tipoEntrega, itens: cozItens };
-        await impressaoFila.enfileirar(req.tenantDir, "pdv-cozinha", [Comanda.montarCozinha(pedCoz, cfg)]);
-      }
+      const vias = [];
+      if (cozItens.length) vias.push(Comanda.montarCozinha({ ...pedido, itens: cozItens }, cfg));
+      vias.push(Comanda.montarCupom(pedido, cfg));
+      await impressaoFila.enfileirar(req.tenantDir, "pdv", vias);
     } catch (e) { console.error("enfileirar impressão PDV:", e.message); }
 
     res.json({ ok: true, pedido });

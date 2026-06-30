@@ -4528,8 +4528,19 @@ async function finalizarVendaPdv() {
   if (!r) return;
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
   const vd = await r.json().catch(() => ({}));
+  // PDV é venda direta: suprime o modal/som de "novo pedido" da PRÓPRIA venda (avança
+  // o nº conhecido/visto pro nº gerado). Pedidos do WhatsApp (números seguintes) seguem
+  // notificando normalmente. O cupom + via de cozinha já são impressos pelo agente.
+  const numVenda = vd && vd.pedido && vd.pedido.numero;
+  if (numVenda) {
+    pedidoUltimoNumero = Math.max(pedidoUltimoNumero || 0, numVenda);
+    pedidoVistoNumero = Math.max(pedidoVistoNumero || 0, numVenda);
+    pedidosNovosDestaque.delete(numVenda);
+    atualizarBadgePedidos();
+  }
   toast("✓ Venda registrada — disponível em Pedidos.");
-  // A comanda da cozinha é enfileirada no servidor e impressa pelo agente (sem modal).
+  // Cupom da venda (sempre) + via da cozinha (se houver) são enfileirados no servidor e
+  // impressos pelo agente automaticamente — sem passar pelo modal de novo pedido.
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
