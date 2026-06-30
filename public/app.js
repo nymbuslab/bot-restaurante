@@ -3267,7 +3267,8 @@ const ICO_PAG = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" 
 function abrirModalPedido(p) {
   pedidoModalAtual = p;
   const btnImp = $("btnImprimirPedido");
-  if (btnImp) { btnImp.hidden = false; marcarImprBloqueado(btnImp, planoAtual !== "completo"); }
+  // Pedido cancelado vira só leitura — não faz sentido reimprimir comanda de um cancelado.
+  if (btnImp) { btnImp.hidden = (p.status === "cancelado"); marcarImprBloqueado(btnImp, planoAtual !== "completo"); }
   $("pedido-numero").textContent = `Pedido #${p.numero}`;
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 

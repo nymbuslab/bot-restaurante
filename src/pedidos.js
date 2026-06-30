@@ -212,7 +212,7 @@ async function cancelarPedido(dir, pedidoId) {
 async function cancelarItemPedido(dir, pedidoId, itemIdx) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT id, itens FROM pedidos WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado'",
+    "SELECT id, itens, taxa_entrega FROM pedidos WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado'",
     [empId, pedidoId]
   );
   if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou cancelado.");
@@ -225,10 +225,13 @@ async function cancelarItemPedido(dir, pedidoId, itemIdx) {
       [pedidoId]
     );
   } else {
-    const novoTotal = Math.round(itens.reduce((s, i) => {
+    // Recalcula o total a partir dos itens restantes E mantém a taxa de entrega
+    // (frete não pertence a nenhum item; some do total se não for re-somado aqui).
+    const taxa = r.rows[0].taxa_entrega == null ? 0 : Number(r.rows[0].taxa_entrega);
+    const novoTotal = Math.round((itens.reduce((s, i) => {
       const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0);
       return s + ((i.preco || 0) + extras) * (i.qtd || 1);
-    }, 0) * 100) / 100;
+    }, 0) + taxa) * 100) / 100;
     await db.query(
       "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
       [JSON.stringify(itens), novoTotal, pedidoId]
