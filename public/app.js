@@ -3072,6 +3072,17 @@ function seloPagamento(p) {
     : '<span class="selo-pag selo-areceber">A receber</span>';
 }
 
+// Prévia compacta dos itens do pedido p/ escanear sem abrir o modal:
+// "2x Buffet Kg · 1x Coca 2L". Mostra os 3 primeiros e "+N" se houver mais.
+function previaItens(itens) {
+  if (!Array.isArray(itens) || !itens.length) return "";
+  const partes = itens.map((i) => (i.qtd || 1) + "x " + (i.nome || "item"));
+  const MAX = 3;
+  let txt = partes.slice(0, MAX).join(" · ");
+  if (partes.length > MAX) txt += " +" + (partes.length - MAX);
+  return txt;
+}
+
 // Resumo do recorte atual (já filtrado por período/tipo/pagamento/busca). Faturamento e
 // ticket consideram só pedidos NÃO cancelados (consistente com o Dashboard); "pedidos" e
 // "cancelados" são disjuntos e somam o total da lista.
@@ -3225,7 +3236,7 @@ function renderListaPedidos(lista) {
     tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}${canc}" data-id="${p.id}">
       <td class="ped-num">#${p.numero}${novo}</td>
       <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
-      <td>${escapar(p.cliente)} ${seloPagamento(p)}</td>
+      <td><div class="ped-cliente-linha">${escapar(p.cliente)} ${seloPagamento(p)}</div>${previaItens(p.itens) ? `<div class="ped-itens-previa">${escapar(previaItens(p.itens))}</div>` : ""}</td>
       <td>${escapar(telefoneFmt(p))}</td>
       <td>${tagTipo(p)}</td>
       <td class="ped-total">R$ ${moedaBR(p.total)}</td>
@@ -3245,6 +3256,7 @@ function renderListaPedidos(lista) {
         ${tagTipo(p)}
       </div>
       <div class="pedido-card-cliente">${escapar(p.cliente)} ${seloPagamento(p)}</div>
+      ${previaItens(p.itens) ? `<div class="ped-itens-previa">${escapar(previaItens(p.itens))}</div>` : ""}
       <div class="pedido-card-rodape">
         <span class="sub">${escapar(telefoneFmt(p))}</span>
         <span class="pedido-card-total">R$ ${moedaBR(p.total)}</span>

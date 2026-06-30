@@ -1881,6 +1881,19 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .pedido-card.cancelado .pedido-card-total { text-decoration: line-through; }
 .pedido-card.cancelado { opacity: 0.6; }
 
+/* Prévia dos itens (2ª linha discreta no cliente) — escanear sem abrir o modal */
+.ped-cliente-linha { display: block; }
+.ped-itens-previa {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pedido-card .ped-itens-previa { max-width: 100%; margin-top: 4px; }
+
 /* Resumo do recorte (4 estatísticas) — compacto, casa com os tokens do design system */
 .pedidos-resumo {
   display: grid;
