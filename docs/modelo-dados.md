@@ -51,10 +51,14 @@ status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
 taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
 avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa),
 desconto (numeric; abatido na venda — usado pelo PDV; web fica 0),
-impresso_em (timestamptz; null = ainda não impresso pelo agente de impressão desktop)
+impresso_em (timestamptz; null = ainda não impresso pelo agente de impressão desktop),
+origem (text 'web' | 'pdv' | 'mesa'; de onde o pedido entrou — escopa o alerta de
+  "novo pedido" e a impressão do agente ao 'web', e dá o "Canal" na lista de Pedidos)
 ```
-`tipo_entrega` = `Entrega` | `Retirada` | **`Balcão`** (venda do PDV — nasce já
-`recebido_em`, sem telefone/endereço). No PDV o `total` é o líquido (subtotal − `desconto`).
+`tipo_entrega` = `Entrega` | `Retirada` | **`Balcão`**. No **PDV** (`origem='pdv'`):
+**Balcão** nasce `recebido_em` (paga na hora, cai no caixa); **Entrega/Retirada** nascem
+**a receber** (`recebido_em` nulo — recebimento feito depois em Pedidos). No PDV o `total`
+é o líquido (subtotal − `desconto`).
 Colunas em snake_case no banco; `pedidos.js` mapeia para camelCase (`tipoEntrega`,
 `criadoEm`, etc.) que o painel/bot esperam. `avisado_em` = timestamp do aviso
 "pedido pronto" (null se não avisado). `observacao` = observação do **pedido** (informada

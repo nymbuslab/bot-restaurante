@@ -312,17 +312,21 @@ também avisa. **Retirada** = sem endereço/frete (telefone opcional). O servido
 do frete: aceita do cliente **apenas** 0 (cortesia) ou o valor calculado (`pdv.freteEfetivo`).
 
 Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
-fonte de verdade — nunca confia no preço do cliente), resolve o frete e `caixa.venderLocal` grava numa
-transação o **pedido** (tipo Balcão/Entrega/Retirada, `endereco`/`telefone`/`taxa_entrega`, já
-`recebido_em`) + **1 movimento de recebimento por forma** no caixa + **baixa de estoque ATÔMICA**
-(`store.baixarEstoqueTx`: `FOR UPDATE` no tenant + revalida + decrementa; falta de estoque desfaz a
-venda) — tudo num só commit. A
-venda aparece em **Pedidos** (selo do tipo/Recebido) e no **Caixa** (Vendas por forma). Ao finalizar,
-o **agente imprime automaticamente** o **cupom da venda (sempre)** + a **via da cozinha (quando há
-item marcado "Imprime na cozinha")**, enfileirados em `impressao_fila` (tipo `pdv`, ordem cozinha→cupom);
-o PDV **não** passa pelo modal de novo pedido (venda direta — o `finalizarVendaPdv` avança o nº
-conhecido/visto, sem alerta/som da própria venda). O pedido fica em **Pedidos** para conferência e
-**reimpressão**. Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
+fonte de verdade — nunca confia no preço do cliente) e resolve o frete (Entrega). O comportamento
+depende do **tipo de venda** (todos com `origem='pdv'` e **baixa de estoque ATÔMICA** —
+`store.baixarEstoqueTx`: `FOR UPDATE` no tenant + revalida + decrementa; falta de estoque desfaz a venda):
+
+- **Balcão** (paga na hora): `caixa.venderLocal` grava numa transação o pedido **já `recebido_em`** +
+  **1 movimento de recebimento por forma** no caixa; aparece no **Caixa** (Vendas por forma). Imprime
+  **cozinha (se houver item marcado) + cupom**.
+- **Entrega / Retirada** (sem cobrança agora): pedido nasce **"a receber"** (`recebido_em` nulo), **sem
+  caixa**; vai para **Pedidos** e o recebimento é feito **depois** (botão Receber). Impressão: **Entrega**
+  = cozinha (se houver) + cupom (tem os dados da entrega); **Retirada** = **só cozinha**. Na tela
+  Finalizar venda esses tipos **não pedem pagamento** (o botão vira "Enviar para Pedidos").
+
+As vias vão para `impressao_fila` (tipo `pdv`, ordem cozinha→cupom) e saem pelo **agente**. O PDV
+**nunca** abre o modal de "novo pedido" — esse alerta é escopado **no servidor** aos pedidos de
+**`origem='web'`** (cardápio web). Cliente é opcional (padrão "Balcão"). Layout otimizado para toque (carrinho vira folha no
 mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/pdv.js`
 (`test/pdv.test.js`); tela em `public/app.js` (`carregarPdv`/`renderPdv*`).
 

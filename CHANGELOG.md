@@ -571,3 +571,13 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Valores em R$ no mesmo padrão em todo o sistema:** `R$ 1.234,56` (com ponto de milhar). Antes a tela de **Caixa** mostrava sem o ponto (`R$ 1500,00`).
 - O campo de **valor no pagamento de Mesa** passou a usar a mesma máscara dos demais campos de dinheiro.
 - **Cupons e relatório impressos** também ganharam o separador de milhar.
+
+## [0.67.0] — PDV por tipo de venda + aviso de novo pedido só do cardápio web
+
+- **Venda no PDV não abre mais o aviso de "novo pedido"** (Balcão, Entrega ou Retirada). Esse alerta agora é exclusivo dos pedidos que chegam pelo **cardápio web** — que são os que você precisa ser avisado.
+- **Cada tipo de venda no PDV segue seu fluxo:**
+  - **Balcão:** paga na hora, entra no caixa e imprime a comanda da cozinha (quando há item de cozinha) + o cupom.
+  - **Entrega:** **sem cobrança na hora** — o pedido vai para a aba **Pedidos como "a receber"** (o recebimento é feito depois) e imprime cozinha + cupom (com os dados da entrega).
+  - **Retirada:** **sem cobrança na hora** — vai para **Pedidos como "a receber"** e imprime **só a comanda da cozinha**.
+- Na tela **Finalizar venda**, Entrega e Retirada não pedem forma de pagamento — o botão vira **"Enviar para Pedidos"**.
+- A coluna **"Canal"** na lista de Pedidos ficou 100% confiável (WhatsApp / Balcão / Mesa), inclusive para vendas de PDV com entrega.
