@@ -12,6 +12,16 @@
 
 - [ ] **(P1) Publicar o `.exe` do agente de impressão em produção** — a rota `GET /downloads/nymbus-impressora.exe` no Express e o botão de download no painel **já foram feitos** (ver ✅). Falta **hospedar o binário no deploy** (o `.exe` mora em `agente-impressora/dist/`, que é gitignored → não vai no container do Fly) e **validar no Windows real** (login → configurar impressora Rede/Serial → teste → pedido real imprimindo sozinho). Auto-update segue **desligado** até o instalador ser assinado (code signing) — religar só com `verifyUpdateCodeSignature`.
 
+#### Tela de Pedidos — melhorias (revisão tela a tela, benchmark concorrentes)
+
+> Origem: análise da aba **Pedidos** vs. ERPs do segmento (iFood Gestor, Saipos, Goomer, Anota AI, Consumer/Menew). Fronteira de produto mantida: **ciclo do pedido (preparo→pronto→saiu→entregue / KDS) é de sistema externo** — NÃO virar KDS. Foco: ler o movimento, agir rápido, controlar perda/fraude. A tela já tem filtros (período/tipo/pagamento), busca, selo de pagamento, badge "NOVO", **som de novo pedido**, paginação e exportar — não mexer nisso.
+
+- [ ] **(P0) Resumo do período no topo da lista** — barra de sumário acima da tabela: **Nº de pedidos · Faturamento · Ticket médio · Cancelados**, recalculada a partir da lista já filtrada (período/tipo/pagamento/busca). 100% client-side, sem rota nova. É o "como foi o dia?" sem ir ao Dashboard. (Hoje a aba não tem sumário; o `.metricas-cards` que o `animarTroca` referencia aponta pro elemento do Dashboard.)
+- [ ] **(P0) Pedido cancelado visualmente distinto na lista** — linha/card apagado + total riscado (hoje só há o selo; parece igual aos ativos). Fecha o ciclo anti-fraude iniciado no modal. Só CSS/render.
+- [ ] **(P1) Prévia dos itens na linha/card** — resumo compacto ("2x Buffet, 1x Coca") direto na linha, sem abrir o modal. Dado já existe (`p.itens`); só layout. Economiza cliques no corre do almoço.
+- [ ] **(P1) Canal de origem (coluna + filtro)** — distinguir **WhatsApp/cardápio web · Balcão (PDV) · Mesa** (hoje caem juntos; "Tipo" só diz Entrega/Retirada). Mesa dá pra inferir por `mesa_id`; **Balcão × WhatsApp precisa de marcador no backend** (campo de origem no pedido) → médio esforço. Responde "quanto vendi por canal?".
+- [ ] **(P2) Ações rápidas na linha (hover)** — Reimprimir / Receber pagamento sem abrir o modal (padrão dos ERPs: operador resolve na lista).
+
 #### Adequação LGPD — pendências futuras (Fases 1–4 concluídas; ver ✅ Concluído)
 
 > Reanálise `/lgpd-checker`: ⚠️ PARCIALMENTE CONFORME (90), **zero itens ALTO/CRÍTICO**. Nenhuma destas bloqueia.

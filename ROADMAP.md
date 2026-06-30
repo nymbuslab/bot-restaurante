@@ -142,6 +142,11 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   *Reverte a decisão "fora de escopo" acima — precisa de aval consciente.*
 - [ ] **Relatórios de verdade** (P/M) — faturamento agregado, mais vendidos, mix de pagamento,
   horário de pico. Dados já estão em `pedidos`.
+- [ ] **Refino de UX tela a tela (benchmark concorrentes)** (P, em curso) — revisão das telas do painel
+  contra os ERPs do segmento (iFood Gestor, Saipos, Goomer, Anota AI, Menew), corrigindo atrito e
+  trazendo padrões de mercado **dentro do escopo** (sem virar KDS). Dashboard ✅ (header + análises).
+  Detalhe acionável por tela no `PROGRESSO.md` (atual: **Tela de Pedidos** — resumo do período, cancelado
+  riscado, prévia de itens, canal de origem, ações rápidas).
 
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
