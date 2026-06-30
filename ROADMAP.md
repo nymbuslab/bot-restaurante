@@ -144,9 +144,9 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   horário de pico. Dados já estão em `pedidos`.
 - [ ] **Refino de UX tela a tela (benchmark concorrentes)** (P, em curso) — revisão das telas do painel
   contra os ERPs do segmento (iFood Gestor, Saipos, Goomer, Anota AI, Menew), corrigindo atrito e
-  trazendo padrões de mercado **dentro do escopo** (sem virar KDS). Dashboard ✅ (header + análises).
-  Detalhe acionável por tela no `PROGRESSO.md` (atual: **Tela de Pedidos** — resumo do período, cancelado
-  riscado, prévia de itens, canal de origem, ações rápidas).
+  trazendo padrões de mercado **dentro do escopo** (sem virar KDS). Dashboard ✅ (header + análises);
+  **Pedidos** ✅ (resumo, cancelado, prévia, canal, ações rápidas). Detalhe acionável por tela no
+  `PROGRESSO.md` (atual: **Tela de PDV** — confirmar cancelar, badge de quantidade no card, digitar quantidade).
 
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
