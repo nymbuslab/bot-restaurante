@@ -1712,31 +1712,53 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
     const { desconto, total: totalSemFrete } = pdv.aplicarDesconto(subtotal, b.desconto);
     const total = pdv.totalComFrete(totalSemFrete, taxaEntrega);
-    pdv.validarPagamentos(total, b.pagamentos);
+    const obs = String(b.observacao || "").slice(0, 200);
 
-    const pedido = await caixa.venderLocal(req.tenantDir, {
-      cliente: b.cliente,
-      itens,
-      total,
-      desconto,
-      pagamentos: b.pagamentos,
-      pagamentoResumo: pdv.resumoPagamento(b.pagamentos),
-      observacao: String(b.observacao || "").slice(0, 200),
-      tipoEntrega, endereco, telefone, taxaEntrega,
-    });
-    // A baixa de estoque é ATÔMICA dentro de caixa.venderLocal (mesma transação da
-    // venda) — sem best-effort fora de transação (evita lost-update/oversell).
+    // Comportamento por tipo de venda:
+    //  • Balcão  → cliente paga na hora: pedido RECEBIDO + movimento no caixa (exige
+    //    caixa aberto). Baixa de estoque atômica dentro de caixa.venderLocal.
+    //  • Entrega/Retirada → SEM pagamento agora: pedido nasce "a receber" e vai para a
+    //    aba Pedidos (recebimento depois); baixa de estoque atômica, sem mexer no caixa.
+    let pedido;
+    if (tipoEntrega === "Balcão") {
+      pdv.validarPagamentos(total, b.pagamentos);
+      pedido = await caixa.venderLocal(req.tenantDir, {
+        cliente: b.cliente, itens, total, desconto,
+        pagamentos: b.pagamentos,
+        pagamentoResumo: pdv.resumoPagamento(b.pagamentos),
+        observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
+      });
+    } else {
+      const clientTx = await db.pool.connect();
+      try {
+        await clientTx.query("BEGIN");
+        const novoCardapio = await store.baixarEstoqueTx(clientTx, req.tenantDir, b.itens);
+        pedido = await pedidos.salvarPedido(req.tenantDir, {
+          cliente: b.cliente || "", telefone, tipoEntrega, endereco,
+          pagamento: "", taxaEntrega, itens, total, observacao: obs,
+          desconto, origem: "pdv",
+        }, clientTx);
+        await clientTx.query("COMMIT");
+        store.sincronizarCardapio(req.tenantDir, novoCardapio);
+      } catch (e) {
+        await clientTx.query("ROLLBACK").catch(() => {});
+        if (e.code === "ESTOQUE") return res.status(409).json({ erro: e.message });
+        throw e;
+      } finally {
+        clientTx.release();
+      }
+    }
 
     // Impressão automática pelo agente (best-effort: nunca derruba a venda já gravada).
-    // PDV é venda direta: o CUPOM da venda sai SEMPRE; a via da COZINHA só quando há
-    // itens marcados "Imprime na cozinha". Ordem: cozinha (preparo) e depois cupom.
+    // A via da COZINHA só quando há itens marcados "Imprime na cozinha". O CUPOM da
+    // venda sai para Balcão e Entrega (tem os dados); Retirada imprime SÓ a cozinha.
     try {
       const cfg = store.getConfig(req.tenantDir) || {};
       const cozItens = itensDeCozinha(cardapio, itens);
       const vias = [];
       if (cozItens.length) vias.push(Comanda.montarCozinha({ ...pedido, itens: cozItens }, cfg));
-      vias.push(Comanda.montarCupom(pedido, cfg));
-      await impressaoFila.enfileirar(req.tenantDir, "pdv", vias);
+      if (tipoEntrega !== "Retirada") vias.push(Comanda.montarCupom(pedido, cfg));
+      if (vias.length) await impressaoFila.enfileirar(req.tenantDir, "pdv", vias);
     } catch (e) { console.error("enfileirar impressão PDV:", e.message); }
 
     res.json({ ok: true, pedido });

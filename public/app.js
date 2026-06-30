@@ -3082,6 +3082,12 @@ function seloPagamento(p) {
 // (o PDV é majoritariamente balcão). Conserto 100% robusto = coluna `origem` no
 // banco — anotado no ROADMAP/PROGRESSO, sem migration por ora.
 function canalPedido(p) {
+  // Fonte de verdade: a coluna `origem` (web/pdv/mesa). Uma venda de PDV-Entrega
+  // tem origem 'pdv' (canal Balcão) e tipo Entrega — sem a borda antiga.
+  if (p.origem === "mesa") return "Mesa";
+  if (p.origem === "pdv") return "Balcão";
+  if (p.origem === "web") return "WhatsApp";
+  // Fallback p/ registro antigo sem origem: infere por mesa/tipo.
   if (p.mesaId != null) return "Mesa";
   if (p.tipoEntrega === "Balcão") return "Balcão";
   return "WhatsApp";
@@ -4243,6 +4249,9 @@ function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (
 
 function renderPdvPagar() {
   const total = pdvTotalCobrar();
+  // Só Balcão recebe na hora (paga no caixa). Entrega/Retirada vão para Pedidos como
+  // "a receber" — sem bloco de pagamento; o recebimento é feito depois.
+  const ehBalcao = pdvTipoEntrega === "Balcão";
   const tiles = pdvFormasPg.map((f) =>
     '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
   ).join("");
@@ -4269,10 +4278,12 @@ function renderPdvPagar() {
             ? '<label class="pdv-campo pdv-tve-tel"><span>Telefone (opcional)</span><input id="pdvRetiradaTel" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>'
             : "") +
         "</div>" +
-        '<span class="pdv-ops-tit">Forma de pagamento</span>' +
-        '<div class="pdv-formas">' + tiles + "</div>" +
-        '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
-        '<div class="pdv-pg-lista" id="pdvPgLista"></div>' +
+        (ehBalcao
+          ? '<span class="pdv-ops-tit">Forma de pagamento</span>' +
+            '<div class="pdv-formas">' + tiles + "</div>" +
+            '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
+            '<div class="pdv-pg-lista" id="pdvPgLista"></div>'
+          : '<div class="pdv-areceber-nota"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Sem cobrança agora: o pedido vai para a aba <strong>Pedidos</strong> como <strong>a receber</strong>. O recebimento é feito depois.</span></div>') +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
         '<span class="pdv-ops-tit">Resumo do pedido</span>' +
@@ -4281,15 +4292,17 @@ function renderPdvPagar() {
         '<div class="pdv-resumo-linha pdv-resumo-desc" id="pdvResDescLinha" hidden><span>Desconto</span><span id="pdvResDesc"></span></div>' +
         '<div class="pdv-resumo-linha pdv-resumo-frete" id="pdvResFreteLinha" hidden><span>Frete</span><span class="pdv-frete-val"><span id="pdvResFrete"></span><button type="button" class="pdv-frete-zerar" id="pdvFreteZerar" title="Não cobrar frete (cortesia)" aria-label="Não cobrar frete"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></span></div>' +
         '<div class="pdv-resumo-tot"><span>Total</span><strong id="pdvPgTotal">' + pdvMoney(total) + "</strong></div>" +
-        '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
-        '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
-        '<div class="pdv-resumo-linha"><span>Troco</span><span id="pdvPgTroco" class="troco">R$ 0,00</span></div>' +
-        '<label class="pdv-campo pdv-cpf"><span>CPF na nota (opcional)</span><input id="pdvCpf" type="text" inputmode="numeric" placeholder="000.000.000-00" /></label>' +
+        (ehBalcao
+          ? '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
+            '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
+            '<div class="pdv-resumo-linha"><span>Troco</span><span id="pdvPgTroco" class="troco">R$ 0,00</span></div>' +
+            '<label class="pdv-campo pdv-cpf"><span>CPF na nota (opcional)</span><input id="pdvCpf" type="text" inputmode="numeric" placeholder="000.000.000-00" /></label>'
+          : "") +
       "</aside>" +
     "</div>" +
     '<div class="pdv-pg-acoes">' +
       '<button type="button" class="secundario" id="pdvVoltar">Voltar</button>' +
-      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>Confirmar pagamento</button>' +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos") + "</button>" +
     "</div>";
   $("pdvPagarCaixa").innerHTML = html;
 
@@ -4323,17 +4336,19 @@ function renderPdvPagar() {
   // Desconto: botão ao lado do recebimento → abre o modal de desconto.
   if ($("pdvDescBtn")) $("pdvDescBtn").addEventListener("click", abrirPdvDescModal);
 
-  const valInp = $("pdvPgValor");
-  Dinheiro.mascarar(valInp);
-  Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
-  $("pdvPgAdd").addEventListener("click", pdvAddPagamento);
-  valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
-  pdvSelecionarAoFocar(valInp);
+  if (ehBalcao) {
+    const valInp = $("pdvPgValor");
+    Dinheiro.mascarar(valInp);
+    Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
+    $("pdvPgAdd").addEventListener("click", pdvAddPagamento);
+    valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
+    pdvSelecionarAoFocar(valInp);
+  }
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
   const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
   pdvSyncResumo();
-  renderPdvPgLista();
+  if (ehBalcao) renderPdvPgLista(); else pdvPagarRecalc(); // recalc liga/desliga o botão Enviar
 }
 
 // Atualiza as linhas Subtotal/Desconto/Frete do RESUMO. Subtotal aparece quando há
@@ -4535,22 +4550,34 @@ function pdvPagarRecalc() {
   if ($("pdvPgTroco")) $("pdvPgTroco").textContent = pdvMoney(troco);
   // Entrega exige endereço definido antes de fechar a venda.
   const entregaOk = pdvTipoEntrega !== "Entrega" || !!(pdvEntrega && pdvEntrega.endereco);
-  if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !(falta <= 0.001 && pdvPagamentos.length && entregaOk);
+  // Balcão: precisa quitar (falta 0 + ao menos 1 pagamento). Entrega/Retirada: sem
+  // pagamento — basta o endereço (Entrega) / sempre ok (Retirada).
+  const pode = pdvTipoEntrega === "Balcão"
+    ? (falta <= 0.001 && pdvPagamentos.length && entregaOk)
+    : entregaOk;
+  if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !pode;
 }
 
 async function finalizarVendaPdv() {
+  const ehBalcao = pdvTipoEntrega === "Balcão";
   const total = pdvTotalCobrar();
-  // Pagamentos REGISTRADOS (somam o total): não-dinheiro como lançado; o dinheiro
-  // registra só a parte da venda — o troco não é receita do caixa.
-  const naoDin = pdvPagamentos.filter((p) => !pdvEhDinheiro(p.forma));
-  const somaNaoDin = Math.round(naoDin.reduce((s, p) => s + p.valor, 0) * 100) / 100;
-  const dinNaVenda = Math.max(0, Math.round((total - somaNaoDin) * 100) / 100);
-  const registrados = naoDin.map((p) => ({ forma: p.forma, valor: p.valor }));
-  if (dinNaVenda > 0) {
-    const formaDin = (pdvPagamentos.find((p) => pdvEhDinheiro(p.forma)) || {}).forma || "Dinheiro";
-    registrados.push({ forma: formaDin, valor: dinNaVenda });
+  // Só Balcão registra pagamento agora. Entrega/Retirada vão "a receber" (sem pagamento).
+  let registrados = [];
+  let observacao = "";
+  if (ehBalcao) {
+    // Pagamentos REGISTRADOS (somam o total): não-dinheiro como lançado; o dinheiro
+    // registra só a parte da venda — o troco não é receita do caixa.
+    const naoDin = pdvPagamentos.filter((p) => !pdvEhDinheiro(p.forma));
+    const somaNaoDin = Math.round(naoDin.reduce((s, p) => s + p.valor, 0) * 100) / 100;
+    const dinNaVenda = Math.max(0, Math.round((total - somaNaoDin) * 100) / 100);
+    registrados = naoDin.map((p) => ({ forma: p.forma, valor: p.valor }));
+    if (dinNaVenda > 0) {
+      const formaDin = (pdvPagamentos.find((p) => pdvEhDinheiro(p.forma)) || {}).forma || "Dinheiro";
+      registrados.push({ forma: formaDin, valor: dinNaVenda });
+    }
+    const cpf = (($("pdvCpf") || {}).value || "").replace(/\D/g, "");
+    observacao = cpf ? ("CPF na nota: " + cpf) : "";
   }
-  const cpf = ($("pdvCpf").value || "").replace(/\D/g, "");
   // Telefone: Entrega vem do overlay; Retirada do campo do bloco.
   const telefone = pdvTipoEntrega === "Retirada" && $("pdvRetiradaTel")
     ? $("pdvRetiradaTel").value
@@ -4560,7 +4587,7 @@ async function finalizarVendaPdv() {
     itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
-    observacao: cpf ? ("CPF na nota: " + cpf) : "",
+    observacao,
     tipoEntrega: pdvTipoEntrega,
     endereco: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.endereco : "",
     enderecoCampos: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.enderecoCampos : null,
@@ -4568,25 +4595,16 @@ async function finalizarVendaPdv() {
     taxaEntrega: pdvFreteValor(),
   };
   const btn = $("pdvFinalizar");
-  btn.disabled = true; btn.textContent = "Registrando…";
+  const rotulo = ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos";
+  btn.disabled = true; btn.textContent = ehBalcao ? "Registrando…" : "Enviando…";
   const r = await api("POST", "/api/pdv/vender", body);
-  btn.textContent = "Confirmar pagamento";
+  btn.textContent = rotulo;
   if (!r) return;
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
-  const vd = await r.json().catch(() => ({}));
-  // PDV é venda direta: suprime o modal/som de "novo pedido" da PRÓPRIA venda (avança
-  // o nº conhecido/visto pro nº gerado). Pedidos do WhatsApp (números seguintes) seguem
-  // notificando normalmente. O cupom + via de cozinha já são impressos pelo agente.
-  const numVenda = vd && vd.pedido && vd.pedido.numero;
-  if (numVenda) {
-    pedidoUltimoNumero = Math.max(pedidoUltimoNumero || 0, numVenda);
-    pedidoVistoNumero = Math.max(pedidoVistoNumero || 0, numVenda);
-    pedidosNovosDestaque.delete(numVenda);
-    atualizarBadgePedidos();
-  }
-  toast("✓ Venda registrada — disponível em Pedidos.");
-  // Cupom da venda (sempre) + via da cozinha (se houver) são enfileirados no servidor e
-  // impressos pelo agente automaticamente — sem passar pelo modal de novo pedido.
+  // Sem supressão client-side: o servidor já escopa o alerta de "novo pedido" só ao
+  // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
+  toast(ehBalcao ? "✓ Venda registrada — disponível em Pedidos." : "✓ Pedido enviado — a receber em Pedidos.");
+  // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");

@@ -55,10 +55,10 @@ async function salvarPedido(dir, pedido, client) {
   const exec = client ? (sql, p) => client.query(sql, p) : (sql, p) => db.query(sql, p);
   const r = await exec(
     `INSERT INTO pedidos
-       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, mesa_id)
+       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, mesa_id, desconto, origem)
      VALUES
        ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12)
+        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14)
      RETURNING numero, criado_em`,
     [
       empId,
@@ -73,6 +73,8 @@ async function salvarPedido(dir, pedido, client) {
       pedido.total || 0,
       pedido.observacao || "",
       pedido.mesaId || null,
+      pedido.desconto || 0,
+      pedido.origem || "web",
     ]
   );
   const row = r.rows[0];
@@ -91,12 +93,14 @@ async function lerTodos(dir) {
   return r.rows.map(mapRow);
 }
 
-// Pedido mais recente (nº, cliente, itens e total) — p/ o polling de notificação
-// do painel detectar pedido novo e montar o modal. Retorna null se não há pedidos.
+// Pedido mais recente do CARDÁPIO WEB (nº, cliente, itens e total) — p/ o polling de
+// notificação do painel detectar pedido novo e montar o modal. Só `origem = 'web'`:
+// vendas de PDV (Balcão/Entrega/Retirada) e Mesa NÃO disparam o alerta (são iniciadas
+// pelo operador, não precisam avisar). Retorna null se não há pedido web.
 async function ultimo(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT numero, cliente, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id IS NULL ORDER BY id DESC LIMIT 1",
+    "SELECT numero, cliente, itens, total FROM pedidos WHERE empresa_id = $1 AND origem = 'web' ORDER BY id DESC LIMIT 1",
     [empId]
   );
   const row = r.rows[0];
@@ -124,15 +128,16 @@ async function avisarPedido(dir, id) {
   return r.rows[0] ? new Date(r.rows[0].avisado_em).toISOString() : null;
 }
 
-// Pedidos do cardápio web ainda não impressos pelo agente desktop: não impressos
-// (impresso_em nulo) E ainda não recebidos (recebido_em nulo → exclui PDV/balcão,
-// que nasce recebido) E sem mesa (mesa_id nulo → pedido de salão imprime pelo painel
-// no lançamento, não pelo agente). Ordena por numero (imprime na ordem que caíram).
+// Pedidos do CARDÁPIO WEB ainda não impressos pelo agente desktop: `origem = 'web'`
+// (PDV e Mesa têm o próprio caminho de impressão via fila genérica — não entram aqui,
+// senão imprimiriam em duplicidade; PDV Entrega/Retirada nascem "a receber" e cairiam
+// neste filtro se fosse só por recebido_em) E não impressos (impresso_em nulo) E ainda
+// não recebidos. Ordena por numero (imprime na ordem que caíram).
 async function pendentes(dir) {
   const empId = await empresaId(dir);
   const r = await db.query(
     `SELECT * FROM pedidos
-      WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL AND mesa_id IS NULL
+      WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL AND origem = 'web'
       ORDER BY numero ASC
       LIMIT 50`,
     [empId]
