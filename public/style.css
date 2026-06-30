@@ -1894,6 +1894,27 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 .pedido-card .ped-itens-previa { max-width: 100%; margin-top: 4px; }
 
+/* Chip de canal de origem (WhatsApp / Balcão / Mesa) — neutro, ícone colorido por canal
+   (eixo secundário; as tags de Tipo seguem com cor cheia) */
+.canal-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.canal-tag svg { flex-shrink: 0; }
+.canal-whats svg  { color: #25D366; }
+.canal-balcao svg { color: var(--info); }
+.canal-mesa svg   { color: #f59e0b; }
+.pedido-card-tags { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
 /* Resumo do recorte (4 estatísticas) — compacto, casa com os tokens do design system */
 .pedidos-resumo {
   display: grid;
