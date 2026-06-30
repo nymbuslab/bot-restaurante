@@ -12,6 +12,11 @@
 
 - [ ] **(P1) Publicar o `.exe` do agente de impressão em produção** — a rota `GET /downloads/nymbus-impressora.exe` no Express e o botão de download no painel **já foram feitos** (ver ✅). Falta **hospedar o binário no deploy** (o `.exe` mora em `agente-impressora/dist/`, que é gitignored → não vai no container do Fly) e **validar no Windows real** (login → configurar impressora Rede/Serial → teste → pedido real imprimindo sozinho). Auto-update segue **desligado** até o instalador ser assinado (code signing) — religar só com `verifyUpdateCodeSignature`.
 
+- [ ] **(P1) Monitoramento de saúde no painel master + visibilidade de erros** — disparado por um "Falha ao validar a sessão" (500) no sabor-d-casa: o `catch` do `exigeAuth` ([servidor.js:136](src/servidor.js#L136)) **não loga a causa** → sem rastro. O 500 vem de `resolverPorToken` quando a consulta ao Postgres/Supabase falha (soluço de conexão, geralmente transitório; checado em 2026-06-30 = banco OK, 19/60 conexões, tenant íntegro).
+  - **Fase 1:** logar a causa no `exigeAuth` (`console.error`) + aba **"Monitoramento"** no `/admin-master` com **Banco/Auth/App/Bots** ao vivo (novo `GET /api/admin/diagnostico` sob `exigeSuperAdmin` com `SELECT 1` leve + contagem de conexões; uptime/versão; nº de bots conectados; fila de impressão pendente).
+  - **Fase 2 (opcional):** tabela `incidentes` + lista dos últimos erros 500 no painel (rastro histórico).
+  - **Externo (recomendado, não-código):** monitor de uptime (UptimeRobot/BetterStack, grátis) batendo no `/health` com alerta por e-mail/Telegram — é a única forma de saber que o app **caiu** (o painel servido pelo app não abre se o app está offline). `/health` é só vivacidade (não testa Supabase).
+
 #### Tela de PDV — evolução futura (opcional)
 
 > A revisão da aba **PDV** está concluída (P0+P1 — ver ✅). **Descartados** pelo dono nesta rodada (ficam de fora por ora): **valores rápidos de dinheiro** no pagamento, **favoritos/mais vendidos** na grade, **leitor de código de barras** na busca.
