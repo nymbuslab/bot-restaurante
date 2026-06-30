@@ -3903,6 +3903,7 @@ function renderPdvProdutos() {
       const tile = document.createElement("button");
       tile.type = "button";
       tile.className = "pdv-tile" + (st.esgotado ? " esgotado" : "");
+      tile.dataset.id = item.id;
       const img = item.imagem
         ? '<img class="pdv-tile-img" src="' + pdvEsc(item.imagem) + '" alt="" loading="lazy" />'
         : '<div class="pdv-tile-img vazia">' + IC_IMG + "</div>";
@@ -3919,6 +3920,32 @@ function renderPdvProdutos() {
     });
   });
   $("pdvVazio").hidden = n > 0;
+  pdvAtualizarBadges();
+}
+
+// Badge de quantidade no card: total de unidades (un) ou nº de pesagens (kg) que o
+// item já tem no carrinho. 0 = sem badge.
+function pdvBadgeDoItem(id) {
+  const linhas = pdvCart.filter((l) => l.id === id);
+  if (!linhas.length) return 0;
+  if (linhas.some((l) => l.unidade === "kg")) return linhas.length;
+  return linhas.reduce((s, l) => s + (l.qtd || 0), 0);
+}
+// Atualiza os selos sem reconstruir a grade (preserva o scroll). Chamado pela grade
+// e a cada mudança do carrinho (renderPdvCarrinho).
+function pdvAtualizarBadges() {
+  const grid = $("pdvGrid");
+  if (!grid) return;
+  grid.querySelectorAll(".pdv-tile").forEach((tile) => {
+    const n = pdvBadgeDoItem(tile.dataset.id);
+    let badge = tile.querySelector(".pdv-tile-badge");
+    if (n > 0) {
+      if (!badge) { badge = document.createElement("span"); badge.className = "pdv-tile-badge"; tile.appendChild(badge); }
+      badge.textContent = n;
+    } else if (badge) {
+      badge.remove();
+    }
+  });
 }
 
 function pdvTileClick(item) {
@@ -3967,7 +3994,7 @@ function abrirPdvItemModal(item, uid) {
   if (ehKg) {
     html += '<label class="pdv-campo"><span>Peso (kg)</span><input id="pdvMpeso" type="text" inputmode="decimal" placeholder="0,000" value="' + pdvEsc(qtdIni === "" ? "" : String(qtdIni).replace(".", ",")) + '" /></label>';
   } else {
-    html += '<div class="pdv-campo"><span>Quantidade</span><div class="pdv-stepper" data-stepper="qtd"><button type="button" data-step="-1">−</button><span id="pdvMqtd">' + qtdIni + '</span><button type="button" data-step="1">+</button></div></div>';
+    html += '<div class="pdv-campo"><span>Quantidade</span><div class="pdv-stepper pdv-stepper-qtd"><button type="button" data-qstep="-1" aria-label="Diminuir">−</button><input id="pdvMqtd" class="pdv-qtd-input" type="text" inputmode="numeric" value="' + qtdIni + '" aria-label="Quantidade" /><button type="button" data-qstep="1" aria-label="Aumentar">+</button></div></div>';
   }
   grps.forEach((g) => {
     const unico = g.max === 1;
@@ -4018,6 +4045,24 @@ function abrirPdvItemModal(item, uid) {
       pdvItemRecalc();
     }));
   });
+  // Quantidade (un): input digitável + botões +/− (mínimo 1). O kg usa o próprio campo de peso.
+  const qtdInput = $("pdvMqtd");
+  if (qtdInput) {
+    $("pdvItemCaixa").querySelectorAll("[data-qstep]").forEach((b) => b.addEventListener("click", () => {
+      const v = Math.max(1, (parseInt(qtdInput.value, 10) || 0) + Number(b.dataset.qstep));
+      qtdInput.value = v;
+      pdvItemRecalc();
+    }));
+    qtdInput.addEventListener("input", () => {
+      const d = qtdInput.value.replace(/\D/g, "");
+      if (qtdInput.value !== d) qtdInput.value = d;
+      pdvItemRecalc();
+    });
+    qtdInput.addEventListener("blur", () => {
+      if (!(parseInt(qtdInput.value, 10) > 0)) qtdInput.value = "1";
+      pdvItemRecalc();
+    });
+  }
   $("pdvItemCaixa").querySelectorAll(".pdv-grp input").forEach((inp) => inp.addEventListener("change", () => {
     if (inp.type === "checkbox") {
       const max = parseInt(inp.dataset.max, 10) || 0;
@@ -4041,7 +4086,7 @@ function _pdvLerModalItem() {
   if (ehKg) {
     qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
   } else {
-    qtd = parseInt($("pdvMqtd").textContent, 10) || 1;
+    qtd = parseInt($("pdvMqtd").value, 10) || 1;
   }
   const opcionais = [];
   $("pdvItemCaixa").querySelectorAll('[data-stepper="op"]').forEach((box) => {
@@ -4146,6 +4191,7 @@ function renderPdvCarrinho() {
     $("pdvFabCount").textContent = pdvCart.reduce((s, l) => s + (l.unidade === "kg" ? 1 : l.qtd), 0);
     $("pdvFabTotal").textContent = pdvMoney(total);
   } else { fab.hidden = true; fab.classList.remove("oculto"); $("pdvCarrinho").classList.remove("aberto"); pdvDesconto = null; }
+  pdvAtualizarBadges(); // reflete a quantidade nos cards da grade
 }
 
 function pdvAcharItem(id) {
@@ -4555,7 +4601,13 @@ if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { con
 if ($("btnPdvVencidoCaixa")) $("btnPdvVencidoCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
 if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", function () { if (mesaModoId) mesaLancarDoPdv(); else abrirPdvPagar(); });
-if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", () => { pdvCart = []; pdvDesconto = null; renderPdvCarrinho(); });
+if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", async () => {
+  if (pdvCart.length) {
+    const ok = await confirmar("Cancelar venda?", "Isso esvazia o carrinho atual. Esta ação não pode ser desfeita.", "Cancelar venda");
+    if (!ok) return;
+  }
+  pdvCart = []; pdvDesconto = null; renderPdvCarrinho();
+});
 if ($("pdvFab")) $("pdvFab").addEventListener("click", () => { $("pdvCarrinho").classList.add("aberto"); $("pdvFab").classList.add("oculto"); });
 if ($("pdvCartFechar")) $("pdvCartFechar").addEventListener("click", () => { $("pdvCarrinho").classList.remove("aberto"); $("pdvFab").classList.remove("oculto"); });
 document.querySelectorAll("[data-pdv-close]").forEach((el) => el.addEventListener("click", (e) => {
