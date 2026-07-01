@@ -38,11 +38,16 @@ function montarCfgDaUI() {
     vias: { cozinha: $("viaCozinha").checked, cupom: $("viaCupom").checked }, copias: parseInt($("copias").value, 10) || 1 };
 }
 
-$("btnLogin").addEventListener("click", async () => {
+// Servidor fixo (produção) — sem campo na UI. Se um dia mudar, é aqui.
+const API_BASE = "https://bot-restaurante.fly.dev";
+async function fazerLogin() {
   $("erroLogin").textContent = "";
-  try { const s = await window.api.login($("apiBase").value, $("email").value, $("senha").value); s.email = $("email").value; mostrarApp(s); }
+  try { const s = await window.api.login(API_BASE, $("email").value, $("senha").value); s.email = $("email").value; mostrarApp(s); }
   catch (e) { $("erroLogin").textContent = e.message || "Falha no login."; }
-});
+}
+$("btnLogin").addEventListener("click", fazerLogin);
+// Enter em qualquer campo do login envia.
+["email", "senha"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") fazerLogin(); }));
 $("btnSair").addEventListener("click", async () => { await window.api.sair(); location.reload(); });
 $("conexao").addEventListener("change", (e) => { aplicarConexao(e.target.value); });
 $("btnDetectar").addEventListener("click", async () => {

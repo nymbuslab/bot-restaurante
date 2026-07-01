@@ -7,21 +7,28 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topo"><h1>Nymbus Impressora</h1><p>Impressão automática dos pedidos</p></header>
-
-  <section id="telaLogin" class="card">
-    <h2>Entrar</h2>
-    <label>Servidor (API)</label>
-    <input id="apiBase" type="text" value="https://bot-restaurante.fly.dev" />
-    <label>E-mail</label>
-    <input id="email" type="email" placeholder="seu@email.com" />
-    <label>Senha</label>
-    <input id="senha" type="password" />
-    <button id="btnLogin" class="primario">Entrar</button>
-    <p id="erroLogin" class="erro"></p>
+  <section id="telaLogin" class="login">
+    <div class="login-inner">
+      <div class="brand">
+        <h1 class="brand-wordmark">Nymbus</h1>
+        <p class="brand-sub">Conecte a impressora do restaurante</p>
+      </div>
+      <div class="login-card">
+        <h2>Entrar</h2>
+        <p class="login-card-sub">Acesse com o login do restaurante.</p>
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="username" placeholder="seu@email.com" />
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" autocomplete="current-password" />
+        <button id="btnLogin" class="primario login-btn">Entrar</button>
+        <p id="erroLogin" class="erro"></p>
+      </div>
+    </div>
   </section>
 
   <section id="telaApp" hidden>
+   <div class="app-wrap">
+    <header class="topo"><h1>Nymbus Impressora</h1><p>Impressão automática dos pedidos</p></header>
     <div class="card">
       <div class="restaurante"><div><strong id="nomeRest">—</strong><span id="emailRest"></span></div>
       <button id="btnSair" class="secundario">Sair</button></div>
@@ -45,6 +52,7 @@
       <div class="botoes"><button id="btnTeste" class="secundario">Teste de impressão</button><button id="btnSalvar" class="primario">Salvar</button></div>
     </div>
     <div class="card"><h2>Registros</h2><pre id="registros" class="console"></pre></div>
+   </div>
   </section>
 
   <script src="app.js"></script>

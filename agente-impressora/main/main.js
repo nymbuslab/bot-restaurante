@@ -18,7 +18,7 @@ function mostrarJanela() { if (janela) { janela.show(); janela.focus(); } }
 
 function criarJanela() {
   janela = new BrowserWindow({
-    width: 480, height: 760, resizable: true,
+    width: 765, height: 670, minWidth: 480, minHeight: 600, resizable: true,
     icon: icone(),
     webPreferences: { preload: path.join(__dirname, "..", "renderer", "preload.js"), contextIsolation: true, nodeIntegration: false },
   });
