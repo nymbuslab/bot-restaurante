@@ -2058,7 +2058,19 @@ app.post("/api/mesas/:id/transferir/:destinoId", exigeAuth, async (req, res) => 
   if (!(await exigePdv(req, res))) return;
   try {
     const b = req.body || {};
-    await mesasDb.transferir(req.tenantDir, Number(req.params.id), Number(req.params.destinoId), b.pedidoIds);
+    const origemId = Number(req.params.id);
+    const destinoId = Number(req.params.destinoId);
+    const [origem, destino] = await Promise.all([
+      mesasDb.buscarPorId(req.tenantDir, origemId),
+      mesasDb.buscarPorId(req.tenantDir, destinoId),
+    ]);
+    await mesasDb.transferir(req.tenantDir, origemId, destinoId, b.pedidoIds);
+    auditoria.registrar("mesa_transferida", req.slug, {
+      origem: origem ? origem.nome : origemId,
+      destino: destino ? destino.nome : destinoId,
+      juntou: !!(destino && destino.status === "ocupada"),
+      total: origem ? origem.totalConsumido : null,
+    });
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao transferir." });

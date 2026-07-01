@@ -5139,12 +5139,16 @@ function renderMesaAcoes() {
       btnSol.type = "button"; btnSol.className = "secundario";
       btnSol.textContent = "Solicitar Conta";
       btnSol.addEventListener("click", mesaSolicitarConta);
+      var btnTransf = document.createElement("button");
+      btnTransf.type = "button"; btnTransf.className = "secundario";
+      btnTransf.textContent = "Transferir";
+      btnTransf.addEventListener("click", abrirMesaTransferir);
       var btnCan = document.createElement("button");
       btnCan.type = "button"; btnCan.className = "secundario";
       btnCan.style.color = "var(--error)"; btnCan.style.borderColor = "var(--error)";
       btnCan.textContent = "Cancelar";
       btnCan.addEventListener("click", mesaCancelar);
-      row.appendChild(btnSol); row.appendChild(btnCan);
+      row.appendChild(btnSol); row.appendChild(btnTransf); row.appendChild(btnCan);
     } else if (d.status === "pediu_conta" || d.status === "fechando") {
       var btnRe = document.createElement("button");
       btnRe.type = "button"; btnRe.className = "secundario";
@@ -5215,6 +5219,59 @@ async function mesaRecarregarDetalhe(id) {
   if (!r.ok) return;
   mesaState.detalhe = await r.json();
   abrirMesaPainel();
+  await mesaAtualizarLista();
+}
+
+/* ---- Transferir / Juntar comanda ---- */
+function abrirMesaTransferir() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  // Destinos: demais mesas livres ou ocupadas (destino ocupado = juntar comandas).
+  var destinos = (mesaState.lista || []).filter(function (m) {
+    return m.id !== d.id && (m.status === "livre" || m.status === "ocupada");
+  });
+  if (!destinos.length) { toast("Nenhuma mesa disponível para transferir.", "erro"); return; }
+  var X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  var opcoes = destinos.map(function (m) {
+    var rotulo = m.status === "ocupada"
+      ? pdvEsc(m.nome) + " (ocupada · " + pdvMoney(m.totalConsumido || 0) + ")"
+      : pdvEsc(m.nome) + " (livre)";
+    return '<option value="' + m.id + '">Mesa ' + rotulo + "</option>";
+  }).join("");
+  $("mesasTransferirCaixa").innerHTML =
+    '<button type="button" class="pdv-modal-x" id="mesaTransfFechar" aria-label="Fechar">' + X + "</button>" +
+    '<h3 class="pdv-modal-titulo">Transferir Mesa ' + pdvEsc(d.nome) + "</h3>" +
+    '<div class="pdv-modal-corpo">' +
+      '<p class="sub" style="margin:0 0 14px">Move toda a comanda (' + pdvMoney((d.resumo && d.resumo.total) || 0) + ') para outra mesa. Se o destino já estiver ocupado, as comandas são <strong>juntadas</strong>.</p>' +
+      '<label class="pdv-campo"><span>Mesa de destino</span><select id="mesaTransfDestino">' + opcoes + "</select></label>" +
+    "</div>" +
+    '<div class="pdv-modal-rodape">' +
+      '<button type="button" class="secundario" id="mesaTransfCancelar">Cancelar</button>' +
+      '<button type="button" class="primario" id="mesaTransfConfirmar">Transferir</button>' +
+    "</div>";
+  $("mesasTransferirOverlay").hidden = false;
+  $("mesaTransfFechar").addEventListener("click", fecharMesaTransferir);
+  $("mesaTransfCancelar").addEventListener("click", fecharMesaTransferir);
+  $("mesasTransferirBg").addEventListener("click", fecharMesaTransferir);
+  $("mesaTransfConfirmar").addEventListener("click", mesaConfirmarTransferir);
+}
+function fecharMesaTransferir() { $("mesasTransferirOverlay").hidden = true; }
+
+async function mesaConfirmarTransferir() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var destinoId = Number(($("mesaTransfDestino") || {}).value);
+  if (!destinoId) { toast("Escolha a mesa de destino.", "erro"); return; }
+  var destino = (mesaState.lista || []).find(function (m) { return m.id === destinoId; });
+  var juntar = destino && destino.status === "ocupada";
+  var btn = $("mesaTransfConfirmar"); btn.disabled = true;
+  var r = await api("POST", "/api/mesas/" + d.id + "/transferir/" + destinoId, {});
+  if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Falha ao transferir.", "erro"); return; }
+  fecharMesaTransferir();
+  fecharMesaPainel();
+  toast(juntar
+    ? "Comanda da Mesa " + d.nome + " juntada à Mesa " + (destino ? destino.nome : "") + "."
+    : "Mesa " + d.nome + " transferida para " + (destino ? destino.nome : "") + ".");
   await mesaAtualizarLista();
 }
 
