@@ -4950,6 +4950,16 @@ document.addEventListener("keydown", (e) => {
 async function inicial() {
   setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
   setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
+
+  // Restaura a última aba visitada: a troca VISUAL já ocorreu no boot (evita piscar o
+  // Dashboard); aqui, com a sessão pronta, disparamos o carregador da aba certa primeiro.
+  let ultimaAba = null;
+  try { ultimaAba = localStorage.getItem("ultimaAba"); } catch (_) {}
+  if (ultimaAba && ultimaAba !== "dashboard") {
+    const btnUltimaAba = document.querySelector("nav button[data-aba='" + ultimaAba + "']");
+    if (btnUltimaAba) btnUltimaAba.click();
+  }
+
   carregarDashboard(); // carrega dados do dashboard em background (sempre)
   carregarPedidos();   // pré-carrega pedidos em background
   atualizarStatus();   // mantém status/badge atualizados
@@ -4975,15 +4985,6 @@ async function inicial() {
     toast("Pagamento não concluído. Você pode tentar de novo quando quiser.", "erro");
     history.replaceState(null, "", location.pathname);
   }
-
-  // Restaura a última aba visitada (persiste entre refreshes via localStorage).
-  try {
-    var ultimaAba = localStorage.getItem("ultimaAba");
-    if (ultimaAba && ultimaAba !== "dashboard") {
-      var btnUltimaAba = document.querySelector("nav button[data-aba='" + ultimaAba + "']");
-      if (btnUltimaAba) btnUltimaAba.click();
-    }
-  } catch (_) {}
 }
 // ============================================================
 // MESAS / COMANDAS
@@ -5969,6 +5970,23 @@ function mesasInitListeners() {
   $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnVerPlanosMesas").addEventListener("click", function () { abrirUpsell("mesas"); });
 }
+
+// Antes do boot: mostra imediatamente a última aba visitada (só a troca VISUAL, sem
+// carregador — a sessão ainda não existe). Evita piscar o Dashboard no refresh; os dados
+// da aba são carregados em inicial(), assim que a sessão estiver pronta.
+try {
+  var _ultimaAbaBoot = localStorage.getItem("ultimaAba");
+  if (_ultimaAbaBoot && _ultimaAbaBoot !== "dashboard") {
+    var _btnBoot = document.querySelector("nav button[data-aba='" + _ultimaAbaBoot + "']");
+    var _abaBoot = document.getElementById("aba-" + _ultimaAbaBoot);
+    if (_btnBoot && _abaBoot) {
+      document.querySelectorAll("nav button").forEach(function (x) { x.classList.remove("ativo"); });
+      document.querySelectorAll(".aba").forEach(function (x) { x.classList.remove("ativa"); });
+      _btnBoot.classList.add("ativo");
+      _abaBoot.classList.add("ativa");
+    }
+  }
+} catch (_) {}
 
 // Boot: obtém a sessão pelo cookie (refresh) e só então carrega o painel.
 iniciarSessao().then((ok) => { if (ok) inicial(); });
