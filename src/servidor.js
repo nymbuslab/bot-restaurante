@@ -1779,6 +1779,13 @@ function taxaServicoPadrao(dir) {
   return t == null ? 10 : Math.max(0, Math.min(100, Number(t) || 0));
 }
 
+// Minutos sem novo pedido para marcar a mesa como "parada" (0 = alerta desligado).
+function alertaParadaMin(dir) {
+  const cfg = store.getConfig(dir) || {};
+  const v = cfg.mesas && cfg.mesas.alertaParadaMin;
+  return v == null ? 30 : Math.max(0, Math.min(600, Number(v) || 0));
+}
+
 // Monta o detalhe completo de uma mesa: dados + pedidos + resumo (com taxa) +
 // recebido (parciais) + falta. Reusado pelas rotas de detalhe/fechamento.
 async function detalheMesa(dir, mesaId) {
@@ -1794,7 +1801,11 @@ async function detalheMesa(dir, mesaId) {
 app.get("/api/mesas", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
-    res.json({ mesas: await mesasDb.listar(req.tenantDir), taxaServico: taxaServicoPadrao(req.tenantDir) });
+    res.json({
+      mesas: await mesasDb.listar(req.tenantDir),
+      taxaServico: taxaServicoPadrao(req.tenantDir),
+      alertaParadaMin: alertaParadaMin(req.tenantDir),
+    });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao listar mesas." });
   }
@@ -1818,10 +1829,13 @@ app.post("/api/mesas/config", exigeAuth, async (req, res) => {
     const b = req.body || {};
     let criadas = [];
     if (Array.isArray(b.nomes) && b.nomes.length) criadas = await mesasDb.criarEmLote(req.tenantDir, b.nomes);
-    if (b.taxaServico != null) {
+    if (b.taxaServico != null || b.alertaParadaMin != null) {
       await store.ensure(req.tenantDir);
       const cfg = store.getConfig(req.tenantDir) || {};
-      cfg.mesas = Object.assign({}, cfg.mesas, { taxaServico: Math.max(0, Math.min(100, Number(b.taxaServico) || 0)) });
+      const patch = {};
+      if (b.taxaServico != null) patch.taxaServico = Math.max(0, Math.min(100, Number(b.taxaServico) || 0));
+      if (b.alertaParadaMin != null) patch.alertaParadaMin = Math.max(0, Math.min(600, Number(b.alertaParadaMin) || 0));
+      cfg.mesas = Object.assign({}, cfg.mesas, patch);
       await store.setConfig(req.tenantDir, cfg);
     }
     res.json({ ok: true, mesas: criadas });

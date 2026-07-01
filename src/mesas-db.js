@@ -32,12 +32,22 @@ function mapRow(r) {
     abertaEm: r.aberta_em ? new Date(r.aberta_em).toISOString() : null,
     fechadaEm: r.fechada_em ? new Date(r.fechada_em).toISOString() : null,
     criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
+    // Presente só na listagem (subquery). Usado para o alerta de "mesa parada".
+    ultimoPedidoEm: r.ultimo_pedido_em ? new Date(r.ultimo_pedido_em).toISOString() : null,
   };
 }
 
 async function listar(dir) {
   const empId = await empresaId(dir);
-  const r = await db.query("SELECT * FROM mesas WHERE empresa_id = $1 ORDER BY ordem, id", [empId]);
+  // ultimo_pedido_em = data do último pedido não-cancelado da mesa (p/ alerta de mesa parada).
+  const r = await db.query(
+    `SELECT m.*, (
+        SELECT MAX(p.criado_em) FROM pedidos p
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado'
+       ) AS ultimo_pedido_em
+       FROM mesas m WHERE m.empresa_id = $1 ORDER BY m.ordem, m.id`,
+    [empId]
+  );
   return r.rows.map(mapRow);
 }
 

@@ -4913,6 +4913,7 @@ var mesaState = {
   cart: [],
   modo: "itens",
   cfgPendentes: [],
+  alertaParadaMin: 30, // minutos sem novo pedido p/ marcar "mesa parada" (0 = off)
 };
 var mesasPdvCatAtual = "";
 var mesasInitDone = false;
@@ -4940,6 +4941,7 @@ async function carregarMesas() {
     if (!rMesas.ok) { toast("Erro ao carregar mesas.", "erro"); $("mesasSemCaixa").hidden = false; return; }
     const mesasData = await rMesas.json();
     mesaState.lista = mesasData.mesas || [];
+    if (mesasData.alertaParadaMin != null) mesaState.alertaParadaMin = mesasData.alertaParadaMin;
     $("mesasConteudo").hidden = false;
     renderMesasGrade();
   } catch (e) {
@@ -4961,7 +4963,8 @@ function renderMesasGrade() {
   mesaState.lista.forEach(function (m) {
     var btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "mesa-card" + (m.status !== "livre" ? " s-" + m.status : "") + (m.id === mesaState.selecionadaId ? " ativa" : "");
+    var parada = mesaParadaMin(m);
+    btn.className = "mesa-card" + (m.status !== "livre" ? " s-" + m.status : "") + (parada != null ? " parada" : "") + (m.id === mesaState.selecionadaId ? " ativa" : "");
     btn.dataset.id = m.id;
     var infoHtml = "";
     if (mesaState.mostrarInfo && m.status !== "livre") {
@@ -4969,7 +4972,11 @@ function renderMesasGrade() {
       var dur = m.abertaEm ? mesaDuracao(m.abertaEm) : "";
       infoHtml = '<span class="mesa-card-info">' + tot + (dur ? "<br>" + dur : "") + "</span>";
     }
+    var alertaHtml = parada != null
+      ? '<span class="mesa-card-alerta" title="Parada há ' + parada + ' min sem novo pedido"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>'
+      : "";
     btn.innerHTML =
+      alertaHtml +
       '<span class="mesa-card-status">' + (labelMap[m.status] || m.status.toUpperCase()) + "</span>" +
       '<span class="mesa-card-num">' + pdvEsc(m.nome) + "</span>" +
       infoHtml;
@@ -4979,6 +4986,16 @@ function renderMesasGrade() {
   renderMesasResumo();
 }
 
+// Minutos que a mesa está "parada" (ocupada, sem novo pedido além do limiar).
+// Retorna null quando não está parada / alerta desligado (limiar 0). Só vale para
+// mesa ocupada — pediu_conta/fechando já estão em outro fluxo.
+function mesaParadaMin(m) {
+  var lim = Number(mesaState.alertaParadaMin) || 0;
+  if (lim <= 0 || !m || m.status !== "ocupada" || !m.ultimoPedidoEm) return null;
+  var mins = Math.floor((Date.now() - new Date(m.ultimoPedidoEm).getTime()) / 60000);
+  return mins >= lim ? mins : null;
+}
+
 // Barra de resumo/legenda acima da grade: contagem por status + total em aberto.
 // Os pontos coloridos são a própria legenda das cores dos cards (fonte única).
 function renderMesasResumo() {
@@ -4986,13 +5003,14 @@ function renderMesasResumo() {
   if (!box) return;
   var lista = mesaState.lista || [];
   if (!lista.length) { box.hidden = true; return; }
-  var livres = 0, ocupadas = 0, conta = 0, aberto = 0;
+  var livres = 0, ocupadas = 0, conta = 0, paradas = 0, aberto = 0;
   lista.forEach(function (m) {
     if (m.status === "livre") livres++;
     else {
       aberto += Number(m.totalConsumido) || 0;
       if (m.status === "ocupada") ocupadas++;
       else conta++; // pediu_conta / fechando
+      if (mesaParadaMin(m) != null) paradas++;
     }
   });
   var item = function (cls, n, rot) {
@@ -5002,6 +5020,7 @@ function renderMesasResumo() {
     item("d-livre", livres, livres === 1 ? "Livre" : "Livres") +
     item("d-ocupada", ocupadas, "Ocupada" + (ocupadas === 1 ? "" : "s")) +
     item("d-pediu_conta", conta, "Pediu conta") +
+    (paradas > 0 ? item("d-parada", paradas, paradas === 1 ? "Parada" : "Paradas") : "") +
     '<span class="mesa-resumo-total">Em aberto: <strong>' + pdvMoney(aberto) + "</strong></span>";
   box.hidden = false;
 }
@@ -5308,6 +5327,7 @@ async function mesaAtualizarLista() {
   if (!r.ok) return;
   var data = await r.json();
   mesaState.lista = data.mesas || [];
+  if (data.alertaParadaMin != null) mesaState.alertaParadaMin = data.alertaParadaMin;
   renderMesasGrade();
 }
 
@@ -5504,6 +5524,7 @@ async function mesaLancarRodada() {
 function abrirConfigurarMesas() {
   mesaState.cfgPendentes = [];
   if ($("mesasTaxaCfg")) $("mesasTaxaCfg").value = "";
+  if ($("mesasAlertaCfg")) $("mesasAlertaCfg").value = mesaState.alertaParadaMin != null ? mesaState.alertaParadaMin : "";
   if ($("mesasAddInput")) $("mesasAddInput").value = "";
   renderMesasConfigLista();
   $("mesasConfigOverlay").hidden = false;
@@ -5564,10 +5585,12 @@ function renderMesasConfigLista() {
 
 async function salvarConfigurarMesas() {
   var taxa = (($("mesasTaxaCfg") || {}).value || "").trim();
+  var alerta = (($("mesasAlertaCfg") || {}).value || "").trim();
   var body = {};
   if (mesaState.cfgPendentes.length) body.nomes = mesaState.cfgPendentes.slice();
   if (taxa !== "") body.taxaServico = Number(taxa);
-  if (!body.nomes && body.taxaServico == null) { fecharConfigurarMesas(); return; }
+  if (alerta !== "") body.alertaParadaMin = Number(alerta);
+  if (!body.nomes && body.taxaServico == null && body.alertaParadaMin == null) { fecharConfigurarMesas(); return; }
   var r = await api("POST", "/api/mesas/config", body);
   if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao salvar.", "erro"); return; }
   mesaState.cfgPendentes = [];

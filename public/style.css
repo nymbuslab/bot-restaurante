@@ -5367,6 +5367,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
   gap: 8px;
 }
 .mesa-card {
+  position: relative;
   aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
@@ -5413,6 +5414,21 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .mesa-card.s-pediu_conta .mesa-card-status { color: var(--warning); }
 .mesa-card.s-fechando { background: var(--accent-subtle); border-color: var(--accent-fg); }
 .mesa-card.s-fechando .mesa-card-status { color: var(--accent-fg); }
+/* Mesa parada (ocupada, sem novo pedido além do limiar): indicador no canto,
+   sem mudar a cor de status (que segue verde). */
+.mesa-card.parada { border-color: var(--error); }
+.mesa-card-alerta {
+  position: absolute; top: 5px; right: 5px;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--error); color: #fff;
+  animation: mesaParadaPulse 1.8s ease-in-out infinite;
+}
+@keyframes mesaParadaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.55); }
+  50% { box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+}
+@media (prefers-reduced-motion: reduce) { .mesa-card-alerta { animation: none; } }
 .mesas-controles {
   display: flex;
   align-items: center;
