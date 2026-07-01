@@ -5528,6 +5528,8 @@ function abrirMesaPagar(modo) {
     '<h3 class="pdv-modal-titulo">' + titulo + "</h3>" +
     '<div class="pdv-modal-corpo">' +
       '<div class="mesa-pagar-resumo">' +
+        '<div class="mesa-pagar-linha"><span>Subtotal</span><span>' + pdvMoney(resumo.subtotal || 0) + "</span></div>" +
+        ((resumo.taxaServico || 0) > 0 ? '<div class="mesa-pagar-linha"><span>Taxa serviço (' + (d.taxaServico || 0) + '%)</span><span>' + pdvMoney(resumo.taxaServico) + "</span></div>" : "") +
         '<div class="mesa-pagar-linha total"><span>Total</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>" +
         (recebido > 0 ? '<div class="mesa-pagar-linha recebido"><span>Já recebido</span><span>' + pdvMoney(recebido) + "</span></div>" : "") +
         '<div class="mesa-pagar-linha falta"><span>Falta</span><span>' + pdvMoney(falta) + "</span></div>" +
