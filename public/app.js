@@ -416,9 +416,10 @@ const PLANOS_INFO = { essencial: { nome: "Plano Essencial", valor: 79 }, complet
 async function trocarPlanoAcao(novoPlano) {
   const info = PLANOS_INFO[novoPlano] || PLANOS_INFO.essencial;
   const ehUpgrade = novoPlano === "completo";
+  const recursos = "Mesas e comandas, PDV de balcão, Caixa do dia, frete por raio e impressão de pedidos";
   const msg = ehUpgrade
-    ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter o frete por raio e a impressão de pedidos.`
-    : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter o frete por raio e a impressão de pedidos.`;
+    ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter: ${recursos}.`
+    : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter: ${recursos}.`;
   if (!window.confirm(msg)) return;
   const r = await api("POST", "/api/assinatura/plano", { plano: novoPlano });
   if (r && r.ok) {
@@ -3760,6 +3761,16 @@ function _svgUpsell(inner) {
   return '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
 }
 const UPSELL_FEATURES = {
+  mesas: {
+    icone: _svgUpsell('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>'),
+    titulo: "Controle as mesas do salão",
+    sub: 'O <strong>controle de mesas e comandas</strong> faz parte do <strong>Plano Completo</strong>. Gerencie o salão inteiro pelo painel, do abrir ao fechar.',
+    beneficios: [
+      'Abra a mesa, lance rodadas e feche com <strong>pagamento dividido</strong>',
+      '<strong>Transferir ou juntar</strong> comandas entre mesas',
+      'Conta com <strong>valor por pessoa</strong> e taxa de serviço',
+    ],
+  },
   impressao: {
     icone: _svgUpsell('<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>'),
     titulo: "Imprima seus pedidos automaticamente",
@@ -5928,7 +5939,7 @@ function mesasInitListeners() {
   $("mesasPagarBg").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
   $("btnMesasIrCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
-  $("btnVerPlanosMesas").addEventListener("click", function () { document.querySelector("[data-aba='assinatura']").click(); });
+  $("btnVerPlanosMesas").addEventListener("click", function () { abrirUpsell("mesas"); });
 }
 
 // Boot: obtém a sessão pelo cookie (refresh) e só então carrega o painel.
