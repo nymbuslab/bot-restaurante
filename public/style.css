@@ -5143,8 +5143,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .dash-rank-barra > span { display: block; height: 100%; background: var(--accent-fg); border-radius: 3px; }
 .dash-rank-qtd { font-weight: 700; color: var(--text-secondary); text-align: right; }
 .dash-visao { display: flex; flex-direction: column; gap: 10px; }
-.dash-visao-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-secondary); }
-.dash-visao-linha strong { color: var(--text-primary); font-size: 16px; font-weight: 700; }
+.dash-visao-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 10px 12px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); }
+.dash-visao-linha strong { color: var(--text-primary); font-size: 16px; font-weight: 700; text-align: right; }
+/* Valor com detalhamento (Canais / Pagamento): fonte menor p/ caber o breakdown. */
+.dash-visao-linha strong.dash-visao-mini { font-size: 13px; font-weight: 600; }
 @media (max-width: 980px) { .dash-analise-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 720px) { .dash-charts-grid, .dash-analise-grid { grid-template-columns: 1fr; } }
 .dash-pedidos-card .card {

@@ -2923,18 +2923,31 @@ async function carregarDashboard() {
     if (elRank) elRank.innerHTML = ranking.length
       ? ranking.map((r) => `<div class="dash-rank-linha"><span class="dash-rank-nome">${escapar(r.nome)}</span><span class="dash-rank-barra"><span style="width:${Math.round((r.qtd / maxG) * 100)}%"></span></span><span class="dash-rank-qtd">${r.qtd}</span></div>`).join("")
       : '<p class="dash-vazio">Sem vendas no mês.</p>';
-    // Visão geral (mês)
-    const nPedidos = doMes.length;
-    const nEntregas = doMes.filter((p) => p.tipoEntrega === "Entrega").length;
-    const nItens = doMes.reduce((s, p) => s + (p.itens || []).reduce((x, i) => x + (i.qtd || 1), 0), 0);
-    const ticket = nPedidos ? fatDe(doMes) / nPedidos : 0;
+    // Visão geral (mês): qualidade e origem das vendas (o faturamento já está no topo).
+    const ticket = doMes.length ? fatDe(doMes) / doMes.length : 0;
+    // Taxa de cancelamento: precisa dos cancelados → usa `pedidos` (doMes exclui cancelados).
+    const doMesTodos = pedidos.filter((p) => new Date(p.criadoEm) >= inicioMes);
+    const nCancel = doMesTodos.filter((p) => p.status === "cancelado").length;
+    const taxaCanc = doMesTodos.length ? Math.round((nCancel / doMesTodos.length) * 100) : 0;
+    // Canais por faturamento (top 3, %).
+    const canalFat = {};
+    doMes.forEach((p) => { const c = canalPedido(p); canalFat[c] = (canalFat[c] || 0) + (p.total || 0); });
+    const fatTotal = Object.values(canalFat).reduce((s, v) => s + v, 0) || 1;
+    const canaisStr = Object.entries(canalFat).sort((a, b) => b[1] - a[1]).slice(0, 3)
+      .map(([c, v]) => c + " " + Math.round((v / fatTotal) * 100) + "%").join(" · ") || "—";
+    // Pagamento mais usado (entre pedidos com forma informada — web/PDV).
+    const pagCount = {};
+    doMes.forEach((p) => { const f = (p.pagamento || "").trim(); if (f) pagCount[f] = (pagCount[f] || 0) + 1; });
+    const pagTot = Object.values(pagCount).reduce((s, v) => s + v, 0);
+    const pagTop = Object.entries(pagCount).sort((a, b) => b[1] - a[1])[0];
+    const pagStr = pagTop ? pagTop[0] + " (" + Math.round((pagTop[1] / pagTot) * 100) + "%)" : "—";
     const elVisao = $("dashVisaoGeral");
     if (elVisao) elVisao.innerHTML = [
-      ["Pedidos", String(nPedidos)],
-      ["Entregas", String(nEntregas)],
-      ["Itens lançados", String(nItens)],
-      ["Ticket médio", "R$ " + moedaBR(ticket)],
-    ].map(([l, v]) => `<div class="dash-visao-linha"><span>${l}</span><strong>${escapar(v)}</strong></div>`).join("");
+      ["Ticket médio", "R$ " + moedaBR(ticket), false],
+      ["Taxa de cancelamento", taxaCanc + "%", false],
+      ["Canais", canaisStr, true],
+      ["Pagamento mais usado", pagStr, true],
+    ].map(([l, v, mini]) => `<div class="dash-visao-linha"><span>${l}</span><strong${mini ? ' class="dash-visao-mini"' : ""}>${escapar(v)}</strong></div>`).join("");
 
   } catch (e) {
     console.error("Dashboard error:", e);
