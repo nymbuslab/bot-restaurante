@@ -4976,6 +4976,34 @@ function renderMesasGrade() {
     btn.addEventListener("click", function () { mesaSelecionarCard(m.id); });
     grade.appendChild(btn);
   });
+  renderMesasResumo();
+}
+
+// Barra de resumo/legenda acima da grade: contagem por status + total em aberto.
+// Os pontos coloridos são a própria legenda das cores dos cards (fonte única).
+function renderMesasResumo() {
+  var box = $("mesasResumo");
+  if (!box) return;
+  var lista = mesaState.lista || [];
+  if (!lista.length) { box.hidden = true; return; }
+  var livres = 0, ocupadas = 0, conta = 0, aberto = 0;
+  lista.forEach(function (m) {
+    if (m.status === "livre") livres++;
+    else {
+      aberto += Number(m.totalConsumido) || 0;
+      if (m.status === "ocupada") ocupadas++;
+      else conta++; // pediu_conta / fechando
+    }
+  });
+  var item = function (cls, n, rot) {
+    return '<span class="mesa-resumo-item"><span class="mesa-resumo-dot ' + cls + '"></span><strong>' + n + "</strong> " + rot + "</span>";
+  };
+  box.innerHTML =
+    item("d-livre", livres, livres === 1 ? "Livre" : "Livres") +
+    item("d-ocupada", ocupadas, "Ocupada" + (ocupadas === 1 ? "" : "s")) +
+    item("d-pediu_conta", conta, "Pediu conta") +
+    '<span class="mesa-resumo-total">Em aberto: <strong>' + pdvMoney(aberto) + "</strong></span>";
+  box.hidden = false;
 }
 
 function mesaDuracao(iso) {
