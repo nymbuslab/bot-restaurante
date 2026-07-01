@@ -3113,11 +3113,64 @@ function linhaAcoesHtml(p) {
   if (planoAtual !== "completo") return "";
   if (p.status === "cancelado") return `<td class="ped-acoes-cel"></td>`;
   let btns = `<button class="ped-acao-btn" data-acao="reimprimir" data-pid="${p.id}" title="Reimprimir comanda" aria-label="Reimprimir comanda">${ICO_PRINTER}</button>`;
-  if (!p.recebidoEm) {
+  // Mesa NÃO recebe aqui — é pago na aba Mesas (Fechar Conta/Receber Parcial),
+  // que escolhe a forma, aplica taxa de serviço e faz split.
+  if (!p.recebidoEm && p.origem !== "mesa") {
     btns += `<button class="ped-acao-btn" data-acao="receber" data-pid="${p.id}" title="Receber pagamento" aria-label="Receber pagamento">${ICO_MONEY}</button>`;
   }
   return `<td class="ped-acoes-cel"><div class="ped-acoes">${btns}</div></td>`;
 }
+
+// Modal "Receber pagamento" (Pedidos): confirma/escolhe a FORMA (tiles), valor = total.
+// Pré-seleciona a forma informada (web/PDV). Ao receber, chama aoReceber(). Só para
+// pedidos NÃO-mesa (mesa recebe na aba Mesas).
+let pedReceberFormaSel = null;
+function abrirPedReceber(p, aoReceber) {
+  if (!p) return;
+  const formas = (typeof mesaFormasPagamento === "function" && mesaFormasPagamento()) || ["Dinheiro", "Pix", "Cartão Crédito", "Cartão Débito", "Outros"];
+  // Pré-seleciona a forma informada, se estiver na lista; senão, a primeira.
+  pedReceberFormaSel = formas.indexOf(p.pagamento) >= 0 ? p.pagamento : formas[0];
+  const X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  const tiles = formas.map((f) =>
+    '<button type="button" class="pdv-forma' + (f === pedReceberFormaSel ? " ativo" : "") + '" data-pforma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
+  ).join("");
+  $("pedReceberCaixa").innerHTML =
+    '<button type="button" class="pdv-modal-x" id="pedReceberFechar" aria-label="Fechar">' + X + "</button>" +
+    '<h3 class="pdv-modal-titulo">Receber pagamento</h3>' +
+    '<div class="pdv-modal-corpo">' +
+      '<div class="mesa-pagar-resumo"><div class="mesa-pagar-linha total"><span>Pedido #' + pdvEsc(String(p.numero)) + "</span><span>" + moedaBR(p.total) + "</span></div></div>" +
+      '<span class="pdv-ops-tit">Forma de pagamento</span>' +
+      '<div class="pdv-formas">' + tiles + "</div>" +
+      '<p class="sub" style="margin:10px 0 0">Confirme como o cliente pagou. Exige caixa aberto.</p>' +
+    "</div>" +
+    '<div class="pdv-modal-rodape">' +
+      '<button type="button" class="secundario" id="pedReceberCancelar">Cancelar</button>' +
+      '<button type="button" class="primario" id="pedReceberConfirmar">Receber R$ ' + moedaBR(p.total) + "</button>" +
+    "</div>";
+  $("pedReceberOverlay").hidden = false;
+  $("pedReceberFechar").addEventListener("click", fecharPedReceber);
+  $("pedReceberCancelar").addEventListener("click", fecharPedReceber);
+  $("pedReceberBg").addEventListener("click", fecharPedReceber);
+  $("pedReceberCaixa").querySelectorAll("[data-pforma]").forEach((b) => b.addEventListener("click", () => {
+    pedReceberFormaSel = b.dataset.pforma;
+    $("pedReceberCaixa").querySelectorAll("[data-pforma]").forEach((x) => x.classList.toggle("ativo", x === b));
+  }));
+  $("pedReceberConfirmar").addEventListener("click", async () => {
+    const btn = $("pedReceberConfirmar"); btn.disabled = true;
+    const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: pedReceberFormaSel || "Outros", valor: p.total });
+    if (r && r.ok) {
+      fecharPedReceber();
+      toast("✓ Recebido (" + (pedReceberFormaSel || "Outros") + ")!");
+      if (typeof aoReceber === "function") aoReceber();
+      if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
+    } else {
+      btn.disabled = false;
+      const d = r ? await r.json().catch(() => ({})) : {};
+      toast(d.erro || "Abra o caixa primeiro.", "erro");
+    }
+  });
+}
+function fecharPedReceber() { $("pedReceberOverlay").hidden = true; }
 
 // Prévia compacta dos itens do pedido p/ escanear sem abrir o modal:
 // "2x Buffet Kg · 1x Coca 2L". Mostra os 3 primeiros e "+N" se houver mais.
@@ -3335,24 +3388,12 @@ function renderListaPedidos(lista) {
       const p = pedidosCache.find((x) => String(x.id) === b.dataset.pid);
       if (!p) return;
       if (b.dataset.acao === "reimprimir") { reimprimirPedido(p.id); return; }
-      // Receber: dinheiro + clique fácil no hover → confirmação (o modal recebe em 1 clique).
-      const ok = await confirmar(
-        "Receber pagamento",
-        "Receber R$ " + moedaBR(p.total) + " de #" + p.numero + " (" + (p.pagamento || "Outros") + ")? Exige caixa aberto.",
-        "Receber"
-      );
-      if (!ok) return;
-      const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
-      if (r && r.ok) {
+      // Receber: abre o modal p/ confirmar/escolher a forma (mesa nem chega aqui — sem badge).
+      abrirPedReceber(p, () => {
         const ci = pedidosCache.findIndex((x) => x.id === p.id);
         if (ci !== -1) pedidosCache[ci].recebidoEm = new Date().toISOString();
-        toast("✓ Recebido no caixa!");
         renderPedidos();
-        if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
-      } else {
-        const d = r ? await r.json().catch(() => ({})) : {};
-        toast(d.erro || "Abra o caixa primeiro.", "erro");
-      }
+      });
     })
   );
 
@@ -3581,14 +3622,18 @@ function montarAcoes(p) {
       sel.className = "pedido-avisado";
       sel.textContent = "Pagamento recebido";
       cont.appendChild(sel);
+    } else if (p.origem === "mesa") {
+      // Mesa é paga na aba Mesas (Fechar Conta), não aqui.
+      const nota = document.createElement("span");
+      nota.className = "pedido-nota-mesa";
+      nota.textContent = "Recebimento pela aba Mesas";
+      cont.appendChild(nota);
     } else {
       const extra = document.createElement("button");
       extra.className = "secundario";
       extra.textContent = "Receber pagamento (R$ " + fmtBRn(p.total) + ")";
-      extra.addEventListener("click", async () => {
-        const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: p.pagamento || "Outros", valor: p.total });
-        if (r && r.ok) { p.recebidoEm = new Date().toISOString(); toast("✓ Recebido no caixa!"); montarAcoes(p); carregarCaixa(); }
-        else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Abra o caixa primeiro."); }
+      extra.addEventListener("click", () => {
+        abrirPedReceber(p, () => { p.recebidoEm = new Date().toISOString(); montarAcoes(p); });
       });
       cont.appendChild(extra);
     }

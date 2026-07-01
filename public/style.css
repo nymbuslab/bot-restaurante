@@ -2830,6 +2830,16 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   font-weight: 600;
   color: var(--success);
 }
+/* Nota "recebimento pela aba Mesas" no modal de detalhe (pedido de mesa). */
+.pedido-nota-mesa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
 
 /* ---------- Modal de edição de item do cardápio ---------- */
 .editor-caixa {
