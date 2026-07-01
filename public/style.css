@@ -5676,6 +5676,14 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 }
 .mesa-pessoas-edit:hover { color: var(--accent-fg); }
 .mesa-tot-porpessoa { color: var(--accent-fg); }
+/* Aviso "juntar contas" no modal de transferir (destino ocupado) */
+.mesa-transf-aviso {
+  margin-top: 12px; padding: 10px 12px;
+  background: var(--warning-subtle); border: 1px solid var(--warning);
+  border-radius: var(--radius-sm); font-size: 12.5px; line-height: 1.5;
+  color: var(--text-secondary);
+}
+.mesa-transf-aviso strong { color: var(--text-primary); }
 /* Payment modal */
 .mesa-pagar-resumo {
   background: var(--bg-elevated);

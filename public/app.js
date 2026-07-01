@@ -5362,8 +5362,9 @@ function abrirMesaTransferir() {
     '<button type="button" class="pdv-modal-x" id="mesaTransfFechar" aria-label="Fechar">' + X + "</button>" +
     '<h3 class="pdv-modal-titulo">Transferir Mesa ' + pdvEsc(d.nome) + "</h3>" +
     '<div class="pdv-modal-corpo">' +
-      '<p class="sub" style="margin:0 0 14px">Move toda a comanda (' + pdvMoney((d.resumo && d.resumo.total) || 0) + ') para outra mesa. Se o destino já estiver ocupado, as comandas são <strong>juntadas</strong>.</p>' +
+      '<p class="sub" style="margin:0 0 14px">Move toda a comanda (' + pdvMoney((d.resumo && d.resumo.total) || 0) + ') para outra mesa.</p>' +
       '<label class="pdv-campo"><span>Mesa de destino</span><select id="mesaTransfDestino">' + opcoes + "</select></label>" +
+      '<div class="mesa-transf-aviso" id="mesaTransfAviso" hidden></div>' +
     "</div>" +
     '<div class="pdv-modal-rodape">' +
       '<button type="button" class="secundario" id="mesaTransfCancelar">Cancelar</button>' +
@@ -5373,9 +5374,29 @@ function abrirMesaTransferir() {
   $("mesaTransfFechar").addEventListener("click", fecharMesaTransferir);
   $("mesaTransfCancelar").addEventListener("click", fecharMesaTransferir);
   $("mesasTransferirBg").addEventListener("click", fecharMesaTransferir);
+  $("mesaTransfDestino").addEventListener("change", mesaTransfAtualizarAviso);
   $("mesaTransfConfirmar").addEventListener("click", mesaConfirmarTransferir);
+  mesaTransfAtualizarAviso();
 }
 function fecharMesaTransferir() { $("mesasTransferirOverlay").hidden = true; }
+
+// Reflete a intenção conforme o destino: destino OCUPADO = juntar contas (aviso +
+// botão "Juntar contas"); destino LIVRE = transferência simples.
+function mesaTransfAtualizarAviso() {
+  var destinoId = Number(($("mesaTransfDestino") || {}).value);
+  var destino = (mesaState.lista || []).find(function (m) { return m.id === destinoId; });
+  var juntar = destino && destino.status !== "livre";
+  var aviso = $("mesaTransfAviso");
+  var btn = $("mesaTransfConfirmar");
+  if (juntar) {
+    aviso.innerHTML = '<strong>Juntar as contas.</strong> A Mesa ' + pdvEsc(destino.nome) + ' já está ocupada — as duas viram <strong>uma conta só</strong> (um serviço, um pagamento). Para pagar separado, mantenha as mesas abertas (cancele aqui).';
+    aviso.hidden = false;
+    if (btn) btn.textContent = "Juntar contas";
+  } else {
+    aviso.hidden = true;
+    if (btn) btn.textContent = "Transferir";
+  }
+}
 
 async function mesaConfirmarTransferir() {
   var d = mesaState.detalhe;
@@ -5383,7 +5404,7 @@ async function mesaConfirmarTransferir() {
   var destinoId = Number(($("mesaTransfDestino") || {}).value);
   if (!destinoId) { toast("Escolha a mesa de destino.", "erro"); return; }
   var destino = (mesaState.lista || []).find(function (m) { return m.id === destinoId; });
-  var juntar = destino && destino.status === "ocupada";
+  var juntar = destino && destino.status !== "livre";
   var btn = $("mesaTransfConfirmar"); btn.disabled = true;
   var r = await api("POST", "/api/mesas/" + d.id + "/transferir/" + destinoId, {});
   if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Falha ao transferir.", "erro"); return; }

@@ -286,17 +286,63 @@ async function cancelar(dir, id) {
 // Transfere pedidos da mesa origem para a destino (lista de ids; vazio = todos).
 // Abre a destino se estiver livre e libera a origem se ficar sem pedidos. Usado
 // também para "juntar mesas" (transferir todos).
+// Transfere/junta a comanda da mesa origem na destino.
+// - Destino LIVRE: move os pedidos e RENOMEIA o rótulo para a mesa de destino
+//   (transferência — a origem libera). 1 comanda.
+// - Destino OCUPADO: JUNTA CONTAS — funde os itens movidos na comanda aberta do
+//   destino e remove os fragmentos da origem (viram 1 conta só). Só deve ser
+//   chamado com intenção explícita (o front confirma "Juntar contas").
 async function transferir(dir, origemId, destinoId, pedidoIds) {
   const empId = await empresaId(dir);
   if (Number(origemId) === Number(destinoId)) throw new Error("Mesa de origem e destino são iguais.");
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    // Nome do destino (p/ renomear o rótulo em transferência p/ mesa livre).
+    const dRow = await client.query(
+      "SELECT nome FROM mesas WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, destinoId]
+    );
+    if (!dRow.rows[0]) throw new Error("Mesa de destino não encontrada.");
+    const destinoNome = dRow.rows[0].nome;
+
+    // Pedidos ativos da origem a mover (comanda). Filtro opcional por ids.
     const filtroIds = Array.isArray(pedidoIds) && pedidoIds.length;
-    const params = [empId, origemId, destinoId];
-    let cond = "empresa_id = $1 AND mesa_id = $2";
-    if (filtroIds) { params.push(pedidoIds); cond += " AND id = ANY($4::bigint[])"; }
-    await client.query(`UPDATE pedidos SET mesa_id = $3 WHERE ${cond}`, params);
+    const movParams = [empId, origemId];
+    let movCond = "empresa_id = $1 AND mesa_id = $2 AND status <> 'cancelado'";
+    if (filtroIds) { movParams.push(pedidoIds); movCond += " AND id = ANY($3::bigint[])"; }
+    const mov = await client.query(
+      `SELECT id, itens, total FROM pedidos WHERE ${movCond} ORDER BY id ASC`,
+      movParams
+    );
+    const movIds = mov.rows.map((p) => p.id);
+
+    // Comanda aberta do destino (alvo do merge quando o destino já está ocupado).
+    const alvo = await client.query(
+      "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' ORDER BY id ASC LIMIT 1",
+      [empId, destinoId]
+    );
+    const alvoRow = alvo.rows[0];
+
+    if (alvoRow) {
+      // JUNTAR CONTAS: funde itens+total na comanda do destino e apaga os fragmentos.
+      let itens = alvoRow.itens || [];
+      let total = Number(alvoRow.total) || 0;
+      for (const p of mov.rows) { itens = itens.concat(p.itens || []); total += Number(p.total) || 0; }
+      await client.query(
+        "UPDATE pedidos SET itens = $1::jsonb, total = $2 WHERE id = $3",
+        [JSON.stringify(itens), Math.round(total * 100) / 100, alvoRow.id]
+      );
+      if (movIds.length) {
+        await client.query("DELETE FROM pedidos WHERE empresa_id = $1 AND id = ANY($2::bigint[])", [empId, movIds]);
+      }
+    } else if (movIds.length) {
+      // TRANSFERIR p/ mesa livre: move e renomeia o rótulo para a mesa de destino.
+      await client.query(
+        "UPDATE pedidos SET mesa_id = $1, cliente = $2 WHERE empresa_id = $3 AND id = ANY($4::bigint[])",
+        [destinoId, "Mesa " + destinoNome, empId, movIds]
+      );
+    }
     // Recalcula totais das duas mesas.
     for (const mid of [origemId, destinoId]) {
       await client.query(
@@ -319,7 +365,7 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
       [empId, origemId]
     );
     await client.query("COMMIT");
-    return { ok: true };
+    return { ok: true, juntou: !!alvoRow };
   } catch (e) {
     await client.query("ROLLBACK");
     throw e;
