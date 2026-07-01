@@ -166,14 +166,16 @@ descricao (motivo de sangria/suprimento), criado_em
 ```
 
 - **Recebimento por pedido:** marcar *Receber* cria um movimento `recebimento` (com `pedido_id`) e
-  seta `pedidos.recebido_em = now()`; estornar apaga o movimento e zera `recebido_em` (só antes do
-  fechamento). Pedido "a receber" = `recebido_em IS NULL`.
+  seta `pedidos.recebido_em = now()`; **estornar** insere um movimento `estorno` (que deduz, deixando
+  rastro) e zera `recebido_em` — restrito a recebimento de pedido a-receber (web/PDV-Entrega/Retirada),
+  **não** em Mesa/Balcão. Pedido "a receber" = `recebido_em IS NULL`.
 - **Fechamento (conferência):** o operador conta a gaveta no **contador de cédulas** (dinheiro) e
   informa **cartão/Pix** por forma. `total_em_caixa = fundo + suprimentos + vendas (todas as formas) −
   sangrias`; `diferenca = (contado_dinheiro + contado_eletronico) − total_em_caixa` (GLOBAL). O
   **relatório 80mm é montado no servidor** (`public/relatorio-caixa.js`) e guardado em
-  `detalhe_fechamento.relatorio` p/ reimpressão. **Não fecha** se houver pedidos do turno (criados desde
-  a abertura) ainda a receber.
+  `detalhe_fechamento.relatorio` p/ reimpressão. **Não fecha** com consumo em aberto: **mesas abertas**
+  (bloqueio à parte, atalho pra Mesas) ou **pedidos de delivery/local a receber** (`mesa_id` nulo,
+  criados desde a abertura). Pedido **cancelado não conta** (`_contarAReceber` exclui `status='cancelado'`).
 - Cálculos puros em `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`.
   Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
   `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).

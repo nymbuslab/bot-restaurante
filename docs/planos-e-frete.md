@@ -194,59 +194,41 @@ commit + push, e aprovação antes da fase seguinte.
 > ⚠️ **Impressão é 100% via AGENTE (CHANGELOG 0.59.0 + 0.62.0):** o app desktop **Nymbus Impressora**
 > imprime **todos** os fluxos automaticamente (delivery + **PDV + Mesas + Caixa**) via **fila genérica**
 > (`impressao_fila` — o servidor renderiza o texto e enfileira; o agente busca e imprime). A tela
-> **Configurações → Impressora** é a **página de download do agente** — a config da impressora (porta,
-> corte, sem-acento) fica no app. O **caminho navegador** (`window.print`/Web Serial, `impressao.js`/`serial.js`)
+> **Configurações → Impressora** é a **página de download do agente** — a config da impressora (conexão **USB** / **Rede** (IP:9100)
+> / **Serial** (COM), corte, sem-acento) fica no app. O **caminho navegador** (`window.print`/Web Serial, `impressao.js`/`serial.js`)
 > foi **REMOVIDO** na Fase 3 — a descrição abaixo é **histórica**. Os módulos puros
 > `comanda.js`/`serial-escpos.js`/`relatorio-caixa.js` permanecem (usados no servidor e no agente).
 
 Além do frete por raio, o **Plano Completo** libera a **impressão de pedido** numa impressora
 térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x, **Daruma DR700/DR800** e similares).
 
-- **Dois caminhos** (escolhidos em **Configurações → Impressora**):
-  - **Navegador (USB/driver)** — padrão: `window.print()` + CSS `@page { size: 80mm auto }`, sem
-    agente local. Largura amarrada ao físico via `font-size: 2.5mm` (≈ 48 colunas, sem quebra).
-  - **Porta serial (COM)** — imprime **direto na térmica, sem caixa de diálogo**: encoder **ESC/POS
-    puro** (`public/serial-escpos.js`: init + codepage CP850 + avanço + corte) sobre a **Web Serial
-    API** (`public/serial.js`: conectar/lembrar a porta/escrever). O roteamento (serial quando
-    configurado/suportado; senão navegador) fica em `public/impressao.js`; a montagem do texto é
-    pura/testada (`public/comanda.js`).
-- **Corte do papel (serial):** usa o comando **legado Epson** — `ESC m` (parcial/picote, **padrão**) /
-  `ESC i` (total) — **nativo na linha Daruma (DR700/DR800)** e aceito pela maioria das térmicas (o
-  `GS V` novo era ignorado por elas e o papel não cortava). Avança **6 linhas** antes do corte pra
-  empurrar o fim do cupom pra fora da guilhotina. Opção "Não cortar" também disponível.
-- **Disparo:** botão **Imprimir comanda** no modal de detalhe do pedido **e** no modal de novo
-  pedido abre um **modal de pré-visualização** com as **2 vias** e os botões **Imprimir cozinha**
-  (itens/opcionais/variações/observações, **sem preços**) e **Imprimir cupom** (cliente, endereço, pagamento,
-  total). Cada via é **uma impressão própria** → corta no fim de cada.
-- **Cupom (marketing):** o cupom traz **cabeçalho** com nome/endereço/telefone da empresa (CEP e
-  telefone na mesma linha; data `dd/mm/aaaa - HH:MM`) e **rodapé** com mensagem **personalizável**
-  (`config.impressao.rodape`; vazio = padrão "Obrigado pela preferência! Volte sempre.") + chamada
-  pro **cardápio digital** (link público do tenant). A via **cozinha** segue enxuta.
-- **Config por tenant:** `config.impressao` (jsonb, via `PUT /api/config`, sem migração):
-  `{ metodo: "navegador"|"serial", baud, corte: "parcial"|"total"|"nenhum", semAcento, rodape }`.
-- **Gating:** front, por `planoAtual === "completo"` (impressão é ação **local**). Essencial vê a
-  sub-aba **Configurações → Impressora** com cadeado/upsell. Manual completo (USB × serial, corte,
-  conectar COM, *kiosk-printing*) na **Central de Ajuda (FAQ)** do painel.
+- **Como sai:** o app desktop **Nymbus Impressora** imprime **automaticamente**, sem o painel aberto —
+  o servidor renderiza o texto das vias e enfileira (`impressao_fila`); o agente busca, imprime (ESC/POS
+  cru via `public/serial-escpos.js`: init + CP850 + avanço + corte) e marca. Sem caixa de diálogo.
+- **Transportes (escolhidos no próprio app):**
+  - **USB** — envio RAW pela fila de impressão do Windows (winspool `WritePrinter`, datatype RAW).
+  - **Rede / Wi-Fi** — TCP na porta **9100** (`IP[:porta]`).
+  - **Serial (COM)** — porta COM + baud.
+- **Vias:** **cozinha** (itens/opcionais/variações/observações, **sem preços**) e **cupom** (cliente,
+  endereço, pagamento, total). Cada via corta no fim.
+- **Corte do papel:** comando **legado Epson** — `ESC m` (parcial, **padrão**) / `ESC i` (total) —
+  **nativo na linha Daruma (DR700/DR800)** e aceito pela maioria (o `GS V` novo era ignorado). Avança
+  6 linhas antes de cortar. Opção "Não cortar" disponível.
+- **Cupom (marketing):** **cabeçalho** com nome/endereço/telefone da empresa (CEP e telefone na mesma
+  linha; data `dd/mm/aaaa - HH:MM`) e **rodapé** personalizável (`config.impressao.rodape`; vazio =
+  "Obrigado pela preferência! Volte sempre.") + chamada pro **cardápio digital**. A via cozinha é enxuta.
+- **Config por impressora:** fica **no próprio app** (conexão, corte, sem-acento, vias, cópias).
+- **Instalação (Configurações → Impressora):** botão de **download** do agente — o painel serve o
+  instalador por **proxy** do GitHub Release (`GET /downloads/nymbus-impressora.exe`), mostra a versão
+  publicada (`GET /api/agente/versao-publicada`) e um guia caso o Windows exiba aviso (SmartScreen →
+  "Executar assim mesmo"; Controle Inteligente/SAC → instalar por acesso remoto). Distribuição
+  **manual pelo painel**; auto-update assinado é opcional (exige code signing).
+- **Gating:** front por `planoAtual === "completo"`; Essencial vê a sub-aba com cadeado/upsell.
 
-### Impressão silenciosa/automática (opcional) — Chrome em *kiosk-printing*
+### Fora do escopo (futuro)
 
-Por padrão a impressão abre a caixa de diálogo do navegador (a impressora é escolhida na 1ª vez e
-fica lembrada). Para o pedido sair **direto na térmica, sem diálogo** (útil num PC dedicado na
-cozinha), inicie o Chrome com a flag:
-
-```text
-chrome.exe --kiosk-printing
-```
-
-(defina a térmica como **impressora padrão** do Windows; opcionalmente adicione `--kiosk` para tela
-cheia). Nesse modo, ao clicar **Imprimir cozinha**/**Imprimir cupom** a via sai na hora, sem caixa de
-diálogo. Sem a flag, segue funcionando no modo manual (uma caixa de impressão por via).
-
-### Fora do v1 (futuro)
-
-- ESC/POS **por porta serial (COM) já implementado** (ver acima). Falta: impressão **disparada pelo
-  servidor sem o painel aberto** (agente local tipo QZ Tray) e abertura de gaveta.
-- Auto-impressão ao chegar o pedido; largura 58mm; escolher quais vias; KDS (tela de cozinha).
+- Abertura de gaveta de dinheiro; largura 58mm; escolher quais vias no app; KDS (tela de cozinha).
+- **Auto-update assinado** do agente (hoje a atualização é manual pelo painel — ver acima).
 
 ---
 
@@ -267,15 +249,17 @@ que vêm do WhatsApp.
   vendas − sangrias), cards **Vendas por forma** (todas as formas configuradas, zeradas se sem venda;
   subtotal cartão/Pix + dinheiro) e **Movimentação do caixa** (valor inicial, suprimentos, sangrias +
   box **Total Faturamento**), e o **extrato do turno** em tabela (Hora/Nº/Tipo/Cliente/Valor/Forma;
-  sangria destacada; **Estornar** nos recebimentos). Ações: **sangria/suprimento** (com motivo),
+  sangria destacada; **Estornar** só em recebimento de pedido a-receber — web/PDV-Entrega/Retirada, **não** Mesa/Balcão — que **deixa rastro** via movimento `estorno` que deduz em vez de apagar). Ações: **sangria/suprimento** (com motivo),
   **Caixas anteriores** e **Fechar caixa**.
 - **Fechamento = conferência:** tela com **contador de 12 cédulas/moedas** (R$200→R$0,05) para o
   dinheiro + **lançamentos de cartão/Pix** por forma, com **diferença** (sobra/falta) por coluna (digitar
   valor + **Enter** lança e mantém o foco). Ao fechar, **monta o relatório 80mm no servidor** (fonte
   única; vendas por forma, movimentos, Total em Caixa, Faturamento, diferença global) e abre a **prévia
   para imprimir** (guardado em `detalhe_fechamento` p/ reimpressão).
-- **Regra:** **não fecha com pedidos do turno (criados desde a abertura) ainda a receber** — avisa,
-  bloqueia e oferece atalho pra aba Pedidos filtrada em "A receber" (guarda no servidor).
+- **Regra:** **não fecha com consumo do turno em aberto** (guarda no servidor). Bloqueios separados:
+  **mesas abertas** → atalho pra aba **Mesas** (recebe na mesa); **pedidos de delivery/local a receber**
+  (`mesa_id` nulo, criados desde a abertura) → atalho pra aba **Pedidos** em "A receber". Pedido
+  **cancelado não conta** (nunca é recebido).
 - **Caixas anteriores:** os **3 últimos** fechamentos com resumo na linha (operador · Total em Caixa ·
   Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
 - **Regras gerais:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);

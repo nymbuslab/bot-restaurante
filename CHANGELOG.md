@@ -598,3 +598,25 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - A **página inicial** passa a mostrar o módulo **Mesas e comandas** como parte do **Plano Completo** — nos cards de preço (agora com a mesma lista lado a lado, marcando o que cada plano tem) e na lista de recursos.
 - No painel, quem está no **Essencial** e clica em **Mesas** vê um convite claro para o Plano Completo (com o que ganha), no mesmo padrão do PDV e do Caixa.
+
+## [0.71.0] — Painel inicial: cards alinhados e Visão geral mais útil
+
+- Os três cards de análise do painel (10 mais vendidos, Ranking de grupos, Visão geral) ficam do **mesmo tamanho**, mesmo sem dados.
+- O card **Visão geral** troca números pouco acionáveis por métricas que ajudam a decidir: **ticket médio**, **taxa de cancelamento**, **canais** (de onde vem o faturamento) e **forma de pagamento mais usada**.
+
+## [0.72.0] — Caixa: estorno com rastro e fechamento mais confiável
+
+- **Estornar** um recebimento agora **deixa registro** no extrato (em vez de sumir) e só aparece onde faz sentido — pedidos a receber (WhatsApp / PDV Entrega / Retirada). Mesa e balcão não têm estorno (mesa acerta na mesa; balcão, cancelando).
+- O **fechamento do caixa** não trava mais por causa de **pedido cancelado**.
+- **Mesa aberta** ao fechar o caixa é avisada à parte, com atalho para a aba **Mesas** (antes vinha misturada como "pedido a receber").
+- No **fechamento**, o botão de ação fica **fixo no rodapé** — não some mais atrás da barra de tarefas em telas menores.
+
+## [0.73.0] — Impressora: conexão USB e instalação pelo painel
+
+- O agente **Nymbus Impressora** passa a imprimir por **USB** (além de Rede/Wi-Fi e Serial). Versão **0.2.0**.
+- O download e a atualização do agente ficam **no próprio painel** (Configurações → Impressora): botão de baixar, **versão mais recente** exibida e um **guia** caso o Windows mostre um aviso na instalação. O usuário não precisa sair para lugar nenhum.
+
+## [0.73.1] — Ajustes de interface
+
+- Ao **atualizar a página**, o painel abre **direto na última aba** usada, sem piscar o Dashboard.
+- No **PDV**, adicionar um produto não mostra mais um aviso a cada clique — o item já aparece no carrinho.
