@@ -4047,8 +4047,9 @@ function pdvTileClick(item) {
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao && !(l.composicao && l.composicao.length));
   if (ex) ex.qtd += 1;
   else pdvCart.push({ uid: pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: "un", qtd: 1, composicao: [], opcionais: [], observacao: "" });
+  // Sem toast por item: o feedback é o próprio carrinho + o badge de quantidade no
+  // card. Toast fica reservado para ações mais relevantes.
   renderPdvCarrinho();
-  toast("✓ " + item.nome);
 }
 
 // ---- Modal de item (opcionais / peso / observação) ----
