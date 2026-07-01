@@ -19,6 +19,13 @@ function mostrarApp(st) {
   window.api.carregarConfig().then((cfg) => {
     $("conexao").value = cfg.conexao; aplicarConexao(cfg.conexao);
     $("alvoRede").value = cfg.conexao === "rede" ? cfg.alvo : "";
+    // Repõe a impressora salva no seletor (Serial/USB) já selecionada — senão, ao reabrir, o
+    // seletor fica vazio e teria que "Detectar" de novo (e Salvar gravaria alvo vazio, quebrando).
+    if (cfg.conexao !== "rede" && cfg.alvo) {
+      const sel = $("alvoLista"); sel.innerHTML = "";
+      const o = document.createElement("option"); o.value = cfg.alvo; o.textContent = cfg.alvo; o.selected = true;
+      sel.appendChild(o);
+    }
     $("baud").value = cfg.baud; $("corte").value = cfg.corte; $("semAcento").checked = cfg.semAcento;
     $("viaCozinha").checked = cfg.vias.cozinha; $("viaCupom").checked = cfg.vias.cupom; $("copias").value = cfg.copias;
   });
