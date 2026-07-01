@@ -1980,7 +1980,9 @@ app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
     const b = req.body || {};
     const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
     if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
-    await mesasDb.receberParcial(req.tenantDir, mesaId, { forma: b.forma, valor: b.valor }, mesa.nome);
+    // Split: aceita `pagamentos` (array); fallback p/ {forma, valor} único (compat).
+    const pags = Array.isArray(b.pagamentos) ? b.pagamentos : [{ forma: b.forma, valor: b.valor }];
+    await mesasDb.receberParcial(req.tenantDir, mesaId, pags, mesa.nome);
     res.json(await detalheMesa(req.tenantDir, mesaId));
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao receber o pagamento." });
@@ -2015,8 +2017,19 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
 app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
-    const mesa = await mesasDb.cancelar(req.tenantDir, Number(req.params.id));
+    const mesaId = Number(req.params.id);
+    const motivo = String((req.body || {}).motivo || "").slice(0, 200);
+    // Estado ANTES do cancelamento (o cancelar zera o total) — para a auditoria.
+    const antes = await mesasDb.buscarPorId(req.tenantDir, mesaId);
+    const mesa = await mesasDb.cancelar(req.tenantDir, mesaId);
     if (!mesa) return res.status(404).json({ erro: "Mesa não encontrada." });
+    // Anti-fraude: cancelar mesa COM consumo deixa rastro na trilha de auditoria
+    // (mesa/total/motivo — sem PII). Best-effort, não quebra o fluxo.
+    if (antes && (antes.totalConsumido || 0) > 0) {
+      auditoria.registrar("mesa_cancelada", req.slug, {
+        mesa: antes.nome, total: antes.totalConsumido, motivo: motivo || "(não informado)",
+      });
+    }
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao cancelar a mesa." });

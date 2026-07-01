@@ -5186,9 +5186,24 @@ async function mesaReabrir() {
 async function mesaCancelar() {
   var d = mesaState.detalhe;
   if (!d) return;
-  var conf = await confirmar("Cancelar mesa " + d.nome + "?", "Os pedidos serão cancelados e a mesa liberada sem receber.", "Cancelar mesa", "Voltar");
-  if (!conf) return;
-  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar");
+  var total = (d.resumo && d.resumo.total) || 0;
+  var motivo = "";
+  if (total > 0) {
+    // Reforço anti-fraude: mesa COM consumo exige MOTIVO (fica na auditoria) e mostra o valor.
+    var r0 = await modalCaixa({
+      titulo: "Cancelar mesa " + d.nome + "?",
+      info: "Esta mesa tem " + pdvMoney(total) + " em consumo. Cancelar marca os pedidos como cancelados e libera a mesa SEM receber. Informe o motivo (fica registrado).",
+      campos: [{ id: "mesaCancelMotivo", label: "Motivo do cancelamento", tipo: "texto", placeholder: "Ex.: cliente desistiu, mesa aberta por engano" }],
+      txtConfirmar: "Cancelar mesa",
+    });
+    if (!r0) return;
+    motivo = (r0.mesaCancelMotivo || "").trim();
+    if (!motivo) { toast("Informe o motivo para cancelar uma mesa com consumo.", "erro"); return; }
+  } else {
+    var conf = await confirmar("Cancelar mesa " + d.nome + "?", "A mesa será liberada.", "Cancelar mesa", "Voltar");
+    if (!conf) return;
+  }
+  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar", { motivo: motivo });
   if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao cancelar.", "erro"); return; }
   toast("Mesa " + d.nome + " cancelada.");
   fecharMesaPainel();
@@ -5476,69 +5491,138 @@ async function salvarConfigurarMesas() {
   fecharConfigurarMesas();
 }
 
-/* ---- Pagamento / Recebimento ---- */
+/* ---- Pagamento / Recebimento (split — reusa o do PDV: formas em tiles, várias
+   formas numa tela só, troco) ---- */
+var mesaPagamentos = [];   // [{forma, valor}] adicionados nesta tela
+var mesaPgFormaSel = null; // forma selecionada
+var mesaPagarAlvo = 0;     // alvo a cobrir (falta a receber), em reais
+
+// Formas de pagamento: prioriza a config do tenant (configAtual.pagamentos), com
+// fallback pro que o PDV carregou e, por fim, um padrão.
+function mesaFormasPagamento() {
+  if (configAtual && Array.isArray(configAtual.pagamentos) && configAtual.pagamentos.length) return configAtual.pagamentos;
+  if (typeof pdvFormasPg !== "undefined" && pdvFormasPg && pdvFormasPg.length > 1) return pdvFormasPg;
+  return ["Dinheiro", "Cartão Débito", "Cartão Crédito", "Pix", "Outros"];
+}
+function mesaPagoTotal() { return Math.round(mesaPagamentos.reduce(function (s, p) { return s + (Number(p.valor) || 0); }, 0) * 100) / 100; }
+
 function abrirMesaPagar(modo) {
   var d = mesaState.detalhe;
   if (!d) return;
   mesaPagarModo = modo || "fechar";
-  var caixa = $("mesasPagarCaixa");
   var resumo = d.resumo || {};
   var recebido = d.recebido || 0;
   var falta = d.falta != null ? d.falta : Math.max(0, (resumo.total || 0) - recebido);
-  var titulo = modo === "parcial" ? "Receber Parcial" : "Fechar Conta";
-  caixa.innerHTML =
-    '<div class="pdv-modal-cab"><h3>' + titulo + "</h3>" +
-    '<button type="button" class="pdv-modal-fechar" id="mesasPagarFechar" aria-label="Fechar">' +
-    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
-    "</button></div>" +
+  mesaPagarAlvo = Math.round(falta * 100) / 100;
+  mesaPagamentos = [];
+  var formas = mesaFormasPagamento();
+  mesaPgFormaSel = formas[0] || "Dinheiro";
+  var titulo = mesaPagarModo === "parcial" ? "Receber Parcial" : "Fechar Conta";
+  var btnLabel = mesaPagarModo === "parcial" ? "Registrar" : "Fechar conta";
+  var X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  var tiles = formas.map(function (f) {
+    return '<button type="button" class="pdv-forma' + (f === mesaPgFormaSel ? " ativo" : "") + '" data-mforma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>";
+  }).join("");
+  $("mesasPagarCaixa").innerHTML =
+    '<button type="button" class="pdv-modal-x" id="mesasPagarFechar" aria-label="Fechar">' + X + "</button>" +
+    '<h3 class="pdv-modal-titulo">' + titulo + "</h3>" +
     '<div class="pdv-modal-corpo">' +
-    '<div class="mesa-pagar-resumo">' +
-    '<div class="mesa-pagar-linha total"><span>Total</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>" +
-    (recebido > 0 ? '<div class="mesa-pagar-linha recebido"><span>Já recebido</span><span>' + pdvMoney(recebido) + "</span></div>" : "") +
-    '<div class="mesa-pagar-linha falta"><span>Falta</span><span id="mesaPgFaltaVal">' + pdvMoney(falta) + "</span></div>" +
-    "</div>" +
-    '<div class="campo"><label>Forma de pagamento</label>' +
-    '<select id="mesaPgForma"><option>Dinheiro</option><option>Cartão Débito</option><option>Cartão Crédito</option><option>Pix</option><option>Outros</option></select>' +
-    "</div>" +
-    '<div class="campo"><label>Valor (R$)</label>' +
-    '<input type="text" id="mesaPgValor" placeholder="0,00" inputmode="numeric" autocomplete="off" />' +
-    "</div>" +
+      '<div class="mesa-pagar-resumo">' +
+        '<div class="mesa-pagar-linha total"><span>Total</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>" +
+        (recebido > 0 ? '<div class="mesa-pagar-linha recebido"><span>Já recebido</span><span>' + pdvMoney(recebido) + "</span></div>" : "") +
+        '<div class="mesa-pagar-linha falta"><span>Falta</span><span>' + pdvMoney(falta) + "</span></div>" +
+      "</div>" +
+      '<span class="pdv-ops-tit">Forma de pagamento</span>' +
+      '<div class="pdv-formas">' + tiles + "</div>" +
+      '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="mesaPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="mesaPgAdd">Adicionar</button></div>' +
+      '<div class="pdv-pg-lista" id="mesaPgLista"></div>' +
+      '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
+        '<div class="mesa-pagar-linha"><span>Pago</span><span id="mesaPgPago">R$ 0,00</span></div>' +
+        '<div class="mesa-pagar-linha falta"><span>' + (mesaPagarModo === "parcial" ? "Restante" : "Falta") + '</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
+        '<div class="mesa-pagar-linha"><span>Troco</span><span id="mesaPgTroco">R$ 0,00</span></div>' +
+      "</div>" +
     "</div>" +
     '<div class="pdv-modal-rodape">' +
-    '<button type="button" class="secundario" id="mesasPagarFechar2">Cancelar</button>' +
-    '<button type="button" class="primario" id="btnMesaConfirmarPag">' + (modo === "parcial" ? "Registrar" : "Fechar conta") + "</button>" +
+      '<button type="button" class="secundario" id="mesasPagarFechar2">Cancelar</button>' +
+      '<button type="button" class="primario" id="btnMesaConfirmarPag" disabled>' + btnLabel + "</button>" +
     "</div>";
   $("mesasPagarOverlay").hidden = false;
   $("mesasPagarFechar").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
   $("mesasPagarFechar2").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
-  var valInput = $("mesaPgValor");
-  if (valInput) {
-    if (window.Dinheiro) Dinheiro.mascarar(valInput); // padrão único (centavos primeiro + milhar)
-    valInput.focus();
-  }
-  $("btnMesaConfirmarPag").addEventListener("click", function () { mesaConfirmarPagamento(falta, resumo.total || 0); });
+  $("mesasPagarCaixa").querySelectorAll("[data-mforma]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      mesaPgFormaSel = b.dataset.mforma;
+      $("mesasPagarCaixa").querySelectorAll("[data-mforma]").forEach(function (x) { x.classList.toggle("ativo", x === b); });
+      var inp = $("mesaPgValor"); if (inp) inp.focus();
+    });
+  });
+  var valInp = $("mesaPgValor");
+  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); }
+  $("mesaPgAdd").addEventListener("click", mesaPagAdd);
+  valInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mesaPagAdd(); } });
+  if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
+  $("btnMesaConfirmarPag").addEventListener("click", mesaConfirmarPagamento);
+  renderMesaPgLista();
 }
 
-async function mesaConfirmarPagamento(faltaOrig, totalMesa) {
+function mesaPagAdd() {
+  var v = window.Dinheiro ? Dinheiro.valor($("mesaPgValor")) : 0;
+  if (!(v > 0)) { toast("Informe o valor.", "erro"); return; }
+  if (!mesaPgFormaSel) { toast("Escolha a forma de pagamento.", "erro"); return; }
+  var restante = Math.round((mesaPagarAlvo - mesaPagoTotal()) * 100) / 100;
+  // Só dinheiro pode exceder (gera troco); demais formas limitam ao restante.
+  if (!pdvEhDinheiro(mesaPgFormaSel)) {
+    if (restante <= 0) { toast("Pagamento já fechado.", "erro"); return; }
+    v = Math.min(v, restante);
+  }
+  mesaPagamentos.push({ forma: mesaPgFormaSel, valor: v });
+  renderMesaPgLista();
+  var novoRest = Math.max(0, Math.round((mesaPagarAlvo - mesaPagoTotal()) * 100) / 100);
+  if (window.Dinheiro) Dinheiro.setValor($("mesaPgValor"), novoRest);
+}
+
+function renderMesaPgLista() {
+  var box = $("mesaPgLista");
+  if (box) {
+    box.innerHTML = mesaPagamentos.map(function (p, i) {
+      return '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmmpg="' + i + '" aria-label="Remover">&times;</button></div>';
+    }).join("");
+    box.querySelectorAll("[data-rmmpg]").forEach(function (b) {
+      b.addEventListener("click", function () { mesaPagamentos.splice(Number(b.dataset.rmmpg), 1); renderMesaPgLista(); });
+    });
+  }
+  mesaPagRecalc();
+}
+
+function mesaPagRecalc() {
+  var pago = mesaPagoTotal();
+  var restante = Math.max(0, Math.round((mesaPagarAlvo - pago) * 100) / 100);
+  var troco = Math.max(0, Math.round((pago - mesaPagarAlvo) * 100) / 100);
+  if ($("mesaPgPago")) $("mesaPgPago").textContent = pdvMoney(pago);
+  if ($("mesaPgRestante")) $("mesaPgRestante").textContent = pdvMoney(restante);
+  if ($("mesaPgTroco")) $("mesaPgTroco").textContent = pdvMoney(troco);
+  // Parcial: qualquer valor > 0 já registra. Fechar: precisa cobrir a falta.
+  var pode = mesaPagarModo === "parcial" ? (pago > 0) : (pago > 0 && pago + 0.001 >= mesaPagarAlvo);
+  if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !pode;
+}
+
+async function mesaConfirmarPagamento() {
   var d = mesaState.detalhe;
-  var forma = (($("mesaPgForma") || {}).value) || "Outros";
-  var valor = window.Dinheiro ? Dinheiro.valor("mesaPgValor") : 0;
-  if (!valor || valor <= 0) { toast("Informe o valor.", "erro"); return; }
+  if (!d || !mesaPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
+  var pagoAgora = mesaPagoTotal();
   var btn = $("btnMesaConfirmarPag");
   btn.disabled = true;
   if (mesaPagarModo === "parcial") {
-    var r = await api("POST", "/api/mesas/" + d.id + "/receber-parcial", { forma: forma, valor: valor });
-    btn.disabled = false;
-    if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro.", "erro"); return; }
+    var r = await api("POST", "/api/mesas/" + d.id + "/receber-parcial", { pagamentos: mesaPagamentos });
+    if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Erro.", "erro"); return; }
     mesaState.detalhe = await r.json();
     $("mesasPagarOverlay").hidden = true;
-    toast("Recebido " + pdvMoney(valor) + " em " + forma + ".");
+    toast("Recebido " + pdvMoney(pagoAgora) + ".");
     abrirMesaPainel();
     await mesaAtualizarLista();
   } else {
-    var r2 = await api("POST", "/api/mesas/" + d.id + "/pagar", { pagamentos: [{ forma: forma, valor: valor }] });
-    btn.disabled = false;
-    if (!r2.ok) { var e2 = await r2.json().catch(function () { return {}; }); toast(e2.erro || "Erro ao fechar.", "erro"); return; }
+    var r2 = await api("POST", "/api/mesas/" + d.id + "/pagar", { pagamentos: mesaPagamentos });
+    if (!r2 || !r2.ok) { btn.disabled = false; var e2 = (r2 && await r2.json().catch(function () { return {}; })) || {}; toast(e2.erro || "Erro ao fechar.", "erro"); return; }
     $("mesasPagarOverlay").hidden = true;
     toast("Mesa " + d.nome + " fechada!");
     fecharMesaPainel();

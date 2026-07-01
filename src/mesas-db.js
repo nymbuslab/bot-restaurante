@@ -158,19 +158,34 @@ async function recebidoDaMesa(dir, mesaId) {
   return Number(r.rows[0].s) || 0;
 }
 
-// Recebimento PARCIAL: lança um movimento de recebimento ligado à mesa (sem
-// pedido_id). Não muda o status da mesa — outros podem continuar pagando/pedindo.
-async function receberParcial(dir, mesaId, { forma, valor }, nomeMesa) {
+// Recebimento PARCIAL: lança um ou mais movimentos de recebimento ligados à mesa
+// (sem pedido_id), numa transação (split: várias formas de uma vez). Não muda o
+// status da mesa — outros podem continuar pagando/pedindo.
+async function receberParcial(dir, mesaId, pagamentos, nomeMesa) {
   const empId = await empresaId(dir);
-  const v = Number(valor) || 0;
-  if (v <= 0) throw new Error("Valor deve ser positivo.");
+  const pags = (Array.isArray(pagamentos) ? pagamentos : [pagamentos])
+    .map((p) => ({ forma: (p && p.forma) || "Outros", valor: Number(p && p.valor) || 0 }))
+    .filter((p) => p.valor > 0);
+  if (!pags.length) throw new Error("Valor deve ser positivo.");
   const cx = await caixa.caixaAberto(dir);
   if (!cx) throw new Error("Abra o caixa antes de receber.");
-  await db.query(
-    `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, mesa_id, descricao)
-     VALUES ($1, $2, 'recebimento', $3, $4, $5, $6)`,
-    [cx.id, empId, forma || "Outros", v, mesaId, "Mesa " + (nomeMesa || mesaId)]
-  );
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const p of pags) {
+      await client.query(
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, mesa_id, descricao)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6)`,
+        [cx.id, empId, p.forma, p.valor, mesaId, "Mesa " + (nomeMesa || mesaId)]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
   return { recebido: await recebidoDaMesa(dir, mesaId) };
 }
 
