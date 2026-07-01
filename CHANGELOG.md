@@ -593,3 +593,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - Ao **receber um pedido** na tela de Pedidos, o sistema agora **pergunta/confirma a forma de pagamento** (já pré-selecionando a que o cliente informou) — antes recebia direto, sem escolher. Assim o dono sabe exatamente **como** cada pedido foi pago.
 - Pedidos de **mesa** deixam de ser recebidos por aqui: são pagos na aba **Mesas** (Fechar Conta / Receber Parcial), onde se escolhe a forma e aplica a taxa de serviço.
+
+## [0.70.0] — Módulo Mesas na página de planos e no upgrade
+
+- A **página inicial** passa a mostrar o módulo **Mesas e comandas** como parte do **Plano Completo** — nos cards de preço (agora com a mesma lista lado a lado, marcando o que cada plano tem) e na lista de recursos.
+- No painel, quem está no **Essencial** e clica em **Mesas** vê um convite claro para o Plano Completo (com o que ganha), no mesmo padrão do PDV e do Caixa.
