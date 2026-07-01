@@ -29,29 +29,46 @@
   <section id="telaApp" hidden>
    <div class="app-wrap">
     <header class="topo"><h1>Nymbus Impressora</h1><p>Impressão automática dos pedidos</p></header>
+
     <div class="card">
-      <div class="restaurante"><div><strong id="nomeRest">—</strong><span id="emailRest"></span></div>
-      <button id="btnSair" class="secundario">Sair</button></div>
+      <h2>Restaurante</h2>
+      <div class="rest-inner">
+        <div><strong id="nomeRest">—</strong><span id="emailRest"></span></div>
+        <button id="btnSair" class="perigo">Sair</button>
+      </div>
     </div>
-    <div id="faixaStatus" class="faixa">Verificando…</div>
+
     <div class="card">
+      <div id="faixaStatus" class="faixa">Verificando…</div>
       <h2>Impressora</h2>
+      <p class="card-sub">Escolha a impressora dos pedidos.</p>
+      <div class="acoes-topo">
+        <button id="btnDetectar" class="secundario">Detectar impressoras</button>
+        <button id="btnTeste" class="secundario">Teste de impressão</button>
+        <button id="btnSalvar" class="primario">Salvar</button>
+      </div>
       <label>Tipo de conexão</label>
       <select id="conexao"><option value="rede">Rede / Wi-Fi</option><option value="serial">Serial (COM)</option><option value="usb">USB</option></select>
       <div id="campoRede"><label>IP da impressora (ex.: 192.168.0.50)</label><input id="alvoRede" type="text" placeholder="192.168.0.50:9100" /></div>
-      <div id="campoSerialUsb" hidden><label>Impressora</label><select id="alvoLista"></select><button id="btnDetectar" class="secundario">Detectar</button></div>
+      <div id="campoSerialUsb" hidden><label>Impressora</label><select id="alvoLista"></select></div>
       <div id="campoBaud" hidden><label>Baud</label><input id="baud" type="number" value="9600" /></div>
       <label>Corte do papel</label>
       <select id="corte"><option value="parcial">Parcial (picote)</option><option value="total">Total</option><option value="nenhum">Não cortar</option></select>
       <label class="check"><input id="semAcento" type="checkbox" /> Imprimir sem acento</label>
       <fieldset><legend>Vias</legend>
-        <label class="check"><input id="viaCozinha" type="checkbox" checked /> Cozinha</label>
-        <label class="check"><input id="viaCupom" type="checkbox" checked /> Cupom</label>
+        <div class="vias-row">
+          <label class="check"><input id="viaCozinha" type="checkbox" checked /> Cozinha</label>
+          <label class="check"><input id="viaCupom" type="checkbox" checked /> Cupom</label>
+        </div>
       </fieldset>
       <label>Cópias por via</label><input id="copias" type="number" min="1" max="10" value="1" />
-      <div class="botoes"><button id="btnTeste" class="secundario">Teste de impressão</button><button id="btnSalvar" class="primario">Salvar</button></div>
     </div>
-    <div class="card"><h2>Registros</h2><pre id="registros" class="console"></pre></div>
+
+    <div class="card">
+      <h2>Registros</h2>
+      <p class="card-sub">Últimas ações da impressora.</p>
+      <pre id="registros" class="console"></pre>
+    </div>
    </div>
   </section>
 
