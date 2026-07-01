@@ -581,3 +581,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
   - **Retirada:** **sem cobrança na hora** — vai para **Pedidos como "a receber"** e imprime **só a comanda da cozinha**.
 - Na tela **Finalizar venda**, Entrega e Retirada não pedem forma de pagamento — o botão vira **"Enviar para Pedidos"**.
 - A coluna **"Canal"** na lista de Pedidos ficou 100% confiável (WhatsApp / Balcão / Mesa), inclusive para vendas de PDV com entrega.
+
+## [0.68.0] — Mesas: transferir/juntar, resumo do salão, alerta de mesa parada e nº de pessoas
+
+- **Transferir / juntar comanda:** botão **Transferir** na mesa aberta escolhe a mesa de destino. Se o destino está livre, a comanda é **transferida**; se já está ocupado, as comandas são **juntadas**.
+- **Resumo do salão no topo:** contagem de mesas **Livres / Ocupadas / Pediu conta** e o **total em aberto**, com legenda das cores.
+- **Alerta de mesa parada:** a mesa ocupada que fica muito tempo **sem lançar um novo pedido** ganha um sinal vermelho (com o tempo parado); o limite é configurável em **Configurar Mesas** (padrão 30 min; 0 desliga).
+- **Nº de pessoas na mesa:** ao **abrir a mesa**, o sistema pergunta quantas pessoas (opcional). Com 2 ou mais, aparece o **valor por pessoa** no painel, na **conta impressa** e no **fechamento**. Dá para ajustar depois pelo lápis ao lado de "Pessoas".
