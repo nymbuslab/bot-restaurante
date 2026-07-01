@@ -4975,7 +4975,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-resumo-tot strong { font-size: 22px; color: var(--accent-fg); }
 .pdv-resumo-linha { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); margin-top: 7px; }
 .pdv-resumo-linha[hidden] { display: none; }
-.pdv-resumo-linha .falta { color: var(--error); font-weight: 700; }
+.pdv-resumo-linha .falta { color: var(--warning); font-weight: 700; }
 .pdv-resumo-linha .troco { color: var(--success); font-weight: 700; }
 .pdv-resumo-desc span:last-child { color: var(--success); font-weight: 600; }
 .pdv-resumo-frete > span:last-child { display: inline-flex; align-items: center; }
@@ -5012,7 +5012,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-ent-grid .pdv-ent-cidade { grid-column: span 10; }
 .pdv-ent-grid .pdv-ent-uf { grid-column: span 2; }
 .pdv-cpf { margin: 14px 0 0; }
-.pdv-pg-acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.pdv-pg-acoes { display: flex; gap: 10px; justify-content: flex-start; margin-top: 20px; }
 .pdv-pg-acoes .secundario { padding: 13px 22px; }
 .pdv-pg-confirmar { padding: 13px 24px; font-size: 15px; }
 
