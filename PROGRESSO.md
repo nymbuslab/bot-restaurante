@@ -17,6 +17,15 @@
   - **Fase 2 (opcional):** tabela `incidentes` + lista dos últimos erros 500 no painel (rastro histórico).
   - **Externo (recomendado, não-código):** monitor de uptime (UptimeRobot/BetterStack, grátis) batendo no `/health` com alerta por e-mail/Telegram — é a única forma de saber que o app **caiu** (o painel servido pelo app não abre se o app está offline). `/health` é só vivacidade (não testa Supabase).
 
+#### Tela de Mesas — melhorias (revisão tela a tela, benchmark concorrentes)
+
+> Análise da aba **Mesas** vs. sistemas de comanda (Saipos, Goomer, Consumer, Colibri, Linx). Já forte: grade por status, abrir/lançar/solicitar conta/reabrir/cancelar, receber parcial + fechar com split (backend), pré-conta impressa, taxa de serviço. **Em andamento (esta rodada):** split na tela de pagamento + reforço do cancelar.
+
+- [ ] **(P1) Transferir / juntar mesa (UI)** — a rota `POST /api/mesas/:id/transferir/:destinoId` + `mesasDb.transferir` **já existem e estão testadas**, mas **não há UI** → feature inutilizável. Só ligar a interface (escolher mesa destino; mover pedidos / juntar comandas).
+- [ ] **(P1) Resumo de ocupação + legenda no topo** — "X livres · Y ocupadas · Z na conta" + legenda das cores. 100% client-side, leitura rápida do salão.
+- [ ] **(P2) Alerta de tempo (mesa parada)** — destacar mesa aberta há mais de um limite (usa `abertaEm`).
+- [ ] **(P2) Nº de pessoas na mesa (covers)** — **ao ABRIR a mesa, modal perguntando quantas pessoas**; o número reflete em: **Imprimir Conta** (pré-conta com **valor por pessoa**) e **Fechamento** (valor por pessoa / dividir por pessoa). Precisa de coluna `mesas.pessoas` (migration).
+
 #### Tela de PDV — evolução futura (opcional)
 
 > A revisão da aba **PDV** está concluída (P0+P1 — ver ✅). **Descartados** pelo dono nesta rodada (ficam de fora por ora): **valores rápidos de dinheiro** no pagamento, **favoritos/mais vendidos** na grade, **leitor de código de barras** na busca.

@@ -147,7 +147,9 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   contra os ERPs do segmento (iFood Gestor, Saipos, Goomer, Anota AI, Menew), corrigindo atrito e
   trazendo padrões de mercado **dentro do escopo** (sem virar KDS). Dashboard ✅ (header + análises);
   **Pedidos** ✅ (resumo, cancelado, prévia, canal, ações rápidas). Detalhe acionável por tela no
-  `PROGRESSO.md` (atual: **Tela de PDV** — confirmar cancelar, badge de quantidade no card, digitar quantidade).
+  `PROGRESSO.md`. PDV ✅ (confirmar cancelar, badge, digitar qtd, fluxo por tipo de venda + origem).
+  Atual: **Tela de Mesas** — split no pagamento, reforço anti-fraude do cancelar, transferir/juntar (UI),
+  resumo de ocupação, alerta de tempo, nº de pessoas (valor por pessoa na conta/fechamento).
 
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
