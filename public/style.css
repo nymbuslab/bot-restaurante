@@ -4915,6 +4915,9 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-modal-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: var(--bg-elevated); color: var(--text-secondary); border: none; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .pdv-modal-x:hover { background: var(--bg-overlay); color: var(--text-primary); }
 .pdv-modal-titulo { margin: 0 36px 14px 0; font-size: 18px; }
+/* Rodapé dos modais de mesa (Abrir/pessoas, Fechar Conta, Receber Parcial,
+   Transferir, Configurar): botões centralizados e espaçados. */
+.pdv-modal-rodape { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
 .pdv-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .pdv-campo > span { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
 .pdv-campo .pdv-stepper { align-self: flex-start; }
