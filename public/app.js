@@ -4947,8 +4947,21 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("qr-overlay").style.display === "flex") fecharQr();
 });
 
+// Versão mais recente do agente publicada no GitHub (via proxy do servidor) — exibe
+// ao lado do botão de download em Configurações → Impressora.
+async function carregarVersaoAgente() {
+  const el = $("agente-versao");
+  if (!el) return;
+  try {
+    const r = await fetch("/api/agente/versao-publicada");
+    const d = r.ok ? await r.json() : null;
+    el.textContent = d && d.versao ? "Versão mais recente: " + d.versao : "";
+  } catch (_) { el.textContent = ""; }
+}
+
 async function inicial() {
   setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
+  carregarVersaoAgente();               // versão do agente publicada (aba Configurações → Impressora)
   setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
 
   // Restaura a última aba visitada: a troca VISUAL já ocorreu no boot (evita piscar o

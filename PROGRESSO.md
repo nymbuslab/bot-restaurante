@@ -10,7 +10,7 @@ _(nada no momento)_
 
 ### Em aberto
 
-- [ ] **(P1) Publicar o `.exe` do agente de impressão em produção** — a rota `GET /downloads/nymbus-impressora.exe` no Express e o botão de download no painel **já foram feitos** (ver ✅). Falta **hospedar o binário no deploy** (o `.exe` mora em `agente-impressora/dist/`, que é gitignored → não vai no container do Fly) e **validar no Windows real** (login → configurar impressora Rede/Serial → teste → pedido real imprimindo sozinho). Auto-update segue **desligado** até o instalador ser assinado (code signing) — religar só com `verifyUpdateCodeSignature`.
+- [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
 - [ ] **(P1) Monitoramento de saúde no painel master + visibilidade de erros** — disparado por um "Falha ao validar a sessão" (500) no sabor-d-casa: o `catch` do `exigeAuth` ([servidor.js:136](src/servidor.js#L136)) **não loga a causa** → sem rastro. O 500 vem de `resolverPorToken` quando a consulta ao Postgres/Supabase falha (soluço de conexão, geralmente transitório; checado em 2026-06-30 = banco OK, 19/60 conexões, tenant íntegro).
   - **Fase 1:** logar a causa no `exigeAuth` (`console.error`) + aba **"Monitoramento"** no `/admin-master` com **Banco/Auth/App/Bots** ao vivo (novo `GET /api/admin/diagnostico` sob `exigeSuperAdmin` com `SELECT 1` leve + contagem de conexões; uptime/versão; nº de bots conectados; fila de impressão pendente).
@@ -37,7 +37,7 @@ _(nada no momento)_
 
 ### Pendências operacionais (standing)
 
-- **(operacional — dono) Validar a impressão pelo agente no hardware real** — o caminho navegador foi removido (Fase 3), então o agente é o ÚNICO canal. Testar no Windows com a térmica: PDV/Mesa (cozinha), Mesa "Imprimir Conta" (com "por pessoa" quando houver), Caixa (fechamento), "Reimprimir comanda" → tudo sai sozinho. Sem código pendente.
+- **(operacional — dono) Validar a impressão pelo agente no hardware real** — o caminho navegador foi removido (Fase 3), então o agente é o ÚNICO canal. Testar no Windows com a térmica: PDV/Mesa (cozinha), Mesa "Imprimir Conta" (com "por pessoa" quando houver), Caixa (fechamento), "Reimprimir comanda" → tudo sai sozinho. **Incluir o teste da conexão USB** (novo na 0.2.0: envio RAW pelo spooler do Windows) além de Rede/Serial. Sem código pendente.
 - **(produto) Pedido de teste #3** no `sabor-d-casa` pode ser apagado pelo painel (resíduo do cardápio web; `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` já setados e no ar na v28).
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.

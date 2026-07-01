@@ -348,16 +348,48 @@ app.post("/api/agente/fila/:id/impresso", exigeAuth, async (req, res) => {
   }
 });
 
-// Download do agente de impressão (Windows). Serve o instalador .exe mais recente
-// de agente-impressora/dist sob um nome estável (resiliente à versão no arquivo).
-app.get("/downloads/nymbus-impressora.exe", (req, res) => {
+// Download do agente de impressão (Windows). O binário mora no GitHub Releases (repo
+// público) — não no container. Esta rota faz PROXY: busca o .exe da última release e
+// repassa o stream, então o usuário só vê a URL do painel (nunca github.com). Nome do
+// asset carrega a versão; resolvemos via API e cacheamos por 10min (rate limit anônimo).
+const GH_REPO_AGENTE = "nymbuslab/bot-restaurante";
+let _agenteCache = { url: null, versao: null, exp: 0 };
+async function resolverAssetAgente() {
+  if (_agenteCache.url && _agenteCache.exp > Date.now()) return _agenteCache;
+  const r = await fetch(`https://api.github.com/repos/${GH_REPO_AGENTE}/releases/latest`, {
+    headers: { "User-Agent": "nymbus-app", Accept: "application/vnd.github+json" },
+  });
+  if (!r.ok) throw new Error("release lookup " + r.status);
+  const rel = await r.json();
+  const asset = (rel.assets || []).find((a) => /\.exe$/i.test(a.name || ""));
+  if (!asset) throw new Error("sem asset .exe na release");
+  _agenteCache = { url: asset.browser_download_url, versao: String(rel.tag_name || "").replace(/^v/, ""), exp: Date.now() + 10 * 60 * 1000 };
+  return _agenteCache;
+}
+
+app.get("/downloads/nymbus-impressora.exe", async (req, res) => {
   try {
-    const dir = path.join(__dirname, "..", "agente-impressora", "dist");
-    const exe = require("fs").readdirSync(dir).find((f) => f.toLowerCase().endsWith(".exe"));
-    if (!exe) return res.status(404).send("Instalador indisponível no momento.");
-    res.download(path.join(dir, exe), "Nymbus Impressora Setup.exe");
+    const { url } = await resolverAssetAgente();
+    const dl = await fetch(url, { headers: { "User-Agent": "nymbus-app" } });
+    if (!dl.ok || !dl.body) return res.status(404).send("Instalador indisponível no momento.");
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Disposition", 'attachment; filename="Nymbus Impressora Setup.exe"');
+    const len = dl.headers.get("content-length");
+    if (len) res.setHeader("Content-Length", len);
+    require("stream").Readable.fromWeb(dl.body).pipe(res);
   } catch (e) {
+    console.error("download agente:", e.message);
     res.status(404).send("Instalador indisponível no momento.");
+  }
+});
+
+// Versão atual do agente publicada (para o painel exibir e detectar desatualização).
+app.get("/api/agente/versao-publicada", async (req, res) => {
+  try {
+    const { versao } = await resolverAssetAgente();
+    res.json({ versao: versao || null });
+  } catch (e) {
+    res.json({ versao: null });
   }
 });
 
