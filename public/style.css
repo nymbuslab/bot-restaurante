@@ -4742,7 +4742,12 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-rodape { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
 .fc-dif.fc-sobra { color: var(--success); }
 .fc-dif.fc-falta { color: var(--error); }
-.fc-acoes { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; }
+.fc-acoes {
+  display: flex; justify-content: space-between; gap: 12px;
+  position: sticky; bottom: 0; z-index: 5;
+  margin-top: 18px; padding: 14px 0;
+  background: var(--bg-primary); border-top: 1px solid var(--border);
+}
 .fc-bloqueio { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px; background: var(--warning-subtle); border: 1px solid var(--warning); border-radius: var(--radius); }
 .fc-bloqueio-txt { display: flex; flex-direction: column; gap: 2px; }
 .fc-bloqueio-txt strong { color: var(--warning); }
