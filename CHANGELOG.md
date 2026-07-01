@@ -620,3 +620,10 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - Ao **atualizar a página**, o painel abre **direto na última aba** usada, sem piscar o Dashboard.
 - No **PDV**, adicionar um produto não mostra mais um aviso a cada clique — o item já aparece no carrinho.
+
+## [0.73.2] — Agente de impressão: mais confiável e login novo
+
+- **Bandeja:** fechar a janela agora **minimiza para a bandeja do relógio** (com ícone da marca; Abrir/Sair no menu). Antes o app sumia sem ícone e você não sabia se estava rodando.
+- **Reconexão:** reabrir o agente já logado **reconecta sozinho** — acabou o "Sem conexão com o servidor" ao fechar e abrir.
+- **Impressora mantida:** a impressora configurada volta **já selecionada** ao reabrir; não precisa Detectar de novo.
+- **Tela de login mais limpa:** marca central + card enxuto, **sem o campo técnico de servidor**. A janela nasce maior (765×670) e pode ir até tela cheia.
