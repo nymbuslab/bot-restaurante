@@ -2429,7 +2429,9 @@ function renderFechamentoCaixa(data) {
     if (!ehFormaDinheiro(f) && !eletronicas.includes(f)) eletronicas.push(f);
   });
   const lancamentos = []; // { forma, valor }
-  const pendentes = Number(data.pedidosAReceber) || 0; // pedidos do turno ainda a receber
+  const pendentes = Number(data.pedidosAReceber) || 0; // pedidos delivery/local a receber
+  const mesasAbertas = Number(data.mesasAbertas) || 0; // mesas com consumo em aberto
+  const bloqueado = pendentes > 0 || mesasAbertas > 0;
 
   const linhasCedula = DENOMINACOES.map((c) => `
     <tr>
@@ -2448,11 +2450,19 @@ function renderFechamentoCaixa(data) {
         <h3>Fechamento de Caixa</h3>
         <span class="sub">Confira o dinheiro da gaveta e os recebimentos eletrônicos do dia${data.caixa && data.caixa.operador ? " · Operador: " + escapar(data.caixa.operador) : ""}</span>
       </div>
+      ${mesasAbertas > 0 ? `
+      <div class="fc-bloqueio">
+        <div class="fc-bloqueio-txt">
+          <strong>${mesasAbertas} mesa${mesasAbertas > 1 ? "s" : ""} aberta${mesasAbertas > 1 ? "s" : ""}.</strong>
+          <span>Feche as mesas (recebimento na aba Mesas) antes de fechar o caixa.</span>
+        </div>
+        <button type="button" id="fcVerMesas" class="secundario">Ir para Mesas</button>
+      </div>` : ""}
       ${pendentes > 0 ? `
       <div class="fc-bloqueio">
         <div class="fc-bloqueio-txt">
           <strong>${pendentes} pedido${pendentes > 1 ? "s" : ""} com pagamento a receber.</strong>
-          <span>Receba todos os pedidos do dia antes de fechar o caixa.</span>
+          <span>Receba os pedidos do dia (aba Pedidos) antes de fechar o caixa.</span>
         </div>
         <button type="button" id="fcVerPedidos" class="secundario">Ver pedido${pendentes > 1 ? "s" : ""} a receber</button>
       </div>` : ""}
@@ -2484,7 +2494,7 @@ function renderFechamentoCaixa(data) {
       </div>
       <div class="fc-acoes">
         <button class="secundario" id="fcCancelar">Cancelar</button>
-        <button id="fcFechar"${pendentes > 0 ? " disabled" : ""}>Fechar caixa e imprimir →</button>
+        <button id="fcFechar"${bloqueado ? " disabled" : ""}>Fechar caixa e imprimir →</button>
       </div>
     </div>`;
 
@@ -2544,10 +2554,14 @@ function renderFechamentoCaixa(data) {
   $("fcValor").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); adicionarLancamento(); } });
   $("fcCancelar").addEventListener("click", () => carregarCaixa());
   $("fcFechar").addEventListener("click", () => {
+    if (mesasAbertas > 0) { toast("Feche as mesas abertas antes de fechar o caixa."); return; }
     if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
     fecharCaixaFinal(data, contagemAtual(), lancamentos);
   });
   if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", irParaPedidosAReceber);
+  if (mesasAbertas > 0 && $("fcVerMesas")) $("fcVerMesas").addEventListener("click", () => {
+    const btn = document.querySelector("[data-aba='mesas']"); if (btn) btn.click();
+  });
 
   renderLista(); recalcDinheiro(); recalcEletronico();
 }

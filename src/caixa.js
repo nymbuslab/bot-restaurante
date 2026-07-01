@@ -23,10 +23,25 @@ async function empresaId(dir) {
 
 // Conta pedidos do turno (criados desde a abertura do caixa) ainda NÃO recebidos.
 // Base da regra "todos os pedidos precisam ser recebidos antes de fechar".
+// Pedidos de DELIVERY/local (mesa_id NULL) ainda a receber no turno. Exclui
+// cancelados (nunca recebem → travavam o fechamento) e mesas (contadas à parte:
+// mesa se recebe na própria mesa, não pela aba Pedidos).
 async function _contarAReceber(empId, abertoEm) {
   const r = await db.query(
-    "SELECT COUNT(*)::int AS n FROM pedidos WHERE empresa_id = $1 AND recebido_em IS NULL AND criado_em >= $2",
+    `SELECT COUNT(*)::int AS n FROM pedidos
+      WHERE empresa_id = $1 AND recebido_em IS NULL AND status <> 'cancelado'
+        AND mesa_id IS NULL AND criado_em >= $2`,
     [empId, abertoEm]
+  );
+  return r.rows[0].n;
+}
+
+// Mesas com consumo em aberto (não-livres) — bloqueiam o fechamento do caixa
+// (o consumo ainda não entrou), mas com mensagem própria (feche na aba Mesas).
+async function _contarMesasAbertas(empId) {
+  const r = await db.query(
+    "SELECT COUNT(*)::int AS n FROM mesas WHERE empresa_id = $1 AND status <> 'livre'",
+    [empId]
   );
   return r.rows[0].n;
 }
@@ -326,6 +341,7 @@ async function resumo(dir) {
   );
   const empId = await empresaId(dir);
   const pedidosAReceber = await _contarAReceber(empId, caixa.aberto_em);
+  const mesasAbertas = await _contarMesasAbertas(empId);
   return {
     caixa: {
       id: caixa.id,
@@ -336,6 +352,7 @@ async function resumo(dir) {
       obsAbertura: caixa.obs_abertura || null,
     },
     pedidosAReceber,
+    mesasAbertas,
     resumo: calc.resumoCaixa(caixa, movimentos),
     movimentos: mov.rows.map((r) => ({
       tipo: r.tipo, pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
@@ -368,7 +385,11 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Não há caixa aberto.");
 
-  // Regra de negócio: não fecha com pedidos do turno ainda a receber.
+  // Regra de negócio: não fecha com consumo do turno ainda em aberto.
+  const mesasAbertas = await _contarMesasAbertas(caixa.empresa_id);
+  if (mesasAbertas > 0) {
+    throw new Error(`Há ${mesasAbertas} mesa(s) aberta(s). Feche as mesas (na aba Mesas) antes de fechar o caixa.`);
+  }
   const aReceber = await _contarAReceber(caixa.empresa_id, caixa.aberto_em);
   if (aReceber > 0) {
     throw new Error(`Há ${aReceber} pedido(s) com pagamento a receber. Receba todos antes de fechar o caixa.`);
