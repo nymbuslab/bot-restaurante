@@ -5130,7 +5130,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .dash-chart { height: 88px; margin-top: 10px; }
 .dash-chart svg { width: 100%; height: 100%; display: block; }
 .dash-bar { fill: var(--secondary); }
-.dash-analise-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: start; }
+.dash-analise-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
 .dash-top { list-style: none; margin: 2px 0 0; padding: 0; counter-reset: dtop; display: flex; flex-direction: column; gap: 9px; }
 .dash-top li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary); }
 .dash-top li:not(.dash-vazio)::before { counter-increment: dtop; content: counter(dtop); width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--accent-fg); background: var(--accent-subtle); border-radius: 50%; }
