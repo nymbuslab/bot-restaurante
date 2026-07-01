@@ -4,7 +4,7 @@
 
 ## 🔄 Em Andamento
 
-- [ ] **Validar a impressão pelo agente no hardware real** — o caminho navegador foi removido (Fase 3), então o agente é o ÚNICO canal. Testar no Windows: PDV/Mesa (cozinha), Mesa "Imprimir Conta", Caixa (fechamento), "Reimprimir comanda" → tudo sai sozinho na térmica. Só operacional (sem código pendente).
+_(nada no momento)_
 
 ## 📋 Próximos Passos
 
@@ -37,6 +37,7 @@
 
 ### Pendências operacionais (standing)
 
+- **(operacional — dono) Validar a impressão pelo agente no hardware real** — o caminho navegador foi removido (Fase 3), então o agente é o ÚNICO canal. Testar no Windows com a térmica: PDV/Mesa (cozinha), Mesa "Imprimir Conta" (com "por pessoa" quando houver), Caixa (fechamento), "Reimprimir comanda" → tudo sai sozinho. Sem código pendente.
 - **(produto) Pedido de teste #3** no `sabor-d-casa` pode ser apagado pelo painel (resíduo do cardápio web; `PUBLIC_URL`/`CARDAPIO_LINK_SECRET` já setados e no ar na v28).
 - **(operacional) GitHub cache:** SHAs antigas com PII podem persistir em cache/forks — purga total exige ticket ao Support.
 - **(produto) Falar com Suporte:** o WhatsApp de suporte fica vazio até ser preenchido em Configurações Master (ou env `SUPORTE_WHATSAPP`); enquanto vazio, o card "Precisa de ajuda?" fica oculto no painel do cliente.
