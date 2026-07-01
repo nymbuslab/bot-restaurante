@@ -204,6 +204,12 @@
       linhas.push(linhaValor("Taxa servico" + pct + ":", fmtBR(opts.taxaServico)));
     }
     linhas.push(linhaValor("TOTAL:", fmtBR(opts.total)));
+    const pessoas = Math.max(1, Math.round(Number(opts.pessoas) || 1));
+    if (pessoas > 1) {
+      const porPessoa = Math.round(((Number(opts.total) || 0) / pessoas) * 100) / 100;
+      linhas.push(linhaValor("Pessoas:", String(pessoas)));
+      linhas.push(linhaValor("Por pessoa:", fmtBR(porPessoa)));
+    }
     if ((Number(opts.recebido) || 0) > 0) {
       linhas.push(linhaValor("Ja recebido:", fmtBR(opts.recebido)));
       linhas.push(linhaValor("FALTA:", fmtBR(opts.falta)));

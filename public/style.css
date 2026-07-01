@@ -5654,6 +5654,25 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   align-items: center;
 }
 .mesa-tag-rm:hover { color: var(--error); }
+/* Nº de pessoas: stepper do modal + linha/editar no rodapé de totais */
+.mesa-pessoas-stepper {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  padding: 8px 0 4px;
+}
+.mesa-pessoas-stepper button {
+  width: 46px; height: 46px; border-radius: 50%; font-size: 24px; line-height: 1;
+  background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+.mesa-pessoas-stepper button:hover { background: var(--bg-overlay); border-color: var(--accent-fg); }
+.mesa-pessoas-stepper #mesaPessoasNum { font-size: 30px; font-weight: 800; min-width: 48px; text-align: center; color: var(--text-primary); }
+.mesa-tot-pessoas span:last-child { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); }
+.mesa-pessoas-edit {
+  background: none; border: none; padding: 2px; cursor: pointer; color: var(--text-secondary);
+  display: inline-flex; align-items: center;
+}
+.mesa-pessoas-edit:hover { color: var(--accent-fg); }
+.mesa-tot-porpessoa { color: var(--accent-fg); }
 /* Payment modal */
 .mesa-pagar-resumo {
   background: var(--bg-elevated);

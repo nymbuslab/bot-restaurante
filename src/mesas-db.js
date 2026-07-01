@@ -26,6 +26,7 @@ function mapRow(r) {
     nome: r.nome,
     status: r.status,
     taxaServico: r.taxa_servico == null ? 0 : Number(r.taxa_servico),
+    pessoas: r.pessoas == null ? 1 : Number(r.pessoas),
     totalConsumido: r.total_consumido == null ? 0 : Number(r.total_consumido),
     qrCodeToken: r.qr_code_token || null,
     ordem: r.ordem == null ? 0 : r.ordem,
@@ -93,14 +94,27 @@ async function remover(dir, id) {
 }
 
 // Abre a mesa (livre → ocupada) e fotografa a taxa de serviço vigente (% do config).
-async function abrir(dir, id, taxaServico) {
+// pessoas: nº de comensais (opcional, padrão 1) — usado p/ "valor por pessoa".
+async function abrir(dir, id, taxaServico, pessoas) {
   const empId = await empresaId(dir);
   const taxa = Math.max(0, Math.min(100, Number(taxaServico) || 0));
+  const pes = Math.max(1, Math.min(99, Math.round(Number(pessoas) || 1)));
   const r = await db.query(
     `UPDATE mesas SET status = 'ocupada', aberta_em = now(), fechada_em = NULL,
-            taxa_servico = $1, total_consumido = 0
-       WHERE empresa_id = $2 AND id = $3 AND status = 'livre' RETURNING *`,
-    [taxa, empId, id]
+            taxa_servico = $1, pessoas = $2, total_consumido = 0
+       WHERE empresa_id = $3 AND id = $4 AND status = 'livre' RETURNING *`,
+    [taxa, pes, empId, id]
+  );
+  return r.rows[0] ? mapRow(r.rows[0]) : null;
+}
+
+// Atualiza o nº de pessoas de uma mesa aberta (edição pelo painel).
+async function atualizarPessoas(dir, id, pessoas) {
+  const empId = await empresaId(dir);
+  const pes = Math.max(1, Math.min(99, Math.round(Number(pessoas) || 1)));
+  const r = await db.query(
+    "UPDATE mesas SET pessoas = $1 WHERE empresa_id = $2 AND id = $3 AND status <> 'livre' RETURNING *",
+    [pes, empId, id]
   );
   return r.rows[0] ? mapRow(r.rows[0]) : null;
 }
@@ -394,7 +408,7 @@ async function cancelarItem(dir, mesaId, pedidoId, itemIdx) {
 function esquecer(slug) { delete idCache[slug]; }
 
 module.exports = {
-  listar, buscarPorId, criarEmLote, remover, abrir, atualizarStatus, reabrir,
+  listar, buscarPorId, criarEmLote, remover, abrir, atualizarPessoas, atualizarStatus, reabrir,
   vincularPedido, lancarItens, pedidosDaMesa, recebidoDaMesa, receberParcial, finalizarFechamento,
   cancelar, transferir, salvarQrToken, esquecer, cancelarItem,
 };

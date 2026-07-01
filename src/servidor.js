@@ -1859,11 +1859,25 @@ app.post("/api/mesas/:id/abrir", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     await store.ensure(req.tenantDir);
-    const mesa = await mesasDb.abrir(req.tenantDir, Number(req.params.id), taxaServicoPadrao(req.tenantDir));
+    const b = req.body || {};
+    const mesa = await mesasDb.abrir(req.tenantDir, Number(req.params.id), taxaServicoPadrao(req.tenantDir), b.pessoas);
     if (!mesa) return res.status(400).json({ erro: "Mesa não encontrada ou já está aberta." });
     res.json(mesa);
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao abrir a mesa." });
+  }
+});
+
+// Edita o nº de pessoas de uma mesa aberta.
+app.post("/api/mesas/:id/pessoas", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const b = req.body || {};
+    const mesa = await mesasDb.atualizarPessoas(req.tenantDir, Number(req.params.id), b.pessoas);
+    if (!mesa) return res.status(400).json({ erro: "Mesa não encontrada ou não está aberta." });
+    res.json(mesa);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao atualizar pessoas." });
   }
 });
 
@@ -1964,6 +1978,7 @@ app.post("/api/mesas/:id/imprimir-conta", exigeAuth, async (req, res) => {
         total: (d.resumo && d.resumo.total) || 0,
         recebido: d.recebido || 0,
         falta: d.falta || 0,
+        pessoas: d.pessoas || 1,
         quando: new Date().toISOString(),
       },
       cfg

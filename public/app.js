@@ -5150,17 +5150,26 @@ function renderMesaTotais() {
   var resumo = d.resumo || {};
   var recebido = d.recebido || 0;
   var falta = d.falta || 0;
+  var pes = Number(d.pessoas) || 1;
+  var editIco = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   var html = "";
+  html += '<div class="mesa-tot-linha mesa-tot-pessoas"><span>Pessoas</span><span>' + pes + ' <button type="button" class="mesa-pessoas-edit" id="mesaPessoasEdit" aria-label="Editar nº de pessoas">' + editIco + "</button></span></div>";
   html += '<div class="mesa-tot-linha"><span>Subtotal</span><span>' + pdvMoney(resumo.subtotal || 0) + "</span></div>";
   if ((resumo.taxaServico || 0) > 0) {
     html += '<div class="mesa-tot-linha"><span>Taxa serviço (' + (d.taxaServico || 0) + '%)</span><span>' + pdvMoney(resumo.taxaServico) + "</span></div>";
   }
   html += '<div class="mesa-tot-linha total"><span>TOTAL</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>";
+  if (pes > 1) {
+    var porPessoa = Math.round(((resumo.total || 0) / pes) * 100) / 100;
+    html += '<div class="mesa-tot-linha mesa-tot-porpessoa"><span>Por pessoa (' + pes + ')</span><span>' + pdvMoney(porPessoa) + "</span></div>";
+  }
   if (recebido > 0) {
     html += '<div class="mesa-tot-linha recebido"><span>Recebido</span><span>' + pdvMoney(recebido) + "</span></div>";
     html += '<div class="mesa-tot-linha falta"><span>Falta</span><span>' + pdvMoney(falta) + "</span></div>";
   }
   el.innerHTML = html;
+  var edit = $("mesaPessoasEdit");
+  if (edit) edit.addEventListener("click", function () { abrirModalPessoas("editar"); });
 }
 
 function renderMesaAcoes() {
@@ -5206,15 +5215,79 @@ function renderMesaAcoes() {
   }
 }
 
-async function mesaAbrir() {
+function mesaAbrir() {
   var d = mesaState.detalhe;
   if (!d) return;
-  var r = await api("POST", "/api/mesas/" + d.id + "/abrir");
+  abrirModalPessoas("abrir"); // pergunta o nº de pessoas antes de abrir (opcional)
+}
+
+async function mesaConfirmarAbrir(pessoas) {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  var r = await api("POST", "/api/mesas/" + d.id + "/abrir", { pessoas: pessoas });
   if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao abrir mesa.", "erro"); return; }
   var m = await r.json();
   mesaState.detalhe = Object.assign({}, mesaState.detalhe, m, { pedidos: [], resumo: { subtotal: 0, taxaServico: 0, total: 0 }, recebido: 0, falta: 0 });
   await mesaAtualizarLista();
   abrirMesaPainel();
+}
+
+/* ---- Nº de pessoas (modal ao abrir / editar) ---- */
+var mesaPessoasVal = 1;
+var mesaPessoasModo = "abrir";
+
+function abrirModalPessoas(modo) {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  mesaPessoasModo = modo;
+  mesaPessoasVal = modo === "editar" ? (Number(d.pessoas) || 1) : 1;
+  var X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  var titulo = modo === "editar" ? "Nº de pessoas — Mesa " + pdvEsc(d.nome) : "Abrir Mesa " + pdvEsc(d.nome);
+  var rodape = modo === "editar"
+    ? '<button type="button" class="secundario" id="mesaPessoasCancelar">Cancelar</button><button type="button" class="primario" id="mesaPessoasConfirmar">Salvar</button>'
+    : '<button type="button" class="secundario" id="mesaPessoasPular">Abrir sem informar</button><button type="button" class="primario" id="mesaPessoasConfirmar">Abrir mesa</button>';
+  $("mesasPessoasCaixa").innerHTML =
+    '<button type="button" class="pdv-modal-x" id="mesaPessoasFechar" aria-label="Fechar">' + X + "</button>" +
+    '<h3 class="pdv-modal-titulo">' + titulo + "</h3>" +
+    '<div class="pdv-modal-corpo">' +
+      '<p class="sub" style="margin:0 0 16px">Quantas pessoas nesta mesa? Usado para o <strong>valor por pessoa</strong> na conta.</p>' +
+      '<div class="mesa-pessoas-stepper">' +
+        '<button type="button" id="mesaPessoasMenos" aria-label="Menos uma pessoa">−</button>' +
+        '<span id="mesaPessoasNum">' + mesaPessoasVal + "</span>" +
+        '<button type="button" id="mesaPessoasMais" aria-label="Mais uma pessoa">+</button>' +
+      "</div>" +
+    "</div>" +
+    '<div class="pdv-modal-rodape">' + rodape + "</div>";
+  $("mesasPessoasOverlay").hidden = false;
+  var setNum = function (v) {
+    mesaPessoasVal = Math.max(1, Math.min(99, v));
+    $("mesaPessoasNum").textContent = mesaPessoasVal;
+  };
+  $("mesaPessoasMenos").addEventListener("click", function () { setNum(mesaPessoasVal - 1); });
+  $("mesaPessoasMais").addEventListener("click", function () { setNum(mesaPessoasVal + 1); });
+  $("mesaPessoasFechar").addEventListener("click", fecharModalPessoas);
+  $("mesasPessoasBg").addEventListener("click", fecharModalPessoas);
+  if ($("mesaPessoasCancelar")) $("mesaPessoasCancelar").addEventListener("click", fecharModalPessoas);
+  if ($("mesaPessoasPular")) $("mesaPessoasPular").addEventListener("click", function () { fecharModalPessoas(); mesaConfirmarAbrir(1); });
+  $("mesaPessoasConfirmar").addEventListener("click", mesaPessoasConfirmar);
+}
+function fecharModalPessoas() { $("mesasPessoasOverlay").hidden = true; }
+
+async function mesaPessoasConfirmar() {
+  var d = mesaState.detalhe;
+  if (!d) return;
+  if (mesaPessoasModo === "editar") {
+    var r = await api("POST", "/api/mesas/" + d.id + "/pessoas", { pessoas: mesaPessoasVal });
+    if (!r || !r.ok) { var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Erro ao salvar.", "erro"); return; }
+    var m = await r.json();
+    mesaState.detalhe = Object.assign({}, mesaState.detalhe, { pessoas: m.pessoas });
+    fecharModalPessoas();
+    renderMesaTotais();
+    toast("Nº de pessoas atualizado.");
+  } else {
+    fecharModalPessoas();
+    mesaConfirmarAbrir(mesaPessoasVal);
+  }
 }
 
 async function mesaSolicitarConta() {
@@ -5639,6 +5712,7 @@ function abrirMesaPagar(modo) {
         '<div class="mesa-pagar-linha"><span>Subtotal</span><span>' + pdvMoney(resumo.subtotal || 0) + "</span></div>" +
         ((resumo.taxaServico || 0) > 0 ? '<div class="mesa-pagar-linha"><span>Taxa serviço (' + (d.taxaServico || 0) + '%)</span><span>' + pdvMoney(resumo.taxaServico) + "</span></div>" : "") +
         '<div class="mesa-pagar-linha total"><span>Total</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>" +
+        ((d.pessoas || 1) > 1 ? '<div class="mesa-pagar-linha"><span>Por pessoa (' + d.pessoas + ')</span><span>' + pdvMoney(Math.round(((resumo.total || 0) / d.pessoas) * 100) / 100) + "</span></div>" : "") +
         (recebido > 0 ? '<div class="mesa-pagar-linha recebido"><span>Já recebido</span><span>' + pdvMoney(recebido) + "</span></div>" : "") +
         '<div class="mesa-pagar-linha falta"><span>Falta</span><span>' + pdvMoney(falta) + "</span></div>" +
       "</div>" +
