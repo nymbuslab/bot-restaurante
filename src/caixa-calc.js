@@ -18,7 +18,9 @@ function resumoCaixa(caixa, movimentos) {
       recebidoPorForma[forma] = (recebidoPorForma[forma] || 0) + v;
       totalRecebido += v;
       if (ehDinheiro(forma)) recebidoDinheiro += v;
-    } else if (m.tipo === "cancelamento") {
+    } else if (m.tipo === "cancelamento" || m.tipo === "estorno") {
+      // Estorno (correção de recebimento errado) deduz igual ao cancelamento —
+      // ambos reversam uma entrada, mantendo o rastro no extrato.
       const forma = m.forma_pagamento || "Outros";
       canceladoPorForma[forma] = (canceladoPorForma[forma] || 0) + v;
       cancelamentos += v;

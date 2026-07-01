@@ -182,19 +182,46 @@ async function venderLocal(dir, venda) {
   }
 }
 
+// Estorna um recebimento feito por ENGANO (ex.: forma errada) → o pedido volta a
+// "a receber" (segue VÁLIDO, ao contrário do cancelamento). Não apaga o
+// recebimento: insere um movimento de 'estorno' por forma (deduz, mesmo valor
+// líquido ainda no caixa), mantendo o rastro anti-fraude. Exige caixa aberto e
+// que o pedido esteja recebido NESTE caixa.
 async function estornarRecebimento(dir, pedidoId) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Sem caixa aberto para estornar.");
-  // Transação: DELETE do movimento (com empresa_id — defesa em profundidade) +
-  // UPDATE do pedido viram tudo-ou-nada.
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query(
-      "DELETE FROM caixa_movimentos WHERE caixa_id = $1 AND pedido_id = $2 AND tipo = 'recebimento' AND empresa_id = $3",
+    const ped = await client.query(
+      "SELECT numero, recebido_em FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, pedidoId]
+    );
+    if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
+    if (!ped.rows[0].recebido_em) throw new Error("Este pedido não está recebido.");
+    const numero = ped.rows[0].numero;
+    // Líquido por forma NESTE caixa (recebimento − estornos já feitos) = o que
+    // ainda está no caixa para este pedido. Estorna exatamente esse líquido.
+    const net = await client.query(
+      `SELECT forma_pagamento AS forma,
+              SUM(CASE WHEN tipo='recebimento' THEN valor WHEN tipo='estorno' THEN -valor ELSE 0 END) AS net
+         FROM caixa_movimentos
+        WHERE caixa_id = $1 AND pedido_id = $2 AND empresa_id = $3 AND tipo IN ('recebimento','estorno')
+        GROUP BY forma_pagamento
+        HAVING SUM(CASE WHEN tipo='recebimento' THEN valor WHEN tipo='estorno' THEN -valor ELSE 0 END) > 0`,
       [caixa.id, pedidoId, empId]
     );
+    if (!net.rows.length) {
+      throw new Error("O recebimento deste pedido não está no caixa aberto (talvez de um caixa já fechado).");
+    }
+    for (const r of net.rows) {
+      await client.query(
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
+         VALUES ($1, $2, 'estorno', $3, $4, $5, $6)`,
+        [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Estorno recebimento #" + numero]
+      );
+    }
     await client.query(
       "UPDATE pedidos SET recebido_em = NULL WHERE empresa_id = $1 AND id = $2",
       [empId, pedidoId]
@@ -290,7 +317,7 @@ async function resumo(dir) {
   // nº/cliente do pedido (recebimentos) — é o que o dono confere ao olhar o caixa.
   const mov = await db.query(
     `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.descricao, m.criado_em,
-            p.numero, p.cliente
+            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
       WHERE m.caixa_id = $1
@@ -314,6 +341,11 @@ async function resumo(dir) {
       tipo: r.tipo, pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
       forma: r.forma_pagamento, valor: Number(r.valor) || 0, descricao: r.descricao || "",
       quando: r.criado_em ? new Date(r.criado_em).toISOString() : null,
+      // Estornável só recebimento de pedido "a receber" ainda recebido (web/PDV-Entrega/
+      // Retirada). Exclui mesa (sem pedido_id → paga na mesa) e balcão (venda paga na
+      // hora → correção é cancelar, não estornar).
+      estornavel: r.tipo === "recebimento" && r.pedido_id != null && r.recebido_em != null
+        && !(r.origem === "pdv" && r.tipo_entrega === "Balcão"),
     })),
   };
 }

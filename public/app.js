@@ -2282,19 +2282,19 @@ function renderCaixaAberto(data) {
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
-  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento" };
-  const ehNeg = (t) => t === "sangria" || t === "cancelamento";
+  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento", estorno: "Estorno" };
+  const ehNeg = (t) => t === "sangria" || t === "cancelamento" || t === "estorno";
   const linhasMov = (data.movimentos || []).map((m) => {
     const neg = ehNeg(m.tipo);
     const rowCls = m.tipo === "recebimento" ? "" : "cx-row-mov" + (neg ? " cx-row-sangria" : "");
-    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento";
+    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno";
     const num = temPedido ? "#" + (m.numero != null ? m.numero : "—") : "—";
     const cliente = m.tipo === "recebimento" ? escapar(m.cliente || "—")
-      : (m.tipo === "cancelamento" ? escapar(m.cliente || m.descricao || "Cancelamento")
+      : ((m.tipo === "cancelamento" || m.tipo === "estorno") ? escapar(m.cliente || m.descricao || tipoLabel[m.tipo])
         : (m.descricao ? escapar(m.descricao) : "—"));
     const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
     const forma = temPedido ? escapar(m.forma || "—") : "—";
-    const acao = m.tipo === "recebimento"
+    const acao = m.estornavel
       ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
     return `<tr class="${rowCls}">
       <td class="cx-td-hora">${dataHoraCurta(m.quando)}</td>

@@ -79,6 +79,21 @@ test("resumoCaixa: cancelamento deduz por forma do total e da espécie", () => {
   assert.equal(totalEmCaixa({ fundo_troco: 100 }, r), 120);
 });
 
+test("resumoCaixa: estorno deduz igual ao cancelamento (recebimento errado)", () => {
+  const movsE = [
+    { tipo: "recebimento", forma_pagamento: "Pix", valor: 40 },      // recebido na forma errada
+    { tipo: "estorno", forma_pagamento: "Pix", valor: 40 },          // estornado (some do líquido)
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 40 }, // recebido de novo, certo
+  ];
+  const r = resumoCaixa({ fundo_troco: 0 }, movsE);
+  assert.equal(r.totalRecebido, 80);                 // bruto: 40 + 40
+  assert.equal(r.cancelamentos, 40);                 // estorno entra como dedução
+  assert.equal(r.canceladoPorForma["Pix"], 40);
+  // total em caixa: 0 + 80 - 40 = 40 (só o recebimento correto em dinheiro)
+  assert.equal(totalEmCaixa({ fundo_troco: 0 }, r), 40);
+  assert.equal(r.recebidoDinheiro, 40);
+});
+
 test("esperadoEletronico: desconta o cancelado eletrônico", () => {
   const r = { totalRecebido: 180, recebidoDinheiro: 100, cancelamentos: 30, canceladoDinheiro: 0 };
   // recebido elet = 80; cancelado elet = 30 → 50
