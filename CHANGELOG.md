@@ -584,7 +584,12 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 ## [0.68.0] — Mesas: transferir/juntar, resumo do salão, alerta de mesa parada e nº de pessoas
 
-- **Transferir / juntar comanda:** botão **Transferir** na mesa aberta escolhe a mesa de destino. Se o destino está livre, a comanda é **transferida**; se já está ocupado, as comandas são **juntadas**.
+- **Transferir / juntar comanda:** botão **Transferir** escolhe a mesa de destino. Destino **livre** → a comanda é **transferida** (a mesa antiga libera). Destino **ocupado** → o sistema confirma **"Juntar contas"** (as duas viram uma conta só); para pagar separado, mantenha as mesas abertas.
 - **Resumo do salão no topo:** contagem de mesas **Livres / Ocupadas / Pediu conta** e o **total em aberto**, com legenda das cores.
 - **Alerta de mesa parada:** a mesa ocupada que fica muito tempo **sem lançar um novo pedido** ganha um sinal vermelho (com o tempo parado); o limite é configurável em **Configurar Mesas** (padrão 30 min; 0 desliga).
 - **Nº de pessoas na mesa:** ao **abrir a mesa**, o sistema pergunta quantas pessoas (opcional). Com 2 ou mais, aparece o **valor por pessoa** no painel, na **conta impressa** e no **fechamento**. Dá para ajustar depois pelo lápis ao lado de "Pessoas".
+
+## [0.69.0] — Receber pagamento por forma na tela de Pedidos
+
+- Ao **receber um pedido** na tela de Pedidos, o sistema agora **pergunta/confirma a forma de pagamento** (já pré-selecionando a que o cliente informou) — antes recebia direto, sem escolher. Assim o dono sabe exatamente **como** cada pedido foi pago.
+- Pedidos de **mesa** deixam de ser recebidos por aqui: são pagos na aba **Mesas** (Fechar Conta / Receber Parcial), onde se escolhe a forma e aplica a taxa de serviço.
