@@ -680,3 +680,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.74.3] — PDV: busca encontra o sabor (variação) e adiciona em 1 clique
 
 - No **PDV**, buscar por um sabor (ex.: "coca-cola") não encontrava nada quando ele era uma **variação** de um produto (ex.: "Refrigerante 200ml") — era preciso achar o produto-pai e abrir o modal. Agora a busca mostra o **sabor direto** como resultado ("Coca-Cola 200ml · R$ 3,00") e um clique já adiciona ao carrinho. Buscar pelo nome do produto (ex.: "refri") lista todos os sabores. Cada resultado respeita o **estoque do próprio sabor**.
+
+## [0.74.4] — Correção: filtro do PDV vazava para o lançamento da mesa
+
+- Uma busca feita no **PDV** (ex.: "coca-cola") continuava aplicada ao abrir o **Lançar** de uma mesa (e vice-versa), já que os dois usam a mesma grade. Agora o filtro (busca + categoria) é **zerado ao entrar e sair** do lançamento da mesa — cada contexto começa limpo.

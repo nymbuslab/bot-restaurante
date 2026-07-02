@@ -4861,6 +4861,13 @@ if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => a
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("btnPdvVencidoCaixa")) $("btnPdvVencidoCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
+// Zera o filtro do PDV (busca + categoria). Usado ao entrar/sair do modo mesa, pra que
+// a venda do PDV e o lançamento da mesa não herdem o filtro um do outro (contextos independentes).
+function pdvLimparBusca() {
+  pdvBuscaTermo = "";
+  pdvCatAtiva = null;
+  if ($("pdvBusca")) $("pdvBusca").value = "";
+}
 if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", function () { if (mesaModoId) mesaLancarDoPdv(); else abrirPdvPagar(); });
 if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", async () => {
   if (pdvCart.length) {
@@ -5708,6 +5715,7 @@ function ativarMesaModoPdv() {
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Enviar para Mesa";
   pdvCart = []; pdvDesconto = null; renderPdvCarrinho();
+  pdvLimparBusca(); // contexto novo: não herda o filtro da venda anterior do PDV
   fecharMesaPainel();
   var pdvBtn = document.querySelector("nav button[data-aba='pdv']");
   if (pdvBtn) pdvBtn.click();
@@ -5718,6 +5726,7 @@ function desativarMesaModoPdv(voltarParaMesa) {
   mesaModoId = null;
   mesaModoNome = "";
   pdvCart = []; pdvDesconto = null;
+  pdvLimparBusca(); // sai do modo mesa: PDV volta com a grade limpa
   var banner = $("pdvMesaBanner");
   if (banner) banner.remove();
   var cobrar = $("pdvCobrar");
