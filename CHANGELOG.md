@@ -627,3 +627,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Reconexão:** reabrir o agente já logado **reconecta sozinho** — acabou o "Sem conexão com o servidor" ao fechar e abrir.
 - **Impressora mantida:** a impressora configurada volta **já selecionada** ao reabrir; não precisa Detectar de novo.
 - **Tela de login mais limpa:** marca central + card enxuto, **sem o campo técnico de servidor**. A janela nasce maior (765×670) e pode ir até tela cheia.
+
+## [0.73.3] — Agente de impressão: tela principal em cards + correções
+
+- A tela do agente **após o login** foi reorganizada em **cards** arredondados e centralizados (visual Nymbus): Restaurante, Impressora e Registros.
+- Corrigido: a tela de **login e a de configuração apareciam juntas** (com barra de rolagem) quando já logado — agora só a tela certa aparece.
+- Removida a **barra de menu** padrão do Windows na janela do app.
