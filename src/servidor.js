@@ -2044,7 +2044,20 @@ app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
     // Split: aceita `pagamentos` (array); fallback p/ {forma, valor} único (compat).
     const pags = Array.isArray(b.pagamentos) ? b.pagamentos : [{ forma: b.forma, valor: b.valor }];
     await mesasDb.receberParcial(req.tenantDir, mesaId, pags, mesa.nome);
-    res.json(await detalheMesa(req.tenantDir, mesaId));
+    const d = await detalheMesa(req.tenantDir, mesaId);
+    // Comprovante de pagamento parcial (impressão automática pelo agente; best-effort).
+    try {
+      const cfg = store.getConfig(req.tenantDir) || {};
+      const pagoAgora = pags.reduce((s, p) => s + (Number(p && p.valor) || 0), 0);
+      const texto = Comanda.montarComprovante({ nome: mesa.nome }, {
+        modo: "parcial", pagamentos: pags,
+        total: (d.resumo && d.resumo.total) || 0,
+        recebidoTotal: d.recebido || 0, pagoAgora, falta: d.falta || 0,
+        quando: new Date().toISOString(),
+      }, cfg);
+      await impressaoFila.enfileirar(req.tenantDir, "mesa-comprovante-parcial", [texto]);
+    } catch (e) { console.error("enfileirar comprovante parcial:", e.message); }
+    res.json(d);
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao receber o pagamento." });
   }
@@ -2069,6 +2082,19 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
       return res.status(400).json({ erro: "Pagamento insuficiente para fechar a conta." });
     }
     const fechada = await mesasDb.finalizarFechamento(req.tenantDir, mesaId, { pagamentos }, mesa.nome);
+    // Comprovante final de pagamento da mesa (impressão automática pelo agente; best-effort).
+    try {
+      const cfg = store.getConfig(req.tenantDir) || {};
+      const pagoAgora = Math.round(somaAgora * 100) / 100;
+      const troco = Math.max(0, Math.round(((recebidoAntes + somaAgora) - total) * 100) / 100);
+      const texto = Comanda.montarComprovante({ nome: mesa.nome }, {
+        modo: "final", pagamentos,
+        total, recebidoAntes: Math.round(recebidoAntes * 100) / 100,
+        pagoAgora, troco,
+        quando: new Date().toISOString(),
+      }, cfg);
+      await impressaoFila.enfileirar(req.tenantDir, "mesa-comprovante", [texto]);
+    } catch (e) { console.error("enfileirar comprovante mesa:", e.message); }
     res.json({ ok: true, mesa: fechada });
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao fechar a conta." });

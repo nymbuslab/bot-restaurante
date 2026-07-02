@@ -225,5 +225,50 @@
     return linhas.join("\n");
   }
 
-  return { montarComanda, montarCozinha, montarCupom, montarPreConta, fmtBR };
+  // Comprovante de PAGAMENTO da mesa (80mm). Enxuto: total da conta + formas pagas +
+  // pago/troco (final) ou recebido/falta (parcial). `opts`: { modo:'parcial'|'final',
+  // pagamentos:[{forma,valor}], total, recebidoAntes, recebidoTotal, pagoAgora, troco,
+  // falta, quando(iso) }. Valores calculados pelo servidor (não vêm do cliente).
+  function montarComprovante(mesa, opts, config) {
+    opts = opts || {};
+    const rest = (config && config.restaurante) || {};
+    const nome = rest.nome || "Mesa";
+    const ehFinal = opts.modo === "final";
+    const pagamentos = Array.isArray(opts.pagamentos) ? opts.pagamentos : [];
+    const pagoAgora = opts.pagoAgora != null
+      ? Number(opts.pagoAgora) || 0
+      : pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+    const linhas = [];
+    linhas.push(centro(nome.toUpperCase()));
+    linhas.push(centro(ehFinal ? "COMPROVANTE DE PAGAMENTO" : "COMPROVANTE - PAGAMENTO PARCIAL"));
+    linhas.push(sep("="));
+    linhas.push(linhaValor("Mesa: " + ((mesa && mesa.nome) || ""), dataHoraBR(opts.quando)));
+    linhas.push(sep("-"));
+    linhas.push(linhaValor("Total da conta:", fmtBR(opts.total)));
+    if (ehFinal && (Number(opts.recebidoAntes) || 0) > 0) {
+      linhas.push(linhaValor("Ja recebido antes:", fmtBR(opts.recebidoAntes)));
+    }
+    linhas.push(ehFinal ? "Pagamento:" : "Pagamento recebido agora:");
+    if (!pagamentos.length) linhas.push("   (sem formas)");
+    pagamentos.forEach((p) => linhas.push(linhaValor("   " + (p.forma || "Outros"), fmtBR(p.valor))));
+    linhas.push(sep("-"));
+    if (ehFinal) {
+      const pagoTotal = (Number(opts.recebidoAntes) || 0) + pagoAgora;
+      linhas.push(linhaValor("Pago:", fmtBR(pagoTotal)));
+      if ((Number(opts.troco) || 0) > 0) linhas.push(linhaValor("Troco:", fmtBR(opts.troco)));
+      linhas.push(sep("="));
+      linhas.push(centro("*** PAGO ***"));
+    } else {
+      linhas.push(linhaValor("Recebido agora:", fmtBR(pagoAgora)));
+      linhas.push(linhaValor("Ja recebido (total):", fmtBR(opts.recebidoTotal)));
+      linhas.push(linhaValor("FALTA:", fmtBR(opts.falta)));
+      linhas.push(sep("="));
+    }
+    const imp = (config && config.impressao) || {};
+    const msg = imp.rodape != null && String(imp.rodape).trim() ? String(imp.rodape).trim() : RODAPE_PADRAO;
+    quebrar(msg, LARGURA).forEach((l) => linhas.push(centro(l)));
+    return linhas.join("\n");
+  }
+
+  return { montarComanda, montarCozinha, montarCupom, montarPreConta, montarComprovante, fmtBR };
 });

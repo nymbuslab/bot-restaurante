@@ -659,3 +659,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - Pedidos de **mesa** (e de **balcão** do PDV) apareciam como **"Retirada"** na lista/detalhe — incorreto. Agora mostram o tipo **"Local"** (consumo no local), com etiqueta e ícone próprios. "Retirada" fica só para retirada de verdade e "Entrega" para delivery.
 - No detalhe, o bloco de entrega mostra **"Consumo no local"** nesses casos (antes "Retirada no local").
 - O filtro **Tipo** ganhou a opção **Local**.
+
+## [0.73.9] — Mesas: comprovante de pagamento (parcial e fechamento)
+
+- Ao **Receber Parcial** e ao **Fechar Conta** de uma mesa, agora sai automaticamente um **comprovante de pagamento** pela impressora (antes só a "Imprimir Conta" gerava impressão).
+- **Parcial:** mostra o que foi recebido agora, o total já recebido e a falta. **Final:** total da conta, formas de pagamento, pago, troco e o carimbo **PAGO**.

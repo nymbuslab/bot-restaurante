@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { montarComanda } = require("../public/comanda.js");
+const { montarComanda, montarComprovante } = require("../public/comanda.js");
 
 const config = { restaurante: { nome: "Pizzaria do João" } };
 
@@ -146,4 +146,50 @@ test("comanda: variações aparecem na cozinha e somam/imprimem no cupom", () =>
   assert.match(cupom, /2x Coca/);
   // subtotal = (0 + 6*2 + 5*2) * 1 = 22
   assert.match(cupom, /Subtotal:\s+22,00/);
+});
+
+// ---- comprovante de pagamento da mesa ----
+test("comprovante parcial: mostra recebido agora, total recebido e falta", () => {
+  const txt = montarComprovante({ nome: "01" }, {
+    modo: "parcial",
+    pagamentos: [{ forma: "Dinheiro", valor: 20 }, { forma: "Pix", valor: 10 }],
+    total: 45, recebidoTotal: 30, pagoAgora: 30, falta: 15,
+    quando: "2026-07-01T22:30:00Z",
+  }, { restaurante: { nome: "Bar do Zé" } });
+  assert.match(txt, /BAR DO ZÉ/i);
+  assert.match(txt, /PAGAMENTO PARCIAL/i);
+  assert.match(txt, /Mesa: 01/);
+  assert.match(txt, /Total da conta:\s+45,00/);
+  assert.match(txt, /Dinheiro\s+20,00/);
+  assert.match(txt, /Pix\s+10,00/);
+  assert.match(txt, /Recebido agora:\s+30,00/);
+  assert.match(txt, /FALTA:\s+15,00/);
+  assert.equal(/PAGO/.test(txt), false);
+});
+
+test("comprovante final: soma recebido antes + agora, mostra troco e PAGO", () => {
+  const txt = montarComprovante({ nome: "05" }, {
+    modo: "final",
+    pagamentos: [{ forma: "Dinheiro", valor: 50 }],
+    total: 45, recebidoAntes: 10, pagoAgora: 50, troco: 15,
+    quando: "2026-07-01T22:45:00Z",
+  }, { restaurante: { nome: "Bar do Zé" } });
+  assert.match(txt, /COMPROVANTE DE PAGAMENTO/i);
+  assert.match(txt, /Ja recebido antes:\s+10,00/);
+  assert.match(txt, /Total da conta:\s+45,00/);
+  // Pago = recebidoAntes (10) + pagoAgora (50) = 60
+  assert.match(txt, /Pago:\s+60,00/);
+  assert.match(txt, /Troco:\s+15,00/);
+  assert.match(txt, /\*\*\* PAGO \*\*\*/);
+});
+
+test("comprovante final sem troco: omite a linha de troco", () => {
+  const txt = montarComprovante({ nome: "03" }, {
+    modo: "final", pagamentos: [{ forma: "Pix", valor: 45 }],
+    total: 45, recebidoAntes: 0, pagoAgora: 45, troco: 0,
+    quando: "2026-07-01T23:00:00Z",
+  }, { restaurante: { nome: "X" } });
+  assert.match(txt, /Pago:\s+45,00/);
+  assert.equal(/Troco:/.test(txt), false);
+  assert.equal(/recebido antes/i.test(txt), false);
 });
