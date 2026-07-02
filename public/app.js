@@ -1710,10 +1710,10 @@ function renderEditorVariacoes() {
         <input type="text" inputmode="numeric" class="opc-preco var-preco" placeholder="0,00" value="${v.preco ? Dinheiro.formatar(v.preco) : ""}" data-vi="${vi}" /></div>
       <input class="var-est" inputmode="numeric" placeholder="estoque" value="${escapar(v.estoque != null ? String(v.estoque) : "")}" data-vi="${vi}" />
       <input class="var-estmin" inputmode="numeric" placeholder="mín" value="${escapar(v.estoqueMinimo != null ? String(v.estoqueMinimo) : "")}" data-vi="${vi}" />
-      <button type="button" class="mini var-order" data-vi="${vi}" data-dir="up" aria-label="Subir" title="Subir"${vi === 0 ? ' disabled' : ''}>
+      <button type="button" class="var-order" data-vi="${vi}" data-dir="up" aria-label="Subir" title="Subir"${vi === 0 ? ' disabled' : ''}>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
       </button>
-      <button type="button" class="mini var-order" data-vi="${vi}" data-dir="down" aria-label="Descer" title="Descer"${vi === editorVariacoes.length - 1 ? ' disabled' : ''}>
+      <button type="button" class="var-order" data-vi="${vi}" data-dir="down" aria-label="Descer" title="Descer"${vi === editorVariacoes.length - 1 ? ' disabled' : ''}>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </button>
       <button type="button" class="perigo mini var-del" data-vi="${vi}" aria-label="Remover">×</button>

@@ -668,3 +668,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.74.0] — Reimprimir: escolher a via (cozinha / cupom / ambas)
 
 - O botão **Reimprimir** (aba Pedidos) antes reimprimia sempre as **duas vias** (cozinha + cupom). Agora abre uma pergunta rápida: **Comanda (cozinha)**, **Cupom (cliente)** ou **Ambas** — reimprime só o que você escolher, sem gastar papel à toa.
+
+## [0.74.1] — Correção: setas de reordenar variações não apareciam
+
+- No editor de **variações** do produto, os botões de **subir/descer** apareciam vazios (as setas ▲/▼ sumiam). Corrigido — os ícones voltaram.
