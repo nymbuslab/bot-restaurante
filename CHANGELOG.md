@@ -648,3 +648,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - Corrigido: uma mesa **fechada (livre)** ainda exibia os **itens da conta já paga** e "Aberta às …". Agora, ao fechar a conta, a comanda anterior deixa de aparecer — a mesa livre nasce limpa.
 - Efeitos relacionados corrigidos: **lançar** numa mesa reaberta não acumula mais no pedido já pago; o **total da mesa** não soma sessões anteriores; **transferir/juntar** só considera a conta atual.
+
+## [0.73.7] — Receber pagamento (Pedidos): split + correção de sobreposição
+
+- O modal **Receber pagamento** (aba Pedidos) agora aceita **mais de uma forma de pagamento** (split), como no PDV e nas Mesas — com Pago/Falta/Troco e validação de que a soma bate com o total. O caso simples (uma forma) segue em dois cliques.
+- Corrigido: o modal de recebimento **aparecia atrás** do modal de detalhe do pedido — agora abre por cima.

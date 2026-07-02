@@ -3149,12 +3149,22 @@ function linhaAcoesHtml(p) {
   return `<td class="ped-acoes-cel"><div class="ped-acoes">${btns}</div></td>`;
 }
 
-// Modal "Receber pagamento" (Pedidos): confirma/escolhe a FORMA (tiles), valor = total.
-// Pré-seleciona a forma informada (web/PDV). Ao receber, chama aoReceber(). Só para
-// pedidos NÃO-mesa (mesa recebe na aba Mesas).
+// Modal "Receber pagamento" (Pedidos): SPLIT de formas somando o total do pedido.
+// Pré-seleciona a forma informada e já preenche o valor com o total (1 forma = 1
+// clique). Ao receber, chama aoReceber(). Só para pedidos NÃO-mesa (mesa recebe na
+// aba Mesas). Mesmo modelo do PDV: dinheiro pode exceder (troco), demais limitam ao restante.
 let pedReceberFormaSel = null;
+let pedReceberPagamentos = [];
+let pedReceberAlvo = 0;
+let pedReceberPedido = null;
+let pedReceberCallback = null;
+function pedReceberPagoTotal() { return Math.round(pedReceberPagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100; }
 function abrirPedReceber(p, aoReceber) {
   if (!p) return;
+  pedReceberPedido = p;
+  pedReceberCallback = aoReceber;
+  pedReceberAlvo = Math.round((Number(p.total) || 0) * 100) / 100;
+  pedReceberPagamentos = [];
   const formas = (typeof mesaFormasPagamento === "function" && mesaFormasPagamento()) || ["Dinheiro", "Pix", "Cartão Crédito", "Cartão Débito", "Outros"];
   // Pré-seleciona a forma informada, se estiver na lista; senão, a primeira.
   pedReceberFormaSel = formas.indexOf(p.pagamento) >= 0 ? p.pagamento : formas[0];
@@ -3169,11 +3179,18 @@ function abrirPedReceber(p, aoReceber) {
       '<div class="mesa-pagar-resumo"><div class="mesa-pagar-linha total"><span>Pedido #' + pdvEsc(String(p.numero)) + "</span><span>" + moedaBR(p.total) + "</span></div></div>" +
       '<span class="pdv-ops-tit">Forma de pagamento</span>' +
       '<div class="pdv-formas">' + tiles + "</div>" +
+      '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pedReceberValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pedReceberAdd">Adicionar</button></div>' +
+      '<div class="pdv-pg-lista" id="pedReceberLista"></div>' +
+      '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
+        '<div class="mesa-pagar-linha"><span>Pago</span><span id="pedReceberPago">R$ 0,00</span></div>' +
+        '<div class="mesa-pagar-linha falta"><span>Falta</span><span id="pedReceberFalta">' + moedaBR(p.total) + "</span></div>" +
+        '<div class="mesa-pagar-linha"><span>Troco</span><span id="pedReceberTroco">R$ 0,00</span></div>' +
+      "</div>" +
       '<p class="sub" style="margin:10px 0 0">Confirme como o cliente pagou. Exige caixa aberto.</p>' +
     "</div>" +
     '<div class="pdv-modal-rodape">' +
       '<button type="button" class="secundario" id="pedReceberCancelar">Cancelar</button>' +
-      '<button type="button" class="primario" id="pedReceberConfirmar">Receber R$ ' + moedaBR(p.total) + "</button>" +
+      '<button type="button" class="primario" id="pedReceberConfirmar" disabled>Receber</button>' +
     "</div>";
   $("pedReceberOverlay").hidden = false;
   $("pedReceberFechar").addEventListener("click", fecharPedReceber);
@@ -3182,21 +3199,75 @@ function abrirPedReceber(p, aoReceber) {
   $("pedReceberCaixa").querySelectorAll("[data-pforma]").forEach((b) => b.addEventListener("click", () => {
     pedReceberFormaSel = b.dataset.pforma;
     $("pedReceberCaixa").querySelectorAll("[data-pforma]").forEach((x) => x.classList.toggle("ativo", x === b));
+    const inp = $("pedReceberValor"); if (inp) inp.focus();
   }));
-  $("pedReceberConfirmar").addEventListener("click", async () => {
-    const btn = $("pedReceberConfirmar"); btn.disabled = true;
-    const r = await api("POST", "/api/caixa/receber/" + p.id, { forma: pedReceberFormaSel || "Outros", valor: p.total });
-    if (r && r.ok) {
-      fecharPedReceber();
-      toast("✓ Recebido (" + (pedReceberFormaSel || "Outros") + ")!");
-      if (typeof aoReceber === "function") aoReceber();
-      if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
-    } else {
-      btn.disabled = false;
-      const d = r ? await r.json().catch(() => ({})) : {};
-      toast(d.erro || "Abra o caixa primeiro.", "erro");
-    }
-  });
+  const valInp = $("pedReceberValor");
+  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, pedReceberAlvo); }
+  if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
+  $("pedReceberAdd").addEventListener("click", pedReceberAdd);
+  valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pedReceberAdd(); } });
+  $("pedReceberConfirmar").addEventListener("click", pedReceberConfirmar);
+  renderPedReceberLista();
+}
+function pedReceberAdd() {
+  let v = window.Dinheiro ? Dinheiro.valor($("pedReceberValor")) : 0;
+  if (!(v > 0)) { toast("Informe o valor.", "erro"); return; }
+  if (!pedReceberFormaSel) { toast("Escolha a forma de pagamento.", "erro"); return; }
+  const restante = Math.round((pedReceberAlvo - pedReceberPagoTotal()) * 100) / 100;
+  // Só dinheiro pode exceder (gera troco); demais formas limitam ao restante.
+  if (!pdvEhDinheiro(pedReceberFormaSel)) {
+    if (restante <= 0) { toast("Pagamento já fechado.", "erro"); return; }
+    v = Math.min(v, restante);
+  }
+  pedReceberPagamentos.push({ forma: pedReceberFormaSel, valor: v });
+  renderPedReceberLista();
+  const novoRest = Math.max(0, Math.round((pedReceberAlvo - pedReceberPagoTotal()) * 100) / 100);
+  if (window.Dinheiro) Dinheiro.setValor($("pedReceberValor"), novoRest);
+}
+function renderPedReceberLista() {
+  const box = $("pedReceberLista");
+  if (box) {
+    box.innerHTML = pedReceberPagamentos.map((p, i) =>
+      '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmppg="' + i + '" aria-label="Remover">&times;</button></div>'
+    ).join("");
+    box.querySelectorAll("[data-rmppg]").forEach((b) => b.addEventListener("click", () => { pedReceberPagamentos.splice(Number(b.dataset.rmppg), 1); renderPedReceberLista(); }));
+  }
+  pedReceberRecalc();
+}
+function pedReceberRecalc() {
+  const pago = pedReceberPagoTotal();
+  const falta = Math.max(0, Math.round((pedReceberAlvo - pago) * 100) / 100);
+  const troco = Math.max(0, Math.round((pago - pedReceberAlvo) * 100) / 100);
+  if ($("pedReceberPago")) $("pedReceberPago").textContent = pdvMoney(pago);
+  if ($("pedReceberFalta")) $("pedReceberFalta").textContent = pdvMoney(falta);
+  if ($("pedReceberTroco")) $("pedReceberTroco").textContent = pdvMoney(troco);
+  if ($("pedReceberConfirmar")) $("pedReceberConfirmar").disabled = !(pedReceberPagamentos.length && falta <= 0.001);
+}
+async function pedReceberConfirmar() {
+  const p = pedReceberPedido;
+  if (!p || !pedReceberPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
+  // Registrados (somam o total): não-dinheiro como lançado; o dinheiro só a parte da
+  // venda — o troco não é receita do caixa (mesmo modelo do PDV).
+  const naoDin = pedReceberPagamentos.filter((pg) => !pdvEhDinheiro(pg.forma));
+  const somaNaoDin = Math.round(naoDin.reduce((s, pg) => s + pg.valor, 0) * 100) / 100;
+  const dinNaVenda = Math.max(0, Math.round((pedReceberAlvo - somaNaoDin) * 100) / 100);
+  const registrados = naoDin.map((pg) => ({ forma: pg.forma, valor: pg.valor }));
+  if (dinNaVenda > 0) {
+    const formaDin = (pedReceberPagamentos.find((pg) => pdvEhDinheiro(pg.forma)) || {}).forma || "Dinheiro";
+    registrados.push({ forma: formaDin, valor: dinNaVenda });
+  }
+  const btn = $("pedReceberConfirmar"); btn.disabled = true;
+  const r = await api("POST", "/api/caixa/receber/" + p.id, { pagamentos: registrados });
+  if (r && r.ok) {
+    fecharPedReceber();
+    toast("✓ Recebido!");
+    if (typeof pedReceberCallback === "function") pedReceberCallback();
+    if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
+  } else {
+    btn.disabled = false;
+    const d = r ? await r.json().catch(() => ({})) : {};
+    toast(d.erro || "Abra o caixa primeiro.", "erro");
+  }
 }
 function fecharPedReceber() { $("pedReceberOverlay").hidden = true; }
 

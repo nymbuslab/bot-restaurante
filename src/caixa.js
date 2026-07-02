@@ -79,31 +79,48 @@ async function abrirCaixa(dir, { fundoTroco, operador, obsAbertura }) {
   return r.rows[0];
 }
 
-async function receberPedido(dir, pedidoId, { forma, valor }) {
+// Recebe um pedido a-receber. Aceita SPLIT (`pagamentos: [{forma, valor}]`) ou uma
+// forma única (`{forma, valor}`, compat). A soma tem de bater com o total do pedido
+// (anti-fraude — não confia no cliente); insere um movimento por forma e grava o
+// resumo em `pedido.pagamento` (reflete como foi pago de fato).
+async function receberPedido(dir, pedidoId, opts) {
   const empId = await empresaId(dir);
-  const v = Number(valor) || 0;
-  if (v <= 0) throw new Error("Valor deve ser positivo.");
+  let pagamentos = (opts && Array.isArray(opts.pagamentos) && opts.pagamentos.length)
+    ? opts.pagamentos
+    : [{ forma: opts && opts.forma, valor: opts && opts.valor }];
+  pagamentos = pagamentos
+    .map((p) => ({ forma: (p && String(p.forma || "").trim()) || "Outros", valor: Math.round((Number(p && p.valor) || 0) * 100) / 100 }))
+    .filter((p) => p.valor > 0);
+  if (!pagamentos.length) throw new Error("Valor deve ser positivo.");
+  const soma = Math.round(pagamentos.reduce((s, p) => s + p.valor, 0) * 100) / 100;
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa antes de receber.");
   // Transação + FOR UPDATE: evita duplo recebimento em caso de corrida/falha
-  // (o INSERT do movimento e o UPDATE do pedido viram tudo-ou-nada).
+  // (os INSERTs dos movimentos e o UPDATE do pedido viram tudo-ou-nada).
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT id, recebido_em FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, recebido_em, total FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
     if (ped.rows[0].recebido_em) throw new Error("Pedido já recebido.");
+    const total = Math.round((Number(ped.rows[0].total) || 0) * 100) / 100;
+    if (Math.abs(soma - total) > 0.01) {
+      throw new Error("A soma dos pagamentos (R$ " + soma.toFixed(2) + ") difere do total (R$ " + total.toFixed(2) + ").");
+    }
+    for (const p of pagamentos) {
+      await client.query(
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
+        [caixa.id, empId, p.forma, p.valor, pedidoId]
+      );
+    }
+    const resumo = pagamentos.map((p) => p.forma + " R$ " + p.valor.toFixed(2).replace(".", ",")).join(" · ");
     await client.query(
-      `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
-       VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
-      [caixa.id, empId, forma || "Outros", v, pedidoId]
-    );
-    await client.query(
-      "UPDATE pedidos SET recebido_em = now() WHERE empresa_id = $1 AND id = $2",
-      [empId, pedidoId]
+      "UPDATE pedidos SET recebido_em = now(), pagamento = $3 WHERE empresa_id = $1 AND id = $2",
+      [empId, pedidoId, resumo]
     );
     await client.query("COMMIT");
     return { ok: true };

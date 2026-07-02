@@ -1625,7 +1625,7 @@ app.post("/api/caixa/abrir", exigeAuth, async (req, res) => {
 
 app.post("/api/caixa/receber/:pedidoId", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.receberPedido(req.tenantDir, Number(req.params.pedidoId), { forma: req.body.forma, valor: req.body.valor })); }
+  try { res.json(await caixa.receberPedido(req.tenantDir, Number(req.params.pedidoId), { pagamentos: req.body.pagamentos, forma: req.body.forma, valor: req.body.valor })); }
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
