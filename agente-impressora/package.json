@@ -1,6 +1,6 @@
 {
   "name": "nymbus-impressora",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Agente de impressao automatica de pedidos (Nymbus)",
   "main": "main/main.js",
   "scripts": {

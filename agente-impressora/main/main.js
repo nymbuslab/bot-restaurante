@@ -61,5 +61,5 @@ function criarTray() {
 // + win.publisherName), travar a escrita em /downloads/ e setar verifyUpdateCodeSignature.
 // Ate la, a atualizacao e MANUAL (baixar o novo Setup .exe pelo painel). NAO chamar
 // autoUpdater.checkForUpdatesAndNotify() aqui.
-app.whenReady().then(() => { criarJanela(); criarTray(); });
+app.whenReady().then(() => { Menu.setApplicationMenu(null); criarJanela(); criarTray(); });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });

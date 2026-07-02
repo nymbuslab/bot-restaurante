@@ -5,6 +5,9 @@
   --in:#0F131A;
 }
 * { box-sizing: border-box; }
+/* Garante que o atributo `hidden` sempre esconda (senão `.login{display:flex}` vence o
+   [hidden] do navegador e a tela de login fica visível junto com a de config). */
+[hidden] { display: none !important; }
 body { margin:0; background:var(--bg); color:var(--tx); font-family:"Segoe UI", system-ui, sans-serif; font-size:14px; }
 
 /* ---------- Login (marca central + card limpo) ---------- */
