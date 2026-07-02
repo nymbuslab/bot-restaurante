@@ -676,3 +676,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.74.2] — Correção: mesa reaberta mostrava pagamento da conta anterior
 
 - Uma mesa fechada e **reaberta** exibia o **valor já recebido da sessão anterior** (ex.: R$ 60 de uma conta de ontem apareciam na abertura de hoje). O total dos itens já estava certo (v0.73.6); faltava recortar a soma dos **pagamentos** à sessão atual. Agora só contam os recebimentos feitos **após a reabertura** da mesa — o histórico do caixa permanece intacto.
+
+## [0.74.3] — PDV: busca encontra o sabor (variação) e adiciona em 1 clique
+
+- No **PDV**, buscar por um sabor (ex.: "coca-cola") não encontrava nada quando ele era uma **variação** de um produto (ex.: "Refrigerante 200ml") — era preciso achar o produto-pai e abrir o modal. Agora a busca mostra o **sabor direto** como resultado ("Coca-Cola 200ml · R$ 3,00") e um clique já adiciona ao carrinho. Buscar pelo nome do produto (ex.: "refri") lista todos os sabores. Cada resultado respeita o **estoque do próprio sabor**.

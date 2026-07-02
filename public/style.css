@@ -4869,6 +4869,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-tile-img.vazia { display: flex; align-items: center; justify-content: center; color: var(--text-disabled); }
 .pdv-tile-corpo { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; }
 .pdv-tile-nome { font-size: 13px; font-weight: 600; line-height: 1.3; }
+/* Tile de sabor (busca por variação): nome-pai como subtítulo discreto. */
+.pdv-tile-sub { font-size: 11px; color: var(--text-secondary); line-height: 1.2; }
 .pdv-tile-preco { font-size: 15px; font-weight: 800; color: var(--accent-fg); }
 .pdv-tile-preco small { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
 .pdv-tile-selo { position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700; color: #fff; background: var(--error); padding: 2px 8px; border-radius: 20px; }

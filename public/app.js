@@ -4103,34 +4103,72 @@ function renderPdvProdutos() {
   const grid = $("pdvGrid");
   grid.innerHTML = "";
   let n = 0;
+  const termo = pdvBuscaTermo;
   pdvCategorias().forEach((cat) => {
     if (pdvCatAtiva !== null && cat.nome !== pdvCatAtiva) return;
     (cat.itens || []).forEach((item) => {
       if (!item || item.disponivel === false || item.arquivado === true) return;
-      if (pdvBuscaTermo && !Busca.itemCasaBusca(item.nome, pdvBuscaTermo)) return;
-      const st = window.Estoque ? window.Estoque.statusEstoque(item) : { esgotado: false };
-      const ehKg = item.unidade === "kg";
-      const tile = document.createElement("button");
-      tile.type = "button";
-      tile.className = "pdv-tile" + (st.esgotado ? " esgotado" : "");
-      tile.dataset.id = item.id;
-      const img = item.imagem
-        ? '<img class="pdv-tile-img" src="' + pdvEsc(item.imagem) + '" alt="" loading="lazy" />'
-        : '<div class="pdv-tile-img vazia">' + IC_IMG + "</div>";
-      tile.innerHTML =
-        img +
-        '<div class="pdv-tile-corpo">' +
-          '<span class="pdv-tile-nome">' + pdvEsc(item.nome) + "</span>" +
-          '<span class="pdv-tile-preco">' + pdvMoney(item.preco) + (ehKg ? "<small>/kg</small>" : "") + "</span>" +
-        "</div>" +
-        (st.esgotado ? '<span class="pdv-tile-selo">Esgotado</span>' : "");
-      if (!st.esgotado) tile.addEventListener("click", () => pdvTileClick(item));
-      grid.appendChild(tile);
-      n++;
+      const vars = (termo && window.Variacoes) ? window.Variacoes.normalizarVariacoes(item.variacoes) : [];
+      if (termo && vars.length) {
+        // Busca em item com variações: expande em tiles diretos (o operador pensa no
+        // sabor, não no agrupamento). Nome-pai casa → mostra todos os sabores.
+        const paiCasa = Busca.itemCasaBusca(item.nome, termo);
+        const casam = paiCasa ? vars : vars.filter((v) => Busca.itemCasaBusca(v.nome, termo));
+        casam.forEach((v) => { grid.appendChild(pdvMontarTile(item, v)); n++; });
+      } else if (termo) {
+        // Busca em item simples: casa pelo nome.
+        if (Busca.itemCasaBusca(item.nome, termo)) { grid.appendChild(pdvMontarTile(item, null)); n++; }
+      } else {
+        // Navegação por categoria: card por item (variações escolhidas no modal).
+        grid.appendChild(pdvMontarTile(item, null)); n++;
+      }
     });
   });
   $("pdvVazio").hidden = n > 0;
   pdvAtualizarBadges();
+}
+
+// Monta um tile do PDV. `variacao` != null → tile de sabor (preço/estoque próprios,
+// adiciona direto); null → tile do item (abre modal se tiver opcionais/composição/variações/kg).
+function pdvMontarTile(item, variacao) {
+  const alvo = variacao || item; // fonte de preço/estoque
+  const st = window.Estoque ? window.Estoque.statusEstoque(alvo) : { esgotado: false };
+  const ehKg = !variacao && item.unidade === "kg";
+  const tile = document.createElement("button");
+  tile.type = "button";
+  tile.className = "pdv-tile" + (st.esgotado ? " esgotado" : "") + (variacao ? " pdv-tile-var" : "");
+  if (!variacao) tile.dataset.id = item.id; // badge só nos tiles de item
+  const img = item.imagem
+    ? '<img class="pdv-tile-img" src="' + pdvEsc(item.imagem) + '" alt="" loading="lazy" />'
+    : '<div class="pdv-tile-img vazia">' + IC_IMG + "</div>";
+  const nome = variacao ? variacao.nome : item.nome;
+  const sub = variacao ? '<span class="pdv-tile-sub">' + pdvEsc(item.nome) + "</span>" : "";
+  const preco = variacao ? variacao.preco : item.preco;
+  tile.innerHTML =
+    img +
+    '<div class="pdv-tile-corpo">' +
+      '<span class="pdv-tile-nome">' + pdvEsc(nome) + "</span>" +
+      sub +
+      '<span class="pdv-tile-preco">' + pdvMoney(preco) + (ehKg ? "<small>/kg</small>" : "") + "</span>" +
+    "</div>" +
+    (st.esgotado ? '<span class="pdv-tile-selo">Esgotado</span>' : "");
+  if (!st.esgotado) tile.addEventListener("click", () => (variacao ? pdvVariacaoClick(item, variacao) : pdvTileClick(item)));
+  return tile;
+}
+
+// Clique num tile de sabor (resultado de busca): adiciona a variação direto ao carrinho.
+// Se o pai tiver opcionais/composição, cai no modal (não dá p/ pular essas escolhas).
+function pdvVariacaoClick(item, v) {
+  const ops = pdvParseOpcionais(item.opcionais);
+  const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  if (ops.length || grps.length) { abrirPdvItemModal(item, null); return; }
+  // Agrupa se já houver a MESMA variação sozinha no carrinho (soma a quantidade da linha).
+  const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao
+    && !(l.composicao && l.composicao.length)
+    && (l.variacoes || []).length === 1 && l.variacoes[0].id === v.id && l.variacoes[0].qtd === 1);
+  if (ex) ex.qtd += 1;
+  else pdvCart.push({ uid: pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: "un", qtd: 1, composicao: [], opcionais: [], variacoes: [{ id: v.id, nome: v.nome, preco: v.preco, qtd: 1 }], observacao: "" });
+  renderPdvCarrinho();
 }
 
 // Badge de quantidade no card: total de unidades (un) ou nº de pesagens (kg) que o
