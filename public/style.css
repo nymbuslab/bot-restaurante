@@ -2146,8 +2146,18 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
    z-index 1000; sem isto, a confirmação aberta a partir de um modal — ex.: cancelar
    pedido — renderiza ATRÁS dele por estar antes no DOM). */
 #modal-overlay, #item-del-overlay, #caixa-modal-overlay { z-index: 1200; }
-/* "Receber pagamento" abre a partir do modal do pedido (z 1000) — precisa ficar acima dele. */
-#pedReceberOverlay { z-index: 1300; }
+/* "Receber pagamento" e "Reimprimir" abrem a partir do modal do pedido (z 1000) — ficam acima dele. */
+#pedReceberOverlay, #reimprimirOverlay { z-index: 1300; }
+/* Opções de reimpressão: botões empilhados de largura cheia, ícone + rótulo. */
+.reimp-opcoes { display: flex; flex-direction: column; gap: 10px; }
+.reimp-op {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elevated); color: var(--text-primary); font-size: 15px; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.reimp-op:hover { background: var(--accent-subtle); border-color: rgba(var(--accent-rgb),0.5); }
+.reimp-op svg { color: var(--accent-fg); flex-shrink: 0; }
 
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }

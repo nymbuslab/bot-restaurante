@@ -341,13 +341,43 @@ async function visualizarNovoPedido() {
 
 if ($("np-fechar")) $("np-fechar").addEventListener("click", fecharNovoPedido);
 if ($("np-visualizar")) $("np-visualizar").addEventListener("click", visualizarNovoPedido);
-// Reimprimir a comanda do pedido pelo agente (re-enfileira no servidor). O objeto
-// do poll é leve, então resolve o pedido completo no cache para pegar o id.
-async function reimprimirPedido(id) {
+// Reimprimir pelo agente: abre o mini-modal p/ o operador escolher a via (evita
+// gastar papel reimprimindo as duas sempre). Ao escolher, chama enviaReimpressao.
+function reimprimirPedido(id) {
   if (!id) return;
-  const r = await api("POST", "/api/pedidos/" + id + "/reimprimir");
-  if (r && r.ok) toast("Comanda enviada para impressão.");
+  abrirReimprimirEscolha(id);
+}
+async function enviaReimpressao(id, via) {
+  const r = await api("POST", "/api/pedidos/" + id + "/reimprimir", { via });
+  if (r && r.ok) toast("Enviado para impressão.");
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao reimprimir.", "erro"); }
+}
+const ICO_REIMP = {
+  cozinha: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2v6h6"/><path d="M4 22V4a2 2 0 0 1 2-2h8l6 6v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>',
+  cupom: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+  ambas: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+};
+function abrirReimprimirEscolha(id) {
+  const X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  $("reimprimirCaixa").innerHTML =
+    '<button type="button" class="pdv-modal-x" id="reimprimirFechar" aria-label="Fechar">' + X + "</button>" +
+    '<h3 class="pdv-modal-titulo">O que reimprimir?</h3>' +
+    '<div class="pdv-modal-corpo">' +
+      '<p class="sub" style="margin:0 0 12px">Escolha a via para não gastar papel à toa.</p>' +
+      '<div class="reimp-opcoes">' +
+        '<button type="button" class="reimp-op" data-via="cozinha">' + ICO_REIMP.cozinha + "<span>Comanda (cozinha)</span></button>" +
+        '<button type="button" class="reimp-op" data-via="cupom">' + ICO_REIMP.cupom + "<span>Cupom (cliente)</span></button>" +
+        '<button type="button" class="reimp-op" data-via="ambas">' + ICO_REIMP.ambas + "<span>Ambas</span></button>" +
+      "</div>" +
+    "</div>";
+  $("reimprimirOverlay").hidden = false;
+  const fechar = () => { $("reimprimirOverlay").hidden = true; };
+  $("reimprimirFechar").addEventListener("click", fechar);
+  $("reimprimirBg").addEventListener("click", fechar);
+  $("reimprimirCaixa").querySelectorAll("[data-via]").forEach((b) => b.addEventListener("click", () => {
+    fechar();
+    enviaReimpressao(id, b.dataset.via);
+  }));
 }
 if ($("np-imprimir")) {
   $("np-imprimir").addEventListener("click", async () => {

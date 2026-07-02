@@ -664,3 +664,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - Ao **Receber Parcial** e ao **Fechar Conta** de uma mesa, agora sai automaticamente um **comprovante de pagamento** pela impressora (antes só a "Imprimir Conta" gerava impressão).
 - **Parcial:** mostra o que foi recebido agora, o total já recebido e a falta. **Final:** total da conta, formas de pagamento, pago, troco e o carimbo **PAGO**.
+
+## [0.74.0] — Reimprimir: escolher a via (cozinha / cupom / ambas)
+
+- O botão **Reimprimir** (aba Pedidos) antes reimprimia sempre as **duas vias** (cozinha + cupom). Agora abre uma pergunta rápida: **Comanda (cozinha)**, **Cupom (cliente)** ou **Ambas** — reimprime só o que você escolher, sem gastar papel à toa.

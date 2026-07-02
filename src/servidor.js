@@ -1590,7 +1590,10 @@ app.post("/api/pedidos/:id/reimprimir", exigeAuth, async (req, res) => {
     const cfg = store.getConfig(req.tenantDir) || {};
     const link = baseUrlDe(req) + "/c/" + req.slug;
     const { cozinha, cupom } = Comanda.montarComanda(pedido, cfg, { linkCardapio: link });
-    await impressaoFila.enfileirar(req.tenantDir, "reimpressao", [cozinha, cupom]);
+    // Via escolhida pelo operador (evita gastar papel): 'cozinha' | 'cupom' | 'ambas' (padrão).
+    const via = req.body && req.body.via;
+    const vias = via === "cozinha" ? [cozinha] : via === "cupom" ? [cupom] : [cozinha, cupom];
+    await impressaoFila.enfileirar(req.tenantDir, "reimpressao", vias);
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao reimprimir." });
