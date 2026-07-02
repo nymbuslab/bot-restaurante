@@ -639,3 +639,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - **Pedidos e Mesas** agora mostram o **valor certo** de itens com variação (ex.: "Refrigerante 200ml" → Coca-Cola) — antes a linha e o subtotal saíam **R$ 0,00**, porque só o produto-pai (agrupamento) era exibido.
 - A **variação escolhida** passa a aparecer como detalhe sob o nome do produto (igual ao PDV), no pedido e na mesa.
 - Corrigido também: **cancelar um item** de um pedido com variação recalculava o total **sem** o preço da variação (gravava um total menor). O impresso (cupom/cozinha) já saía correto.
+
+## [0.73.5] — Caixa: extrato mostra a mesa
+
+- No **extrato do caixa**, o recebimento de uma **mesa** agora aparece identificado como **"Mesa 3"** na coluna Cliente (antes ficava "—", sem referência). Vale também para os recebimentos de mesa já registrados.

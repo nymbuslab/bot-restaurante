@@ -2289,7 +2289,7 @@ function renderCaixaAberto(data) {
     const rowCls = m.tipo === "recebimento" ? "" : "cx-row-mov" + (neg ? " cx-row-sangria" : "");
     const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno";
     const num = temPedido ? "#" + (m.numero != null ? m.numero : "—") : "—";
-    const cliente = m.tipo === "recebimento" ? escapar(m.cliente || "—")
+    const cliente = m.tipo === "recebimento" ? escapar(m.cliente || m.descricao || "—")
       : ((m.tipo === "cancelamento" || m.tipo === "estorno") ? escapar(m.cliente || m.descricao || tipoLabel[m.tipo])
         : (m.descricao ? escapar(m.descricao) : "—"));
     const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
