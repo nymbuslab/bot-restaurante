@@ -1867,6 +1867,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 /* Pills outlined (borda + texto na cor semântica), como no protótipo */
 .tag-entrega  { background: var(--info-subtle);    color: var(--info);    border-color: rgba(59,130,246,0.4); }
 .tag-retirada { background: var(--success-subtle); color: var(--success); border-color: rgba(34,197,94,0.4); }
+.tag-local    { background: var(--accent-subtle);  color: var(--accent-fg); border-color: rgba(var(--accent-rgb),0.4); }
 
 /* ---------- Tabela de pedidos (refino visual) ---------- */
 .pedidos-tabela th,

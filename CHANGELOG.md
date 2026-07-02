@@ -653,3 +653,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - O modal **Receber pagamento** (aba Pedidos) agora aceita **mais de uma forma de pagamento** (split), como no PDV e nas Mesas — com Pago/Falta/Troco e validação de que a soma bate com o total. O caso simples (uma forma) segue em dois cliques.
 - Corrigido: o modal de recebimento **aparecia atrás** do modal de detalhe do pedido — agora abre por cima.
+
+## [0.73.8] — Pedidos: tipo "Local" para mesa e balcão
+
+- Pedidos de **mesa** (e de **balcão** do PDV) apareciam como **"Retirada"** na lista/detalhe — incorreto. Agora mostram o tipo **"Local"** (consumo no local), com etiqueta e ícone próprios. "Retirada" fica só para retirada de verdade e "Entrega" para delivery.
+- No detalhe, o bloco de entrega mostra **"Consumo no local"** nesses casos (antes "Retirada no local").
+- O filtro **Tipo** ganhou a opção **Local**.

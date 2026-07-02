@@ -3087,10 +3087,22 @@ function telefoneFmt(p) {
   return d;
 }
 
+// Tipo de atendimento do pedido: Entrega, Retirada ou Local (consumo no local —
+// cobre mesa e balcão do PDV, ambos com tipoEntrega "Balcão").
+function tipoPedido(p) {
+  if (p.tipoEntrega === "Entrega") return "Entrega";
+  if (p.tipoEntrega === "Retirada") return "Retirada";
+  return "Local";
+}
+const ICO_TIPO = {
+  Entrega: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>',
+  Retirada: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  Local: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
+};
+const CLS_TIPO = { Entrega: "tag-entrega", Retirada: "tag-retirada", Local: "tag-local" };
 function tagTipo(p) {
-  return p.tipoEntrega === "Entrega"
-    ? `<span class="tag tag-entrega"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg> Entrega</span>`
-    : `<span class="tag tag-retirada"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Retirada</span>`;
+  const t = tipoPedido(p);
+  return `<span class="tag ${CLS_TIPO[t]}">${ICO_TIPO[t]} ${t}</span>`;
 }
 
 // Selo de pagamento: mostra status do pedido (cancelado para todos; recebido/a receber para Completo).
@@ -3367,7 +3379,7 @@ function renderPedidos(animar = false) {
   // Conjunto base = período + tipo + canal (a busca não entra aqui).
   const base = pedidosCache.filter(
     (p) => noPeriodo(p, range)
-      && (filtros.tipo === "todos" || p.tipoEntrega === filtros.tipo)
+      && (filtros.tipo === "todos" || tipoPedido(p) === filtros.tipo)
       && (filtros.canal === "todos" || canalPedido(p) === filtros.canal)
   );
 
@@ -3588,16 +3600,17 @@ function abrirModalPedido(p) {
     obsHtml = `<div class="ped-obs"><span class="ped-obs-titulo">Observação dos itens</span>${linhas}</div>`;
   }
 
-  const tipoTag = p.tipoEntrega === "Entrega"
-    ? `<span class="tag tag-entrega"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg> Entrega</span>`
-    : `<span class="tag tag-retirada"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Retirada</span>`;
+  const tipoTag = tagTipo(p);
 
-  // Entrega: endereço em texto (sem mapa). Retirada: local do restaurante (config) ou balcão.
+  // Entrega: endereço em texto (sem mapa). Local (mesa/balcão): consumo no local.
+  // Retirada: local do restaurante (config) ou balcão.
   let entregaTexto;
   if (p.tipoEntrega === "Entrega") {
     entregaTexto = (p.endereco && p.endereco !== "—")
       ? escapar(p.endereco)
       : `<span class="ped-info-vazio">Endereço não informado</span>`;
+  } else if (tipoPedido(p) === "Local") {
+    entregaTexto = "Consumo no local";
   } else {
     const endRest = (configAtual && configAtual.restaurante && configAtual.restaurante.endereco) || "";
     entregaTexto = endRest
