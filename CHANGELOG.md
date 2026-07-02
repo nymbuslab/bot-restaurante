@@ -672,3 +672,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.74.1] — Correção: setas de reordenar variações não apareciam
 
 - No editor de **variações** do produto, os botões de **subir/descer** apareciam vazios (as setas ▲/▼ sumiam). Corrigido — os ícones voltaram.
+
+## [0.74.2] — Correção: mesa reaberta mostrava pagamento da conta anterior
+
+- Uma mesa fechada e **reaberta** exibia o **valor já recebido da sessão anterior** (ex.: R$ 60 de uma conta de ontem apareciam na abertura de hoje). O total dos itens já estava certo (v0.73.6); faltava recortar a soma dos **pagamentos** à sessão atual. Agora só contam os recebimentos feitos **após a reabertura** da mesa — o histórico do caixa permanece intacto.

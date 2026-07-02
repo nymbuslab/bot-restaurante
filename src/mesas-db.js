@@ -172,11 +172,18 @@ async function pedidosDaMesa(dir, mesaId) {
   }));
 }
 
-// Soma já recebida desta mesa (pagamentos parciais lançados no caixa).
+// Soma já recebida desta mesa NA SESSÃO ATUAL (parciais lançados no caixa depois do
+// aberta_em). Sem esse recorte, recebimentos de sessões anteriores da mesma mesa
+// (o caixa_movimentos fica no histórico p/ sempre) vazariam para a nova abertura —
+// mesma fronteira de sessão dos pedidos, mas aqui via aberta_em (o caixa não tem recebido_em).
 async function recebidoDaMesa(dir, mesaId) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT COALESCE(SUM(valor), 0) AS s FROM caixa_movimentos WHERE empresa_id = $1 AND mesa_id = $2 AND tipo = 'recebimento'",
+    `SELECT COALESCE(SUM(cm.valor), 0) AS s
+       FROM caixa_movimentos cm
+       JOIN mesas m ON m.id = cm.mesa_id AND m.empresa_id = cm.empresa_id
+      WHERE cm.empresa_id = $1 AND cm.mesa_id = $2 AND cm.tipo = 'recebimento'
+        AND m.aberta_em IS NOT NULL AND cm.criado_em >= m.aberta_em`,
     [empId, mesaId]
   );
   return Number(r.rows[0].s) || 0;
