@@ -3465,8 +3465,10 @@ function abrirModalPedido(p) {
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 
   const taxa = p.taxaEntrega || 0;
-  // Soma dos extras de um item: cada opcional conta a sua quantidade (ex.: 2x Ovo).
-  const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0);
+  // Soma dos extras de um item: cada opcional E cada variação conta a sua quantidade
+  // (a variação carrega o preço real; o item-pai fica com preço 0 — ex.: Refrigerante).
+  const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0)
+    + (i.variacoes || []).reduce((s, v) => s + (v.preco || 0) * (v.qtd || 1), 0);
   const subtotal = p.itens.reduce((acc, i) => acc + (i.preco + extrasDe(i)) * i.qtd, 0);
 
   const podeModificar = !p.recebidoEm && p.status !== "cancelado";
@@ -3475,6 +3477,10 @@ function abrirModalPedido(p) {
   // Itens como cards de leitura — com botão de cancelar item se pedido modificável
   const itensHtml = p.itens.map((i, idx) => {
     const sub = (i.preco + extrasDe(i)) * i.qtd;
+    // Variação = o produto de fato (o pai é só agrupamento) → aparece como detalhe sob o nome.
+    const varHtml = (i.variacoes && i.variacoes.length)
+      ? `<div class="ped-item-opc">${i.variacoes.map((v) => (v.qtd > 1 ? v.qtd + "x " : "") + escapar(v.nome)).join("<br>")}</div>`
+      : "";
     const opcHtml = (i.opcionais && i.opcionais.length)
       ? `<div class="ped-item-opc">${i.opcionais.map((o) => "+ " + (o.qtd > 1 ? o.qtd + "x " : "") + escapar(o.nome)).join("<br>")}</div>`
       : "";
@@ -3485,6 +3491,7 @@ function abrirModalPedido(p) {
       <span class="ped-item-qtd">${escapar(String(i.qtd))}x</span>
       <div class="ped-item-info">
         <div class="ped-item-nome">${escapar(i.nome)}</div>
+        ${varHtml}
         ${opcHtml}
       </div>
       <span class="ped-item-preco">R$ ${moedaBR(sub)}</span>
@@ -5199,7 +5206,9 @@ function renderMesaItens() {
   var html = "";
   todos.forEach(function (entry) {
     var item = entry.item;
-    var preco = pdvMoney((Number(item.preco) || 0) * (item.qtd || 1));
+    // Preço da linha soma opcionais E variações (a variação carrega o preço; o pai fica com 0).
+    var preco = pdvMoney(pdvPrecoLinha(item));
+    var det = (item.variacoes || []).map(function (v) { return (v.qtd > 1 ? v.qtd + "x " : "") + (v.nome || ""); }).join(", ");
     var delBtn = canDel
       ? '<button class="mesa-item-del" data-pedido-id="' + entry.pedidoId + '" data-item-idx="' + entry.idx + '" data-nome-item="' + pdvEsc(item.nome || "") + '" title="Cancelar item" aria-label="Cancelar item">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>' +
@@ -5208,7 +5217,7 @@ function renderMesaItens() {
     html +=
       '<div class="mesa-rodada-item">' +
       '<span class="mesa-rodada-item-esq"><span class="mesa-rodada-item-qtd">' + (item.qtd || 1) + "x </span>" +
-      '<span class="mesa-rodada-item-nome">' + pdvEsc(item.nome || "") + "</span></span>" +
+      '<span class="mesa-rodada-item-nome">' + pdvEsc(item.nome || "") + (det ? ' <small class="mesa-rodada-item-det">(' + pdvEsc(det) + ")</small>" : "") + "</span></span>" +
       '<span class="mesa-rodada-item-preco">' + preco + "</span>" +
       delBtn +
       "</div>";

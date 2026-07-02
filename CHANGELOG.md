@@ -633,3 +633,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - A tela do agente **após o login** foi reorganizada em **cards** arredondados e centralizados (visual Nymbus): Restaurante, Impressora e Registros.
 - Corrigido: a tela de **login e a de configuração apareciam juntas** (com barra de rolagem) quando já logado — agora só a tela certa aparece.
 - Removida a **barra de menu** padrão do Windows na janela do app.
+
+## [0.73.4] — Correção: produtos com variação apareciam zerados
+
+- **Pedidos e Mesas** agora mostram o **valor certo** de itens com variação (ex.: "Refrigerante 200ml" → Coca-Cola) — antes a linha e o subtotal saíam **R$ 0,00**, porque só o produto-pai (agrupamento) era exibido.
+- A **variação escolhida** passa a aparecer como detalhe sob o nome do produto (igual ao PDV), no pedido e na mesa.
+- Corrigido também: **cancelar um item** de um pedido com variação recalculava o total **sem** o preço da variação (gravava um total menor). O impresso (cupom/cozinha) já saía correto.

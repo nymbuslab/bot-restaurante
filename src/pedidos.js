@@ -235,7 +235,8 @@ async function cancelarItemPedido(dir, pedidoId, itemIdx) {
     // (frete não pertence a nenhum item; some do total se não for re-somado aqui).
     const taxa = r.rows[0].taxa_entrega == null ? 0 : Number(r.rows[0].taxa_entrega);
     const novoTotal = Math.round((itens.reduce((s, i) => {
-      const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0);
+      const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0)
+        + (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
       return s + ((i.preco || 0) + extras) * (i.qtd || 1);
     }, 0) + taxa) * 100) / 100;
     await db.query(
