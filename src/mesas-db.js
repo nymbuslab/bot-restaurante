@@ -44,7 +44,7 @@ async function listar(dir) {
   const r = await db.query(
     `SELECT m.*, (
         SELECT MAX(p.criado_em) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado'
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL
        ) AS ultimo_pedido_em
        FROM mesas m WHERE m.empresa_id = $1 ORDER BY m.ordem, m.id`,
     [empId]
@@ -149,7 +149,7 @@ async function vincularPedido(dir, mesaId, pedidoId, client) {
   await exec(
     `UPDATE mesas m SET total_consumido = (
         SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado')
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
        WHERE m.empresa_id = $1 AND m.id = $2`,
     [empId, mesaId]
   );
@@ -158,7 +158,7 @@ async function vincularPedido(dir, mesaId, pedidoId, client) {
 async function pedidosDaMesa(dir, mesaId) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT id, numero, status, itens, total, observacao, criado_em FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 ORDER BY id ASC",
+    "SELECT id, numero, status, itens, total, observacao, criado_em FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL ORDER BY id ASC",
     [empId, mesaId]
   );
   return r.rows.map((p) => ({
@@ -243,7 +243,7 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
       [empId, mesaId]
     );
     const r = await client.query(
-      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now()
+      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
          WHERE empresa_id = $1 AND id = $2 RETURNING *`,
       [empId, mesaId]
     );
@@ -269,7 +269,7 @@ async function cancelar(dir, id) {
       [empId, id]
     );
     const r = await client.query(
-      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now()
+      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
          WHERE empresa_id = $1 AND id = $2 RETURNING *`,
       [empId, id]
     );
@@ -309,7 +309,7 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
     // Pedidos ativos da origem a mover (comanda). Filtro opcional por ids.
     const filtroIds = Array.isArray(pedidoIds) && pedidoIds.length;
     const movParams = [empId, origemId];
-    let movCond = "empresa_id = $1 AND mesa_id = $2 AND status <> 'cancelado'";
+    let movCond = "empresa_id = $1 AND mesa_id = $2 AND status <> 'cancelado' AND recebido_em IS NULL";
     if (filtroIds) { movParams.push(pedidoIds); movCond += " AND id = ANY($3::bigint[])"; }
     const mov = await client.query(
       `SELECT id, itens, total FROM pedidos WHERE ${movCond} ORDER BY id ASC`,
@@ -319,7 +319,7 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
 
     // Comanda aberta do destino (alvo do merge quando o destino já está ocupado).
     const alvo = await client.query(
-      "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' ORDER BY id ASC LIMIT 1",
+      "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' AND recebido_em IS NULL ORDER BY id ASC LIMIT 1",
       [empId, destinoId]
     );
     const alvoRow = alvo.rows[0];
@@ -348,7 +348,7 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
       await client.query(
         `UPDATE mesas m SET total_consumido = (
             SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-             WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado')
+             WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
            WHERE m.empresa_id = $1 AND m.id = $2`,
         [empId, mid]
       );
@@ -359,9 +359,9 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
       [empId, destinoId]
     );
     await client.query(
-      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now()
+      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
          WHERE empresa_id = $1 AND id = $2 AND NOT EXISTS (
-           SELECT 1 FROM pedidos p WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND p.status <> 'cancelado')`,
+           SELECT 1 FROM pedidos p WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND p.status <> 'cancelado' AND p.recebido_em IS NULL)`,
       [empId, origemId]
     );
     await client.query("COMMIT");
@@ -387,7 +387,7 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
   const exec = client ? (s, p) => client.query(s, p) : (s, p) => db.query(s, p);
 
   const existing = await exec(
-    "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' ORDER BY id ASC LIMIT 1",
+    "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' AND recebido_em IS NULL ORDER BY id ASC LIMIT 1",
     [empId, mesaId]
   );
 
@@ -414,7 +414,7 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
   await exec(
     `UPDATE mesas m SET total_consumido = (
         SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado')
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
        WHERE m.empresa_id = $1 AND m.id = $2`,
     [empId, mesaId]
   );

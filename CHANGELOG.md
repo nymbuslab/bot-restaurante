@@ -643,3 +643,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.73.5] — Caixa: extrato mostra a mesa
 
 - No **extrato do caixa**, o recebimento de uma **mesa** agora aparece identificado como **"Mesa 3"** na coluna Cliente (antes ficava "—", sem referência). Vale também para os recebimentos de mesa já registrados.
+
+## [0.73.6] — Mesas: mesa livre não mostra mais itens da conta anterior
+
+- Corrigido: uma mesa **fechada (livre)** ainda exibia os **itens da conta já paga** e "Aberta às …". Agora, ao fechar a conta, a comanda anterior deixa de aparecer — a mesa livre nasce limpa.
+- Efeitos relacionados corrigidos: **lançar** numa mesa reaberta não acumula mais no pedido já pago; o **total da mesa** não soma sessões anteriores; **transferir/juntar** só considera a conta atual.

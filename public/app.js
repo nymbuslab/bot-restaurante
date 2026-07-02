@@ -5158,7 +5158,7 @@ function abrirMesaPainel() {
   var d = mesaState.detalhe;
   if (!d) return;
   $("mesaPainelNome").textContent = "Mesa " + d.nome;
-  $("mesaPainelSub").textContent = d.abertaEm ? "Aberta às " + mesaFmtHora(d.abertaEm) : "Livre";
+  $("mesaPainelSub").textContent = (d.status !== "livre" && d.abertaEm) ? "Aberta às " + mesaFmtHora(d.abertaEm) : "Livre";
   var badge = $("mesaPainelBadge");
   badge.className = "mesa-status-badge s-" + d.status;
   var badgeLabel = { livre: "LIVRE", ocupada: "OCUPADA", pediu_conta: "PEDIU CONTA", fechando: "FECHANDO" };
