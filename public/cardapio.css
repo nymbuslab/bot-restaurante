@@ -435,7 +435,7 @@ button.cd-hero { cursor: pointer; }
 .cd-m-head { padding: 16px 18px 4px; }
 .cd-m-nome { font-size: 21px; font-weight: 800; letter-spacing: -.02em; margin: 0; padding-right: 8px; }
 .cd-m-desc { color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; margin: 6px 0 0; }
-.cd-m-preco { font-size: 20px; font-weight: 800; margin-top: 12px; }
+.cd-m-preco { font-size: 15px; font-weight: 700; color: var(--accent-fg); margin-top: 8px; }
 
 /* Banda de grupo (cabeçalho) */
 .cd-m-grp-cab { display: flex; align-items: center; gap: 12px; background: var(--bg-elevated); padding: 13px 18px; margin-top: 14px; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
