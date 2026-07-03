@@ -4787,6 +4787,12 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .fc-col { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
 .fc-col h4 { margin: 0 0 8px; }
+/* Dinheiro em 2 colunas: Cédulas (R$200→R$2) e Moedas (R$1→R$0,05) — reduz a
+   altura da contagem pela metade p/ caber em telas baixas. */
+.fc-dinheiro-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.fc-dinheiro-cols .fc-qtd { width: 100%; }
+.fc-sub-titulo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; }
+@media (max-width: 560px) { .fc-dinheiro-cols { grid-template-columns: 1fr; } }
 .fc-tabela { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .fc-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-bottom: 6px; }
 .fc-tabela th:first-child, .fc-tabela td:first-child { width: 34%; }

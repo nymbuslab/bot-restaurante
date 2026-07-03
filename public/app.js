@@ -2463,12 +2463,15 @@ function renderFechamentoCaixa(data) {
   const mesasAbertas = Number(data.mesasAbertas) || 0; // mesas com consumo em aberto
   const bloqueado = pendentes > 0 || mesasAbertas > 0;
 
-  const linhasCedula = DENOMINACOES.map((c) => `
+  const linhaCedula = (c) => `
     <tr>
       <td class="fc-ced">R$ ${fmtBRn(c / 100)}</td>
       <td><input class="fc-qtd" inputmode="numeric" data-cent="${c}" value=""></td>
       <td class="fc-tot" data-cent="${c}">R$ 0,00</td>
-    </tr>`).join("");
+    </tr>`;
+  // Duas colunas: cédulas (R$ 200 → R$ 2) e moedas (R$ 1 → R$ 0,05).
+  const linhasCedula = DENOMINACOES.filter((c) => c >= 200).map(linhaCedula).join("");
+  const linhasMoeda  = DENOMINACOES.filter((c) => c < 200).map(linhaCedula).join("");
 
   const opcoesForma = eletronicas.length
     ? eletronicas.map((f) => `<option value="${escapar(f)}">${escapar(f)}</option>`).join("")
@@ -2499,8 +2502,18 @@ function renderFechamentoCaixa(data) {
       <div class="fc-cols">
         <section class="fc-col">
           <h4>Dinheiro (contagem da gaveta)</h4>
-          <table class="fc-tabela"><thead><tr><th>Cédula/Moeda</th><th>Qtd</th><th>Total</th></tr></thead>
-            <tbody>${linhasCedula}</tbody></table>
+          <div class="fc-dinheiro-cols">
+            <div>
+              <div class="fc-sub-titulo">Cédulas</div>
+              <table class="fc-tabela"><thead><tr><th>Cédula</th><th>Qtd</th><th>Total</th></tr></thead>
+                <tbody>${linhasCedula}</tbody></table>
+            </div>
+            <div>
+              <div class="fc-sub-titulo">Moedas</div>
+              <table class="fc-tabela"><thead><tr><th>Moeda</th><th>Qtd</th><th>Total</th></tr></thead>
+                <tbody>${linhasMoeda}</tbody></table>
+            </div>
+          </div>
           <div class="fc-rodape">
             <div class="caixa-linha"><span>Contado</span><span id="fcContadoDin">R$ 0,00</span></div>
             <div class="caixa-linha"><span>Esperado</span><span>R$ ${fmtBRn(esperadoEspecie)}</span></div>

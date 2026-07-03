@@ -701,3 +701,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - **Tabela de Pedidos**: com muitos pedidos e nomes longos, a tabela **vazava para fora da tela** (barra de rolagem horizontal na página inteira) e o **nome do cliente quebrava em 2 linhas**. Agora a tabela usa **largura fixa por coluna**: cada coluna ocupa exatamente o espaço disponível e o texto que não cabe é **cortado com reticências ("…")** — **nada quebra linha** e a página **nunca mais rola para o lado**. Nº do pedido, Telefone e Total sempre aparecem por inteiro (nunca cortam); no notebook a coluna **Telefone é ocultada** (o número segue no detalhe do pedido) para dar espaço ao nome. Validado a 1300 e 1040px.
 - **Fechamento de caixa**: a tela de contagem ficou **mais compacta** (linhas de cédula e cartões menores), reduzindo a rolagem em telas de altura menor. O rodapé com o botão "Fechar caixa" segue sempre visível.
+
+## [0.76.2] — Fechamento de caixa: contagem em duas colunas (Cédulas · Moedas)
+
+- A contagem do dinheiro no **fechamento de caixa** passou de uma lista única (12 linhas) para **duas colunas lado a lado**: **Cédulas** (R$ 200 a R$ 2) e **Moedas** (R$ 1 a R$ 0,05). Com isso a tela **cabe inteira** em notebooks (1300×732) **sem rolagem** — antes era preciso rolar para ver todas as denominações e o botão de fechar. Os totais e a conferência continuam idênticos.
