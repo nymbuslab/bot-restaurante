@@ -684,6 +684,15 @@ main {
   width: 100%;
 }
 
+/* Notebook / janela estreita (~640–1100px): antes o layout pulava direto de
+   desktop largo p/ celular (640px), então nessa faixa o painel apertava e
+   gerava barra de rolagem. Aqui damos respiro reduzindo a sidebar e os
+   paddings — o conteúdo ganha ~60px e as grades densas param de espremer. */
+@media (max-width: 1100px) {
+  .sidebar { width: 200px; }
+  main { padding: 22px 20px 80px; }
+}
+
 .aba { display: none; }
 .aba.ativa { display: block; }
 
@@ -1374,6 +1383,7 @@ button:disabled {
 /* Sub-abas das Configurações (Empresa × Bot) */
 .cfg-subnav {
   display: flex;
+  flex-wrap: wrap;        /* quebra linha em telas estreitas (era barra horizontal) */
   gap: 6px;
   margin-bottom: 22px;
   padding: 4px;
@@ -1381,6 +1391,7 @@ button:disabled {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: fit-content;
+  max-width: 100%;        /* nunca ultrapassa a largura do conteúdo */
 }
 .cfg-subnav button {
   display: flex;
@@ -2137,7 +2148,17 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px 16px;      /* respiro nas bordas em telas baixas */
+  overflow-y: auto;        /* se ainda assim não couber, rola o overlay */
   animation: fadeIn 0.15s ease;
+}
+/* Todo modal se ajusta à ALTURA da tela e rola dentro de si — nunca corta em
+   cima/embaixo (antes o .modal-caixa não tinha teto de altura). Vale p/ todos os
+   modais atuais e futuros que abrem dentro de um .modal-overlay. */
+.modal-overlay > * {
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
 }
 
 .modal-overlay.saindo { animation: fadeOut 0.15s ease both; }

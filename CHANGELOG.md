@@ -690,3 +690,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 - Nova aba **Monitoramento** no painel master (`/admin-master`): mostra, ao vivo, se o **Banco de Dados** responde (com a latência e o pool de conexões), o **uptime**/versão/memória da **Aplicação**, quantos **Bots WhatsApp** estão conectados agora e quantos trabalhos há na **Fila de Impressão**. Um banner no topo resume tudo em "Todos os sistemas operacionais" (verde) ou "Instabilidade detectada" (vermelho). Botão **Atualizar** + atualização automática a cada 20s enquanto a aba está aberta.
 - Os erros **"Falha ao validar a sessão" (500)** de autenticação agora **deixam rastro no log** do servidor (antes a causa sumia) — foi o ponto cego que motivou esta tela.
 - Só leitura, sem migration. Nova rota `GET /api/admin/diagnostico` (restrita ao super-admin).
+
+## [0.76.0] — Responsividade: painel adapta ao notebook e modais se ajustam à tela
+
+- **Modais agora se ajustam à altura da tela** e rolam dentro de si — antes, um modal mais alto que a tela (ex.: em notebooks de altura menor) ficava **cortado em cima/embaixo sem como rolar**. Vale para todos os modais.
+- **Configurações — fim da barra de rolagem horizontal**: a barra de sub-abas (Empresa/Cardápio/Horários/Pagamentos/Conexão/Bot/Entrega/Impressora) agora **quebra em várias linhas** em telas mais estreitas, em vez de vazar para fora e cortar o último item.
+- **Notebook/janela estreita (~640–1100px)**: novo ajuste que dá mais espaço ao conteúdo (sidebar e margens menores) — antes o layout pulava direto de "desktop largo" para "celular", então nessa faixa o painel apertava e gerava rolagem. Disparado por reclamação de cliente em notebook 1300×732 (efetivo ~1040px com escala do Windows). Só CSS; validado no navegador a 1300, 1040 e 760px.
