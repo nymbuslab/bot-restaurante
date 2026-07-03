@@ -5027,6 +5027,55 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-op-esg { opacity: .5; }
 .pdv-modal-add { width: 100%; padding: 13px; font-size: 15px; margin-top: 4px; }
 
+/* ===== Modal de PRODUTO do PDV/Mesa — layout iFood (mesmo do cardápio web),
+   escopado pelo #pdvItemCaixa p/ não afetar os outros modais .pdv-modal-caixa ===== */
+#pdvItemCaixa { padding: 0; }
+#pdvItemCaixa .pdv-modal-x { z-index: 3; }
+.pdv-m-head { padding: 18px 18px 6px; }
+.pdv-m-nome { font-size: 18px; font-weight: 800; margin: 0 40px 0 0; text-transform: none; }
+.pdv-m-preco { font-size: 15px; font-weight: 700; color: var(--accent-fg); margin-top: 6px; }
+.pdv-m-preco small { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.pdv-m-grp { margin: 0; }
+.pdv-m-grp-cab { display: flex; align-items: center; gap: 12px; background: var(--bg-elevated); padding: 12px 18px; margin-top: 12px; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
+.pdv-m-grp-tit { font-size: 14px; font-weight: 700; min-width: 0; }
+.pdv-m-grp-sub { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-top: 1px; }
+.pdv-m-grp-selo { margin-left: auto; flex: none; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border); padding: 3px 8px; border-radius: 999px; }
+.pdv-m-grp-selo.obrig { color: var(--accent-fg); border-color: rgba(99,68,188,.5); }
+.pdv-m-check { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; }
+.pdv-m-check[hidden], .pdv-m-grp-selo[hidden] { display: none; }
+.pdv-m-check svg { stroke: #0F1117; }
+.pdv-m-opt { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border-subtle); margin: 0; }
+.pdv-m-opt-sel { cursor: pointer; }
+.pdv-m-opt-txt { flex: 1; min-width: 0; }
+.pdv-m-opt-sel > .pdv-m-opt-nome { flex: 1; }
+.pdv-m-opt-nome { font-size: 14px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.pdv-m-opt-preco { display: block; font-size: 12.5px; color: var(--accent-fg); font-weight: 700; margin-top: 2px; }
+.pdv-m-opt-tag { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
+.pdv-m-opt-esg { opacity: .5; }
+.pdv-m-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pdv-m-mark { flex: none; width: 22px; height: 22px; border: 2px solid var(--border); position: relative; }
+.pdv-m-mark.radio { border-radius: 50%; }
+.pdv-m-mark.checkbox { border-radius: 6px; }
+.pdv-m-input:checked + .pdv-m-mark { border-color: var(--accent); }
+.pdv-m-input:checked + .pdv-m-mark.radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
+.pdv-m-input:checked + .pdv-m-mark.checkbox { background: var(--accent); }
+.pdv-m-input:checked + .pdv-m-mark.checkbox::after { content: ""; position: absolute; left: 6.5px; top: 3px; width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.pdv-m-input:focus-visible + .pdv-m-mark { box-shadow: 0 0 0 3px var(--accent-subtle); }
+.pdv-m-obs-cab { display: flex; align-items: center; gap: 8px; background: var(--bg-elevated); padding: 12px 18px; margin-top: 12px; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.pdv-m-obs-tit { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.pdv-m-obs-count { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+.pdv-m-obs-wrap { padding: 12px 18px; }
+.pdv-m-obs-wrap textarea { width: 100%; min-height: 56px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); padding: 10px 12px; font-family: inherit; font-size: 14px; resize: vertical; }
+.pdv-m-obs-wrap textarea:focus { outline: none; border-color: var(--accent); }
+.pdv-m-bar { position: sticky; bottom: 0; z-index: 4; display: flex; align-items: center; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--bg-surface); border-top: 1px solid var(--border); }
+@media (min-width: 600px) { .pdv-m-bar { border-radius: 0 0 var(--radius-lg) var(--radius-lg); } }
+.pdv-m-bar .pdv-stepper { flex: none; }
+.pdv-m-peso { flex: none; display: flex; flex-direction: column; gap: 2px; }
+.pdv-m-peso > span { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; }
+.pdv-m-peso input { width: 96px; height: 38px; text-align: center; font-weight: 700; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
+.pdv-m-peso input:focus { outline: none; border-color: var(--accent); }
+.pdv-m-add { flex: 1; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; margin-top: 0; font-weight: 800; font-size: 15px; }
+
 /* Desconto: botão ao lado do recebimento + modal (toggle R$/% + campo) */
 .pdv-desc-acao { flex: none; padding: 0 16px; font-size: 14px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--accent-fg); font-weight: 600; border-radius: var(--radius-sm); }
 .pdv-desc-acao:hover { border-color: var(--accent); background: var(--bg-elevated); }

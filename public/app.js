@@ -4226,6 +4226,7 @@ function pdvTileClick(item) {
 
 // ---- Modal de item (opcionais / peso / observação) ----
 let pdvItemCtx = null; // { item, ops, uid|null }
+let pdvGrupoCompleto = {}; // grupo → já rolou p/ o próximo (evita re-rolar ao trocar opção)
 
 function abrirPdvItemModal(item, uid) {
   const ops = pdvParseOpcionais(item.opcionais);
@@ -4237,6 +4238,7 @@ function abrirPdvItemModal(item, uid) {
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
   pdvItemCtx = { item, ops, grps, vars, uid: uid != null ? uid : null, ehKg };
+  pdvGrupoCompleto = {};
   const opsQtd = ops.map((o) => {
     const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
     return found ? found.qtd : 0;
@@ -4250,47 +4252,65 @@ function abrirPdvItemModal(item, uid) {
   const qtdIni = linha ? linha.qtd : (ehKg ? "" : 1);
   const obsIni = linha ? linha.observacao : "";
 
+  const PDV_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+  const PDV_BALAO = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
   let html =
     '<button class="pdv-modal-x" type="button" data-pdv-close="item" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
-    '<h3 class="pdv-modal-titulo">' + pdvEsc(item.nome) + "</h3>";
-  if (ehKg) {
-    html += '<label class="pdv-campo"><span>Peso (kg)</span><input id="pdvMpeso" type="text" inputmode="decimal" placeholder="0,000" value="' + pdvEsc(qtdIni === "" ? "" : String(qtdIni).replace(".", ",")) + '" /></label>';
-  } else {
-    html += '<div class="pdv-campo"><span>Quantidade</span><div class="pdv-stepper pdv-stepper-qtd"><button type="button" data-qstep="-1" aria-label="Diminuir">−</button><input id="pdvMqtd" class="pdv-qtd-input" type="text" inputmode="numeric" value="' + qtdIni + '" aria-label="Quantidade" /><button type="button" data-qstep="1" aria-label="Aumentar">+</button></div></div>';
-  }
+    '<div class="pdv-m-head"><h3 class="pdv-m-nome">' + pdvEsc(item.nome) + '</h3>' +
+      '<div class="pdv-m-preco">' + pdvMoney(Number(item.preco) || 0) + (ehKg ? '<small>/kg</small>' : '') + '</div></div>';
   grps.forEach((g) => {
     const unico = g.max === 1;
-    const regra = g.obrigatorio ? (unico ? "Escolha 1" : "Escolha ao menos " + Math.max(1, g.min)) : (g.max > 1 ? "Até " + g.max : "Opcional");
-    html += '<div class="pdv-grp" data-grupo="' + pdvEsc(g.nome) + '"><div class="pdv-grp-cab"><span class="pdv-grp-nome">' + pdvEsc(g.nome) + '</span><span class="pdv-grp-regra' + (g.obrigatorio ? " obrig" : "") + '">' + pdvEsc(regra) + '</span></div>';
-    g.itens.forEach((nome) => {
+    const minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
+    const sub = unico ? "Escolha 1 opção"
+      : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                       : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+    html += '<div class="pdv-grp pdv-m-grp" data-grupo="' + pdvEsc(g.nome) + '" data-grupo-wrap="' + pdvEsc(g.nome) + '">' +
+      '<div class="pdv-m-grp-cab">' +
+        '<div class="pdv-m-grp-tit">' + pdvEsc(g.nome) + '<div class="pdv-m-grp-sub" data-sub="' + pdvEsc(g.nome) + '">' + pdvEsc(sub) + '</div></div>' +
+        '<span class="pdv-m-grp-selo' + (g.obrigatorio ? ' obrig' : '') + '" data-selo="' + pdvEsc(g.nome) + '">' + (g.obrigatorio ? 'Obrigatório' : 'Opcional') + '</span>' +
+        '<span class="pdv-m-check" data-check="' + pdvEsc(g.nome) + '" hidden>' + PDV_CHECK + '</span>' +
+      '</div>';
+    g.itens.forEach((nome, idx) => {
       const marcado = (escIni[g.nome] || []).indexOf(nome) !== -1 ? " checked" : "";
       const tipo = unico ? "radio" : "checkbox";
-      html += '<label class="pdv-grp-opt"><input type="' + tipo + '" name="pgrp_' + pdvEsc(g.nome) + '" value="' + pdvEsc(nome) + '" data-grupo="' + pdvEsc(g.nome) + '" data-max="' + g.max + '"' + marcado + ' /> <span>' + pdvEsc(nome) + '</span></label>';
+      const id = "pgrp_" + pdvEsc(g.nome).replace(/\W/g, "") + "_" + idx;
+      html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + id + '">' +
+        '<span class="pdv-m-opt-nome">' + pdvEsc(nome) + '</span>' +
+        '<input type="' + tipo + '" name="pgrp_' + pdvEsc(g.nome) + '" value="' + pdvEsc(nome) + '" data-grupo="' + pdvEsc(g.nome) + '" data-max="' + g.max + '"' + marcado + ' id="' + id + '" class="pdv-m-input" />' +
+        '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
+      '</label>';
     });
     html += '</div>';
   });
   if (ops.length) {
-    html += '<div class="pdv-ops"><span class="pdv-ops-tit">Adicionais</span>';
+    html += '<div class="pdv-m-grp-cab"><div class="pdv-m-grp-tit">Adicionais<div class="pdv-m-grp-sub">Opcional</div></div></div>';
     ops.forEach((o, i) => {
-      html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-op-preco">+ ' + pdvMoney(o.preco) + '</span>' +
+      html += '<div class="pdv-m-opt">' +
+        '<div class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-m-opt-preco">+ ' + pdvMoney(o.preco) + '</span></div>' +
         '<div class="pdv-stepper" data-stepper="op" data-opi="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-op-q">' + opsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
     });
-    html += "</div>";
   }
   if (vars.length) {
-    html += '<div class="pdv-ops"><span class="pdv-ops-tit">Opções</span>';
+    html += '<div class="pdv-m-grp-cab"><div class="pdv-m-grp-tit">Opções<div class="pdv-m-grp-sub">Escolha ao menos 1</div></div></div>';
     vars.forEach((v, i) => {
       if (v.esgotado) {
-        html += '<div class="pdv-op pdv-op-esg"><span class="pdv-op-nome">' + pdvEsc(v.nome) + ' <small>(esgotado)</small></span><span class="pdv-op-preco">' + pdvMoney(v.preco) + '</span></div>';
+        html += '<div class="pdv-m-opt pdv-m-opt-esg"><div class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(v.nome) + ' <span class="pdv-m-opt-tag">Esgotado</span></span><span class="pdv-m-opt-preco">' + pdvMoney(v.preco) + '</span></div></div>';
       } else {
-        html += '<div class="pdv-op"><span class="pdv-op-nome">' + pdvEsc(v.nome) + '</span><span class="pdv-op-preco">' + pdvMoney(v.preco) + '</span>' +
+        html += '<div class="pdv-m-opt"><div class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(v.nome) + '</span><span class="pdv-m-opt-preco">' + pdvMoney(v.preco) + '</span></div>' +
           '<div class="pdv-stepper" data-stepper="var" data-vari="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-var-q">' + varsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
       }
     });
-    html += "</div>";
   }
-  html += '<label class="pdv-campo"><span>Observação (opcional)</span><textarea id="pdvMobs" rows="2" placeholder="Ex.: sem cebola, ponto da carne…">' + pdvEsc(obsIni) + "</textarea></label>";
-  html += '<button type="button" class="primario pdv-modal-add" id="pdvMadd">' + (uid != null ? "Salvar" : "Adicionar") + ' · <span id="pdvMtot">R$ 0,00</span></button>';
+  html += '<div class="pdv-m-obs-cab">' + PDV_BALAO + '<span class="pdv-m-obs-tit">Observação</span><span class="pdv-m-obs-count" id="pdvMobsCount">0/200</span></div>' +
+    '<div class="pdv-m-obs-wrap"><textarea id="pdvMobs" rows="2" maxlength="200" placeholder="Ex.: sem cebola, ponto da carne…">' + pdvEsc(obsIni) + '</textarea></div>';
+  html += '<div class="pdv-m-bar">';
+  if (ehKg) {
+    html += '<label class="pdv-m-peso"><span>Peso (kg)</span><input id="pdvMpeso" type="text" inputmode="decimal" placeholder="0,000" value="' + pdvEsc(qtdIni === "" ? "" : String(qtdIni).replace(".", ",")) + '" /></label>';
+  } else {
+    html += '<div class="pdv-stepper pdv-stepper-qtd"><button type="button" data-qstep="-1" aria-label="Diminuir">−</button><input id="pdvMqtd" class="pdv-qtd-input" type="text" inputmode="numeric" value="' + qtdIni + '" aria-label="Quantidade" /><button type="button" data-qstep="1" aria-label="Aumentar">+</button></div>';
+  }
+  html += '<button type="button" class="primario pdv-m-add" id="pdvMadd"><span>' + (uid != null ? "Salvar" : "Adicionar") + '</span><span id="pdvMtot">R$ 0,00</span></button>';
+  html += '</div>';
 
   $("pdvItemCaixa").innerHTML = html;
   $("pdvItemOverlay").hidden = false;
@@ -4326,21 +4346,70 @@ function abrirPdvItemModal(item, uid) {
     });
   }
   $("pdvItemCaixa").querySelectorAll(".pdv-grp input").forEach((inp) => inp.addEventListener("change", () => {
+    const grupo = inp.dataset.grupo;
+    const escG = (window.CSS && CSS.escape) ? CSS.escape(grupo) : grupo.replace(/"/g, '\\"');
     if (inp.type === "checkbox") {
       const max = parseInt(inp.dataset.max, 10) || 0;
-      const escG = (window.CSS && CSS.escape) ? CSS.escape(inp.dataset.grupo) : inp.dataset.grupo.replace(/"/g, '\\"');
       const marc = $("pdvItemCaixa").querySelectorAll('.pdv-grp input[data-grupo="' + escG + '"]:checked');
       if (max > 1 && marc.length > max) inp.checked = false;
     }
     pdvItemRecalc();
+    pdvAtualizarGrupos();
+    // rolagem automática ao completar um grupo (só na transição p/ completo)
+    const gm = (pdvItemCtx.grps || []).filter((x) => x.nome === grupo)[0];
+    if (gm) {
+      const sel = $("pdvItemCaixa").querySelectorAll('.pdv-grp[data-grupo="' + escG + '"] input:checked').length;
+      const effMax = gm.max > 0 ? gm.max : gm.itens.length;
+      if (sel >= effMax) {
+        if (!pdvGrupoCompleto[grupo]) { pdvGrupoCompleto[grupo] = true; pdvScrollProximaSecao(grupo); }
+      } else { pdvGrupoCompleto[grupo] = false; }
+    }
   }));
+  const obs = $("pdvMobs"), obsC = $("pdvMobsCount");
+  if (obs && obsC) { obsC.textContent = obs.value.length + "/200"; obs.addEventListener("input", () => { obsC.textContent = obs.value.length + "/200"; }); }
   const peso = $("pdvMpeso"); if (peso) peso.addEventListener("input", pdvItemRecalc);
   $("pdvMadd").addEventListener("click", pdvConfirmarItem);
   const xb = $("pdvItemCaixa").querySelector('[data-pdv-close="item"]');
   if (xb) xb.addEventListener("click", fecharPdvItemModal);
   pdvItemRecalc();
+  pdvAtualizarGrupos();
 }
 function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = null; }
+
+// Atualiza o check verde + selo + subtítulo (contador) de cada grupo do modal PDV
+// conforme as escolhas — só apresentação (a validação segue em avaliarComposicao).
+function pdvAtualizarGrupos() {
+  const cx = $("pdvItemCaixa");
+  ((pdvItemCtx && pdvItemCtx.grps) || []).forEach((g) => {
+    const escG = (window.CSS && CSS.escape) ? CSS.escape(g.nome) : g.nome.replace(/"/g, '\\"');
+    const sel = cx.querySelectorAll('.pdv-grp[data-grupo="' + escG + '"] input:checked').length;
+    const min = g.obrigatorio ? Math.max(1, g.min) : 0;
+    const max = g.max > 0 ? g.max : g.itens.length;
+    const ok = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
+    const check = cx.querySelector('.pdv-m-check[data-check="' + escG + '"]');
+    const selo = cx.querySelector('.pdv-m-grp-selo[data-selo="' + escG + '"]');
+    if (check) check.hidden = !ok;
+    if (selo) selo.hidden = ok;
+    if (!g.obrigatorio && g.max > 1) {
+      const sub = cx.querySelector('.pdv-m-grp-sub[data-sub="' + escG + '"]');
+      if (sub) sub.textContent = "Escolha até " + g.max + " opções · " + sel + "/" + g.max;
+    }
+  });
+}
+// Rola o modal PDV até a seção seguinte à do grupo (próximo grupo/adicionais/observação).
+function pdvScrollProximaSecao(nomeGrupo) {
+  const cx = $("pdvItemCaixa");
+  const escG = (window.CSS && CSS.escape) ? CSS.escape(nomeGrupo) : nomeGrupo.replace(/"/g, '\\"');
+  const wrap = cx.querySelector('.pdv-m-grp[data-grupo-wrap="' + escG + '"]');
+  if (!wrap) return;
+  const cab = wrap.querySelector(".pdv-m-grp-cab");
+  const headers = Array.prototype.slice.call(cx.querySelectorAll(".pdv-m-grp-cab, .pdv-m-obs-cab"));
+  const idx = headers.indexOf(cab);
+  if (idx === -1 || idx + 1 >= headers.length) return;
+  const alvo = headers[idx + 1];
+  const suave = !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  setTimeout(() => { cx.scrollTo({ top: Math.max(0, alvo.offsetTop - 8), behavior: suave ? "smooth" : "auto" }); }, 60);
+}
 
 function _pdvLerModalItem() {
   const { item, ops, vars, ehKg } = pdvItemCtx;

@@ -718,3 +718,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.77.2] — Cardápio web: modal rola sozinho para a próxima seção
 
 - No modal de escolha do prato, ao **completar um grupo** (todas as escolhas feitas — ex.: as opções de "Principais"), o modal **rola suave sozinho até a próxima seção** (ex.: "Guarnição"), agilizando o preenchimento. Só rola na conclusão do grupo (não fica pulando se o cliente troca de opção) e respeita "reduzir movimento" do sistema.
+
+## [0.78.0] — PDV/Mesa: modal de produto no mesmo layout do cardápio web
+
+- O **modal de produto do PDV** (que a **Mesa** reusa no "Lançar") ganhou o **mesmo visual novo** do cardápio web (estilo iFood, identidade Nymbus): grupos em **faixa** com título/subtítulo, **selo Obrigatório/Opcional**, **check verde** quando o grupo é preenchido, **escolha única em botão-rádio**, adicionais/opções com **＋/−**, **observação** em faixa com contador e uma **barra fixa** embaixo (quantidade/peso + **Adicionar/Salvar R$ X**). Também rola sozinho para a próxima seção ao completar um grupo. **Design consistente** entre cardápio web e painel.
+- **Somente apresentação** — toda a lógica do PDV (item por **kg/peso**, grupos, adicionais, variações, editar item, adicionar ao carrinho) permanece igual.
