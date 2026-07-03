@@ -710,3 +710,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - O **modal de escolha do prato** no cardápio web (`/c/:slug`) ganhou um visual no estilo **iFood**, mantendo a **identidade Nymbus** (tema escuro + roxo): **imagem grande no topo**, nome/descrição/preço em destaque, cada grupo de escolha vira uma **faixa com título e subtítulo** (`Escolha 1 opção` / `Escolha até 2 opções`) com **selo "Obrigatório"** e **check verde** quando preenchido, **escolha única em botão-rádio** e adicionais/sabores com **＋/−**, campo **"Alguma observação?"** com contador de caracteres e uma **barra fixa** embaixo (quantidade + **Adicionar R$ X**).
 - **Somente apresentação** — a lógica de seleção, validação (obrigatório/mín/máx), estoque/esgotado, cálculo de preço e adição ao carrinho é exatamente a mesma. Validado no navegador (mobile) com o cardápio real.
+
+## [0.77.1] — Cardápio web: busca acha o sabor (variação) e adiciona em 1 clique
+
+- No **cardápio web**, buscar por um sabor (ex.: "coca") não encontrava nada quando ele era uma **variação** de um produto (ex.: "Refrigerante 350ML"). Agora a busca mostra o **sabor direto** como resultado ("Coca-Cola · Refrigerante 350ML · R$ 6,00") e um clique **já adiciona ao carrinho** (se o produto tiver outras escolhas obrigatórias/adicionais, abre o modal). Buscar pelo nome do produto (ex.: "refri") lista todos os sabores; cada resultado respeita o **estoque do próprio sabor**. Mesmo comportamento já existente no PDV.

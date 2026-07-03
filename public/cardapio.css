@@ -217,6 +217,9 @@ button.cd-card { cursor: pointer; }
   font-size: 12.5px; color: var(--text-secondary); margin: 5px 0 0;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* Resultado de busca por sabor: mostra o produto-pai (tamanho) como contexto,
+   sempre visível — inclusive no card compacto do mobile. */
+.cd-card-flavor .cd-card-desc { display: block; -webkit-line-clamp: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
 .cd-card-rodape { margin-top: auto; padding-top: 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .cd-card-preco {
   display: inline-flex; align-items: center; gap: 5px;

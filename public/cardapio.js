@@ -180,7 +180,16 @@
       var achados = [];
       cats.forEach(function (c) {
         c.itens.forEach(function (it) {
-          if ((it.nome || "").toLowerCase().indexOf(q) !== -1 || (it.desc || "").toLowerCase().indexOf(q) !== -1) {
+          var nomeMatch = (it.nome || "").toLowerCase().indexOf(q) !== -1
+            || (it.desc || "").toLowerCase().indexOf(q) !== -1;
+          var vars = it.variacoes || [];
+          if (vars.length) {
+            // Item com sabores: traz o SABOR (filho) como resultado, não o pai.
+            // Nome-pai casa → todos os sabores; senão só os que casam (ex.: "coca").
+            vars.forEach(function (v) {
+              if (nomeMatch || (v.nome || "").toLowerCase().indexOf(q) !== -1) achados.push(flavorSynth(it, v));
+            });
+          } else if (nomeMatch || (it.opcionais || []).some(function (o) { return (o.nome || "").toLowerCase().indexOf(q) !== -1; })) {
             achados.push(it);
           }
         });
@@ -344,13 +353,35 @@
   // ícone de etiqueta (tag) — antes do preço no card
   var ICON_PRECO = '<svg class="cd-preco-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>';
 
+  // Resultado de BUSCA por sabor: item sintético que representa a variação (filho)
+  // — mostra o nome do sabor + o preço dele; o pai vai como contexto na descrição.
+  function flavorSynth(parent, v) {
+    return {
+      __flavor: true, __parent: parent, __var: v,
+      id: parent.id, nome: v.nome, desc: parent.nome,
+      imagem: parent.imagem, preco: Number(v.preco) || 0, esgotado: !!v.esgotado,
+    };
+  }
+  // Clique no resultado de sabor: pai com composição/adicionais → abre o modal p/
+  // completar; senão adiciona o sabor direto ao carrinho (1 clique, como no PDV).
+  function onFlavorClick(parent, v) {
+    if (v.esgotado) return;
+    if ((parent.composicao || []).length || (parent.opcionais || []).length) { abrirModal(parent); return; }
+    addLinha({
+      id: parent.id, nome: parent.nome, preco: Number(parent.preco) || 0,
+      composicao: [], opcionais: [],
+      variacoes: [{ id: v.id, nome: v.nome, preco: Number(v.preco) || 0, qtd: 1 }],
+      observacao: "", qtd: 1,
+    });
+  }
+
   function cardItem(it) {
     var kg = it.unidade === "kg";
     var naoAbre = it.esgotado || kg;          // não abre o modal (visualização pura)
     var naoAdd = naoAbre || it.apenasLocal;   // sem botão "+ Adicionar" (só-local abre, mas não pede)
     var card = document.createElement(naoAbre ? "div" : "button");
     if (!naoAbre) card.type = "button";
-    card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "") + (kg && !it.esgotado ? " cd-card-kg" : "");
+    card.className = "cd-card" + (it.esgotado ? " cd-card-esgotado" : "") + (kg && !it.esgotado ? " cd-card-kg" : "") + (it.__flavor ? " cd-card-flavor" : "");
     // selos flutuantes sobre a imagem (empilham no canto superior esquerdo)
     var selos = "";
     if (it.esgotado) selos += '<span class="cd-card-selo esgotado">Esgotado</span>';
@@ -371,7 +402,9 @@
           (naoAdd ? "" : '<span class="cd-add">+ Adicionar</span>') +
         "</div>" +
       "</div>";
-    if (!naoAbre) card.addEventListener("click", function () { abrirModal(it); });
+    if (!naoAbre) card.addEventListener("click", function () {
+      if (it.__flavor) onFlavorClick(it.__parent, it.__var); else abrirModal(it);
+    });
     return card;
   }
 
