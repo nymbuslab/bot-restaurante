@@ -684,3 +684,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.74.4] — Correção: filtro do PDV vazava para o lançamento da mesa
 
 - Uma busca feita no **PDV** (ex.: "coca-cola") continuava aplicada ao abrir o **Lançar** de uma mesa (e vice-versa), já que os dois usam a mesma grade. Agora o filtro (busca + categoria) é **zerado ao entrar e sair** do lançamento da mesa — cada contexto começa limpo.
+
+## [0.75.0] — Monitoramento: saúde do sistema no painel master
+
+- Nova aba **Monitoramento** no painel master (`/admin-master`): mostra, ao vivo, se o **Banco de Dados** responde (com a latência e o pool de conexões), o **uptime**/versão/memória da **Aplicação**, quantos **Bots WhatsApp** estão conectados agora e quantos trabalhos há na **Fila de Impressão**. Um banner no topo resume tudo em "Todos os sistemas operacionais" (verde) ou "Instabilidade detectada" (vermelho). Botão **Atualizar** + atualização automática a cada 20s enquanto a aba está aberta.
+- Os erros **"Falha ao validar a sessão" (500)** de autenticação agora **deixam rastro no log** do servidor (antes a causa sumia) — foi o ponto cego que motivou esta tela.
+- Só leitura, sem migration. Nova rota `GET /api/admin/diagnostico` (restrita ao super-admin).

@@ -131,6 +131,116 @@ function trocarAba(aba) {
   document.querySelectorAll("#view-dash .aba").forEach((s) =>
     s.classList.toggle("ativa", s.id === "aba-" + aba));
   if (aba === "config" && !plataformaCarregada) carregarPlataforma();
+  // Monitoramento só bate no servidor enquanto a aba está aberta (liga/desliga o poll).
+  if (aba === "monitor") iniciarMonitor(); else pararMonitor();
+}
+
+// ============================================================
+// MONITORAMENTO (saúde do sistema — aba master)
+// ============================================================
+let monTimer = null;
+
+// SVGs (stroke) dos cards — nunca emoji.
+const ICO_MON = {
+  banco:  '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+  app:    '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
+  bots:   '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+  impr:   '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+};
+
+function iniciarMonitor() {
+  carregarMonitor();
+  if (monTimer) clearInterval(monTimer);
+  monTimer = setInterval(carregarMonitor, 20000); // atualiza a cada 20s enquanto aberta
+}
+function pararMonitor() {
+  if (monTimer) { clearInterval(monTimer); monTimer = null; }
+}
+
+// Uptime em texto compacto: "2d 04h" / "5h 12m" / "8m".
+function fmtUptime(seg) {
+  seg = Math.max(0, Math.floor(seg || 0));
+  const d = Math.floor(seg / 86400);
+  const h = Math.floor((seg % 86400) / 3600);
+  const m = Math.floor((seg % 3600) / 60);
+  if (d > 0) return d + "d " + String(h).padStart(2, "0") + "h";
+  if (h > 0) return h + "h " + String(m).padStart(2, "0") + "m";
+  return m + "m";
+}
+
+async function carregarMonitor() {
+  try {
+    const r = await apiAdmin("GET", "/api/admin/diagnostico");
+    const d = await r.json();
+    renderMonitor(d);
+    $("mon-atualizado").textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR");
+  } catch (e) {
+    if (e.message !== "Sessão expirada") {
+      $("mon-banner").className = "mon-banner err";
+      $("mon-banner").innerHTML = `<span class="mon-dot"></span> Falha ao carregar o diagnóstico <span class="mon-banner-sub">${escapar(e.message)}</span>`;
+      $("mon-cards").innerHTML = "";
+    }
+  }
+}
+
+function renderMonitor(d) {
+  const banco = d.banco || {};
+  const app = d.app || {};
+  const pool = banco.pool || {};
+
+  // Banner de saúde geral (segue o banco).
+  const banner = $("mon-banner");
+  if (d.ok) {
+    banner.className = "mon-banner ok";
+    banner.innerHTML = `<span class="mon-dot"></span> Todos os sistemas operacionais`
+      + `<span class="mon-banner-sub">Uptime ${fmtUptime(app.uptimeSegundos)}</span>`;
+  } else {
+    banner.className = "mon-banner err";
+    banner.innerHTML = `<span class="mon-dot"></span> Instabilidade detectada`
+      + `<span class="mon-banner-sub">${escapar(banco.erro || "banco indisponível")}</span>`;
+  }
+
+  // Secundária do banco: pool de conexões (ou o erro).
+  const bancoSec = banco.ok
+    ? `Pool: <strong>${pool.total ?? "—"}</strong> conexões · ${pool.ociosas ?? "—"} ociosas`
+      + (pool.aguardando ? ` · ${pool.aguardando} aguardando` : "")
+    : escapar(banco.erro || "sem resposta do banco");
+
+  const cards = [
+    {
+      cor: banco.ok ? "verde" : "vermelho", ico: ICO_MON.banco, titulo: "Banco de Dados",
+      badge: banco.ok ? { cls: "ok", txt: "Operacional" } : { cls: "err", txt: "Instável" },
+      valor: banco.ok ? `${banco.latenciaMs}<span class="mon-unid">ms</span>` : "—",
+      rotulo: "latência", sec: bancoSec,
+    },
+    {
+      cor: "roxo", ico: ICO_MON.app, titulo: "Aplicação", badge: null,
+      valor: fmtUptime(app.uptimeSegundos), rotulo: "no ar (uptime)",
+      sec: `Versão <strong>v${escapar(String(app.versao || "?"))}</strong> · Node ${escapar(String(app.node || "?"))}<br>Memória <strong>${app.memoriaMB ?? "—"} MB</strong>`,
+    },
+    {
+      cor: "ciano", ico: ICO_MON.bots, titulo: "Bots WhatsApp", badge: null,
+      valor: String((d.bots && d.bots.conectados) ?? 0), rotulo: "conectados",
+      sec: "sessões ativas agora",
+    },
+    {
+      cor: "roxo", ico: ICO_MON.impr, titulo: "Fila de Impressão", badge: null,
+      valor: (d.impressao && d.impressao.pendentes != null) ? String(d.impressao.pendentes) : "—",
+      rotulo: "trabalhos pendentes", sec: "aguardando o agente",
+    },
+  ];
+
+  $("mon-cards").innerHTML = cards.map((c) => `
+    <div class="mon-card ${c.cor}">
+      <div class="mon-card-head">
+        ${c.ico}
+        <span class="mon-card-titulo">${c.titulo}</span>
+        ${c.badge ? `<span class="mon-card-badge ${c.badge.cls}">${c.badge.txt}</span>` : ""}
+      </div>
+      <div class="mon-valor">${c.valor}</div>
+      <div class="mon-rotulo">${c.rotulo}</div>
+      <div class="mon-sec">${c.sec}</div>
+    </div>`).join("");
 }
 
 // ============================================================
@@ -183,6 +293,7 @@ async function entrar() {
 }
 
 async function sair() {
+  pararMonitor(); // corta o poll de diagnóstico antes de deslogar
   try { await apiAdmin("POST", "/api/admin/logout"); } catch (e) { /* ignora */ }
   sessionStorage.removeItem(TKEY);
   sessionStorage.removeItem(RKEY);
@@ -932,6 +1043,7 @@ $("am-filtro-status").addEventListener("change", (e) => { filtroStatus = e.targe
 $("btnExportar").addEventListener("click", exportarCSV);
 $("btnVerTodos").addEventListener("click", () => trocarAba("restaurantes"));
 $("btnSalvarPlataforma").addEventListener("click", salvarPlataforma);
+$("btnAtualizarMon").addEventListener("click", carregarMonitor);
 $("formAcessoMaster").addEventListener("submit", (e) => { e.preventDefault(); salvarAcessoMaster(); });
 $("cfg-cnpj").addEventListener("input", (e) => { e.target.value = mascararCNPJ(e.target.value); });
 

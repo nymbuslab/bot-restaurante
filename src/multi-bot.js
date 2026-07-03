@@ -45,6 +45,14 @@ function getEstado(slug) {
   return { status: t.status, qr: t.qrDataUrl, numero: t.numero || null };
 }
 
+// Quantos bots estão conectados AGORA (varre o Map de sessões ativas). Barato:
+// só olha o estado em memória, sem tocar no banco. Usado no diagnóstico master.
+function contarConectados() {
+  let n = 0;
+  for (const t of tenants.values()) if (t && t.status === "conectado") n++;
+  return n;
+}
+
 function iniciar(slug, tenantDir) {
   if (tenants.has(slug) && tenants.get(slug).sock) return;
 
@@ -250,4 +258,4 @@ async function enviarMensagem(slug, para, texto) {
   await t.sock.sendMessage(para, { text: texto });
 }
 
-module.exports = { iniciar, desconectar, resetarSessao, getEstado, enviarMensagem };
+module.exports = { iniciar, desconectar, resetarSessao, getEstado, contarConectados, enviarMensagem };

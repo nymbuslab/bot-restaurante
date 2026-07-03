@@ -133,6 +133,9 @@ async function exigeAuth(req, res, next) {
   try {
     emp = await empresas.resolverPorToken(token);
   } catch (e) {
+    // Deixa rastro: o 500 aqui costuma ser soluço de conexão ao Postgres/Supabase
+    // (resolverPorToken). Sem este log a causa some (visível no diagnóstico master).
+    console.error("exigeAuth: falha ao resolver token —", e.message);
     return res.status(500).json({ erro: "Falha ao validar a sessão." });
   }
   if (!emp || !emp.ativo) return res.status(401).json({ erro: "Não autorizado" });
@@ -1017,6 +1020,51 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
   } catch (e) {
     res.status(500).json({ erro: "Falha ao calcular métricas." });
   }
+});
+
+// Diagnóstico de saúde do sistema (aba "Monitoramento" do painel master).
+// Read-only: mede o banco (SELECT 1 + estatísticas do pool), estado do app
+// (uptime/versão/Node/memória), bots conectados e a fila de impressão pendente.
+app.get("/api/admin/diagnostico", exigeSuperAdmin, async (_req, res) => {
+  // Banco: mede a latência de um SELECT trivial; falha aqui é o sintoma dos 500 de auth.
+  const banco = { ok: false, latenciaMs: null, erro: null, pool: null };
+  const t0 = process.hrtime.bigint();
+  try {
+    await db.query("SELECT 1");
+    banco.ok = true;
+    banco.latenciaMs = Number((process.hrtime.bigint() - t0) / 1000000n);
+  } catch (e) {
+    banco.erro = e.message;
+  }
+  // Estatísticas do pool pg deste processo (não do banco todo — honesto p/ este app).
+  banco.pool = {
+    total: db.pool.totalCount,
+    ociosas: db.pool.idleCount,
+    aguardando: db.pool.waitingCount,
+  };
+
+  // Fila de impressão global (depende do banco; guarda o erro sem derrubar a rota).
+  let filaImpressao = null;
+  try {
+    filaImpressao = await impressaoFila.contarPendentesGlobal();
+  } catch (_) { /* banco fora → deixa null */ }
+
+  const mem = process.memoryUsage();
+  res.json({
+    ok: banco.ok, // saúde geral segue o banco (dependência crítica)
+    banco,
+    app: {
+      uptimeSegundos: Math.round(process.uptime()),
+      versao: require("../package.json").version,
+      node: process.version,
+      memoriaMB: Math.round(mem.rss / 1048576),
+    },
+    bots: { conectados: multiBot.contarConectados() },
+    impressao: { pendentes: filaImpressao },
+    // Auth é OK por dedução: este request só chega aqui porque o JWT foi validado
+    // localmente (JWKS). Não há probe artificial — seria custoso e desonesto.
+    geradoEm: new Date().toISOString(),
+  });
 });
 
 // ---- Configurações da plataforma (aba "Configurações Master") ----

@@ -86,4 +86,11 @@ function esquecer(slug) {
   delete idCache[slug];
 }
 
-module.exports = { enfileirar, pendentes, marcarImpresso, limparAntigos, esquecer };
+// Total de trabalhos ainda não impressos em TODOS os tenants (diagnóstico master).
+// Uma fila muito cheia indica agente parado/desconectado.
+async function contarPendentesGlobal() {
+  const r = await db.query("SELECT count(*)::int AS n FROM impressao_fila WHERE impresso_em IS NULL");
+  return r.rows[0] ? r.rows[0].n : 0;
+}
+
+module.exports = { enfileirar, pendentes, marcarImpresso, limparAntigos, esquecer, contarPendentesGlobal };
