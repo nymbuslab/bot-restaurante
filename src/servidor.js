@@ -4,6 +4,7 @@
 
 const express = require("express");
 const path    = require("path");
+const fs      = require("fs");
 const crypto  = require("crypto");
 const multer  = require("multer");
 const helmet  = require("helmet");
@@ -1022,6 +1023,24 @@ app.get("/api/admin/metrics", exigeSuperAdmin, async (_req, res) => {
   }
 });
 
+// Versão de RELEASE derivada do CHANGELOG (fonte única de verdade — o
+// `package.json` fica em 2.0.0 desde a era Supabase e não acompanha o
+// versionamento de release, que só bumpa o CHANGELOG). Última entrada
+// `## [x.y.z]` = versão atual (o arquivo é "mais recente por último").
+// Cacheada por processo (o CHANGELOG só muda em deploy = novo processo).
+let _versaoRelease = null;
+function versaoRelease() {
+  if (_versaoRelease) return _versaoRelease;
+  try {
+    const txt = fs.readFileSync(path.join(__dirname, "..", "CHANGELOG.md"), "utf8");
+    const vs = [...txt.matchAll(/^##\s*\[(\d+\.\d+\.\d+)\]/gm)].map((m) => m[1]);
+    _versaoRelease = vs[vs.length - 1] || require("../package.json").version;
+  } catch (_) {
+    _versaoRelease = require("../package.json").version;
+  }
+  return _versaoRelease;
+}
+
 // Diagnóstico de saúde do sistema (aba "Monitoramento" do painel master).
 // Read-only: mede o banco (SELECT 1 + estatísticas do pool), estado do app
 // (uptime/versão/Node/memória), bots conectados e a fila de impressão pendente.
@@ -1055,7 +1074,7 @@ app.get("/api/admin/diagnostico", exigeSuperAdmin, async (_req, res) => {
     banco,
     app: {
       uptimeSegundos: Math.round(process.uptime()),
-      versao: require("../package.json").version,
+      versao: versaoRelease(),
       node: process.version,
       memoriaMB: Math.round(mem.rss / 1048576),
     },
