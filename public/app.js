@@ -3471,7 +3471,7 @@ function renderListaPedidos(lista) {
 
   // Desktop: tabela escaneável. Coluna "Ações" só no Completo (ações são desse plano).
   const acoesTh = planoAtual === "completo" ? '<th class="ped-acoes-th">Ações</th>' : "";
-  let tabela = `<table class="pedidos-tabela"><thead><tr>
+  let tabela = `<div class="tabela-scroll"><table class="pedidos-tabela"><thead><tr>
     <th>Nº Pedido</th><th>Data/hora</th><th>Cliente</th><th>Telefone</th><th>Canal</th><th>Tipo</th><th class="col-total">Total</th>${acoesTh}
     </tr></thead><tbody>`;
   pagina.forEach((p) => {
@@ -3480,14 +3480,14 @@ function renderListaPedidos(lista) {
     tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}${canc}" data-id="${p.id}">
       <td class="ped-num">#${p.numero}${novo}</td>
       <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
-      <td><div class="ped-cliente-linha">${escapar(p.cliente)} ${seloPagamento(p)}</div>${previaItens(p.itens) ? `<div class="ped-itens-previa">${escapar(previaItens(p.itens))}</div>` : ""}</td>
+      <td><div class="ped-cliente-linha"><span class="ped-cli-nome">${escapar(p.cliente)}</span>${seloPagamento(p)}</div>${previaItens(p.itens) ? `<div class="ped-itens-previa">${escapar(previaItens(p.itens))}</div>` : ""}</td>
       <td>${escapar(telefoneFmt(p))}</td>
       <td>${canalTag(p)}</td>
       <td>${tagTipo(p)}</td>
       <td class="ped-total">R$ ${moedaBR(p.total)}</td>${linhaAcoesHtml(p)}
     </tr>`;
   });
-  tabela += "</tbody></table>";
+  tabela += "</tbody></table></div>";
 
   // Mobile: cards condensados
   let cards = `<div class="pedidos-cards">`;

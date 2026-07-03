@@ -691,6 +691,11 @@ main {
 @media (max-width: 1100px) {
   .sidebar { width: 200px; }
   main { padding: 22px 20px 80px; }
+  /* Tabela de pedidos: células mais compactas no notebook */
+  .pedidos-tabela th, .pedidos-tabela td { padding: 9px 10px; }
+  /* Esconde a coluna Telefone (fica no detalhe do pedido) p/ dar espaço ao nome
+     do cliente sem truncar Nº/Total. */
+  .pedidos-tabela th:nth-child(4), .pedidos-tabela td:nth-child(4) { display: none; }
 }
 
 .aba { display: none; }
@@ -1883,9 +1888,23 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 /* ---------- Tabela de pedidos (refino visual) ---------- */
 .pedidos-tabela th,
 .pedidos-tabela td {
-  padding: 14px 16px;
+  padding: 12px 13px;
   vertical-align: middle;
 }
+/* Layout FIXO: a tabela ocupa exatamente a largura disponível e cada coluna
+   trunca com reticências — nunca quebra linha nem gera rolagem horizontal.
+   As colunas de largura conhecida têm width fixa; Cliente (3ª) fica flexível
+   e absorve o restante. (Nº 1 · Data 2 · Cliente 3 · Telefone 4 · Canal 5 ·
+   Tipo 6 · Total/Ações por classe — robusto ao Ações ser condicional.) */
+.pedidos-tabela { table-layout: fixed; width: 100%; }
+.pedidos-tabela th, .pedidos-tabela td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pedidos-tabela th:nth-child(1), .pedidos-tabela td:nth-child(1) { width: 76px; }   /* Nº — não trunca */
+.pedidos-tabela th:nth-child(2), .pedidos-tabela td:nth-child(2) { width: 112px; }  /* Data/hora */
+.pedidos-tabela th:nth-child(4), .pedidos-tabela td:nth-child(4) { width: 150px; }  /* Telefone (nº completo) */
+.pedidos-tabela th:nth-child(5), .pedidos-tabela td:nth-child(5) { width: 126px; }  /* Canal (pill) */
+.pedidos-tabela th:nth-child(6), .pedidos-tabela td:nth-child(6) { width: 98px; }   /* Tipo (pill) */
+.pedidos-tabela .col-total, .pedidos-tabela .ped-total { width: 110px; }            /* Total — não trunca */
+.pedidos-tabela .ped-acoes-th, .pedidos-tabela .ped-acoes-cel { width: 80px; }
 .pedidos-tabela .pedido-linha { transition: background 0.12s; }
 .pedidos-tabela .pedido-linha:hover td { background: var(--bg-elevated); }
 .pedidos-tabela .ped-num { color: var(--accent-fg); font-weight: 700; }
@@ -1900,7 +1919,13 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .pedido-card.cancelado { opacity: 0.6; }
 
 /* Prévia dos itens (2ª linha discreta no cliente) — escanear sem abrir o modal */
-.ped-cliente-linha { display: block; }
+.ped-cliente-linha { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* Nome do cliente em UMA linha com reticências (nunca quebra) — o selo de
+   pagamento fica à parte, sempre visível. */
+.ped-cli-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Tabela de pedidos rola dentro de si (contém o overflow) — a PÁGINA nunca é
+   empurrada para fora quando há muitas colunas/dados. */
+.tabela-scroll { overflow-x: auto; max-width: 100%; }
 .ped-itens-previa {
   font-size: 12px;
   color: var(--text-secondary);
@@ -4760,16 +4785,16 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-cab { margin-bottom: 16px; }
 .fc-cab h3 { margin: 0 0 4px; }
 .fc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.fc-col { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
-.fc-col h4 { margin: 0 0 12px; }
+.fc-col { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.fc-col h4 { margin: 0 0 8px; }
 .fc-tabela { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .fc-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-bottom: 6px; }
 .fc-tabela th:first-child, .fc-tabela td:first-child { width: 34%; }
 .fc-tabela th:nth-child(2), .fc-tabela td:nth-child(2) { width: 33%; text-align: center; }
 .fc-tabela th:nth-child(3), .fc-tabela .fc-tot { width: 33%; text-align: right; }
-.fc-tabela td { padding: 4px 0; }
+.fc-tabela td { padding: 2px 0; }
 .fc-ced { white-space: nowrap; }
-.fc-qtd { width: 90px; text-align: center; padding: 6px 8px; }
+.fc-qtd { width: 90px; text-align: center; padding: 4px 8px; }
 .fc-tot { white-space: nowrap; color: var(--text-secondary); }
 .fc-add { display: flex; gap: 8px; margin-bottom: 12px; }
 .fc-add select { flex: 0 0 40%; }
