@@ -406,39 +406,15 @@ button.cd-hero { cursor: pointer; }
 .cd-modal-caixa {
   position: relative; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
   background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: 20px; box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: 0; box-shadow: var(--shadow-lg);
   animation: cd-up .2s ease-out;
 }
 @media (min-width: 600px) { .cd-modal-caixa { border-radius: var(--radius-xl); } }
 @keyframes cd-up { from { transform: translateY(24px); } to { transform: none; } }
 .cd-modal-caixa .cd-x { position: absolute; top: 14px; right: 14px; }
-.cd-modal-img { width: 100%; height: 180px; object-fit: cover; border-radius: var(--radius); margin-bottom: 14px; }
-.cd-modal-caixa h2 { font-size: 19px; font-weight: 800; margin: 0 36px 0 0; }
-.cd-modal-desc { color: var(--text-secondary); font-size: 13px; margin: 6px 0 0; }
-.cd-grp { margin: 14px 0; }
-.cd-grp-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.cd-grp-nome { font-weight: 600; }
-.cd-grp-regra { font-size: 0.78rem; color: var(--text-secondary); }
-.cd-grp-regra.obrig { color: var(--error); }
-.cd-grp-opt { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
-.cd-grp-opt input { width: 18px; height: 18px; accent-color: var(--accent); }
-.cd-grp-info { font-size: 0.85rem; color: var(--text-secondary); margin: 2px 0 0; }
 .cd-linha-comp { font-size: 0.82rem; color: var(--text-secondary); margin: 2px 0 0; }
-.cd-modal-local { margin: 16px 0 4px; padding: 12px 14px; border: 1px dashed var(--text-secondary); border-radius: var(--radius, 12px); color: var(--text-secondary); text-align: center; font-weight: 600; font-size: 0.9rem; }
-.cd-modal-ops { margin: 14px 0 0; }
-.cd-ops-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 0 0 8px; }
-.cd-op {
-  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius);
-  border: 1px solid var(--border); background: var(--bg-elevated); margin-bottom: 8px; cursor: pointer;
-}
-.cd-op input { width: 18px; height: 18px; accent-color: var(--accent); }
-.cd-op-nome { flex: 1; font-size: 14px; }
-.cd-op-preco { font-size: 13px; color: var(--accent-fg); font-weight: 700; }
-.cd-op-esgotado { opacity: .55; }
-.cd-op-tag { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
-.cd-op-qtd { flex: none; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-surface); }
-.cd-op-qtd button { width: 30px; height: 30px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
-.cd-op-qtd span { min-width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
+
+/* Campo de formulário (checkout: nome/telefone/pagamento/endereço/troco) */
 .cd-campo { display: block; margin: 14px 0 0; }
 .cd-campo > span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 6px; }
 .cd-campo input, .cd-campo textarea, .cd-campo select {
@@ -447,29 +423,85 @@ button.cd-hero { cursor: pointer; }
 }
 .cd-campo input:focus, .cd-campo textarea:focus, .cd-campo select:focus { outline: none; border-color: var(--accent); }
 .cd-campo textarea { resize: vertical; }
-.cd-modal-rodape { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-.cd-modal-rodape .cd-btn { flex: 1; }
-.cd-op-nome { min-width: 0; overflow-wrap: anywhere; }
 
-/* Mobile: modal mais compacto + rodapé de ação fixo (o botão Adicionar/aviso
-   nunca fica escondido atrás do scroll; só o conteúdo do meio rola). */
+/* ===== Modal do item — layout iFood, identidade Nymbus (escuro + roxo) ===== */
+/* Hero */
+.cd-m-hero { position: relative; }
+.cd-m-hero-img { width: 100%; height: 226px; object-fit: cover; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.cd-m-back { position: absolute; top: 14px; left: 14px; width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(15,17,23,.72); color: #fff; display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.cd-m-back:hover { background: rgba(15,17,23,.9); }
+
+/* Cabeçalho do item */
+.cd-m-head { padding: 16px 18px 4px; }
+.cd-m-nome { font-size: 21px; font-weight: 800; letter-spacing: -.02em; margin: 0; padding-right: 8px; }
+.cd-m-desc { color: var(--text-secondary); font-size: 13.5px; line-height: 1.5; margin: 6px 0 0; }
+.cd-m-preco { font-size: 20px; font-weight: 800; margin-top: 12px; }
+
+/* Banda de grupo (cabeçalho) */
+.cd-m-grp-cab { display: flex; align-items: center; gap: 12px; background: var(--bg-elevated); padding: 13px 18px; margin-top: 14px; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); }
+.cd-m-grp-tit { font-size: 15px; font-weight: 700; min-width: 0; }
+.cd-m-grp-sub { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-top: 1px; }
+.cd-m-grp-selo { margin-left: auto; flex: none; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border); padding: 3px 8px; border-radius: 999px; }
+.cd-m-grp-selo.obrig { color: var(--accent-fg); border-color: rgba(99,68,188,.5); }
+.cd-m-check { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--success); color: #0F1117; display: flex; align-items: center; justify-content: center; }
+.cd-m-check svg { width: 14px; height: 14px; stroke: #0F1117; }
+.cd-m-grp-info { padding: 12px 18px; color: var(--text-secondary); font-size: 13.5px; }
+
+/* Linha de opção */
+.cd-m-opt { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); }
+.cd-m-opt-sel { cursor: pointer; }
+.cd-m-opt-txt { flex: 1; min-width: 0; }
+.cd-m-opt-sel > .cd-m-opt-nome { flex: 1; }
+.cd-m-opt-nome { font-size: 15px; min-width: 0; overflow-wrap: anywhere; }
+.cd-m-opt-preco { display: block; font-size: 13px; color: var(--accent-fg); font-weight: 700; margin-top: 3px; }
+.cd-m-opt-tag { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; }
+.cd-m-opt-esg { opacity: .55; }
+
+/* Rádio / checkbox custom (à direita) */
+.cd-m-input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cd-m-mark { flex: none; width: 23px; height: 23px; border: 2px solid var(--border); position: relative; }
+.cd-m-mark.radio { border-radius: 50%; }
+.cd-m-mark.checkbox { border-radius: 6px; }
+.cd-m-input:checked + .cd-m-mark { border-color: var(--accent); }
+.cd-m-input:checked + .cd-m-mark.radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
+.cd-m-input:checked + .cd-m-mark.checkbox { background: var(--accent); }
+.cd-m-input:checked + .cd-m-mark.checkbox::after { content: ""; position: absolute; left: 7px; top: 3px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.cd-m-input:focus-visible + .cd-m-mark { box-shadow: 0 0 0 3px var(--accent-subtle); }
+
+/* Stepper (adicionais / variações) */
+.cd-m-step { flex: none; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elevated); }
+.cd-m-step button { width: 32px; height: 32px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
+.cd-m-step span { min-width: 20px; text-align: center; font-weight: 700; font-size: 14px; }
+
+/* Só no local */
+.cd-m-local { margin: 16px 18px; padding: 12px 14px; border: 1px dashed var(--text-secondary); border-radius: var(--radius); color: var(--text-secondary); text-align: center; font-weight: 600; font-size: .9rem; }
+
+/* Observação */
+.cd-m-obs-cab { display: flex; align-items: center; gap: 8px; background: var(--bg-elevated); padding: 13px 18px; margin-top: 14px; border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.cd-m-obs-tit { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.cd-m-obs-count { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+.cd-m-obs-wrap { padding: 12px 18px; }
+.cd-m-obs-wrap textarea { width: 100%; min-height: 60px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); padding: 11px 12px; font-family: inherit; font-size: 14px; resize: vertical; }
+.cd-m-obs-wrap textarea:focus { outline: none; border-color: var(--accent); }
+.cd-m-obs-wrap textarea::placeholder { color: var(--text-secondary); }
+
+/* Barra fixa (rodapé) — sticky no fim do modal */
+.cd-modal-rodape.cd-m-bar {
+  display: flex; align-items: center; gap: 14px;
+  position: sticky; bottom: 0; z-index: 4; margin-top: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-surface); border-top: 1px solid var(--border);
+}
+.cd-modal-rodape.cd-m-bar .cd-qtd { flex: none; }
+@media (min-width: 600px) { .cd-modal-rodape.cd-m-bar { border-radius: 0 0 var(--radius-xl) var(--radius-xl); } }
+.cd-m-add { flex: 1; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-weight: 800; font-size: 15px; }
+.cd-qtd button { height: 42px; }
+
 @media (max-width: 599px) {
-  .cd-modal-img { height: 130px; margin-bottom: 10px; }
-  .cd-grp { margin: 12px 0; }
-  .cd-grp-opt { padding: 6px 0; }
-  .cd-op { padding: 9px 10px; margin-bottom: 6px; }
-  .cd-modal-ops, .cd-campo { margin-top: 12px; }
-  .cd-modal-caixa { padding-bottom: 0; }
-  .cd-modal-rodape,
-  .cd-modal-local {
-    position: sticky;
-    bottom: 0;
-    margin: 16px -20px 0;
-    padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px));
-    background: var(--bg-surface);
-    border-top: 1px solid var(--border);
-  }
-  .cd-modal-local { border-radius: 0; }
+  .cd-m-hero-img { height: 200px; }
+  .cd-m-opt { padding: 13px 16px; }
+  .cd-m-grp-cab, .cd-m-obs-cab { padding: 12px 16px; }
+  .cd-m-head, .cd-m-obs-wrap { padding-left: 16px; padding-right: 16px; }
 }
 
 /* ---- Checkout ---- */

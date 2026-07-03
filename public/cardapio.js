@@ -17,6 +17,8 @@
     x: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
     lixo: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
     check: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+    voltar: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+    balao: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     alerta: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   };
 
@@ -374,7 +376,7 @@
   }
 
   // ---------- Modal de item ----------
-  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}, modalVars = []; // modalOps[i]/modalVars[i] = quantidade; modalEscolhas[grupo] = [nome]
+  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}, modalVars = [], modalGrupos = []; // modalOps[i]/modalVars[i] = quantidade; modalEscolhas[grupo] = [nome]; modalGrupos = metadados p/ o check verde
 
   function abrirModal(it) {
     var soVer = !!it.apenasLocal; // item "Só no local": modal só de visualização (não pede)
@@ -382,29 +384,33 @@
     modalItem = it; modalQtd = 1; modalOps = ops.map(function () { return 0; });
     modalVars = (it.variacoes || []).map(function () { return 0; });
     var html =
-      '<button class="cd-x" type="button" data-close="modal" aria-label="Fechar">' + IC.x + '</button>' +
-      (it.imagem ? '<img class="cd-modal-img" src="' + esc(it.imagem) + '" alt="" />' : "") +
-      "<h2>" + esc(it.nome) + "</h2>" +
-      (it.desc ? '<p class="cd-modal-desc">' + esc(it.desc) + "</p>" : "") +
-      "";
+      (it.imagem
+        ? '<div class="cd-m-hero"><img class="cd-m-hero-img" src="' + esc(it.imagem) + '" alt="" />' +
+            '<button class="cd-m-back" type="button" data-close="modal" aria-label="Voltar">' + IC.voltar + '</button></div>'
+        : '<button class="cd-x cd-m-x" type="button" data-close="modal" aria-label="Fechar">' + IC.x + '</button>') +
+      '<div class="cd-m-head">' +
+        '<h2 class="cd-m-nome">' + esc(it.nome) + '</h2>' +
+        (it.desc ? '<p class="cd-m-desc">' + esc(it.desc) + '</p>' : '') +
+        (soVer ? '' : '<div class="cd-m-preco">' + precoLabel(it) + '</div>') +
+      '</div>';
     modalEscolhas = {};
     var grps = (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
+    modalGrupos = grps;
     if (soVer) {
       // Modo visualização: mostra o que vem (composição) e os adicionais como informação,
       // sem seletores nem botão de adicionar — item é vendido só no local.
       grps.forEach(function (g) {
-        html += '<div class="cd-grp"><div class="cd-grp-cab"><span class="cd-grp-nome">' + esc(g.nome) + '</span></div>' +
-          '<p class="cd-grp-info">' + esc(g.itens.join(", ")) + '</p></div>';
+        html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">' + esc(g.nome) + '</div></div>' +
+          '<div class="cd-m-grp-info">' + esc(g.itens.join(", ")) + '</div>';
       });
       if (ops.length) {
-        html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Adicionais</p>';
+        html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">Adicionais</div></div>';
         ops.forEach(function (o) {
-          html += '<div class="cd-op"><span class="cd-op-nome">' + esc(o.nome) + '</span>' +
-            (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + '</span>' : '') + '</div>';
+          html += '<div class="cd-m-opt"><span class="cd-m-opt-nome">' + esc(o.nome) +
+            (o.preco ? ' <span class="cd-m-opt-preco">+ ' + money(o.preco) + '</span>' : '') + '</span></div>';
         });
-        html += "</div>";
       }
-      html += '<div class="cd-modal-local"><span>Disponível apenas no local</span></div>';
+      html += '<div class="cd-m-local"><span>Disponível apenas no local</span></div>';
       var cx = $("cdModalCaixa");
       cx.innerHTML = html;
       cx.scrollTop = 0;
@@ -413,67 +419,78 @@
     }
     grps.forEach(function (g) {
       var unico = (g.max === 1);
-      var regra = g.obrigatorio
-        ? (unico ? "Escolha 1" : "Escolha ao menos " + Math.max(1, g.min))
-        : (g.max > 1 ? "Até " + g.max : "Opcional");
-      html += '<div class="cd-grp" data-grupo="' + esc(g.nome) + '">' +
-        '<div class="cd-grp-cab"><span class="cd-grp-nome">' + esc(g.nome) + '</span>' +
-        '<span class="cd-grp-regra' + (g.obrigatorio ? " obrig" : "") + '">' + esc(regra) + '</span></div>';
+      var minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
+      var sub = unico
+        ? "Escolha 1 opção"
+        : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                         : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+      html += '<div class="cd-m-grp" data-grupo-wrap="' + esc(g.nome) + '">' +
+        '<div class="cd-m-grp-cab">' +
+          '<div class="cd-m-grp-tit">' + esc(g.nome) +
+            '<div class="cd-m-grp-sub" data-sub="' + esc(g.nome) + '">' + esc(sub) + '</div>' +
+          '</div>' +
+          '<span class="cd-m-grp-selo' + (g.obrigatorio ? ' obrig' : '') + '" data-selo="' + esc(g.nome) + '">' + (g.obrigatorio ? 'Obrigatório' : 'Opcional') + '</span>' +
+          '<span class="cd-m-check" data-check="' + esc(g.nome) + '" hidden>' + IC.check + '</span>' +
+        '</div>';
       g.itens.forEach(function (nome, i) {
         var tipo = unico ? "radio" : "checkbox";
         var id = "grp_" + esc(g.nome).replace(/\W/g, "") + "_" + i;
-        html += '<label class="cd-grp-opt"><input type="' + tipo + '" name="' + esc(g.nome) + '" value="' + esc(nome) + '" data-grupo="' + esc(g.nome) + '" data-max="' + g.max + '" id="' + id + '" /> <span>' + esc(nome) + '</span></label>';
+        html += '<label class="cd-m-opt cd-m-opt-sel" for="' + id + '">' +
+          '<span class="cd-m-opt-nome">' + esc(nome) + '</span>' +
+          '<input type="' + tipo + '" name="' + esc(g.nome) + '" value="' + esc(nome) + '" data-grupo="' + esc(g.nome) + '" data-max="' + g.max + '" id="' + id + '" class="cd-m-input" />' +
+          '<span class="cd-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
+        '</label>';
       });
       html += '</div>';
     });
     if (ops.length) {
-      html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Adicionais</p>';
+      html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">Adicionais<div class="cd-m-grp-sub">Opcional</div></div></div>';
       ops.forEach(function (o, i) {
         html +=
-          '<div class="cd-op">' +
-            '<span class="cd-op-nome">' + esc(o.nome) + "</span>" +
-            (o.preco ? '<span class="cd-op-preco">+ ' + money(o.preco) + "</span>" : "") +
-            '<div class="cd-op-qtd">' +
+          '<div class="cd-m-opt">' +
+            '<div class="cd-m-opt-txt"><span class="cd-m-opt-nome">' + esc(o.nome) + '</span>' +
+              (o.preco ? '<span class="cd-m-opt-preco">+ ' + money(o.preco) + '</span>' : '') + '</div>' +
+            '<div class="cd-m-step">' +
               '<button type="button" data-opdec="' + i + '" aria-label="Menos">−</button>' +
               '<span data-opqtd="' + i + '">0</span>' +
               '<button type="button" data-opinc="' + i + '" aria-label="Mais">+</button>' +
-            "</div>" +
-          "</div>";
+            '</div>' +
+          '</div>';
       });
-      html += "</div>";
     }
     var vars = it.variacoes || [];
     if (vars.length) {
-      html += '<div class="cd-modal-ops"><p class="cd-ops-titulo">Escolha as opções</p>';
+      html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">Escolha as opções<div class="cd-m-grp-sub">Escolha ao menos 1</div></div></div>';
       vars.forEach(function (v, i) {
         var eg = !!v.esgotado;
-        html += '<div class="cd-op' + (eg ? " cd-op-esgotado" : "") + '">' +
-          '<span class="cd-op-nome">' + esc(v.nome) + (eg ? ' <span class="cd-op-tag">Esgotado</span>' : "") + "</span>" +
-          '<span class="cd-op-preco">' + money(v.preco) + "</span>" +
-          (eg ? "" :
-            '<div class="cd-op-qtd">' +
+        html += '<div class="cd-m-opt' + (eg ? ' cd-m-opt-esg' : '') + '">' +
+          '<div class="cd-m-opt-txt"><span class="cd-m-opt-nome">' + esc(v.nome) + (eg ? ' <span class="cd-m-opt-tag">Esgotado</span>' : '') + '</span>' +
+            '<span class="cd-m-opt-preco">' + money(v.preco) + '</span></div>' +
+          (eg ? '' :
+            '<div class="cd-m-step">' +
               '<button type="button" data-vdec="' + i + '" aria-label="Menos">−</button>' +
               '<span data-vqtd="' + i + '">0</span>' +
               '<button type="button" data-vinc="' + i + '" aria-label="Mais">+</button>' +
-            "</div>") +
-          "</div>";
+            '</div>') +
+          '</div>';
       });
-      html += "</div>";
     }
     html +=
-      '<label class="cd-campo"><span>Observação (opcional)</span>' +
-        '<textarea id="cdModalObs" rows="2" maxlength="200" placeholder="Ex.: sem cebola, ponto da carne…"></textarea></label>' +
-      '<div class="cd-modal-rodape">' +
+      '<div class="cd-m-obs-cab">' + IC.balao + '<span class="cd-m-obs-tit">Alguma observação?</span>' +
+        '<span class="cd-m-obs-count" id="cdObsCount">0/200</span></div>' +
+      '<div class="cd-m-obs-wrap">' +
+        '<textarea id="cdModalObs" rows="2" maxlength="200" placeholder="Ex.: tirar a cebola, maionese à parte etc."></textarea></div>' +
+      '<div class="cd-modal-rodape cd-m-bar">' +
         '<div class="cd-qtd"><button type="button" data-qtd="-1" aria-label="Menos">−</button>' +
         '<span id="cdModalQtd">1</span>' +
         '<button type="button" data-qtd="1" aria-label="Mais">+</button></div>' +
-        '<button id="cdModalAdd" class="cd-btn cd-btn-primary" type="button"></button>' +
+        '<button id="cdModalAdd" class="cd-btn cd-btn-primary cd-m-add" type="button"></button>' +
       "</div>";
 
     var caixa = $("cdModalCaixa");
     caixa.innerHTML = html;
     caixa.scrollTop = 0;
-    caixa.querySelectorAll(".cd-grp input").forEach(function (inp) {
+    caixa.querySelectorAll(".cd-m-input").forEach(function (inp) {
       inp.addEventListener("change", function () { onEscolhaGrupo(inp); });
     });
     caixa.querySelectorAll("[data-opinc]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opinc"), 1); }); });
@@ -488,8 +505,31 @@
       });
     });
     $("cdModalAdd").addEventListener("click", confirmarModal);
+    var obs = $("cdModalObs"), cnt = $("cdObsCount");
+    if (obs && cnt) obs.addEventListener("input", function () { cnt.textContent = obs.value.length + "/200"; });
     atualizarPrecoModal();
+    atualizarGrupos();
     $("cdModal").hidden = false;
+  }
+
+  // Atualiza o "check verde" e o subtítulo (contador X/N) de cada grupo conforme
+  // as escolhas — só apresentação; a validação de verdade segue em avaliarComposicao.
+  function atualizarGrupos() {
+    var caixa = $("cdModalCaixa");
+    (modalGrupos || []).forEach(function (g) {
+      var sel = (modalEscolhas[g.nome] || []).length;
+      var min = g.obrigatorio ? Math.max(1, g.min) : 0;
+      var max = g.max > 0 ? g.max : g.itens.length;
+      var okReq = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
+      var check = caixa.querySelector('.cd-m-check[data-check="' + cssEsc(g.nome) + '"]');
+      var selo = caixa.querySelector('.cd-m-grp-selo[data-selo="' + cssEsc(g.nome) + '"]');
+      if (check) check.hidden = !okReq;
+      if (selo) selo.hidden = okReq; // esconde o selo Obrigatório/Opcional quando o check aparece
+      if (!g.obrigatorio && g.max > 1) {
+        var sub = caixa.querySelector('.cd-m-grp-sub[data-sub="' + cssEsc(g.nome) + '"]');
+        if (sub) sub.textContent = "Escolha até " + g.max + " opções · " + sel + "/" + g.max;
+      }
+    });
   }
 
   function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/"/g, '\\"'); }
@@ -505,6 +545,7 @@
     }
     modalEscolhas[grupo] = marcados.map(function (m) { return m.value; });
     atualizarPrecoModal();
+    atualizarGrupos();
   }
 
   function mudarOp(i, delta) {
@@ -528,7 +569,7 @@
     var vars = modalItem.variacoes || [];
     var addV = vars.reduce(function (s, v, i) { return s + (Number(v.preco) || 0) * (modalVars[i] || 0); }, 0);
     var btn = $("cdModalAdd");
-    btn.textContent = "Adicionar · " + money(((Number(modalItem.preco) || 0) + add + addV) * modalQtd);
+    btn.innerHTML = '<span>Adicionar</span><span>' + money(((Number(modalItem.preco) || 0) + add + addV) * modalQtd) + '</span>';
     var esc2 = Object.keys(modalEscolhas).map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; });
     var aval = window.Grupos ? window.Grupos.avaliarComposicao(modalItem, esc2) : { valido: true };
     // item COM variações exige ≥1 escolha (senão o total seria só o preço base, geralmente 0)

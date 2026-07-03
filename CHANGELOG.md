@@ -705,3 +705,8 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.76.2] — Fechamento de caixa: contagem em duas colunas (Cédulas · Moedas)
 
 - A contagem do dinheiro no **fechamento de caixa** passou de uma lista única (12 linhas) para **duas colunas lado a lado**: **Cédulas** (R$ 200 a R$ 2) e **Moedas** (R$ 1 a R$ 0,05). Com isso a tela **cabe inteira** em notebooks (1300×732) **sem rolagem** — antes era preciso rolar para ver todas as denominações e o botão de fechar. Os totais e a conferência continuam idênticos.
+
+## [0.77.0] — Cardápio web: modal de item repaginado (estilo iFood)
+
+- O **modal de escolha do prato** no cardápio web (`/c/:slug`) ganhou um visual no estilo **iFood**, mantendo a **identidade Nymbus** (tema escuro + roxo): **imagem grande no topo**, nome/descrição/preço em destaque, cada grupo de escolha vira uma **faixa com título e subtítulo** (`Escolha 1 opção` / `Escolha até 2 opções`) com **selo "Obrigatório"** e **check verde** quando preenchido, **escolha única em botão-rádio** e adicionais/sabores com **＋/−**, campo **"Alguma observação?"** com contador de caracteres e uma **barra fixa** embaixo (quantidade + **Adicionar R$ X**).
+- **Somente apresentação** — a lógica de seleção, validação (obrigatório/mín/máx), estoque/esgotado, cálculo de preço e adição ao carrinho é exatamente a mesma. Validado no navegador (mobile) com o cardápio real.
