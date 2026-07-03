@@ -409,7 +409,7 @@
   }
 
   // ---------- Modal de item ----------
-  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}, modalVars = [], modalGrupos = []; // modalOps[i]/modalVars[i] = quantidade; modalEscolhas[grupo] = [nome]; modalGrupos = metadados p/ o check verde
+  var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}, modalVars = [], modalGrupos = [], modalGrupoCompleto = {}; // modalGrupoCompleto[grupo] = já rolou p/ o próximo (evita re-rolar ao trocar opção)
 
   function abrirModal(it) {
     var soVer = !!it.apenasLocal; // item "Só no local": modal só de visualização (não pede)
@@ -427,6 +427,7 @@
         (soVer ? '' : '<div class="cd-m-preco">' + precoLabel(it) + '</div>') +
       '</div>';
     modalEscolhas = {};
+    modalGrupoCompleto = {};
     var grps = (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
     modalGrupos = grps;
     if (soVer) {
@@ -579,6 +580,35 @@
     modalEscolhas[grupo] = marcados.map(function (m) { return m.value; });
     atualizarPrecoModal();
     atualizarGrupos();
+    // Rolagem automática: quando o grupo fica COMPLETO (todas as escolhas feitas),
+    // rola suave até a próxima seção — só na transição (não re-rola se só trocar a opção).
+    var gm = modalGrupos.filter(function (x) { return x.nome === grupo; })[0];
+    if (gm) {
+      var count = (modalEscolhas[grupo] || []).length;
+      var effMax = gm.max > 0 ? gm.max : gm.itens.length;
+      if (count >= effMax) {
+        if (!modalGrupoCompleto[grupo]) { modalGrupoCompleto[grupo] = true; scrollProximaSecao(grupo); }
+      } else {
+        modalGrupoCompleto[grupo] = false;
+      }
+    }
+  }
+
+  // Rola o modal até a seção seguinte à do grupo informado (próximo grupo, adicionais,
+  // variações ou observação). No-op se já for a última seção.
+  function scrollProximaSecao(nomeGrupo) {
+    var caixa = $("cdModalCaixa");
+    var wrap = caixa.querySelector('.cd-m-grp[data-grupo-wrap="' + cssEsc(nomeGrupo) + '"]');
+    if (!wrap) return;
+    var cab = wrap.querySelector('.cd-m-grp-cab');
+    var headers = [].slice.call(caixa.querySelectorAll('.cd-m-grp-cab, .cd-m-obs-cab'));
+    var idx = headers.indexOf(cab);
+    if (idx === -1 || idx + 1 >= headers.length) return;
+    var alvo = headers[idx + 1];
+    var suave = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    setTimeout(function () {
+      caixa.scrollTo({ top: Math.max(0, alvo.offsetTop - 8), behavior: suave ? "smooth" : "auto" });
+    }, 60);
   }
 
   function mudarOp(i, delta) {

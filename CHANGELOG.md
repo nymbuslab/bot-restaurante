@@ -714,3 +714,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.77.1] — Cardápio web: busca acha o sabor (variação) e adiciona em 1 clique
 
 - No **cardápio web**, buscar por um sabor (ex.: "coca") não encontrava nada quando ele era uma **variação** de um produto (ex.: "Refrigerante 350ML"). Agora a busca mostra o **sabor direto** como resultado ("Coca-Cola · Refrigerante 350ML · R$ 6,00") e um clique **já adiciona ao carrinho** (se o produto tiver outras escolhas obrigatórias/adicionais, abre o modal). Buscar pelo nome do produto (ex.: "refri") lista todos os sabores; cada resultado respeita o **estoque do próprio sabor**. Mesmo comportamento já existente no PDV.
+
+## [0.77.2] — Cardápio web: modal rola sozinho para a próxima seção
+
+- No modal de escolha do prato, ao **completar um grupo** (todas as escolhas feitas — ex.: as opções de "Principais"), o modal **rola suave sozinho até a próxima seção** (ex.: "Guarnição"), agilizando o preenchimento. Só rola na conclusão do grupo (não fica pulando se o cliente troca de opção) e respeita "reduzir movimento" do sistema.
