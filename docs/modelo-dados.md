@@ -64,6 +64,26 @@ Colunas em snake_case no banco; `pedidos.js` mapeia para camelCase (`tipoEntrega
 "pedido pronto" (null se não avisado). `observacao` = observação do **pedido** (informada
 no checkout do cardápio web; é PII e é limpa na retenção).
 
+**Tabela `itens_venda`** (projeção RELACIONAL dos itens vendidos — Fase 1 da normalização):
+
+```text
+id (bigint), empresa_id (uuid→empresas), pedido_id (bigint→pedidos ON DELETE CASCADE),
+numero (nº do pedido, conveniência), origem, item_id (referência SOLTA ao cardápio, SEM FK),
+descricao (nome COMO VENDIDO — snapshot), unidade ('un'|'kg'), qtd (numeric, decimal p/ kg),
+preco_unit (base), adicionais (opcionais+variações por unidade), subtotal ((preco_unit+adicionais)×qtd),
+opcionais/variacoes/composicao (jsonb — extras de display), observacao, criado_em (= do pedido)
+```
+
+Cada item vendido em **colunas** (indexável/agregável: `GROUP BY descricao`, etc.) para
+**relatório/BI**, sem desaninhar o `pedidos.itens` jsonb. **Não é fonte da verdade nem dual-write:**
+é uma **projeção** de `pedidos.itens` mantida por **trigger** `trg_sync_itens_venda`
+(`AFTER INSERT OR UPDATE OF itens ON pedidos` → função `sync_itens_venda()` apaga+reinsere as linhas
+do pedido). Cobre todos os caminhos (PDV/web/mesa/cancelamento de item) sem tocar no código do app;
+o jsonb segue como snapshot operacional (impressão/recálculo). `descricao`/`preco_unit` são snapshot;
+`item_id` não tem FK (o cardápio é jsonb em `empresas.cardapio`, editável/arquivável). Migração
+`20260704120000_itens_venda.sql` (tabela + função + trigger + backfill). Reporte de vendas líquidas
+filtra cancelados por join em `pedidos.status`.
+
 **Tabela `empresas`** (Postgres/Supabase):
 
 ```text
