@@ -150,8 +150,9 @@ const ICO_MON = {
 
 function iniciarMonitor() {
   carregarMonitor();
+  carregarIncidentes(); // histórico muda raramente → 1x ao abrir + botão Atualizar (fora do poll)
   if (monTimer) clearInterval(monTimer);
-  monTimer = setInterval(carregarMonitor, 20000); // atualiza a cada 20s enquanto aberta
+  monTimer = setInterval(carregarMonitor, 20000); // atualiza os cards a cada 20s enquanto aberta
 }
 function pararMonitor() {
   if (monTimer) { clearInterval(monTimer); monTimer = null; }
@@ -241,6 +242,55 @@ function renderMonitor(d) {
       <div class="mon-rotulo">${c.rotulo}</div>
       <div class="mon-sec">${c.sec}</div>
     </div>`).join("");
+}
+
+// Rótulo amigável por tipo de incidente (hoje só 'auth_500').
+const ROTULO_INCIDENTE = {
+  auth_500: "Falha ao validar a sessão (banco)",
+};
+
+// "03/07 14:22" — data/hora compacta pt-BR.
+function fmtDataHora(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+async function carregarIncidentes() {
+  const box = $("mon-incidentes");
+  try {
+    const r = await apiAdmin("GET", "/api/admin/incidentes");
+    const d = await r.json();
+    renderIncidentes(d.incidentes || []);
+  } catch (e) {
+    if (e.message !== "Sessão expirada") {
+      box.innerHTML = `<p class="sub">Falha ao carregar os incidentes: ${escapar(e.message)}</p>`;
+    }
+  }
+}
+
+function renderIncidentes(lista) {
+  const box = $("mon-incidentes");
+  if (!lista.length) {
+    box.innerHTML = `<div class="mon-vazio">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span>Nenhum incidente registrado — tudo tranquilo.</span>
+    </div>`;
+    return;
+  }
+  box.innerHTML = `<table class="mon-tab">
+    <thead><tr><th>Última vez</th><th>Ocorrências</th><th>Incidente</th></tr></thead>
+    <tbody>${lista.map((i) => `
+      <tr>
+        <td title="Primeira vez: ${escapar(fmtDataHora(i.primeiraVez))}">${escapar(fmtDataHora(i.ultimaVez))}</td>
+        <td><span class="mon-oco">${Number(i.ocorrencias) || 1}×</span></td>
+        <td>
+          <span class="mon-inc-tipo">${escapar(ROTULO_INCIDENTE[i.tipo] || i.tipo)}</span>
+          ${i.mensagem ? `<span class="mon-inc-msg">${escapar(i.mensagem)}</span>` : ""}
+        </td>
+      </tr>`).join("")}</tbody>
+  </table>`;
 }
 
 // ============================================================
@@ -1043,7 +1093,7 @@ $("am-filtro-status").addEventListener("change", (e) => { filtroStatus = e.targe
 $("btnExportar").addEventListener("click", exportarCSV);
 $("btnVerTodos").addEventListener("click", () => trocarAba("restaurantes"));
 $("btnSalvarPlataforma").addEventListener("click", salvarPlataforma);
-$("btnAtualizarMon").addEventListener("click", carregarMonitor);
+$("btnAtualizarMon").addEventListener("click", () => { carregarMonitor(); carregarIncidentes(); });
 $("formAcessoMaster").addEventListener("submit", (e) => { e.preventDefault(); salvarAcessoMaster(); });
 $("cfg-cnpj").addEventListener("input", (e) => { e.target.value = mascararCNPJ(e.target.value); });
 

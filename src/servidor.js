@@ -35,6 +35,7 @@ const pdv = require("./pdv");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
 const mesasDb = require("./mesas-db");  // CRUD + recebimento parcial/fechamento
 const impressaoFila = require("./impressao-fila"); // fila genérica consumida pelo agente
+const incidentes = require("./incidentes"); // histórico de incidentes (monitoramento)
 const Comanda = require("../public/comanda");      // dual-mode: monta as vias no servidor p/ enfileirar
 
 const app = express();
@@ -137,6 +138,8 @@ async function exigeAuth(req, res, next) {
     // Deixa rastro: o 500 aqui costuma ser soluço de conexão ao Postgres/Supabase
     // (resolverPorToken). Sem este log a causa some (visível no diagnóstico master).
     console.error("exigeAuth: falha ao resolver token —", e.message);
+    // Registra o episódio para o histórico do master (best-effort, não bloqueia).
+    incidentes.registrar("auth_500", e.message);
     return res.status(500).json({ erro: "Falha ao validar a sessão." });
   }
   if (!emp || !emp.ativo) return res.status(401).json({ erro: "Não autorizado" });
@@ -1084,6 +1087,19 @@ app.get("/api/admin/diagnostico", exigeSuperAdmin, async (_req, res) => {
     // localmente (JWKS). Não há probe artificial — seria custoso e desonesto.
     geradoEm: new Date().toISOString(),
   });
+});
+
+// Histórico de incidentes (Monitoramento — Fase 2): últimos episódios registrados
+// (hoje só os 500 de auth). Rota SEPARADA do /diagnostico de propósito: o histórico
+// muda raramente, então o front busca aqui só ao abrir a aba e no botão Atualizar —
+// não entra no poll de 20s dos cards ao vivo.
+app.get("/api/admin/incidentes", exigeSuperAdmin, async (_req, res) => {
+  try {
+    res.json({ incidentes: await incidentes.listar(20) });
+  } catch (e) {
+    console.error("admin incidentes:", e.message);
+    res.status(500).json({ erro: "Falha ao carregar os incidentes." });
+  }
 });
 
 // ---- Configurações da plataforma (aba "Configurações Master") ----

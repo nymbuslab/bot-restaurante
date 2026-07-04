@@ -723,3 +723,9 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 
 - O **modal de produto do PDV** (que a **Mesa** reusa no "Lançar") ganhou o **mesmo visual novo** do cardápio web (estilo iFood, identidade Nymbus): grupos em **faixa** com título/subtítulo, **selo Obrigatório/Opcional**, **check verde** quando o grupo é preenchido, **escolha única em botão-rádio**, adicionais/opções com **＋/−**, **observação** em faixa com contador e uma **barra fixa** embaixo (quantidade/peso + **Adicionar/Salvar R$ X**). Também rola sozinho para a próxima seção ao completar um grupo. **Design consistente** entre cardápio web e painel.
 - **Somente apresentação** — toda a lógica do PDV (item por **kg/peso**, grupos, adicionais, variações, editar item, adicionar ao carrinho) permanece igual.
+
+## [0.79.0] — Monitoramento: histórico de incidentes no painel master
+
+- A aba **Monitoramento** (painel do super-admin) ganhou uma seção **"Histórico de incidentes"** que lista os episódios de instabilidade registrados. Hoje o gatilho é a **falha ao validar a sessão** (quando o app não consegue resolver o login por um soluço de conexão ao banco) — a mesma causa que a Fase 1 passou a registrar no log. Agora ela fica **consultável** no painel, com **última vez**, **quantas vezes repetiu** e a **mensagem do erro**.
+- **Rajadas são agrupadas:** repetições do mesmo erro numa janela de 5 minutos viram **um único episódio com contador** (ex.: "14×"), em vez de encher a lista. Quando não há nada, mostra "**Nenhum incidente registrado — tudo tranquilo.**".
+- O histórico é guardado por **90 dias** (limpeza automática diária) e é buscado só ao abrir a aba e no botão **Atualizar** (não pesa no monitoramento ao vivo que roda a cada 20s).

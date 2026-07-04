@@ -5907,3 +5907,29 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 .mon-rotulo { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); margin-top: 4px; }
 .mon-sec { margin-top: 14px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
 .mon-sec strong { color: var(--text-primary); font-weight: 600; }
+
+/* Histórico de incidentes (Monitoramento — Fase 2) */
+.mon-hist { margin-top: 28px; }
+.mon-hist-titulo { font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px; }
+.mon-hist-sub { margin: 0 0 14px; }
+.mon-vazio {
+  display: flex; align-items: center; gap: 10px;
+  padding: 22px 18px; border: 1px dashed var(--border); border-radius: 12px;
+  color: var(--text-secondary); font-size: 14px; background: var(--surface-subtle, transparent);
+}
+.mon-vazio svg { color: var(--success); flex-shrink: 0; }
+.mon-tab { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mon-tab thead th {
+  text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.mon-tab tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-secondary); }
+.mon-tab tbody tr:last-child td { border-bottom: none; }
+.mon-tab tbody td:first-child { white-space: nowrap; color: var(--text-primary); }
+.mon-oco {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-weight: 700; font-size: 12px; background: var(--error-subtle); color: var(--error);
+}
+.mon-inc-tipo { display: block; font-weight: 600; color: var(--text-primary); }
+.mon-inc-msg { display: block; margin-top: 2px; font-size: 12px; color: var(--text-secondary); word-break: break-word; }

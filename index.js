@@ -20,6 +20,7 @@ const impressaoFila = require("./src/impressao-fila");
 const clientes = require("./src/clientes");
 const empresas = require("./src/empresas");
 const auditoria = require("./src/auditoria");
+const incidentes = require("./src/incidentes");
 const multiBot = require("./src/multi-bot");
 const PORTA = process.env.PORT || 3000;
 
@@ -95,6 +96,20 @@ async function limparFilaImpressao() {
 }
 setTimeout(limparFilaImpressao, 90_000);              // 90s após o boot
 setInterval(limparFilaImpressao, 24 * 60 * 60 * 1000); // a cada 24h
+
+// Retenção do histórico de incidentes (Monitoramento): apaga episódios com mais de
+// 90 dias (o valor é temporal — investigação recente). Global, idempotente. Boot + 24h.
+const DIAS_RETENCAO_INCIDENTES = 90;
+async function limparIncidentes() {
+  try {
+    const n = await incidentes.limparAntigos(DIAS_RETENCAO_INCIDENTES);
+    if (n > 0) console.log(`🧹 Incidentes: ${n} episódio(s) > ${DIAS_RETENCAO_INCIDENTES} dias apagado(s).`);
+  } catch (e) {
+    console.error("Retenção de incidentes falhou (ignorado):", e.message);
+  }
+}
+setTimeout(limparIncidentes, 105_000);              // 105s após o boot
+setInterval(limparIncidentes, 24 * 60 * 60 * 1000); // a cada 24h
 
 // Higiene de memória: varre as sessões de conversa (em memória) e descarta as
 // inativas há +30min. A expiração do sessoes.js é lazy (só limpa quando a mesma
