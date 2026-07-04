@@ -41,8 +41,13 @@
   function montarRelatorioFechamento(d) {
     d = d || {};
     const recebido = d.recebidoPorForma || {};
+    const cancelado = d.canceladoPorForma || {};
     const formas = d.formas || [];
     const formaDin = d.formaDinheiro || "Dinheiro";
+    // Vendas LÍQUIDAS por forma: o recebido menos o que foi cancelado NAQUELA forma.
+    // Assim a linha de cada forma reflete o que de fato entrou (ex.: Pix cancelado
+    // não infla o Pix). O rastro dos cancelamentos fica na seção CANCELAMENTOS.
+    const liquido = (f) => (Number(recebido[f]) || 0) - (Number(cancelado[f]) || 0);
     const L = [];
 
     L.push(centro("*" + String(d.restaurante || "Caixa").toUpperCase() + "*"));
@@ -51,33 +56,30 @@
     if (d.operador) L.push(centro("Operador: " + d.operador));
     L.push(sep("="));
 
-    // VENDAS — dinheiro + cada forma eletrônica configurada + "Outros" (legado)
+    // VENDAS — dinheiro + cada forma eletrônica configurada + "Outros" (legado), LÍQUIDAS
     L.push("VENDAS");
-    L.push(linhaValor(formaDin, "R$ " + fmtBR(recebido[formaDin] || 0)));
+    L.push(linhaValor(formaDin, "R$ " + fmtBR(liquido(formaDin))));
     const contadas = new Set([formaDin]);
     formas.forEach((f) => {
-      L.push(linhaValor(f, "R$ " + fmtBR(recebido[f] || 0)));
+      L.push(linhaValor(f, "R$ " + fmtBR(liquido(f))));
       contadas.add(f);
     });
     let outros = 0;
-    for (const k in recebido) if (!contadas.has(k)) outros += Number(recebido[k]) || 0;
+    for (const k in recebido) if (!contadas.has(k)) outros += liquido(k);
     if (outros > 0) L.push(linhaValor("Outros", "R$ " + fmtBR(outros)));
     L.push(sep("-"));
 
     // Movimentos
-    const totalCancelado = Number(d.totalCancelado) || 0;
     L.push(linhaValor("Saldo Inicial", "R$ " + fmtBR(d.fundoTroco)));
     L.push(linhaValor("Suprimento", "R$ " + fmtBR(d.suprimentos)));
     L.push(linhaValor("Retirada", "- R$ " + fmtBR(d.sangrias)));
-    if (totalCancelado > 0) L.push(linhaValor("Cancelamentos", "- R$ " + fmtBR(totalCancelado)));
     L.push(sep("-"));
 
     let totalVendas = 0;
-    for (const k in recebido) totalVendas += Number(recebido[k]) || 0; // vendas BRUTAS
+    for (const k in recebido) totalVendas += liquido(k); // vendas LÍQUIDAS (já sem cancelados)
     const totalCaixa = (Number(d.fundoTroco) || 0) + (Number(d.suprimentos) || 0)
-      + totalVendas - (Number(d.sangrias) || 0) - totalCancelado;
+      + totalVendas - (Number(d.sangrias) || 0);
     L.push(linhaValor("Total de Vendas", "R$ " + fmtBR(totalVendas)));
-    if (totalCancelado > 0) L.push(linhaValor("(-) Cancelado", "- R$ " + fmtBR(totalCancelado)));
     L.push(linhaValor("Total em Caixa", "R$ " + fmtBR(totalCaixa)));
     L.push(sep("="));
 

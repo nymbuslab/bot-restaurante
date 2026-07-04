@@ -2449,7 +2449,11 @@ function renderFechamentoCaixa(data) {
   const cont = $("caixaConteudo");
   const resumo = data.resumo || {};
   const esperadoEspecie = Number(resumo.esperadoEspecie) || 0;
-  const esperadoElet = (Number(resumo.totalRecebido) || 0) - (Number(resumo.recebidoDinheiro) || 0);
+  // Eletrônico esperado = recebido eletrônico − cancelado eletrônico (espelha o
+  // servidor em caixa-calc.esperadoEletronico). Sem deduzir o cancelado, a tela
+  // mostrava uma diferença fantasma no eletrônico que não existe no fechamento real.
+  const cancElet = (Number(resumo.cancelamentos) || 0) - (Number(resumo.canceladoDinheiro) || 0);
+  const esperadoElet = (Number(resumo.totalRecebido) || 0) - (Number(resumo.recebidoDinheiro) || 0) - cancElet;
   const formas = data.formasPagamento || [];
   // Formas eletrônicas = união das configuradas + as que de fato tiveram recebimento
   // neste caixa (ex.: Pix recebido mas fora da config) — evita "Outros" e oferece a
@@ -6161,14 +6165,35 @@ function mesaPagRecalc() {
   if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !pode;
 }
 
+// Descontar o TROCO antes de enviar: o dinheiro entregue pode exceder a conta, mas o
+// que ENTRA no caixa é só a parte da venda — o troco volta pro cliente (mesmo modelo
+// do PDV/Pedidos). O troco (max(0, pago − alvo)) sai do(s) pagamento(s) em dinheiro.
+function mesaRegistrarPagamentos() {
+  var pago = mesaPagoTotal();
+  var trocoRest = Math.max(0, Math.round((pago - mesaPagarAlvo) * 100) / 100);
+  var registrados = [];
+  mesaPagamentos.forEach(function (p) {
+    if (pdvEhDinheiro(p.forma) && trocoRest > 0) {
+      var corte = Math.min(p.valor, trocoRest);
+      trocoRest = Math.round((trocoRest - corte) * 100) / 100;
+      var v = Math.round((p.valor - corte) * 100) / 100;
+      if (v > 0) registrados.push({ forma: p.forma, valor: v });
+    } else {
+      registrados.push({ forma: p.forma, valor: p.valor });
+    }
+  });
+  return registrados;
+}
+
 async function mesaConfirmarPagamento() {
   var d = mesaState.detalhe;
   if (!d || !mesaPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
-  var pagoAgora = mesaPagoTotal();
+  var registrados = mesaRegistrarPagamentos();
+  var pagoAgora = Math.round(registrados.reduce(function (s, p) { return s + p.valor; }, 0) * 100) / 100;
   var btn = $("btnMesaConfirmarPag");
   btn.disabled = true;
   if (mesaPagarModo === "parcial") {
-    var r = await api("POST", "/api/mesas/" + d.id + "/receber-parcial", { pagamentos: mesaPagamentos });
+    var r = await api("POST", "/api/mesas/" + d.id + "/receber-parcial", { pagamentos: registrados });
     if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Erro.", "erro"); return; }
     mesaState.detalhe = await r.json();
     $("mesasPagarOverlay").hidden = true;
@@ -6176,7 +6201,7 @@ async function mesaConfirmarPagamento() {
     abrirMesaPainel();
     await mesaAtualizarLista();
   } else {
-    var r2 = await api("POST", "/api/mesas/" + d.id + "/pagar", { pagamentos: mesaPagamentos });
+    var r2 = await api("POST", "/api/mesas/" + d.id + "/pagar", { pagamentos: registrados });
     if (!r2 || !r2.ok) { btn.disabled = false; var e2 = (r2 && await r2.json().catch(function () { return {}; })) || {}; toast(e2.erro || "Erro ao fechar.", "erro"); return; }
     $("mesasPagarOverlay").hidden = true;
     toast("Mesa " + d.nome + " fechada!");

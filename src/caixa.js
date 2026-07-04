@@ -445,6 +445,7 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     formaDinheiro,
     formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma),
     recebidoPorForma: resumo.recebidoPorForma || {},
+    canceladoPorForma: resumo.canceladoPorForma || {},
     fundoTroco: Number(caixa.fundo_troco) || 0,
     suprimentos: resumo.suprimentos || 0,
     sangrias: resumo.sangrias || 0,
