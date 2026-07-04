@@ -57,13 +57,18 @@
   área existe). Os dois fluxos de auth seguem **isolados** (endpoints/tokens/middlewares
   separados); só a tela de login decide o destino. CSS reusa a identidade Nymbus (classes `.am-*`
   em `style.css`); exclusão usa confirmação forte (digitar o slug habilita o botão).
-- **Menu (3 abas):** **Dashboard · Clientes · Configurações Master** (reusa o shell do painel do
+- **Menu (4 abas):** **Dashboard · Clientes · Monitoramento · Configurações Master** (reusa o shell do painel do
   cliente — sidebar/indicador/entrada em cascata se aplicam). **Dashboard:** header + **Exportar**
   (CSV dos clientes, client-side), **4 cards hero** (Clientes ativos/Em teste/Assinantes/Cancelados
   de `totais`), faixa secundária (Cortesia/Em atraso/Pedidos no mês/Conectados) e **"Últimos
   Clientes Cadastrados"** (top 5 por `criadoEm`, avatar de iniciais, badge de status, olho →
   Gerenciar). Sem setas de tendência (não há histórico → seria decorativo) e **avatar neutro**
   (sem foto). **Clientes:** a tabela completa de tenants com filtro + Gerenciar (o que já existia).
+- **Monitoramento:** saúde do sistema **ao vivo** (banner + cards de Banco/App/Bots/Fila de impressão,
+  auto-refresh 20s enquanto a aba está aberta) + **Histórico de incidentes** (últimos episódios de
+  instabilidade; hoje os 500 de auth, agrupados por janela de 5min, retenção 90 dias). Rotas
+  `GET /api/admin/diagnostico` (cards ao vivo) e `GET /api/admin/incidentes` (histórico, buscado só
+  ao abrir/atualizar — fora do poll). Ambas com `exigeSuperAdmin`, read-only.
 - **Configurações Master ("aba Nymbus"):** edita os dados globais da plataforma na tabela
   **singleton `plataforma_config`** (módulo `src/plataforma.js`: `obter`/`salvar` empresa +
   `obterMaster`/`salvarMaster` credenciais). Campos: **dados da empresa** (Razão Social, Nome
