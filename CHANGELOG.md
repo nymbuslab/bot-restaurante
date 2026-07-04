@@ -738,3 +738,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.79.2] — Dashboard: valor da venda ao passar o mouse nos gráficos
 
 - Nos gráficos **Evolução diária** e **Evolução mensal** do Dashboard, passar o mouse sobre uma barra agora mostra um **balão com a data e o valor vendido** naquele dia/mês (ex.: `29/06 · R$ 1.163,00`, `Jul de 2026 · R$ 18.300,00`), e a barra sob o cursor fica **realçada**. Antes as barras eram só visuais, sem número. Também funciona por toque/leitor de tela (cada barra tem o valor no `title`).
+
+## [0.79.3] — Caixa: Movimentação mostra Pago e Troco
+
+- A tabela de **Movimentação do caixa** ganhou duas colunas: **Pago** (quanto o cliente entregou) e **Troco** (quando houve). O **Valor** continua sendo a venda. Recebimentos antigos (antes desse registro passar a ser guardado) e movimentos que não são venda aparecem com "—". A tabela continua **rolando dentro do próprio quadro** no celular — a tela não vaza para o lado.

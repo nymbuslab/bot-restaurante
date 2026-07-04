@@ -2323,6 +2323,9 @@ function renderCaixaAberto(data) {
       : ((m.tipo === "cancelamento" || m.tipo === "estorno") ? escapar(m.cliente || m.descricao || tipoLabel[m.tipo])
         : (m.descricao ? escapar(m.descricao) : "—"));
     const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
+    // Pago (entregue) e Troco: só em recebimento COM rastreio (Fase 2+); senão "—".
+    const pagoTxt = (m.tipo === "recebimento" && m.valorPago != null) ? "R$ " + fmtBRn(m.valorPago) : "—";
+    const trocoTxt = (m.tipo === "recebimento" && m.troco != null && m.troco > 0) ? "R$ " + fmtBRn(m.troco) : "—";
     const forma = temPedido ? escapar(m.forma || "—") : "—";
     const acao = m.estornavel
       ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
@@ -2332,6 +2335,8 @@ function renderCaixaAberto(data) {
       <td>${tipoLabel[m.tipo] || m.tipo}</td>
       <td>${cliente}</td>
       <td class="caixa-tab-valor${neg ? " caixa-tab-neg" : ""}">${valorTxt}</td>
+      <td class="cx-td-num">${pagoTxt}</td>
+      <td class="cx-td-num">${trocoTxt}</td>
       <td>${forma}</td>
       <td class="caixa-tab-acao">${acao}</td>
     </tr>`;
@@ -2343,11 +2348,13 @@ function renderCaixaAberto(data) {
       <td>Saldo inicial</td>
       <td>Abertura do caixa</td>
       <td class="caixa-tab-valor">R$ ${fmtBRn(fundo)}</td>
+      <td class="cx-td-num">—</td>
+      <td class="cx-td-num">—</td>
       <td>Dinheiro</td>
       <td class="caixa-tab-acao"></td>
     </tr>` : "";
   const tabelaMov = ((data.movimentos && data.movimentos.length) || fundo > 0)
-    ? `<table class="cx-tabela"><thead><tr><th>Hora</th><th>Nº</th><th>Tipo</th><th>Cliente</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>${linhasMov}${linhaAbertura}</tbody></table>`
+    ? `<table class="cx-tabela"><thead><tr><th>Hora</th><th>Nº</th><th>Tipo</th><th>Cliente</th><th class="cx-num">Valor</th><th class="cx-num">Pago</th><th class="cx-num">Troco</th><th>Forma</th><th></th></tr></thead><tbody>${linhasMov}${linhaAbertura}</tbody></table>`
     : "<p class='sub'>Nenhuma movimentação neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
 
   cont.innerHTML = `

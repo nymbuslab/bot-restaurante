@@ -4753,11 +4753,12 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .cx-box-formula { font-size: 11px; color: var(--text-disabled); }
 .cx-box-valor { font-size: 18px; font-weight: 700; margin-top: 3px; }
 .cx-tabela-card { padding: 4px 18px 8px; overflow-x: auto; }
-.cx-tabela { width: 100%; border-collapse: collapse; min-width: 540px; }
+.cx-tabela { width: 100%; border-collapse: collapse; min-width: 720px; }
 .cx-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding: 8px 12px 8px 0; font-weight: 600; }
 .cx-tabela td { padding: 9px 12px 9px 0; border-top: 1px solid var(--border-subtle); }
 .cx-tabela th:last-child, .cx-tabela td:last-child { padding-right: 0; }
-.cx-tabela th:nth-child(5), .cx-tabela .caixa-tab-valor { text-align: right; }
+.cx-tabela th.cx-num, .cx-tabela .caixa-tab-valor, .cx-tabela .cx-td-num { text-align: right; }
+.cx-tabela .cx-td-num { white-space: nowrap; color: var(--text-secondary); }
 .cx-td-hora { white-space: nowrap; color: var(--text-secondary); }
 .cx-row-sangria td { color: var(--accent-fg); }
 .cx-row-abertura td { color: var(--text-secondary); font-style: italic; }

@@ -355,7 +355,7 @@ async function resumo(dir) {
   // Extrato do turno: TODOS os movimentos (recebimento/sangria/suprimento) com
   // nº/cliente do pedido (recebimentos) — é o que o dono confere ao olhar o caixa.
   const mov = await db.query(
-    `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.descricao, m.criado_em,
+    `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.valor_pago, m.troco, m.descricao, m.criado_em,
             p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
@@ -381,6 +381,8 @@ async function resumo(dir) {
     movimentos: mov.rows.map((r) => ({
       tipo: r.tipo, pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
       forma: r.forma_pagamento, valor: Number(r.valor) || 0, descricao: r.descricao || "",
+      valorPago: r.valor_pago == null ? null : Number(r.valor_pago),
+      troco: r.troco == null ? null : Number(r.troco),
       quando: r.criado_em ? new Date(r.criado_em).toISOString() : null,
       // Estornável só recebimento de pedido "a receber" ainda recebido (web/PDV-Entrega/
       // Retirada). Exclui mesa (sem pedido_id → paga na mesa) e balcão (venda paga na
