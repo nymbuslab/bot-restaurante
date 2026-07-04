@@ -53,3 +53,12 @@
   do WhatsApp em `wa_auth` e imagens no Storage. Não há mais backup do lado do app: o antigo
   `npm run backup`/`scripts/backup.js` (empacotava a `data/` em `.tar.gz`) foi **removido na
   v0.18.0** por ficar obsoleto — não havia mais nada em disco para empacotar.
+- **Monitoramento (2 camadas, complementares)**: (1) **Externo** — monitor de uptime
+  (UptimeRobot, grátis) batendo em `GET /health` (rota leve em `servidor.js`, devolve
+  `{ok:true,uptime}` — só **vivacidade**, NÃO testa o Supabase), a cada 5 min, com alerta por
+  e-mail/push. É a **única** forma de saber que o app **caiu** (o painel é servido pelo próprio
+  app → não abre se ele está offline). Monitorar o domínio do cliente (`pedidos.…/health`) pega
+  app+DNS+cert; o `fly.dev/health` isola o app. (2) **Interno** — aba **Monitoramento** no
+  `/admin-master` (banco/latência, app, bots, fila) + **histórico de incidentes** (`incidentes.js`);
+  só visível **com o app no ar**. Resumo: o externo avisa "app/host caiu"; o interno mostra
+  "banco lento/fora" quando está tudo de pé.
