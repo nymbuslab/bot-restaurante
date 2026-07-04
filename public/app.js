@@ -3351,16 +3351,9 @@ function pedReceberRecalc() {
 async function pedReceberConfirmar() {
   const p = pedReceberPedido;
   if (!p || !pedReceberPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
-  // Registrados (somam o total): não-dinheiro como lançado; o dinheiro só a parte da
-  // venda — o troco não é receita do caixa (mesmo modelo do PDV).
-  const naoDin = pedReceberPagamentos.filter((pg) => !pdvEhDinheiro(pg.forma));
-  const somaNaoDin = Math.round(naoDin.reduce((s, pg) => s + pg.valor, 0) * 100) / 100;
-  const dinNaVenda = Math.max(0, Math.round((pedReceberAlvo - somaNaoDin) * 100) / 100);
-  const registrados = naoDin.map((pg) => ({ forma: pg.forma, valor: pg.valor }));
-  if (dinNaVenda > 0) {
-    const formaDin = (pedReceberPagamentos.find((pg) => pdvEhDinheiro(pg.forma)) || {}).forma || "Dinheiro";
-    registrados.push({ forma: formaDin, valor: dinNaVenda });
-  }
+  // Registrados (somam o total): o troco (dinheiro) é descontado e valor_pago/troco
+  // vão anexados por forma — regra única em montarPagamentosRegistrados.
+  const registrados = montarPagamentosRegistrados(pedReceberPagamentos, pedReceberAlvo);
   const btn = $("pedReceberConfirmar"); btn.disabled = true;
   const r = await api("POST", "/api/caixa/receber/" + p.id, { pagamentos: registrados });
   if (r && r.ok) {
@@ -4590,6 +4583,30 @@ let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada'
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
 
 function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
+
+// Fonte ÚNICA da regra de pagamento (PDV, Receber-Pedidos e Mesa). A partir das formas
+// lançadas na tela, desconta o TROCO (só do dinheiro; o troco volta pro cliente, não
+// entra no caixa) e anexa por forma: `valor` (líquido que entra), `valorPago` (entregue)
+// e `troco`. Invariante por linha: valorPago = valor + troco. `alvo` = valor a cobrir
+// (total no PDV/Pedidos; restante/total na Mesa — pagamento parcial não gera troco).
+function montarPagamentosRegistrados(pagamentos, alvo) {
+  var round = function (n) { return Math.round((Number(n) || 0) * 100) / 100; };
+  var lista = Array.isArray(pagamentos) ? pagamentos : [];
+  var pago = round(lista.reduce(function (s, p) { return s + (Number(p.valor) || 0); }, 0));
+  var trocoRest = Math.max(0, round(pago - alvo)); // troco total sai do(s) dinheiro(s)
+  var registrados = [];
+  lista.forEach(function (p) {
+    if (pdvEhDinheiro(p.forma) && trocoRest > 0) {
+      var corte = Math.min(p.valor, trocoRest);
+      trocoRest = round(trocoRest - corte);
+      var valor = round(p.valor - corte);
+      if (valor > 0) registrados.push({ forma: p.forma, valor: valor, valorPago: round(p.valor), troco: round(corte) });
+    } else {
+      registrados.push({ forma: p.forma, valor: round(p.valor), valorPago: round(p.valor), troco: 0 });
+    }
+  });
+  return registrados;
+}
 function pdvIconeForma(f) {
   const s = (f || "").toLowerCase();
   const w = (inner) => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + "</svg>";
@@ -4940,16 +4957,9 @@ async function finalizarVendaPdv() {
   let registrados = [];
   let observacao = "";
   if (ehBalcao) {
-    // Pagamentos REGISTRADOS (somam o total): não-dinheiro como lançado; o dinheiro
-    // registra só a parte da venda — o troco não é receita do caixa.
-    const naoDin = pdvPagamentos.filter((p) => !pdvEhDinheiro(p.forma));
-    const somaNaoDin = Math.round(naoDin.reduce((s, p) => s + p.valor, 0) * 100) / 100;
-    const dinNaVenda = Math.max(0, Math.round((total - somaNaoDin) * 100) / 100);
-    registrados = naoDin.map((p) => ({ forma: p.forma, valor: p.valor }));
-    if (dinNaVenda > 0) {
-      const formaDin = (pdvPagamentos.find((p) => pdvEhDinheiro(p.forma)) || {}).forma || "Dinheiro";
-      registrados.push({ forma: formaDin, valor: dinNaVenda });
-    }
+    // Pagamentos REGISTRADOS (somam o total): o troco (dinheiro) é descontado e
+    // valor_pago/troco vão anexados por forma — regra única em montarPagamentosRegistrados.
+    registrados = montarPagamentosRegistrados(pdvPagamentos, total);
     const cpf = (($("pdvCpf") || {}).value || "").replace(/\D/g, "");
     observacao = cpf ? ("CPF na nota: " + cpf) : "";
   }
@@ -6211,30 +6221,10 @@ function mesaPagRecalc() {
   if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !pode;
 }
 
-// Descontar o TROCO antes de enviar: o dinheiro entregue pode exceder a conta, mas o
-// que ENTRA no caixa é só a parte da venda — o troco volta pro cliente (mesmo modelo
-// do PDV/Pedidos). O troco (max(0, pago − alvo)) sai do(s) pagamento(s) em dinheiro.
-function mesaRegistrarPagamentos() {
-  var pago = mesaPagoTotal();
-  var trocoRest = Math.max(0, Math.round((pago - mesaPagarAlvo) * 100) / 100);
-  var registrados = [];
-  mesaPagamentos.forEach(function (p) {
-    if (pdvEhDinheiro(p.forma) && trocoRest > 0) {
-      var corte = Math.min(p.valor, trocoRest);
-      trocoRest = Math.round((trocoRest - corte) * 100) / 100;
-      var v = Math.round((p.valor - corte) * 100) / 100;
-      if (v > 0) registrados.push({ forma: p.forma, valor: v });
-    } else {
-      registrados.push({ forma: p.forma, valor: p.valor });
-    }
-  });
-  return registrados;
-}
-
 async function mesaConfirmarPagamento() {
   var d = mesaState.detalhe;
   if (!d || !mesaPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
-  var registrados = mesaRegistrarPagamentos();
+  var registrados = montarPagamentosRegistrados(mesaPagamentos, mesaPagarAlvo);
   var pagoAgora = Math.round(registrados.reduce(function (s, p) { return s + p.valor; }, 0) * 100) / 100;
   var btn = $("btnMesaConfirmarPag");
   btn.disabled = true;

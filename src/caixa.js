@@ -88,8 +88,14 @@ async function receberPedido(dir, pedidoId, opts) {
   let pagamentos = (opts && Array.isArray(opts.pagamentos) && opts.pagamentos.length)
     ? opts.pagamentos
     : [{ forma: opts && opts.forma, valor: opts && opts.valor }];
+  const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
   pagamentos = pagamentos
-    .map((p) => ({ forma: (p && String(p.forma || "").trim()) || "Outros", valor: Math.round((Number(p && p.valor) || 0) * 100) / 100 }))
+    .map((p) => ({
+      forma: (p && String(p.forma || "").trim()) || "Outros",
+      valor: Math.round((Number(p && p.valor) || 0) * 100) / 100,
+      valorPago: cent2(p && p.valorPago),   // entregue (dinheiro na mão); null = não rastreado
+      troco: cent2(p && p.troco),           // troco devolvido
+    }))
     .filter((p) => p.valor > 0);
   if (!pagamentos.length) throw new Error("Valor deve ser positivo.");
   const soma = Math.round(pagamentos.reduce((s, p) => s + p.valor, 0) * 100) / 100;
@@ -112,9 +118,9 @@ async function receberPedido(dir, pedidoId, opts) {
     }
     for (const p of pagamentos) {
       await client.query(
-        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
-         VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
-        [caixa.id, empId, p.forma, p.valor, pedidoId]
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, valor_pago, troco)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6, $7)`,
+        [caixa.id, empId, p.forma, p.valor, pedidoId, p.valorPago, p.troco]
       );
     }
     const resumo = pagamentos.map((p) => p.forma + " R$ " + p.valor.toFixed(2).replace(".", ",")).join(" · ");
@@ -189,11 +195,12 @@ async function venderLocal(dir, venda) {
       [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );
     const row = ped.rows[0];
+    const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
     for (const p of pagamentos) {
       await client.query(
-        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id)
-         VALUES ($1, $2, 'recebimento', $3, $4, $5)`,
-        [caixaId, empId, (p.forma || "Outros"), Number(p.valor) || 0, row.id]
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, valor_pago, troco)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6, $7)`,
+        [caixaId, empId, (p.forma || "Outros"), Number(p.valor) || 0, row.id, cent2(p.valorPago), cent2(p.troco)]
       );
     }
     await client.query("COMMIT");

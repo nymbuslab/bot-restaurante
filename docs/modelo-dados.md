@@ -180,10 +180,20 @@ detalhe_fechamento (jsonb: cédulas contadas, lançamentos eletrônicos,
 **Tabela `caixa_movimentos`**:
 
 ```text
-id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'sangria'|'suprimento'),
-forma_pagamento (só recebimento), valor (numeric), pedido_id (→pedidos, null),
-descricao (motivo de sangria/suprimento), criado_em
+id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'cancelamento'|'estorno'|'sangria'|'suprimento'),
+forma_pagamento (só recebimento), valor (numeric; LÍQUIDO que entra na gaveta),
+pedido_id (→pedidos, null), mesa_id (→mesas, null), descricao (motivo de sangria/suprimento),
+valor_pago (numeric, null; quanto o cliente ENTREGOU), troco (numeric, null; troco devolvido),
+criado_em
 ```
+
+- **`valor_pago`/`troco`** (rastreio a partir da Fase 2; anuláveis — `null` em movimentos
+  antigos e nos que não são recebimento). Invariante garantida por **CHECK** no banco:
+  `caixa_mov_pago_coerente` = `valor_pago IS NULL OR valor_pago = valor + COALESCE(troco,0)` e
+  `caixa_mov_troco_nonneg` = `troco IS NULL OR troco >= 0`. Rede de segurança: o banco **rejeita**
+  gravar um entregue incoerente com o que entrou (a origem do bug do troco na Mesa). A regra que
+  monta `valor`/`valor_pago`/`troco` por forma é única no front (`montarPagamentosRegistrados`,
+  usada por PDV/Receber-Pedidos/Mesa) — só o dinheiro gera troco; pagamento parcial não gera.
 
 - **Recebimento por pedido:** marcar *Receber* cria um movimento `recebimento` (com `pedido_id`) e
   seta `pedidos.recebido_em = now()`; **estornar** insere um movimento `estorno` (que deduz, deixando

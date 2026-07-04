@@ -194,8 +194,9 @@ async function recebidoDaMesa(dir, mesaId) {
 // status da mesa — outros podem continuar pagando/pedindo.
 async function receberParcial(dir, mesaId, pagamentos, nomeMesa) {
   const empId = await empresaId(dir);
+  const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
   const pags = (Array.isArray(pagamentos) ? pagamentos : [pagamentos])
-    .map((p) => ({ forma: (p && p.forma) || "Outros", valor: Number(p && p.valor) || 0 }))
+    .map((p) => ({ forma: (p && p.forma) || "Outros", valor: Number(p && p.valor) || 0, valorPago: cent2(p && p.valorPago), troco: cent2(p && p.troco) }))
     .filter((p) => p.valor > 0);
   if (!pags.length) throw new Error("Valor deve ser positivo.");
   const cx = await caixa.caixaAberto(dir);
@@ -205,9 +206,9 @@ async function receberParcial(dir, mesaId, pagamentos, nomeMesa) {
     await client.query("BEGIN");
     for (const p of pags) {
       await client.query(
-        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, mesa_id, descricao)
-         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6)`,
-        [cx.id, empId, p.forma, p.valor, mesaId, "Mesa " + (nomeMesa || mesaId)]
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, mesa_id, descricao, valor_pago, troco)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6, $7, $8)`,
+        [cx.id, empId, p.forma, p.valor, mesaId, "Mesa " + (nomeMesa || mesaId), p.valorPago, p.troco]
       );
     }
     await client.query("COMMIT");
@@ -227,6 +228,7 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
   const cx = await caixa.caixaAberto(dir);
   if (!cx) throw new Error("Abra o caixa antes de fechar a conta.");
   const pags = Array.isArray(pagamentos) ? pagamentos : [];
+  const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
@@ -240,9 +242,9 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
       const v = Number(p.valor) || 0;
       if (v <= 0) continue;
       await client.query(
-        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, mesa_id, descricao)
-         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6)`,
-        [cx.id, empId, p.forma || "Outros", v, mesaId, "Mesa " + (nomeMesa || mesaId)]
+        `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, mesa_id, descricao, valor_pago, troco)
+         VALUES ($1, $2, 'recebimento', $3, $4, $5, $6, $7, $8)`,
+        [cx.id, empId, p.forma || "Outros", v, mesaId, "Mesa " + (nomeMesa || mesaId), cent2(p.valorPago), cent2(p.troco)]
       );
     }
     await client.query(
