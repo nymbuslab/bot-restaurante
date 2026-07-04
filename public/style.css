@@ -5256,7 +5256,18 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .dash-chart-card.card { padding: 16px 18px; }
 .dash-chart { height: 88px; margin-top: 10px; }
 .dash-chart svg { width: 100%; height: 100%; display: block; }
-.dash-bar { fill: var(--secondary); }
+.dash-bar { fill: var(--secondary); transition: fill .1s ease; cursor: pointer; }
+.dash-bar.hl { filter: brightness(1.35); }
+/* Tooltip do gráfico (segue o cursor) — data + valor da barra */
+.dash-tip {
+  position: fixed; z-index: 4000; pointer-events: none;
+  background: var(--bg-elevated); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0,0,0,.28);
+  opacity: 0; transform: translateY(3px); transition: opacity .12s ease, transform .12s ease;
+}
+.dash-tip.on { opacity: 1; transform: none; }
 .dash-analise-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
 .dash-top { list-style: none; margin: 2px 0 0; padding: 0; counter-reset: dtop; display: flex; flex-direction: column; gap: 9px; }
 .dash-top li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-primary); }

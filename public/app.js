@@ -2938,14 +2938,17 @@ async function carregarDashboard() {
     for (let i = 29; i >= 0; i--) {
       const d0 = new Date(inicioHoje.getTime() - i * 86400000);
       const d1 = new Date(d0.getTime() + 86400000);
-      serieDia.push(fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= d0 && d < d1; })));
+      const valor = fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= d0 && d < d1; }));
+      serieDia.push({ valor, rotulo: d0.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) });
     }
     renderBarras("dashChartDia", serieDia);
     const serieMes = [];
     for (let i = 11; i >= 0; i--) {
       const m0 = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
       const m1 = new Date(agora.getFullYear(), agora.getMonth() - i + 1, 1);
-      serieMes.push(fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= m0 && d < m1; })));
+      const valor = fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= m0 && d < m1; }));
+      const ml = m0.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }).replace(".", "");
+      serieMes.push({ valor, rotulo: ml.charAt(0).toUpperCase() + ml.slice(1) });
     }
     renderBarras("dashChartMes", serieMes);
 
@@ -3015,23 +3018,66 @@ async function carregarDashboard() {
   }
 }
 
-// Mini gráfico de barras (SVG puro, sem lib). serie = array de valores.
+// Mini gráfico de barras (SVG puro, sem lib). serie = array de números OU de
+// { valor, rotulo } — quando há rótulo, o hover mostra "rótulo · R$ valor".
 function renderBarras(id, serie) {
   const el = $(id);
   if (!el) return;
-  const dados = Array.isArray(serie) ? serie : [];
-  const max = Math.max(1, ...dados);
+  const dados = (Array.isArray(serie) ? serie : []).map((d) =>
+    (d && typeof d === "object") ? { valor: Number(d.valor) || 0, rotulo: String(d.rotulo || "") } : { valor: Number(d) || 0, rotulo: "" });
+  const max = Math.max(1, ...dados.map((d) => d.valor));
   const n = dados.length || 1;
   const slot = 100 / n;
   const bw = slot * 0.68;
   const off = (slot - bw) / 2;
-  const bars = dados.map((v, idx) => {
-    const h = max > 0 ? (Number(v) || 0) / max * 96 : 0;
+  const bars = dados.map((d, idx) => {
+    const h = max > 0 ? d.valor / max * 96 : 0;
     const x = idx * slot + off;
     const y = 100 - Math.max(h, 0.6);
-    return `<rect class="dash-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${bw.toFixed(2)}" height="${Math.max(h, 0.6).toFixed(2)}" rx="0.6"></rect>`;
+    const tip = (d.rotulo ? d.rotulo + " · " : "") + "R$ " + moedaBR(d.valor);
+    return `<rect class="dash-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${bw.toFixed(2)}" height="${Math.max(h, 0.6).toFixed(2)}" rx="0.6" data-tip="${escapar(tip)}"><title>${escapar(tip)}</title></rect>`;
   }).join("");
-  el.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${bars}</svg>`;
+  el.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${bars}</svg>`;
+  ligarTooltipBarras(el);
+}
+
+// Tooltip único (reaproveitado), preso ao body — segue o cursor sobre a barra.
+function dashTooltipEl() {
+  let t = document.getElementById("dashChartTip");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "dashChartTip";
+    t.className = "dash-tip";
+    document.body.appendChild(t);
+  }
+  return t;
+}
+
+// Liga o tooltip UMA vez por container (delegação): os listeners ficam no container
+// e sobrevivem à troca do innerHTML, então não duplicam a cada refresh do dashboard.
+function ligarTooltipBarras(el) {
+  if (el.dataset.tipWired) return;
+  el.dataset.tipWired = "1";
+  const tip = dashTooltipEl();
+  const limpar = () => {
+    tip.classList.remove("on");
+    el.querySelectorAll(".dash-bar.hl").forEach((b) => b.classList.remove("hl"));
+  };
+  el.addEventListener("pointermove", (e) => {
+    const r = e.target.closest(".dash-bar");
+    if (!r) { limpar(); return; }
+    el.querySelectorAll(".dash-bar.hl").forEach((b) => { if (b !== r) b.classList.remove("hl"); });
+    r.classList.add("hl");
+    tip.textContent = r.getAttribute("data-tip") || "";
+    tip.classList.add("on");
+    const pad = 12;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + tip.offsetWidth > window.innerWidth - 4) x = e.clientX - tip.offsetWidth - pad;
+    if (y + tip.offsetHeight > window.innerHeight - 4) y = e.clientY - tip.offsetHeight - pad;
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  });
+  el.addEventListener("pointerleave", limpar);
 }
 
 // ============================================================
