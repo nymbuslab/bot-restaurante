@@ -742,3 +742,7 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.79.3] — Caixa: Movimentação mostra Pago e Troco
 
 - A tabela de **Movimentação do caixa** ganhou duas colunas: **Pago** (quanto o cliente entregou) e **Troco** (quando houve). O **Valor** continua sendo a venda. Recebimentos antigos (antes desse registro passar a ser guardado) e movimentos que não são venda aparecem com "—". A tabela continua **rolando dentro do próprio quadro** no celular — a tela não vaza para o lado.
+
+## [0.79.4] — Assinatura: cortesia não cobra nem bloqueia mais
+
+- **Cortesia agora desliga a cobrança no Stripe.** Antes, liberar acesso de cortesia pelo painel master só mudava o status internamente — se o restaurante tinha assinatura com cartão, o Stripe **cobrava mesmo assim** no fim do trial de 7 dias e o sistema ainda **bloqueava** o acesso quando a cobrança falhava (restaurante "cobrado e bloqueado" apesar da cortesia). Agora, ao conceder cortesia, o sistema **pausa a cobrança no Stripe** (o cartão não é cobrado) e **anula qualquer fatura em aberto**; e **nenhum evento do Stripe apaga mais a cortesia nem derruba o bot**. Ao **revogar** a cortesia, a cobrança volta ao ciclo normal. *(O restaurante afetado teve a fatura em aberto anulada e a assinatura pausada.)*
