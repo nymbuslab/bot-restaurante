@@ -78,7 +78,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
 - [x] Relatórios de pedidos por período no painel — ✅ **concluído** (no redesign de Pedidos): seletor de período (Hoje / 7 dias / Personalizado) + métricas reais (total de pedidos, média diária, ticket médio e comparativo vs período anterior) + **export CSV** dos pedidos filtrados (botão Exportar; ver `CHANGELOG.md` v0.22.4)
 - [x] Cardápio com imagens dos itens — ✅ **concluído** (upload no editor modal + exibição em cards na lista; ver `CHANGELOG.md` v0.4.0)
 - [x] Redesign visual completo (Nymbus Pedidos) — ✅ **concluído**: shell (sidebar/bottom-nav), Pedidos, Cardápio, Conexão, Configurações, Simulador e Login/Cadastro, todos fiéis aos protótipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0
-- [ ] Integração com sistemas de PDV / impressora de cupom
+- [x] **Integração com sistemas de PDV / impressora de cupom** — ✅ **entregue**: aba **PDV** (venda no balcão) + app desktop **Nymbus Impressora** imprimindo automaticamente todos os fluxos (delivery/PDV/Mesas/Caixa) via fila genérica. Ver `CHANGELOG.md` v0.49.0 (PDV) e v0.59.0/0.62.0 (agente como único canal de impressão).
 - [ ] **Formas de Pagamento configuráveis + taxa por forma (recebimento líquido)** — aba dedicada em
   Configurações pra gerir as formas (hoje editáveis como lista simples em `config.pagamentos`),
   com **granularidade Crédito/Débito/Pix** e **taxa (%) por forma** que a administradora cobra.
@@ -114,7 +114,7 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
     Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
 - [ ] App mobile para o atendente receber pedidos
-- [ ] **Observabilidade / monitoramento** — aba de saúde no painel master (Banco/Auth/App/Bots ao vivo via `GET /api/admin/diagnostico`), logar a causa dos 500 de auth e, opcional, tabela `incidentes` para histórico. Complementar com monitor de uptime externo (UptimeRobot) no `/health`. Detalhe acionável no `PROGRESSO.md`.
+- [x] **Observabilidade / monitoramento** — ✅ **entregue**: aba **Monitoramento** no painel master — **Fase 1** (Banco/App/Bots/Fila ao vivo via `GET /api/admin/diagnostico` + log da causa dos 500 de auth) e **Fase 2** (tabela `incidentes` + histórico no painel) — mais **monitor de uptime externo** (UptimeRobot no `/health`, 2 camadas: cliente + app direto). Ver `CHANGELOG.md` v0.79.0.
 - [x] **Limpeza ativa de sessões abandonadas (bot)** — ✅ **concluído**: `sessoes.limparExpiradas()` varre o Map e descarta as sessões inativas há +30min, agendada a cada 10min no `index.js` (no lugar da expiração só-lazy, que nunca limpava conversa abandonada). Sem mudança de comportamento; só libera RAM. Ver `CHANGELOG.md` v0.24.0.
 - [x] **Resiliência: sair de processo/máquina única** — ✅ **encerrado (2026-06-18)**. Segue como **um processo Node numa máquina só**, por decisão — coberto pela auto-cura abaixo. Redundância real fica como nota de arquitetura, **fora de escopo** (sem plano de mexer).
   - [x] **Auto-cura concluída (2026-06-18)** — o app se recupera sozinho de qualquer travada: o Fly reinicia em crash; se travar "vivo" (event loop preso, segurado pelos guardas de erro do `index.js`), o **health check** (`GET /health` + `[[http_service.checks]]` no `fly.toml`, cutuca a cada 15s) **recicla a máquina**; e o job `restaurarBots()` (`index.js`, ~10s após o boot) **religa os bots** sem QR. Os guardas globais (`uncaughtException`/`unhandledRejection`) já impedem o erro de um bot de derrubar o processo (parte do isolamento de falha entre tenants).
@@ -175,21 +175,11 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   Caixa) via fila genérica; o caminho navegador foi **removido** (CHANGELOG 0.62.0). Ver *"Agente local"*
   abaixo e [docs/planos-e-frete.md](docs/planos-e-frete.md). **Futuro:** gaveta + TEF + impressão sem
   painel aberto (já entregue: impressão sem painel aberto).
-- [ ] **Agente local (impressora + gaveta + TEF)** (G + decisão de arquitetura) — **adiado; implementar
-  só sob demanda** (cliente pagante pedindo gaveta/cartão/impressão silenciosa). Levantado com colegas
-  de dev (2026-06-20).
-  > **Nota (2026-06-27):** uma **v1 enxuta** já foi construída — app desktop **Electron** (`agente-impressora/`,
-  > Plano B): login + cofre do SO, polling de `/api/agente/pendentes`, impressão ESC/POS crua por **Rede
-  > (TCP 9100)** e **Serial (COM)** reusando `public/comanda.js`. **Sem** TEF/fiscal/gaveta/ACBr ainda.
-  > Mergeado na `main`; **pendente publicar o `.exe`** (botão "Baixar (em breve)" no painel). Ver `PROGRESSO.md`.
-  >
-  > **Atualização (2026-06-29 — CHANGELOG 0.59.0):** o agente virou o **canal de impressão de todos os
-  > fluxos** — além do delivery, imprime **PDV, Mesas e Caixa** via **fila genérica** (`impressao_fila`, o
-  > servidor renderiza o texto e enfileira) + **reimpressão**. A tela Configurações → Impressora virou
-  > **download do agente** (config migrou pro app) e há rota `GET /downloads/nymbus-impressora.exe`. O
-  > caminho **navegador** (`window.print`/serial) foi **REMOVIDO** na Fase 3 (CHANGELOG 0.62.0) — o agente é
-  > o único canal. Segue **pendente** hospedar o `.exe` em produção e validar no Windows. **Sem** TEF/fiscal/gaveta ainda.
-  Diretrizes travadas para a versão completa (TEF/fiscal), quando for a hora:
+- [ ] **Fiscal (NFC-e/SAT)** (G + regulatório) — via **ACBr** (`ACBrNFCe`/`ACBrSAT`) no agente local **ou**
+  parceiro fiscal por API (PlugNotas/Focus NFe/Tecnospeed); praticamente um produto à parte.
+  > A **v1 do agente de impressão** (ESC/POS de todos os fluxos, Rede 9100/Serial) já está **entregue** —
+  > ver *"Impressão"* acima. Falta só a camada **fiscal/TEF/gaveta**, adiada sob demanda (cliente pagante
+  > pedindo). Diretrizes travadas abaixo para quando for a hora.
   - **Engine: ACBr** (não reinventar) — `ACBrPosPrinter` (ESC/POS + corte + **gaveta**), `ACBrTEF`,
     `ACBrSAT`/`ACBrNFCe`. Via **ACBrMonitor** (executável controlado por socket/arquivo — sem escrever
     Delphi) ou **ACBrLib** (DLLs chamáveis, inclusive de Node via FFI). O valor do ACBr é **TEF + fiscal**;
@@ -201,8 +191,6 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
     → imprime mesmo com o painel fechado (modelo iFood) e evita a dor de browser→`localhost` https.
   - **Gaveta:** fora de escopo por ora (sugestão dos colegas). Muitos drivers abrem a gaveta "ao imprimir"
     (de graça, como o corte); controle fino da gaveta só com o agente.
-- [ ] **Fiscal (NFC-e/SAT)** (G + regulatório) — via **ACBr** (`ACBrNFCe`/`ACBrSAT`) no agente local **ou**
-  parceiro fiscal por API (PlugNotas/Focus NFe/Tecnospeed); praticamente um produto à parte.
 
 ### Transversal (quando houver tração)
 
@@ -218,9 +206,9 @@ tocar na arquitetura, reaproveita dados existentes).
 
 Substituiu o pedido **conversacional** do bot (ver *Visão*): com cardápio grande, a conversa ficava
 longa e o cliente desistia. Agora o bot manda **um link** e o cliente monta/finaliza o pedido na web;
-o pedido cai no backend (recalculado lá) e o bot **confirma** no WhatsApp. Baseado no projeto de
-referência `docs/cardapio` (React/Tailwind) — usado como **referência visual**, portado pro stack
-vanilla do repo (os tokens de design já eram idênticos).
+o pedido cai no backend (recalculado lá) e o bot **confirma** no WhatsApp. Foi baseado num projeto de
+referência em React/Tailwind (usado só como **referência visual** na época e **já portado** pro stack
+vanilla do repo — `public/cardapio.*` —, pois os tokens de design já eram idênticos).
 
 **Status:** entregue nas Fases 1→5 (API pública + token, página vanilla, POST com recálculo no
 servidor + confirmação pelo bot, bot envia o link, docs). Migração `20260617120000_pedido_observacao`
