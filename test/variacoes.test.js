@@ -19,6 +19,11 @@ test("normalizarVariacoes: não-array vira []", () => {
   assert.deepEqual(V.normalizarVariacoes("x"), []);
 });
 
+test("normalizarVariacoes: estoqueMinimo é preservado mesmo sem estoque", () => {
+  const out = V.normalizarVariacoes([{ id: "a", nome: "Coca", preco: 5, estoqueMinimo: "3" }]);
+  assert.deepEqual(out[0], { id: "a", nome: "Coca", preco: 5, estoqueMinimo: 3 });
+});
+
 test("precoAPartir: menor preço entre as disponíveis; null sem variações", () => {
   const item = { variacoes: [
     { id: "a", nome: "Coca", preco: 6, estoque: 5 },

@@ -1379,6 +1379,8 @@
             <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
           </div>
           <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local (pesado no balcão) — não entra em pedido online.</p>
+          <p class="editor-dica" id="editor-estoque-ilim-dica">Deixe o estoque em branco para <strong>vender sem limite</strong> (ilimitado). Preencha com um número para controlar — ao chegar a zero, o item fica "Esgotado" e não é vendido.</p>
+          <p class="editor-dica" id="editor-estoque-var-nota" hidden>Este item tem <strong>variações</strong> — o estoque é controlado <strong>por opção</strong>, na aba Variações. O campo acima não afeta os sabores.</p>
         </div>
       </div>
 
@@ -1411,6 +1413,7 @@
           <div class="campo">
             <label>Variações</label>
             <p class="editor-dica">Cadastre vários itens parecidos dentro de um só. Ex.: crie "Refrigerantes 350ml" e coloque dentro Coca, Coca Zero, Fanta... Cada um com seu preço e estoque. No cardápio aparece um item só, e o cliente escolhe o sabor.</p>
+            <p class="editor-dica"><strong>Cada opção controla o próprio estoque</strong> (em branco = ilimitado). O produto só fica "Esgotado" quando <strong>todas</strong> as opções zerarem.</p>
             <div id="editor-variacoes-builder" class="var-builder"></div>
             <button type="button" class="secundario mini" id="editor-var-add">+ Adicionar variação</button>
           </div>

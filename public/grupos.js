@@ -17,11 +17,14 @@
         ? g.itens.map((x) => String(x == null ? "" : x).trim()).filter(Boolean)
         : [];
       if (!itens.length) return;
+      const min = Math.max(0, parseInt(g.min, 10) || 0);
+      let max = Math.max(0, parseInt(g.max, 10) || 0);
+      if (max > 0 && max < min) max = min; // max < min = subgrupo impossível de satisfazer → sobe ao mínimo
       out.push({
         nome: String(g.nome == null ? "" : g.nome).trim(),
         obrigatorio: !!g.obrigatorio,
-        min: Math.max(0, parseInt(g.min, 10) || 0),
-        max: Math.max(0, parseInt(g.max, 10) || 0),
+        min: min,
+        max: max,
         itens: itens,
       });
     });

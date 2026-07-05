@@ -43,9 +43,11 @@
       };
       if (v.estoque !== undefined && v.estoque !== null && v.estoque !== "") {
         out1.estoque = Math.max(0, parseInt(v.estoque, 10) || 0);
-        if (v.estoqueMinimo !== undefined && v.estoqueMinimo !== null && v.estoqueMinimo !== "") {
-          out1.estoqueMinimo = Math.max(0, parseInt(v.estoqueMinimo, 10) || 0);
-        }
+      }
+      // estoqueMinimo é preservado mesmo SEM estoque — não descarta em silêncio o que o
+      // dono digitou (fica inerte até ele preencher o estoque; nunca vira "baixo" sozinho).
+      if (v.estoqueMinimo !== undefined && v.estoqueMinimo !== null && v.estoqueMinimo !== "") {
+        out1.estoqueMinimo = Math.max(0, parseInt(v.estoqueMinimo, 10) || 0);
       }
       out.push(out1);
     });

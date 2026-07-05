@@ -31,6 +31,8 @@ const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
+const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
+const gruposMod = require("../public/grupos");       // normalizarGrupos (dual-mode)
 const pdv = require("./pdv");
 const dashboardCalc = require("./dashboard-calc");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
@@ -1553,13 +1555,50 @@ app.get("/api/cardapio", exigeAuth, async (req, res) => {
   }
 });
 
+// Normaliza o CONTEÚDO do cardápio no SERVIDOR (fonte da verdade — não confia no
+// cliente): preço/estoque ≥ 0, variações normalizadas COM id garantido (sem id → nunca
+// dava baixa de estoque) e composição normalizada. A projeção pública já normalizava na
+// leitura, mas o jsonb salvo ficava inválido para dashboard/itens_venda/impressão.
+function normalizarConteudoCardapio(cardapio) {
+  const cats = ((cardapio && cardapio.categorias) || []).map((c) => {
+    if (!c) return c;
+    const itens = ((c.itens) || []).map((it) => {
+      if (!it) return it;
+      const out = Object.assign({}, it);
+      const ehKg = out.unidade === "kg";
+      out.preco = Math.max(0, Number(String(out.preco == null ? 0 : out.preco).replace(",", ".")) || 0);
+      // estoque do item: vazio = ilimitado (remove); senão clampa ≥ 0 (kg decimal / un inteiro)
+      if (out.estoque === "" || out.estoque == null) { delete out.estoque; delete out.estoqueMinimo; }
+      else {
+        out.estoque = ehKg
+          ? Math.max(0, parseFloat(String(out.estoque).replace(",", ".")) || 0)
+          : Math.max(0, parseInt(out.estoque, 10) || 0);
+      }
+      if (Array.isArray(out.variacoes) && out.variacoes.length) {
+        out.variacoes = variacoesMod.normalizarVariacoes(out.variacoes).map((v) => Object.assign({}, v, {
+          id: (v.id && String(v.id).trim()) ? String(v.id) : ("v" + Math.random().toString(36).slice(2, 9)),
+        }));
+        // Item com variações: o estoque é por opção — o pai não controla nada. Remove
+        // estoque do pai para não checar/baixar contra a qtd do item (evita confusão).
+        delete out.estoque; delete out.estoqueMinimo;
+      }
+      if (Array.isArray(out.composicao) && out.composicao.length) {
+        out.composicao = gruposMod.normalizarGrupos(out.composicao);
+      }
+      return out;
+    });
+    return Object.assign({}, c, { itens });
+  });
+  return Object.assign({}, cardapio, { categorias: cats });
+}
+
 app.put("/api/cardapio", exigeAuth, async (req, res) => {
   const invalido = validarCardapio(req.body);
   if (invalido) return res.status(400).json({ erro: invalido });
   try {
-    // Padroniza os nomes (categoria/item/opcional) no servidor — toda salvada passa
-    // por aqui, então o cardápio fica consistente no banco (imune a cache/stale panel).
-    await store.setCardapio(req.tenantDir, texto.padronizarNomesCardapio(req.body));
+    // Padroniza os nomes E normaliza o conteúdo no servidor — toda salvada passa por
+    // aqui, então o cardápio fica consistente no banco (imune a cache/stale panel/forja).
+    await store.setCardapio(req.tenantDir, texto.padronizarNomesCardapio(normalizarConteudoCardapio(req.body)));
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ erro: e.message });

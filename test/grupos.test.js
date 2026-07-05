@@ -25,6 +25,14 @@ test("normalizarGrupos: não-array vira []", () => {
   assert.deepEqual(normalizarGrupos(undefined), []);
 });
 
+test("normalizarGrupos: max < min sobe para o mínimo (subgrupo satisfazível)", () => {
+  const g = normalizarGrupos([{ nome: "X", min: 3, max: 1, itens: ["a", "b", "c"] }]);
+  assert.equal(g[0].min, 3);
+  assert.equal(g[0].max, 3); // 1 < 3 → sobe a 3 (senão nunca dá pra satisfazer)
+  const g2 = normalizarGrupos([{ nome: "Y", min: 2, max: 0, itens: ["a"] }]);
+  assert.equal(g2[0].max, 0); // max 0 = ilimitado, preservado
+});
+
 test("avaliarComposicao: seleção válida normaliza e não acusa pendência", () => {
   const r = avaliarComposicao(base, [
     { grupo: "Proteínas", itens: ["Frango"] },

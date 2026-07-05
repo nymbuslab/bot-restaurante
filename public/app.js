@@ -1134,22 +1134,33 @@ function renderCardapio() {
 function ligarEventosCardapio() {
   document.querySelectorAll(".catNome").forEach((el) => {
     el.addEventListener("input", (e) => { cardapioAtual.categorias[e.target.dataset.cat].nome = e.target.value; });
-    el.addEventListener("blur", (e) => { // padroniza ao sair do campo (assistivo)
+    el.addEventListener("blur", async (e) => { // padroniza ao sair do campo + persiste
       const v = Texto.tituloPt(e.target.value);
       e.target.value = v;
       cardapioAtual.categorias[e.target.dataset.cat].nome = v;
+      if (!(await salvarCardapioRemoto())) toast("Não foi possível salvar o nome. Tente de novo.", "erro");
     });
   });
   document.querySelectorAll(".itDisp").forEach((el) =>
-    el.addEventListener("change", (e) => { item(e).disponivel = e.target.checked; renderCardapio(); })
+    el.addEventListener("change", async (e) => {
+      // Salva NA HORA (é um interruptor — o dono espera efeito imediato). Antes só mexia
+      // na memória e dependia de "Salvar cardápio"; quem esquecia deixava o item esgotado
+      // ainda vendável no cardápio web. Otimista com reversão em falha (padrão do excluir).
+      const it = item(e);
+      const antes = it.disponivel;
+      it.disponivel = e.target.checked;
+      if (!(await salvarCardapioRemoto())) { it.disponivel = antes; renderCardapio(); toast("Não foi possível salvar. Tente de novo.", "erro"); }
+    })
   );
   document.querySelectorAll("[data-del-cat]").forEach((el) =>
     el.addEventListener("click", async (e) => {
+      const idx = +e.target.dataset.delCat;
       const ok = await confirmar("Excluir categoria?", "Todos os itens desta categoria serão removidos.", "Excluir");
-      if (ok) {
-        cardapioAtual.categorias.splice(+e.target.dataset.delCat, 1);
-        renderCardapio();
-      }
+      if (!ok) return;
+      const removida = cardapioAtual.categorias.splice(idx, 1)[0];
+      renderCardapio();
+      if (await salvarCardapioRemoto()) toast("Categoria excluída.");
+      else { cardapioAtual.categorias.splice(idx, 0, removida); renderCardapio(); toast("Não foi possível excluir. Tente de novo.", "erro"); }
     })
   );
   document.querySelectorAll("[data-del-item]").forEach((el) =>
@@ -1182,9 +1193,11 @@ function item(e) {
 }
 
 function novoId() {
-  let max = 0;
-  cardapioAtual.categorias.forEach((c) => c.itens.forEach((i) => { if (i.id > max) max = i.id; }));
-  return max + 1;
+  // id ÚNICO e NUNCA reutilizado: timestamp numérico. Reusar max+1 fazia um item novo
+  // herdar o id — e o histórico de vendas (itens_venda / relatório do item / dashboard) —
+  // de um item excluído. Numérico porque itens_venda.item_id é bigint (o id de variação
+  // é que pode ser string). Um clique por vez no editor → sem colisão de milissegundo.
+  return Date.now();
 }
 
 // id único e estável para uma variação (único DENTRO do item; usado p/ casar o estoque
@@ -1379,9 +1392,11 @@ async function salvarEditorItem() {
 
 // Busca do cardápio (fixo — o campo é estático, fora do container re-renderizado,
 // por isso o foco não se perde ao digitar).
+let cardapioBuscaTimer;
 $("cardapioBusca").addEventListener("input", (e) => {
   cardapioBusca = e.target.value;
-  renderCardapio();
+  clearTimeout(cardapioBuscaTimer); // debounce ~150ms: não reconstrói a lista a cada tecla
+  cardapioBuscaTimer = setTimeout(renderCardapio, 150);
 });
 $("cardapioBusca").addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
@@ -1708,8 +1723,8 @@ function renderEditorVariacoes() {
       <input class="var-nome" placeholder="Nome (ex.: Coca-Cola)" value="${escapar(v.nome || "")}" data-vi="${vi}" />
       <div class="opc-preco-wrap"><span class="opc-rs">R$</span>
         <input type="text" inputmode="numeric" class="opc-preco var-preco" placeholder="0,00" value="${v.preco ? Dinheiro.formatar(v.preco) : ""}" data-vi="${vi}" /></div>
-      <input class="var-est" inputmode="numeric" placeholder="estoque" value="${escapar(v.estoque != null ? String(v.estoque) : "")}" data-vi="${vi}" />
-      <input class="var-estmin" inputmode="numeric" placeholder="mín" value="${escapar(v.estoqueMinimo != null ? String(v.estoqueMinimo) : "")}" data-vi="${vi}" />
+      <input class="var-est" inputmode="numeric" placeholder="Ilimitado" title="Estoque desta opção (em branco = ilimitado)" value="${escapar(v.estoque != null ? String(v.estoque) : "")}" data-vi="${vi}" />
+      <input class="var-estmin" inputmode="numeric" placeholder="Mín." title="Estoque mínimo (alerta de 'baixo')" value="${escapar(v.estoqueMinimo != null ? String(v.estoqueMinimo) : "")}" data-vi="${vi}" />
       <button type="button" class="var-order" data-vi="${vi}" data-dir="up" aria-label="Subir" title="Subir"${vi === 0 ? ' disabled' : ''}>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
       </button>
@@ -1749,6 +1764,18 @@ function renderEditorVariacoes() {
   container.querySelectorAll(".var-del").forEach((el) =>
     el.addEventListener("click", (e) => { editorVariacoes.splice(+e.target.dataset.vi, 1); renderEditorVariacoes(); })
   );
+  atualizarEstoquePaiUI();
+}
+
+// Quando o item TEM variações, o estoque é controlado por opção — o campo de estoque do
+// PAI não afeta os sabores. Desabilita e explica, matando a confusão pai×variação.
+function atualizarEstoquePaiUI() {
+  const temVar = editorVariacoes.length > 0;
+  const inp = $("editor-estoque"), min = $("editor-estoque-min");
+  if (inp) { inp.disabled = temVar; if (temVar) inp.value = ""; }
+  if (min) { min.disabled = temVar; if (temVar) min.value = ""; }
+  if ($("editor-estoque-var-nota")) $("editor-estoque-var-nota").hidden = !temVar;
+  if ($("editor-estoque-ilim-dica")) $("editor-estoque-ilim-dica").hidden = temVar;
 }
 
 $("editor-var-add").addEventListener("click", () => {
@@ -1758,9 +1785,10 @@ $("editor-var-add").addEventListener("click", () => {
   if (inputs.length) inputs[inputs.length - 1].focus();
 });
 
-$("btnAddCategoria").addEventListener("click", () => {
+$("btnAddCategoria").addEventListener("click", async () => {
   cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
   renderCardapio();
+  if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias.pop(); renderCardapio(); toast("Não foi possível criar a categoria.", "erro"); }
 });
 
 $("btnNovoItem").addEventListener("click", () => {
