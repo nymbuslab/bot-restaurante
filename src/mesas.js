@@ -46,36 +46,4 @@ function dividirIgualitario(total, nPessoas) {
   return out;
 }
 
-// Divisão por produto: cada linha de item é atribuída a uma pessoa.
-// `atribuicoes`: [{ pedidoId, itemIndex, pessoa }]. Itens sem atribuição caem em
-// "Não atribuído". Retorna [{ pessoa, itens:[{nome,qtd,valor}], subtotal }].
-function dividirPorProduto(pedidos, atribuicoes) {
-  const mapaAttr = {};
-  for (const a of (atribuicoes || [])) mapaAttr[a.pedidoId + ":" + a.itemIndex] = a.pessoa;
-  const pessoas = {};
-  const add = (nome, item, valor) => {
-    if (!pessoas[nome]) pessoas[nome] = { pessoa: nome, itens: [], subtotal: 0 };
-    pessoas[nome].itens.push({ nome: item.nome || "", qtd: item.qtd || 1, valor });
-    pessoas[nome].subtotal = cent(pessoas[nome].subtotal + valor);
-  };
-  for (const p of (pedidos || []).filter((x) => x && x.status !== "cancelado")) {
-    const ref = p.id != null ? p.id : p.numero;
-    (p.itens || []).forEach((item, idx) => {
-      const pessoa = mapaAttr[ref + ":" + idx] || "Não atribuído";
-      add(pessoa, item, precoLinha(item));
-    });
-  }
-  return Object.values(pessoas);
-}
-
-// Recebimento parcial: dado o total e os pagamentos já recebidos, devolve quanto
-// entrou, quanto falta e o troco (se pagou a mais). Núcleo do "recebe X, falta Y".
-function calcularFalta(total, pagamentosRecebidos) {
-  const t = cent(total);
-  const recebido = cent((pagamentosRecebidos || []).reduce((s, p) => s + (Number(p.valor) || 0), 0));
-  const falta = cent(Math.max(0, t - recebido));
-  const troco = cent(Math.max(0, recebido - t));
-  return { recebido, falta, troco };
-}
-
-module.exports = { precoLinha, calcularTotalMesa, dividirIgualitario, dividirPorProduto, calcularFalta };
+module.exports = { precoLinha, calcularTotalMesa, dividirIgualitario };

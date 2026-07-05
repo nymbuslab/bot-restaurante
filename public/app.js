@@ -3042,7 +3042,16 @@ let listaPedidosAtual = []; // lista filtrada atual (para paginar sem refazer o 
 // são calculados no front em renderPedidos() a partir deste conjunto.
 async function carregarPedidos() {
   try {
-    const r = await api("GET", "/api/pedidos");
+    // O servidor recorta pela janela do período (fuso BR) — não baixa mais o
+    // histórico inteiro. Os demais filtros (tipo/canal/busca/pagamento) seguem no cliente.
+    const qs = new URLSearchParams();
+    if (filtros.periodo === "hoje" || filtros.periodo === "7dias") qs.set("periodo", filtros.periodo);
+    else if (filtros.periodo === "custom") {
+      if (filtros.dataIni) qs.set("desde", filtros.dataIni);
+      if (filtros.dataFim) qs.set("ate", filtros.dataFim);
+    }
+    const url = "/api/pedidos" + (qs.toString() ? "?" + qs.toString() : "");
+    const r = await api("GET", url);
     if (!r) return;
     if (!r.ok) throw new Error("HTTP " + r.status);
     pedidosCache = await r.json();
@@ -3056,7 +3065,13 @@ async function carregarPedidos() {
 function exportarPedidosCSV() {
   const lista = listaPedidosAtual || [];
   if (!lista.length) { toast("Nenhum pedido para exportar.", "erro"); return; }
-  const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+  // Neutraliza injeção de fórmula (CSV injection): valores começando com = + - @
+  // TAB ou CR são interpretados como fórmula no Excel/Sheets → prefixa com apóstrofo.
+  const esc = (v) => {
+    let s = String(v == null ? "" : v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g, '""')}"`;
+  };
   const resumoItens = (p) => (p.itens || [])
     .map((i) => `${i.qtd || 1}x ${i.nome}${i.observacao ? ` (${i.observacao})` : ""}`)
     .join(" | ");
@@ -3081,38 +3096,6 @@ function exportarPedidosCSV() {
   a.click();
   URL.revokeObjectURL(a.href);
   toast(`${lista.length} pedido(s) exportado(s).`, "sucesso");
-}
-
-// Intervalo do período selecionado + nº de dias (para a média diária).
-function periodoRange() {
-  const agora = new Date();
-  const inicioDoDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-  // Fim do dia (e não "agora") como limite superior: evita que um pedido recém-criado
-  // — cujo horário vem do relógio do servidor — caia "no futuro" por desencontro de
-  // relógio e suma do "Hoje" até o próximo refresh.
-  const fimDoDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-  if (filtros.periodo === "hoje") {
-    return { ini: inicioDoDia(agora), fim: fimDoDia(agora), dias: 1 };
-  }
-  if (filtros.periodo === "7dias") {
-    const ini = inicioDoDia(new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - 6));
-    return { ini, fim: fimDoDia(agora), dias: 7 };
-  }
-  // Personalizado
-  const di = filtros.dataIni ? new Date(filtros.dataIni + "T00:00:00") : null;
-  const df = filtros.dataFim ? new Date(filtros.dataFim + "T23:59:59") : null;
-  if (di && df) {
-    const dias = Math.max(1, Math.round((inicioDoDia(df) - inicioDoDia(di)) / 86400000) + 1);
-    return { ini: di, fim: df, dias };
-  }
-  return { ini: null, fim: null, dias: 1 }; // custom incompleto: sem limite até escolher datas
-}
-
-function noPeriodo(p, range) {
-  const t = new Date(p.criadoEm).getTime();
-  if (range.ini && t < range.ini.getTime()) return false;
-  if (range.fim && t > range.fim.getTime()) return false;
-  return true;
 }
 
 // Telefone limpo para exibição (nunca o id cru). Formata 55+DDD+número.
@@ -3407,12 +3390,10 @@ function animarTroca(el) {
 }
 
 function renderPedidos(animar = false) {
-  const range = periodoRange();
-
-  // Conjunto base = período + tipo + canal (a busca não entra aqui).
+  // O recorte de PERÍODO é feito no servidor (carregarPedidos → janela BR); aqui
+  // ficam só os filtros que operam sobre a janela já carregada (tipo/canal/busca/pagamento).
   const base = pedidosCache.filter(
-    (p) => noPeriodo(p, range)
-      && (filtros.tipo === "todos" || tipoPedido(p) === filtros.tipo)
+    (p) => (filtros.tipo === "todos" || tipoPedido(p) === filtros.tipo)
       && (filtros.canal === "todos" || canalPedido(p) === filtros.canal)
   );
 
@@ -3450,14 +3431,18 @@ function renderListaPedidos(lista) {
   const cont = $("pedidosContainer");
 
   if (lista.length === 0) {
-    const semNenhum = pedidosCache.length === 0;
+    // Com o recorte de período no servidor, `pedidosCache` vazio significa "nada neste
+    // período" (não "nunca") — então a mensagem é sempre period-aware. Diferencia só se
+    // há outros filtros ativos além do período.
+    const semFiltros = filtros.tipo === "todos" && filtros.canal === "todos"
+      && filtros.pagamento === "todos" && !filtros.busca.trim();
     cont.innerHTML = `
       <div class="estado-vazio">
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <p>${semNenhum ? "Nenhum pedido recebido ainda" : "Nenhum pedido neste período"}</p>
-        <span class="sub">${semNenhum
-          ? "Os pedidos aparecem aqui assim que o bot receber o primeiro pelo WhatsApp."
-          : "Experimente ampliar o período (7 dias) ou limpar a busca."}</span>
+        <p>Nenhum pedido neste período</p>
+        <span class="sub">${semFiltros
+          ? "Experimente ampliar o período (7 dias). Os pedidos aparecem aqui assim que chegam pelo WhatsApp."
+          : "Ajuste os filtros ou a busca, ou amplie o período."}</span>
       </div>`;
     return;
   }
@@ -3533,11 +3518,7 @@ function renderListaPedidos(lista) {
       if (!p) return;
       if (b.dataset.acao === "reimprimir") { reimprimirPedido(p.id); return; }
       // Receber: abre o modal p/ confirmar/escolher a forma (mesa nem chega aqui — sem badge).
-      abrirPedReceber(p, () => {
-        const ci = pedidosCache.findIndex((x) => x.id === p.id);
-        if (ci !== -1) pedidosCache[ci].recebidoEm = new Date().toISOString();
-        renderPedidos();
-      });
+      abrirPedReceber(p, () => carregarPedidos()); // re-busca → recebidoEm E pagamento reais do servidor
     })
   );
 
@@ -3558,10 +3539,10 @@ $("filtroPeriodo").addEventListener("click", (e) => {
   $("filtroPeriodo").querySelectorAll(".filtro-chip").forEach((b) => b.classList.toggle("ativo", b === btn));
   $("filtroDatas").style.display = filtros.periodo === "custom" ? "" : "none";
   paginaPedidos = 1;
-  renderPedidos(true);
+  carregarPedidos(); // período mudou → re-busca a janela no servidor
 });
-$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; paginaPedidos = 1; renderPedidos(true); });
-$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; paginaPedidos = 1; renderPedidos(true); });
+$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; paginaPedidos = 1; carregarPedidos(); });
+$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; paginaPedidos = 1; carregarPedidos(); });
 $("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; paginaPedidos = 1; renderPedidos(true); });
 $("filtroCanal").addEventListener("change", (e) => { filtros.canal = e.target.value; paginaPedidos = 1; renderPedidos(true); });
 $("filtroPagamento").addEventListener("change", (e) => { filtros.pagamento = e.target.value; paginaPedidos = 1; renderPedidos(true); });
@@ -3785,7 +3766,7 @@ function montarAcoes(p) {
       extra.className = "secundario";
       extra.textContent = "Receber pagamento (R$ " + fmtBRn(p.total) + ")";
       extra.addEventListener("click", () => {
-        abrirPedReceber(p, () => { p.recebidoEm = new Date().toISOString(); montarAcoes(p); });
+        abrirPedReceber(p, () => { p.recebidoEm = new Date().toISOString(); montarAcoes(p); carregarPedidos(); });
       });
       cont.appendChild(extra);
     }
@@ -4891,8 +4872,9 @@ function pdvPagarRecalc() {
   const entregaOk = pdvTipoEntrega !== "Entrega" || !!(pdvEntrega && pdvEntrega.endereco);
   // Balcão: precisa quitar (falta 0 + ao menos 1 pagamento). Entrega/Retirada: sem
   // pagamento — basta o endereço (Entrega) / sempre ok (Retirada).
+  // Total 0 (cortesia/100% de desconto): finaliza sem exigir pagamento.
   const pode = pdvTipoEntrega === "Balcão"
-    ? (falta <= 0.001 && pdvPagamentos.length && entregaOk)
+    ? (total <= 0.001 ? entregaOk : (falta <= 0.001 && pdvPagamentos.length && entregaOk))
     : entregaOk;
   if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !pode;
 }
@@ -4949,7 +4931,14 @@ async function finalizarVendaPdv() {
 if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => abrirUpsell("pdv"));
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("btnPdvVencidoCaixa")) $("btnPdvVencidoCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
-if ($("pdvBusca")) $("pdvBusca").addEventListener("input", (e) => { pdvBuscaTermo = e.target.value || ""; renderPdvProdutos(); });
+if ($("pdvBusca")) {
+  let pdvBuscaTimer;
+  $("pdvBusca").addEventListener("input", (e) => {
+    pdvBuscaTermo = e.target.value || "";
+    clearTimeout(pdvBuscaTimer); // debounce ~150ms: não reconstrói a grade a cada tecla
+    pdvBuscaTimer = setTimeout(renderPdvProdutos, 150);
+  });
+}
 // Zera o filtro do PDV (busca + categoria). Usado ao entrar/sair do modo mesa, pra que
 // a venda do PDV e o lançamento da mesa não herdem o filtro um do outro (contextos independentes).
 function pdvLimparBusca() {
@@ -5391,6 +5380,13 @@ function mesaFmtHora(iso) {
   } catch (_) { return ""; }
 }
 
+// Texto do "valor por pessoa": usa o rateio igualitário do servidor (`porPessoa`,
+// que fecha no total); mostra a faixa quando sobra 1 centavo. Fallback total÷pessoas.
+function mesaPorPessoaTxt(pp, total, pes) {
+  if (pp && pp.min != null) return pp.min === pp.max ? pdvMoney(pp.max) : pdvMoney(pp.min) + " a " + pdvMoney(pp.max);
+  return pdvMoney(Math.round(((Number(total) || 0) / Math.max(1, pes)) * 100) / 100);
+}
+
 async function mesaSelecionarCard(id) {
   mesaState.selecionadaId = id;
   renderMesasGrade();
@@ -5515,8 +5511,7 @@ function renderMesaTotais() {
   }
   html += '<div class="mesa-tot-linha total"><span>TOTAL</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>";
   if (pes > 1) {
-    var porPessoa = Math.round(((resumo.total || 0) / pes) * 100) / 100;
-    html += '<div class="mesa-tot-linha mesa-tot-porpessoa"><span>Por pessoa (' + pes + ')</span><span>' + pdvMoney(porPessoa) + "</span></div>";
+    html += '<div class="mesa-tot-linha mesa-tot-porpessoa"><span>Por pessoa (' + pes + ')</span><span>' + mesaPorPessoaTxt(d.porPessoa, resumo.total, pes) + "</span></div>";
   }
   if (recebido > 0) {
     html += '<div class="mesa-tot-linha recebido"><span>Recebido</span><span>' + pdvMoney(recebido) + "</span></div>";
@@ -6090,7 +6085,7 @@ function abrirMesaPagar(modo) {
         '<div class="mesa-pagar-linha"><span>Subtotal</span><span>' + pdvMoney(resumo.subtotal || 0) + "</span></div>" +
         ((resumo.taxaServico || 0) > 0 ? '<div class="mesa-pagar-linha"><span>Taxa serviço (' + (d.taxaServico || 0) + '%)</span><span>' + pdvMoney(resumo.taxaServico) + "</span></div>" : "") +
         '<div class="mesa-pagar-linha total"><span>Total</span><span>' + pdvMoney(resumo.total || 0) + "</span></div>" +
-        ((d.pessoas || 1) > 1 ? '<div class="mesa-pagar-linha"><span>Por pessoa (' + d.pessoas + ')</span><span>' + pdvMoney(Math.round(((resumo.total || 0) / d.pessoas) * 100) / 100) + "</span></div>" : "") +
+        ((d.pessoas || 1) > 1 ? '<div class="mesa-pagar-linha"><span>Por pessoa (' + d.pessoas + ')</span><span>' + mesaPorPessoaTxt(d.porPessoa, resumo.total, d.pessoas) + "</span></div>" : "") +
         (recebido > 0 ? '<div class="mesa-pagar-linha recebido"><span>Já recebido</span><span>' + pdvMoney(recebido) + "</span></div>" : "") +
         '<div class="mesa-pagar-linha falta"><span>Falta</span><span>' + pdvMoney(falta) + "</span></div>" +
       "</div>" +

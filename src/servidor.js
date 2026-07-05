@@ -1637,7 +1637,13 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
 
 app.get("/api/pedidos", exigeAuth, async (req, res) => {
   try {
-    res.json((await pedidos.lerTodos(req.tenantDir)).reverse());
+    const q = req.query || {};
+    const filtro = {};
+    if (q.periodo === "hoje" || q.periodo === "7dias") filtro.periodo = q.periodo;
+    const dataOk = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (dataOk(q.desde)) filtro.desde = q.desde;
+    if (dataOk(q.ate)) filtro.ate = q.ate;
+    res.json((await pedidos.lerTodos(req.tenantDir, filtro)).reverse());
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler os pedidos." });
   }
@@ -1875,11 +1881,19 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     //    aba Pedidos (recebimento depois); baixa de estoque atômica, sem mexer no caixa.
     let pedido;
     if (tipoEntrega === "Balcão") {
-      pdv.validarPagamentos(total, b.pagamentos);
+      // Normaliza valorPago/troco no SERVIDOR (não confia no cliente) e valida a forma
+      // contra as configuradas (mesma regra do cardápio web) antes de gravar no caixa.
+      const pagamentosNorm = pdv.normalizarPagamentos(b.pagamentos);
+      const cfg = store.getConfig(req.tenantDir) || {};
+      const formasConfig = Array.isArray(cfg.pagamentos) ? cfg.pagamentos : [];
+      if (formasConfig.length && pagamentosNorm.some((p) => formasConfig.indexOf(p.forma) === -1)) {
+        return res.status(400).json({ erro: "Forma de pagamento inválida." });
+      }
+      pdv.validarPagamentos(total, pagamentosNorm);
       pedido = await caixa.venderLocal(req.tenantDir, {
         cliente: b.cliente, itens, total, desconto,
-        pagamentos: b.pagamentos,
-        pagamentoResumo: pdv.resumoPagamento(b.pagamentos),
+        pagamentos: pagamentosNorm,
+        pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
         observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
       });
     } else {
@@ -1949,7 +1963,16 @@ async function detalheMesa(dir, mesaId) {
   const resumo = mesas.calcularTotalMesa(peds, mesa.taxaServico);
   const recebido = await mesasDb.recebidoDaMesa(dir, mesaId);
   const falta = Math.max(0, Math.round((resumo.total - recebido) * 100) / 100);
-  return { ...mesa, pedidos: peds, resumo, recebido, falta };
+  // Valor por pessoa via dividirIgualitario (distribui os centavos → a soma fecha no
+  // total). Como pode sobrar 1 centavo, devolvemos a faixa {min,max} (o front/impresso
+  // mostram um valor só quando min==max). null com 1 pessoa (sem rateio).
+  const nPessoas = Math.max(1, Number(mesa.pessoas) || 1);
+  let porPessoa = null;
+  if (nPessoas > 1) {
+    const partes = mesas.dividirIgualitario(resumo.total, nPessoas).map((p) => p.valor);
+    porPessoa = { min: Math.min(...partes), max: Math.max(...partes) };
+  }
+  return { ...mesa, pedidos: peds, resumo, recebido, falta, porPessoa };
 }
 
 app.get("/api/mesas", exigeAuth, async (req, res) => {
@@ -2133,6 +2156,7 @@ app.post("/api/mesas/:id/imprimir-conta", exigeAuth, async (req, res) => {
         recebido: d.recebido || 0,
         falta: d.falta || 0,
         pessoas: d.pessoas || 1,
+        porPessoa: d.porPessoa || null, // {min,max} via dividirIgualitario (fecha no total)
         quando: new Date().toISOString(),
       },
       cfg
@@ -2164,7 +2188,17 @@ app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
     const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
     if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
     // Split: aceita `pagamentos` (array); fallback p/ {forma, valor} único (compat).
-    const pags = Array.isArray(b.pagamentos) ? b.pagamentos : [{ forma: b.forma, valor: b.valor }];
+    const pagsRaw = Array.isArray(b.pagamentos) ? b.pagamentos : [{ forma: b.forma, valor: b.valor }];
+    // Normaliza o troco no SERVIDOR (não confia no cliente) e VALIDA a soma contra o que
+    // falta — sem isto, um valor inflado creditava caixa fantasma (a conferência estourava).
+    const pags = pdv.normalizarPagamentos(pagsRaw);
+    const pedsP = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
+    const resumoP = mesas.calcularTotalMesa(pedsP, mesa.taxaServico);
+    const jaRecebido = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);
+    const faltaP = Math.max(0, Math.round((resumoP.total - jaRecebido) * 100) / 100);
+    const somaNet = Math.round(pags.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100;
+    if (somaNet <= 0) return res.status(400).json({ erro: "Valor deve ser positivo." });
+    if (somaNet > faltaP + 0.01) return res.status(400).json({ erro: "Valor acima do que falta (R$ " + faltaP.toFixed(2).replace(".", ",") + ")." });
     await mesasDb.receberParcial(req.tenantDir, mesaId, pags, mesa.nome);
     const d = await detalheMesa(req.tenantDir, mesaId);
     // Comprovante de pagamento parcial (impressão automática pelo agente; best-effort).
@@ -2193,13 +2227,20 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
     const b = req.body || {};
     const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
     if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
+    // Só fecha a partir de um estado de fechamento (pediu_conta/fechando) — esses estados
+    // BLOQUEIAM novos lançamentos (/pedido), então nada entra entre a validação do total
+    // e o UPDATE que libera a mesa. Fecha a corrida que liberaria a mesa cobrando a menos.
+    if (mesa.status !== "fechando" && mesa.status !== "pediu_conta") {
+      return res.status(400).json({ erro: "Peça a conta antes de fechar (a mesa precisa estar em fechamento)." });
+    }
     const peds = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
     if (!peds.filter((p) => p.status !== "cancelado").length) return res.status(400).json({ erro: "A mesa não possui pedidos." });
     const resumo = mesas.calcularTotalMesa(peds, mesa.taxaServico);
-    const { total } = pdv.aplicarDesconto(resumo.total, b.desconto);
+    const total = resumo.total; // mesa não tem desconto — não afrouxa a validação com b.desconto
     const recebidoAntes = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);
-    const pagamentos = Array.isArray(b.pagamentos) ? b.pagamentos : [];
-    const somaAgora = pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0);
+    // Normaliza troco no SERVIDOR (não confia no cliente): valor líquido por forma.
+    const pagamentos = pdv.normalizarPagamentos(Array.isArray(b.pagamentos) ? b.pagamentos : []);
+    const somaAgora = Math.round(pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100;
     if (recebidoAntes + somaAgora + 0.01 < total) {
       return res.status(400).json({ erro: "Pagamento insuficiente para fechar a conta." });
     }
@@ -2208,7 +2249,9 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
     try {
       const cfg = store.getConfig(req.tenantDir) || {};
       const pagoAgora = Math.round(somaAgora * 100) / 100;
-      const troco = Math.max(0, Math.round(((recebidoAntes + somaAgora) - total) * 100) / 100);
+      // Troco é a soma do troco por forma (só dinheiro) — o `valor` já é líquido, então
+      // (recebido+pago − total) daria sempre ~0 e o impresso mostrava Troco R$ 0,00.
+      const troco = Math.round(pagamentos.reduce((s, p) => s + (Number(p.troco) || 0), 0) * 100) / 100;
       const texto = Comanda.montarComprovante({ nome: mesa.nome }, {
         modo: "final", pagamentos,
         total, recebidoAntes: Math.round(recebidoAntes * 100) / 100,

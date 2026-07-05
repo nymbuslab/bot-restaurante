@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { recalcularVenda, aplicarDesconto, validarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete } = require("../src/pdv");
+const { recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete } = require("../src/pdv");
 
 const cardapio = {
   categorias: [
@@ -61,6 +61,30 @@ test("validarPagamentos: soma das formas precisa bater com o total", () => {
   assert.throws(() => validarPagamentos(10, [{ forma: "", valor: 10 }]), /Forma de pagamento/);
   assert.throws(() => validarPagamentos(10, [{ forma: "Pix", valor: 0 }]), /Valor de pagamento/);
   assert.throws(() => validarPagamentos(10, []), /Informe a forma/);
+});
+
+test("validarPagamentos: total 0 (cortesia/100% desconto) dispensa pagamento", () => {
+  assert.equal(validarPagamentos(0, []), true);
+  assert.equal(validarPagamentos(0, undefined), true);
+  assert.equal(validarPagamentos(-0.001, []), true); // ruído de arredondamento também
+});
+
+test("normalizarPagamentos: troco só no dinheiro; demais formas zeram troco", () => {
+  // Dinheiro entregue R$ 50 para uma venda de R$ 28 → valor 28, valorPago 50, troco 22.
+  assert.deepEqual(
+    normalizarPagamentos([{ forma: "Dinheiro", valor: 28, valorPago: 50, troco: 22 }]),
+    [{ forma: "Dinheiro", valor: 28, valorPago: 50, troco: 22 }]
+  );
+  // Cliente adulterado: "troco no Pix" → servidor força troco 0 e valorPago = valor.
+  assert.deepEqual(
+    normalizarPagamentos([{ forma: "Pix", valor: 50, valorPago: 100, troco: 50 }]),
+    [{ forma: "Pix", valor: 50, valorPago: 50, troco: 0 }]
+  );
+  // Split: dinheiro com troco + cartão sem troco.
+  assert.deepEqual(
+    normalizarPagamentos([{ forma: "Dinheiro", valor: 20, valorPago: 30 }, { forma: "Cartão", valor: 15 }]),
+    [{ forma: "Dinheiro", valor: 20, valorPago: 30, troco: 10 }, { forma: "Cartão", valor: 15, valorPago: 15, troco: 0 }]
+  );
 });
 
 test("calcularTroco: nunca negativo", () => {

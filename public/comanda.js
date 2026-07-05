@@ -206,9 +206,14 @@
     linhas.push(linhaValor("TOTAL:", fmtBR(opts.total)));
     const pessoas = Math.max(1, Math.round(Number(opts.pessoas) || 1));
     if (pessoas > 1) {
-      const porPessoa = Math.round(((Number(opts.total) || 0) / pessoas) * 100) / 100;
+      // Rateio igualitário calculado no servidor (fecha no total); mostra a faixa se
+      // sobrar 1 centavo. Fallback p/ total÷pessoas se o porPessoa não vier.
+      const pp = opts.porPessoa;
+      const txt = (pp && pp.min != null)
+        ? (pp.min === pp.max ? fmtBR(pp.max) : fmtBR(pp.min) + " a " + fmtBR(pp.max))
+        : fmtBR(Math.round(((Number(opts.total) || 0) / pessoas) * 100) / 100);
       linhas.push(linhaValor("Pessoas:", String(pessoas)));
-      linhas.push(linhaValor("Por pessoa:", fmtBR(porPessoa)));
+      linhas.push(linhaValor("Por pessoa:", txt));
     }
     if ((Number(opts.recebido) || 0) > 0) {
       linhas.push(linhaValor("Ja recebido:", fmtBR(opts.recebido)));

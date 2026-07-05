@@ -87,9 +87,24 @@ async function salvarPedido(dir, pedido, client) {
   };
 }
 
-async function lerTodos(dir) {
+// `filtro` (opcional) recorta por janela de data NO BANCO (fuso America/Sao_Paulo),
+// evitando trazer o histórico inteiro ao cliente. Sem filtro = tudo (usado pela
+// exportação LGPD). `periodo`: 'hoje' | '7dias'; ou `desde`/`ate` ('YYYY-MM-DD').
+async function lerTodos(dir, filtro) {
   const empId = await empresaId(dir);
-  const r = await db.query("SELECT * FROM pedidos WHERE empresa_id = $1 ORDER BY id ASC", [empId]);
+  const TZ = "'America/Sao_Paulo'";
+  const cond = ["empresa_id = $1"];
+  const params = [empId];
+  filtro = filtro || {};
+  if (filtro.periodo === "hoje") {
+    cond.push(`criado_em >= ((now() AT TIME ZONE ${TZ})::date)::timestamp AT TIME ZONE ${TZ}`);
+  } else if (filtro.periodo === "7dias") {
+    cond.push(`criado_em >= (((now() AT TIME ZONE ${TZ})::date - 6))::timestamp AT TIME ZONE ${TZ}`);
+  } else {
+    if (filtro.desde) { params.push(filtro.desde); cond.push(`criado_em >= ($${params.length}::date)::timestamp AT TIME ZONE ${TZ}`); }
+    if (filtro.ate)   { params.push(filtro.ate);   cond.push(`criado_em < ($${params.length}::date + 1)::timestamp AT TIME ZONE ${TZ}`); }
+  }
+  const r = await db.query(`SELECT * FROM pedidos WHERE ${cond.join(" AND ")} ORDER BY id ASC`, params);
   return r.rows.map(mapRow);
 }
 
@@ -218,7 +233,7 @@ async function cancelarPedido(dir, pedidoId) {
 async function cancelarItemPedido(dir, pedidoId, itemIdx) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT id, itens, taxa_entrega FROM pedidos WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado'",
+    "SELECT id, itens, taxa_entrega, desconto FROM pedidos WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado'",
     [empId, pedidoId]
   );
   if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou cancelado.");
@@ -231,14 +246,16 @@ async function cancelarItemPedido(dir, pedidoId, itemIdx) {
       [pedidoId]
     );
   } else {
-    // Recalcula o total a partir dos itens restantes E mantém a taxa de entrega
-    // (frete não pertence a nenhum item; some do total se não for re-somado aqui).
+    // Recalcula o total a partir dos itens restantes, mantendo a taxa de entrega
+    // (frete não pertence a nenhum item) e ABATENDO o desconto do pedido (PDV) —
+    // sem isto o total ignorava o desconto e o cliente era cobrado a mais.
     const taxa = r.rows[0].taxa_entrega == null ? 0 : Number(r.rows[0].taxa_entrega);
-    const novoTotal = Math.round((itens.reduce((s, i) => {
+    const desconto = r.rows[0].desconto == null ? 0 : Number(r.rows[0].desconto);
+    const novoTotal = Math.round(Math.max(0, itens.reduce((s, i) => {
       const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0)
         + (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
       return s + ((i.preco || 0) + extras) * (i.qtd || 1);
-    }, 0) + taxa) * 100) / 100;
+    }, 0) + taxa - desconto) * 100) / 100;
     await db.query(
       "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
       [JSON.stringify(itens), novoTotal, pedidoId]

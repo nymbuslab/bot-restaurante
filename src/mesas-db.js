@@ -458,6 +458,15 @@ async function cancelarItem(dir, mesaId, pedidoId, itemIdx) {
       [JSON.stringify(itens), novoTotal, pedidoId]
     );
   }
+  // Mantém o total_consumido da mesa em dia (senão o card da grade e o resumo "Em aberto"
+  // seguem mostrando o valor antigo até o próximo lançamento). Mesma soma do lancarItens.
+  await db.query(
+    `UPDATE mesas m SET total_consumido = (
+        SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
+       WHERE m.empresa_id = $1 AND m.id = $2`,
+    [empId, mesaId]
+  );
 }
 
 function esquecer(slug) { delete idCache[slug]; }

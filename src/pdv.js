@@ -88,7 +88,29 @@ function aplicarDesconto(subtotal, desconto) {
 
 // Valida o pagamento (split): formas não-vazias, valores positivos e soma == total
 // (tolerância de 1 centavo p/ arredondamento). Lança Error com mensagem ao usuário.
+// Dinheiro? (mesma regra do front pdvEhDinheiro) — só o dinheiro gera troco.
+function ehDinheiroForma(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
+
+// Normaliza valorPago/troco NO SERVIDOR (não confia no cliente): troco só existe
+// no dinheiro (troco = valorPago − valor); as demais formas têm troco 0 e
+// valorPago = valor. `valor` (líquido da venda) é preservado. Blinda as colunas
+// Pago/Troco do caixa contra um split coerente-porém-errado vindo do cliente.
+function normalizarPagamentos(pagamentos) {
+  const lista = Array.isArray(pagamentos) ? pagamentos : [];
+  return lista.map((p) => {
+    const forma = String((p && p.forma) || "").trim();
+    const valor = cent(p && p.valor);
+    if (ehDinheiroForma(forma)) {
+      const valorPago = Math.max(valor, cent(p && p.valorPago));
+      return { forma, valor, valorPago, troco: cent(valorPago - valor) };
+    }
+    return { forma, valor, valorPago: valor, troco: 0 };
+  });
+}
+
 function validarPagamentos(total, pagamentos) {
+  // Venda quitada / cortesia total (100% de desconto): nada a cobrar, sem pagamento.
+  if (cent(total) <= 0) return true;
   const lista = Array.isArray(pagamentos) ? pagamentos : [];
   if (!lista.length) throw new Error("Informe a forma de pagamento.");
   let soma = 0;
@@ -130,4 +152,4 @@ function resumoPagamento(pagamentos) {
     .join(" · ");
 }
 
-module.exports = { recalcularVenda, aplicarDesconto, validarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete };
+module.exports = { recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete };

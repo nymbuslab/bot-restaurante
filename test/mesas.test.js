@@ -4,8 +4,6 @@ const {
   precoLinha,
   calcularTotalMesa,
   dividirIgualitario,
-  dividirPorProduto,
-  calcularFalta,
 } = require("../src/mesas");
 
 test("precoLinha: base + opcionais + variações × qtd", () => {
@@ -54,50 +52,12 @@ test("dividirIgualitario: 1 pessoa = total inteiro", () => {
   assert.equal(r[0].valor, 72.5);
 });
 
-test("dividirPorProduto: 2 pessoas com itens distintos", () => {
-  const pedidos = [
-    { id: 1, itens: [{ nome: "X-Burger", preco: 20, qtd: 2 }, { nome: "Cerveja", preco: 10, qtd: 1 }] },
-  ];
-  const atribuicoes = [
-    { pedidoId: 1, itemIndex: 0, pessoa: "Pessoa 1" },
-    { pedidoId: 1, itemIndex: 1, pessoa: "Pessoa 2" },
-  ];
-  const r = dividirPorProduto(pedidos, atribuicoes);
-  const p1 = r.find((p) => p.pessoa === "Pessoa 1");
-  const p2 = r.find((p) => p.pessoa === "Pessoa 2");
-  assert.equal(p1.subtotal, 40);
-  assert.equal(p2.subtotal, 10);
-});
-
-test("dividirPorProduto: item sem atribuição vai para 'Não atribuído'", () => {
-  const pedidos = [{ id: 7, itens: [{ nome: "Batata", preco: 15, qtd: 1 }] }];
-  const r = dividirPorProduto(pedidos, []);
-  assert.equal(r.length, 1);
-  assert.equal(r[0].pessoa, "Não atribuído");
-  assert.equal(r[0].subtotal, 15);
-});
-
-test("calcularFalta: recebe 50 de 100 → falta 50", () => {
-  const r = calcularFalta(100, [{ valor: 50 }]);
-  assert.equal(r.recebido, 50);
-  assert.equal(r.falta, 50);
-  assert.equal(r.troco, 0);
-});
-
-test("calcularFalta: recebe o restante → falta 0", () => {
-  const r = calcularFalta(100, [{ valor: 50 }, { valor: 50 }]);
-  assert.equal(r.falta, 0);
-  assert.equal(r.troco, 0);
-});
-
-test("calcularFalta: pagou a mais em dinheiro → troco", () => {
-  const r = calcularFalta(92, [{ valor: 100 }]);
-  assert.equal(r.falta, 0);
-  assert.equal(r.troco, 8);
-});
-
-test("calcularFalta: sem pagamentos → falta o total", () => {
-  const r = calcularFalta(72.5, []);
-  assert.equal(r.recebido, 0);
-  assert.equal(r.falta, 72.5);
+test("dividirIgualitario: 30,02 entre 3 → soma fecha no total (centavo distribuído)", () => {
+  const r = dividirIgualitario(30.02, 3);
+  assert.equal(r.length, 3);
+  const soma = Math.round(r.reduce((s, p) => s + p.valor, 0) * 100) / 100;
+  assert.equal(soma, 30.02);
+  // 10.01, 10.01, 10.00 — o resto (2 centavos) vai para as primeiras pessoas.
+  assert.equal(r[0].valor, 10.01);
+  assert.equal(r[2].valor, 10.00);
 });
