@@ -22,7 +22,8 @@ Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `src/planos.js`). Se
   - `ativo` (boolean) = suspensão **manual** do admin (hard block, bloqueia até o login).
   - `assinatura_status` (coluna) = estado de billing: `nenhuma | trialing | active |
     cortesia | past_due | canceled`. (`cortesia` = acesso liberado **manualmente** pelo
-    super-admin, sem Stripe.)
+    super-admin; **override que sobrepõe o Stripe** — ao conceder, a cobrança é **pausada**
+    e nenhum evento do Stripe apaga esse status. Ver "Gerenciar (super-admin)" abaixo.)
   - `podeLogar(emp)` = só `ativo` (o inadimplente entra para pagar). `acessoLiberado(emp)` =
     `ativo` **e** status em `["trialing","active","cortesia"]` → controla **bot ligado** e
     features. Middleware `exigeAssinatura` (depois de `exigeAuth`) responde **402** sem acesso;
@@ -50,7 +51,9 @@ Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `src/planos.js`). Se
   ANTES do `express.json` global. Trata `checkout.session.completed`,
   `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed` →
   `aplicarSubscription()` grava o estado e **liga/desliga o bot** (`past_due`/`canceled` →
-  `multiBot.desconectar`). Não toca `ativo`.
+  `multiBot.desconectar`). Não toca `ativo`. **Cortesia é preservada:** se o tenant está em
+  `cortesia`, `aplicarSubscription` e `invoice.payment_failed` **não sobrescrevem** o status
+  nem derrubam o bot — só o master (revogando) sai desse estado.
 
 - **Gerenciar** (cliente): aba **Assinatura** no painel + **gate** que trava o painel sem acesso.
   Página de billing com **card largo do plano** (plano `Plano Nymbus Pedidos` · `R$ 79,00/mês` ·
@@ -79,7 +82,9 @@ Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `src/planos.js`). Se
 
 - **Gerenciar (super-admin):** no painel master, o botão **Gerenciar** de cada restaurante abre
   um modal com status + ações + **histórico de faturas** (`GET .../assinatura`): liberar/revogar
-  **cortesia** (`PATCH .../assinatura/cortesia|revogar`), **cancelar no Stripe**
+  **cortesia** (`PATCH .../assinatura/cortesia|revogar`) — **liberar** pausa a cobrança no Stripe
+  (`pausarAssinatura`, void) e **anula faturas em aberto** (`anularFaturasAbertas`) p/ o cartão
+  não ser cobrado; **revogar** retoma a cobrança (`retomarAssinatura`) —, **cancelar no Stripe**
   (`PATCH .../assinatura/cancelar`), suspender/reativar (eixo `ativo`) e excluir.
   Métricas de billing (trial/pagantes/cortesia/atraso/cancelados) em `GET /api/admin/metrics`.
 
