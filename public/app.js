@@ -2909,119 +2909,59 @@ const ICO_TREND_DOWN = `<svg xmlns="http://www.w3.org/2000/svg" width="18" heigh
 // DASHBOARD
 // ============================================================
 async function carregarDashboard() {
+  // Agora o servidor agrega tudo (GET /api/dashboard) — o front só EXIBE. Antes isto
+  // baixava o histórico inteiro e recalculava no cliente (lento e cada vez pior).
+  const r = await api("GET", "/api/dashboard");
+  if (!r) return;
+  if (!r.ok) { toast("Não foi possível carregar o Dashboard.", "erro"); return; }
   try {
-    const r = await api("GET", "/api/pedidos");
-    if (!r) return;
-    const pedidos = await r.json();
-    const agora = new Date();
-    const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    const d = await r.json();
+    const v = d.vendas || {}, L = d.labels || {};
 
-    // (Saudação + status + data agora ficam no header global — sem card no Dashboard.)
-
-    // Visão de Vendas — faturamento por janela. Exclui cancelados (não é venda).
-    const vendasAtivas = pedidos.filter((p) => p.status !== "cancelado");
-    const fatDe = (lista) => lista.reduce((s, p) => s + (p.total || 0), 0);
-    const inicioOntemV = new Date(inicioHoje.getTime() - 86400000);
-    const inicio7 = new Date(inicioHoje.getTime() - 6 * 86400000); // últimos 7 dias (inclui hoje)
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    const vHoje = fatDe(vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicioHoje));
-    const vOntem = fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= inicioOntemV && d < inicioHoje; }));
-    const v7 = fatDe(vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicio7));
-    const vMes = fatDe(vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicioMes));
-    const dataBR = (d) => d.toLocaleDateString("pt-BR");
-    const dataCurta = (d) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    // ---- Vendas por janela (faturamento de produtos, sem frete) ----
     const setVendaCard = (idVal, valor, idSub, sub) => {
-      if ($(idVal)) $(idVal).textContent = "R$ " + moedaBR(valor);
+      if ($(idVal)) $(idVal).textContent = "R$ " + moedaBR(valor || 0);
       if ($(idSub)) $(idSub).textContent = sub || "";
     };
-    setVendaCard("dashVendasHoje", vHoje, "dashVendasHojeSub", dataBR(inicioHoje));
-    setVendaCard("dashVendasOntem", vOntem, "dashVendasOntemSub", dataBR(inicioOntemV));
-    setVendaCard("dashVendas7", v7, "dashVendas7Sub", dataCurta(inicio7) + " a " + dataCurta(inicioHoje));
-    const mesLabel = agora.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-    setVendaCard("dashVendaMes", vMes, "dashVendaMesSub", mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1));
+    setVendaCard("dashVendasHoje", v.hoje, "dashVendasHojeSub", L.hoje);
+    setVendaCard("dashVendasOntem", v.ontem, "dashVendasOntemSub", L.ontem);
+    setVendaCard("dashVendas7", v.sete, "dashVendas7Sub", L.sete);
+    setVendaCard("dashVendaMes", v.mes, "dashVendaMesSub", L.mes);
 
-    // ---- Análises: gráficos (30 dias / 12 meses) + widgets do mês ----
-    const serieDia = [];
-    for (let i = 29; i >= 0; i--) {
-      const d0 = new Date(inicioHoje.getTime() - i * 86400000);
-      const d1 = new Date(d0.getTime() + 86400000);
-      const valor = fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= d0 && d < d1; }));
-      serieDia.push({ valor, rotulo: d0.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) });
-    }
-    renderBarras("dashChartDia", serieDia);
-    const serieMes = [];
-    for (let i = 11; i >= 0; i--) {
-      const m0 = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
-      const m1 = new Date(agora.getFullYear(), agora.getMonth() - i + 1, 1);
-      const valor = fatDe(vendasAtivas.filter((p) => { const d = new Date(p.criadoEm); return d >= m0 && d < m1; }));
-      const ml = m0.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }).replace(".", "");
-      serieMes.push({ valor, rotulo: ml.charAt(0).toUpperCase() + ml.slice(1) });
-    }
-    renderBarras("dashChartMes", serieMes);
+    // ---- Gráficos (30 dias / 12 meses) ----
+    renderBarras("dashChartDia", d.serieDia || []);
+    renderBarras("dashChartMes", d.serieMes || []);
 
-    // Agregados do mês (exclui cancelados). Garante o cardápio p/ mapear o grupo do item.
-    const doMes = vendasAtivas.filter((p) => new Date(p.criadoEm) >= inicioMes);
-    if (!cardapioAtual || !cardapioAtual.categorias || !cardapioAtual.categorias.length) {
-      const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
-    }
-    const catId = {}, catNome = {};
-    ((cardapioAtual && cardapioAtual.categorias) || []).forEach((c) => (c.itens || []).forEach((it) => {
-      if (it.id != null) catId[it.id] = c.nome;
-      if (it.nome) catNome[it.nome] = c.nome;
-    }));
-    const prodMap = {}, grupoMap = {};
-    doMes.forEach((p) => (p.itens || []).forEach((i) => {
-      const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0)
-        + (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
-      const qtd = i.qtd || 1;
-      const nome = i.nome || "—";
-      if (!prodMap[nome]) prodMap[nome] = { nome, qtd: 0, valor: 0 };
-      prodMap[nome].qtd += qtd;
-      prodMap[nome].valor += ((i.preco || 0) + extras) * qtd;
-      const cat = catId[i.id] || catNome[i.nome] || "Outros";
-      grupoMap[cat] = (grupoMap[cat] || 0) + qtd;
-    }));
-    // 10 mais vendidos (por faturamento)
-    const top10 = Object.values(prodMap).sort((a, b) => b.valor - a.valor).slice(0, 10);
+    // ---- 10 mais vendidos (por faturamento) ----
+    const top10 = d.top10 || [];
     const elTop = $("dashTop10");
     if (elTop) elTop.innerHTML = top10.length
       ? top10.map((t) => `<li><span class="dash-top-nome">${escapar(t.nome)}</span><span class="dash-top-val">R$ ${moedaBR(t.valor)}</span></li>`).join("")
       : '<li class="dash-vazio">Sem vendas no mês.</li>';
-    // Ranking de grupos (por quantidade)
-    const ranking = Object.entries(grupoMap).map(([nome, qtd]) => ({ nome, qtd })).sort((a, b) => b.qtd - a.qtd).slice(0, 6);
-    const maxG = Math.max(1, ...ranking.map((r) => r.qtd));
+
+    // ---- Ranking de grupos (por quantidade) ----
+    const ranking = d.ranking || [];
+    const maxG = Math.max(1, ...ranking.map((r2) => r2.qtd));
     const elRank = $("dashRankGrupos");
     if (elRank) elRank.innerHTML = ranking.length
-      ? ranking.map((r) => `<div class="dash-rank-linha"><span class="dash-rank-nome">${escapar(r.nome)}</span><span class="dash-rank-barra"><span style="width:${Math.round((r.qtd / maxG) * 100)}%"></span></span><span class="dash-rank-qtd">${r.qtd}</span></div>`).join("")
+      ? ranking.map((r2) => `<div class="dash-rank-linha"><span class="dash-rank-nome">${escapar(r2.nome)}</span><span class="dash-rank-barra"><span style="width:${Math.round((r2.qtd / maxG) * 100)}%"></span></span><span class="dash-rank-qtd">${r2.qtd}</span></div>`).join("")
       : '<p class="dash-vazio">Sem vendas no mês.</p>';
-    // Visão geral (mês): qualidade e origem das vendas (o faturamento já está no topo).
-    const ticket = doMes.length ? fatDe(doMes) / doMes.length : 0;
-    // Taxa de cancelamento: precisa dos cancelados → usa `pedidos` (doMes exclui cancelados).
-    const doMesTodos = pedidos.filter((p) => new Date(p.criadoEm) >= inicioMes);
-    const nCancel = doMesTodos.filter((p) => p.status === "cancelado").length;
-    const taxaCanc = doMesTodos.length ? Math.round((nCancel / doMesTodos.length) * 100) : 0;
-    // Canais por faturamento (top 3, %).
-    const canalFat = {};
-    doMes.forEach((p) => { const c = canalPedido(p); canalFat[c] = (canalFat[c] || 0) + (p.total || 0); });
-    const fatTotal = Object.values(canalFat).reduce((s, v) => s + v, 0) || 1;
-    const canaisStr = Object.entries(canalFat).sort((a, b) => b[1] - a[1]).slice(0, 3)
-      .map(([c, v]) => c + " " + Math.round((v / fatTotal) * 100) + "%").join(" · ") || "—";
-    // Pagamento mais usado (entre pedidos com forma informada — web/PDV).
-    const pagCount = {};
-    doMes.forEach((p) => { const f = (p.pagamento || "").trim(); if (f) pagCount[f] = (pagCount[f] || 0) + 1; });
-    const pagTot = Object.values(pagCount).reduce((s, v) => s + v, 0);
-    const pagTop = Object.entries(pagCount).sort((a, b) => b[1] - a[1])[0];
-    const pagStr = pagTop ? pagTop[0] + " (" + Math.round((pagTop[1] / pagTot) * 100) + "%)" : "—";
+
+    // ---- Visão geral (qualidade/origem das vendas do mês) ----
+    const vg = d.visao || {};
+    const canaisStr = (vg.canais && vg.canais.length) ? vg.canais.map((c) => c.nome + " " + c.pct + "%").join(" · ") : "—";
+    const pagStr = vg.pagamento ? vg.pagamento.nome + " (" + vg.pagamento.pct + "%)" : "—";
     const elVisao = $("dashVisaoGeral");
     if (elVisao) elVisao.innerHTML = [
-      ["Ticket médio", "R$ " + moedaBR(ticket), false],
-      ["Taxa de cancelamento", taxaCanc + "%", false],
+      ["Ticket médio", "R$ " + moedaBR(vg.ticket || 0), false],
+      ["Taxa de cancelamento", (vg.taxaCanc || 0) + "%", false],
       ["Canais", canaisStr, true],
       ["Pagamento mais usado", pagStr, true],
-    ].map(([l, v, mini]) => `<div class="dash-visao-linha"><span>${l}</span><strong${mini ? ' class="dash-visao-mini"' : ""}>${escapar(v)}</strong></div>`).join("");
+    ].map(([l, val, mini]) => `<div class="dash-visao-linha"><span>${l}</span><strong${mini ? ' class="dash-visao-mini"' : ""}>${escapar(val)}</strong></div>`).join("");
 
   } catch (e) {
     console.error("Dashboard error:", e);
+    toast("Não foi possível carregar o Dashboard.", "erro");
   }
 }
 

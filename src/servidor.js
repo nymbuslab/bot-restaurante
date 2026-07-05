@@ -32,6 +32,7 @@ const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const pdv = require("./pdv");
+const dashboardCalc = require("./dashboard-calc");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
 const mesasDb = require("./mesas-db");  // CRUD + recebimento parcial/fechamento
 const impressaoFila = require("./impressao-fila"); // fila genérica consumida pelo agente
@@ -1639,6 +1640,20 @@ app.get("/api/pedidos", exigeAuth, async (req, res) => {
     res.json((await pedidos.lerTodos(req.tenantDir)).reverse());
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler os pedidos." });
+  }
+});
+
+// Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
+// `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
+// final + mapeia item → grupo pelo cardápio do tenant.
+app.get("/api/dashboard", exigeAuth, async (req, res) => {
+  try {
+    const raw = await pedidos.dashboardRaw(req.tenantDir);
+    const cardapio = store.getCardapio(req.tenantDir);
+    res.json(dashboardCalc.montarDashboard(raw, cardapio));
+  } catch (e) {
+    console.error("dashboard:", e.message);
+    res.status(500).json({ erro: "Falha ao carregar o dashboard." });
   }
 });
 

@@ -265,4 +265,88 @@ async function contarVendasDoItem(dir, itemId) {
   return r.rows[0] ? r.rows[0].n : 0;
 }
 
-module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido };
+// ---- Dashboard: agregados calculados no BANCO (não traz o histórico ao cliente) ----
+// Tudo no fuso America/Sao_Paulo (agrupa por dia/mês local do dono). Faturamento =
+// venda de PRODUTOS = `total - taxa_entrega` (o frete não é receita), excluindo
+// cancelados. Top itens vêm de `itens_venda` (JOIN em pedidos p/ excluir cancelado).
+// Devolve dados CRUS; o formato final (labels, categorias, %) é montado em
+// `src/dashboard-calc.js` (puro/testado). Uma passada no banco em vez do histórico.
+const TZ_BR = "America/Sao_Paulo";
+const INICIO_MES_BR = "date_trunc('month',(now() AT TIME ZONE $2)) AT TIME ZONE $2";
+
+async function dashboardRaw(dir) {
+  const empId = await empresaId(dir);
+  const P = [empId, TZ_BR];
+
+  const [hojeR, diarioR, mensalR, mesR, canaisR, pagR, itensR] = await Promise.all([
+    // Hoje no fuso BR (âncora determinística das janelas).
+    db.query("SELECT to_char((now() AT TIME ZONE $1)::date,'YYYY-MM-DD') AS hoje", [TZ_BR]),
+    // Série diária dos últimos 30 dias (inclui hoje) — faturamento e nº de vendas por dia BR.
+    db.query(
+      `SELECT to_char((criado_em AT TIME ZONE $2)::date,'YYYY-MM-DD') AS dia,
+              COALESCE(SUM(total - COALESCE(taxa_entrega,0)),0)::float8 AS valor,
+              COUNT(*)::int AS qtd
+         FROM pedidos
+        WHERE empresa_id = $1 AND status <> 'cancelado'
+          AND criado_em >= (((now() AT TIME ZONE $2)::date - 29)::timestamp) AT TIME ZONE $2
+        GROUP BY dia`, P),
+    // Série mensal dos últimos 12 meses (inclui o mês atual).
+    db.query(
+      `SELECT to_char(date_trunc('month', criado_em AT TIME ZONE $2),'YYYY-MM') AS mes,
+              COALESCE(SUM(total - COALESCE(taxa_entrega,0)),0)::float8 AS valor
+         FROM pedidos
+        WHERE empresa_id = $1 AND status <> 'cancelado'
+          AND criado_em >= (date_trunc('month',(now() AT TIME ZONE $2)) - interval '11 months') AT TIME ZONE $2
+        GROUP BY mes`, P),
+    // Agregados do MÊS atual: faturamento, nº de vendas, cancelados, total.
+    db.query(
+      `SELECT COALESCE(SUM((total - COALESCE(taxa_entrega,0))) FILTER (WHERE status <> 'cancelado'),0)::float8 AS fat,
+              (COUNT(*) FILTER (WHERE status <> 'cancelado'))::int AS ativos,
+              (COUNT(*) FILTER (WHERE status = 'cancelado'))::int AS cancel,
+              COUNT(*)::int AS total
+         FROM pedidos
+        WHERE empresa_id = $1 AND criado_em >= ${INICIO_MES_BR}`, P),
+    // Faturamento por CANAL no mês (mesma regra do canalPedido do front).
+    db.query(
+      `SELECT CASE WHEN origem='mesa' THEN 'Mesa'
+                   WHEN origem='pdv'  THEN 'Balcão'
+                   WHEN origem='web'  THEN 'WhatsApp'
+                   WHEN mesa_id IS NOT NULL THEN 'Mesa'
+                   WHEN tipo_entrega='Balcão' THEN 'Balcão'
+                   ELSE 'WhatsApp' END AS canal,
+              COALESCE(SUM(total - COALESCE(taxa_entrega,0)),0)::float8 AS valor
+         FROM pedidos
+        WHERE empresa_id = $1 AND status <> 'cancelado' AND criado_em >= ${INICIO_MES_BR}
+        GROUP BY canal`, P),
+    // Formas de pagamento informadas no mês (contagem).
+    db.query(
+      `SELECT trim(pagamento) AS forma, COUNT(*)::int AS qtd
+         FROM pedidos
+        WHERE empresa_id = $1 AND status <> 'cancelado'
+          AND pagamento IS NOT NULL AND trim(pagamento) <> ''
+          AND criado_em >= ${INICIO_MES_BR}
+        GROUP BY trim(pagamento)`, P),
+    // Itens vendidos no mês (para Top 10 e ranking de grupos), excluindo cancelados.
+    db.query(
+      `SELECT iv.item_id, iv.descricao,
+              COALESCE(SUM(iv.qtd),0)::float8 AS qtd,
+              COALESCE(SUM(iv.subtotal),0)::float8 AS valor
+         FROM itens_venda iv
+         JOIN pedidos p ON p.id = iv.pedido_id
+        WHERE iv.empresa_id = $1 AND p.status <> 'cancelado'
+          AND iv.criado_em >= ${INICIO_MES_BR}
+        GROUP BY iv.item_id, iv.descricao`, P),
+  ]);
+
+  return {
+    hojeBR:     hojeR.rows[0].hoje,
+    diario:     diarioR.rows,   // [{ dia:'YYYY-MM-DD', valor, qtd }]
+    mensal:     mensalR.rows,   // [{ mes:'YYYY-MM', valor }]
+    mes:        mesR.rows[0],   // { fat, ativos, cancel, total }
+    canais:     canaisR.rows,   // [{ canal, valor }]
+    pagamentos: pagR.rows,      // [{ forma, qtd }]
+    itens:      itensR.rows,    // [{ item_id, descricao, qtd, valor }]
+  };
+}
+
+module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, dashboardRaw };
