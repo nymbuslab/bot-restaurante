@@ -840,12 +840,17 @@ function painelCarregando(txt) {
 const SVG_CONECTAR = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
 const SVG_RESET = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
 
+let _statusKey = null; // chave do último render (status|qr|numero) — evita reescrever o DOM à toa
 async function atualizarStatus() {
   try {
     const r = await api("GET", "/api/status");
     if (!r) return; // 401 → api() já redirecionou para o login
     const s = await r.json();
     const box = $("statusBox");
+    // Só reescreve o DOM quando algo muda — antes recriava o <img> do QR a cada 4s (flicker).
+    const chave = s.status + "|" + (s.qr || "") + "|" + (s.numero || "");
+    if (chave === _statusKey) return;
+    _statusKey = chave;
 
     if (s.status === "conectado") {
       box.innerHTML = `
@@ -899,6 +904,7 @@ async function atualizarStatus() {
 }
 
 async function conectarBot() {
+  _statusKey = null; // forçamos o próximo poll a re-renderizar (saímos do placeholder)
   $("statusBox").innerHTML = painelCarregando("Iniciando...");
   await api("POST", "/api/bot/conectar");
   setTimeout(atualizarStatus, 1500);
@@ -911,6 +917,7 @@ async function desconectarBot() {
     "Desconectar"
   );
   if (!ok) return;
+  _statusKey = null;
   await api("POST", "/api/bot/desconectar");
   setTimeout(atualizarStatus, 800);
 }
@@ -922,6 +929,7 @@ async function resetarBot() {
     "Limpar sessão"
   );
   if (!ok) return;
+  _statusKey = null;
   $("statusBox").innerHTML = painelCarregando("Limpando sessão...");
   const r = await api("POST", "/api/bot/resetar");
   if (r && !r.ok) {
@@ -1834,8 +1842,8 @@ function renderHorarios() {
     tr.className = "hor-linha" + (fechado ? " hor-fechado" : "");
     tr.innerHTML = `
       <td class="hor-dia" data-label="Dia">${label}</td>
-      <td data-label="Abre"><input type="time" id="h_abre_${key}" class="hor-time" value="${h.abre || "11:00"}" ${fechado ? "disabled" : ""} /></td>
-      <td data-label="Fecha"><input type="time" id="h_fecha_${key}" class="hor-time" value="${h.fecha || "22:00"}" ${fechado ? "disabled" : ""} /></td>
+      <td data-label="Abre"><input type="time" id="h_abre_${key}" class="hor-time" value="${escapar(h.abre || "11:00")}" ${fechado ? "disabled" : ""} /></td>
+      <td data-label="Fecha"><input type="time" id="h_fecha_${key}" class="hor-time" value="${escapar(h.fecha || "22:00")}" ${fechado ? "disabled" : ""} /></td>
       <td data-label="Fechado" class="hor-fechado-cel"><label class="switch"><input type="checkbox" id="h_fechado_${key}" ${fechado ? "checked" : ""} /></label></td>`;
     tbody.appendChild(tr);
     tr.querySelector(`#h_fechado_${key}`).addEventListener("change", (e) => {

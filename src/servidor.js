@@ -104,6 +104,8 @@ const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / che
 const refreshLimiter    = limitador(15, 60, TENTE_DEPOIS); // renovação de sessão (~1x/h por usuário)
 const publicoLimiter    = limitador(15, 60, "Muitas requisições. Aguarde um momento e tente novamente."); // cardápio web público
 const esqueciLimiter    = limitador(60, 5,  "Muitas solicitações de redefinição. Tente novamente mais tarde."); // esqueci a senha
+const contaLimiter      = limitador(15, 10, TENTE_DEPOIS); // trocar senha/e-mail/excluir conta — anti brute-force da senha atual
+const botLimiter        = limitador(15, 10, TENTE_DEPOIS); // conectar/resetar o bot — evita flood de reconexões (risco de ban do número)
 
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
 // A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
@@ -1379,7 +1381,7 @@ app.get("/api/status", exigeAuth, (req, res) => {
 
 // ---- Bot ----
 
-app.post("/api/bot/conectar", exigeAuth, exigeAssinatura, (req, res) => {
+app.post("/api/bot/conectar", botLimiter, exigeAuth, exigeAssinatura, (req, res) => {
   multiBot.iniciar(req.slug, req.tenantDir);
   res.json({ ok: true });
 });
@@ -1389,7 +1391,7 @@ app.post("/api/bot/desconectar", exigeAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/bot/resetar", exigeAuth, async (req, res) => {
+app.post("/api/bot/resetar", botLimiter, exigeAuth, async (req, res) => {
   try {
     await multiBot.resetarSessao(req.slug, req.tenantDir);
     res.json({ ok: true });
@@ -1410,11 +1412,40 @@ app.get("/api/config", exigeAuth, async (req, res) => {
   }
 });
 
+// Clampa VALORES no servidor (validarConfig só checa estrutura/tamanho). Não confia no
+// cliente: taxa/frete ≥ 0, faixas com fim ≥ ini, mensagens com teto (vão pro WhatsApp),
+// capa/logo só URL http "limpa" (evita quebra de CSS/hotlink na vitrine pública).
+const MAX_MSG_CONFIG = 4096;
+function normalizarConfigServidor(body) {
+  if (!body || typeof body !== "object") return;
+  const nn = (v) => Math.max(0, Number(String(v == null ? 0 : v).replace(",", ".")) || 0);
+  if (body.atendimento && typeof body.atendimento === "object" && "taxaEntrega" in body.atendimento) {
+    body.atendimento.taxaEntrega = nn(body.atendimento.taxaEntrega);
+  }
+  if (body.frete && body.frete.raio && Array.isArray(body.frete.raio.faixas)) {
+    body.frete.raio.faixas = body.frete.raio.faixas
+      .filter((f) => f && typeof f === "object")
+      .map((f) => { const ini = nn(f.ini); return Object.assign({}, f, { ini: ini, fim: Math.max(nn(f.fim), ini), valor: nn(f.valor) }); });
+  }
+  if (body.mensagens && typeof body.mensagens === "object") {
+    for (const k in body.mensagens) {
+      if (typeof body.mensagens[k] === "string") body.mensagens[k] = body.mensagens[k].slice(0, MAX_MSG_CONFIG);
+    }
+  }
+  if (body.restaurante && typeof body.restaurante === "object") {
+    for (const campo of ["capa", "logo"]) {
+      const v = body.restaurante[campo];
+      if (typeof v === "string" && v && !/^https?:\/\/[^\s"'()\\<>]+$/i.test(v.trim())) body.restaurante[campo] = "";
+    }
+  }
+}
+
 app.put("/api/config", exigeAuth, async (req, res) => {
   const invalido = validarConfig(req.body);
   if (invalido) return res.status(400).json({ erro: invalido });
   try {
     const body = req.body;
+    normalizarConfigServidor(body);
     let avisoFrete = null;
     // Frete por raio: feature do Plano Completo (gate no servidor, não confia no front).
     if (body.frete && body.frete.modo === "raio") {
@@ -1453,10 +1484,13 @@ app.get("/api/conta", exigeAuth, async (req, res) => {
   }
 });
 
-app.patch("/api/conta/senha", exigeAuth, async (req, res) => {
+app.patch("/api/conta/senha", contaLimiter, exigeAuth, async (req, res) => {
   try {
     const { senhaAtual, novaSenha } = req.body || {};
-    await empresas.trocarSenha(req.slug, senhaAtual, novaSenha);
+    // Passa o JWT atual p/ revogar as OUTRAS sessões após a troca (um refresh token
+    // vazado não sobrevive à troca de senha; a sessão atual do dono é preservada).
+    const jwt = (req.headers["authorization"] || "").replace("Bearer ", "");
+    await empresas.trocarSenha(req.slug, senhaAtual, novaSenha, jwt);
     const emp = await empresas.buscarPorSlug(req.slug);
     if (emp) mail.avisoSeguranca(emp.email, "Sua senha").catch((e) => console.error("email aviso senha:", e.message));
     res.json({ ok: true });
@@ -1465,10 +1499,11 @@ app.patch("/api/conta/senha", exigeAuth, async (req, res) => {
   }
 });
 
-app.patch("/api/conta/email", exigeAuth, async (req, res) => {
+app.patch("/api/conta/email", contaLimiter, exigeAuth, async (req, res) => {
   try {
     const { senhaAtual, novoEmail } = req.body || {};
-    const email = await empresas.trocarEmail(req.slug, senhaAtual, novoEmail);
+    const jwt = (req.headers["authorization"] || "").replace("Bearer ", "");
+    const email = await empresas.trocarEmail(req.slug, senhaAtual, novoEmail, jwt);
     mail.avisoSeguranca(email, "Seu e-mail de acesso").catch((e) => console.error("email aviso email:", e.message));
     res.json({ ok: true, email });
   } catch (e) {
@@ -1511,7 +1546,7 @@ app.get("/api/conta/exportar", exigeAuth, async (req, res) => {
 // LGPD — Excluir minha conta (autoatendimento, DESTRUTIVO). Exige a senha
 // atual + confirmação textual. Apaga tudo (empresa, pedidos em cascata,
 // sessão do WhatsApp, usuário do Auth e imagens). Desconecta o bot antes.
-app.delete("/api/conta", exigeAuth, async (req, res) => {
+app.delete("/api/conta", contaLimiter, exigeAuth, async (req, res) => {
   try {
     const { senhaAtual, confirmacao } = req.body || {};
     if (confirmacao !== "EXCLUIR") {

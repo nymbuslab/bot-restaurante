@@ -369,16 +369,28 @@ async function conferirSenha(slug, senhaAtual) {
   return !!conta;
 }
 
-async function trocarSenha(slug, senhaAtual, novaSenha) {
+// Revoga as OUTRAS sessões do usuário (mantém a atual, do `jwt`) — usado após trocar
+// senha/e-mail: um refresh token vazado/roubado não sobrevive à mudança de credencial.
+// Best-effort: nunca lança (a troca não pode falhar por causa disto). scope 'others'
+// preserva a sessão de quem fez a troca; revoga o resto (o access token curto expira só
+// no `exp`, mas sem refresh o atacante cai em ~1h).
+async function _revogarOutrasSessoes(jwt) {
+  if (!jwt) return;
+  try { await supabaseAdmin.auth.admin.signOut(jwt, "others"); }
+  catch (e) { console.error("revogar outras sessões:", e && e.message); }
+}
+
+async function trocarSenha(slug, senhaAtual, novaSenha, jwt) {
   if (!novaSenha || novaSenha.length < 6) throw new Error("A nova senha deve ter ao menos 6 caracteres.");
   const conta = await _validarSenhaAtual(slug, senhaAtual);
   if (!conta) throw new Error("Senha atual incorreta.");
   const { error } = await supabaseAdmin.auth.admin.updateUserById(conta.user_id, { password: novaSenha });
   if (error) throw new Error("Não foi possível alterar a senha.");
+  await _revogarOutrasSessoes(jwt);
   return true;
 }
 
-async function trocarEmail(slug, senhaAtual, novoEmail) {
+async function trocarEmail(slug, senhaAtual, novoEmail, jwt) {
   const email = String(novoEmail || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("E-mail inválido.");
   const conta = await _validarSenhaAtual(slug, senhaAtual);
@@ -392,6 +404,7 @@ async function trocarEmail(slug, senhaAtual, novoEmail) {
   }
   // Mantém a coluna `email` da empresa em sincronia com o Auth.
   await db.query("UPDATE empresas SET email = $1 WHERE slug = $2", [email, slug]);
+  await _revogarOutrasSessoes(jwt);
   return email;
 }
 

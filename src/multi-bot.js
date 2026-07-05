@@ -39,6 +39,11 @@ const MAX_RECONEXOES = 5;
 // { slug → { sock, status, qrDataUrl, prontoEm, fechandoManual, tentativas } }
 const tenants = new Map();
 
+// Anti-flood por remetente: descarta rajada (mídia/spam) para não gerar N respostas em
+// segundos — número não-oficial (Baileys) pode ser banido por spam. `jid → ts`.
+const ultimaMsg = new Map();
+const FLOOD_MS = 1000;
+
 function getEstado(slug) {
   const t = tenants.get(slug);
   if (!t) return { status: "desligado", qr: null, numero: null };
@@ -54,15 +59,19 @@ function contarConectados() {
 }
 
 function iniciar(slug, tenantDir) {
-  if (tenants.has(slug) && tenants.get(slug).sock) return;
+  // Barra reentrância: `.sock` só é setado depois de vários await em conectar() — sem a
+  // flag `conectando`, dois /conectar na janela abririam 2 sockets com as MESMAS
+  // credenciais (connectionReplaced → risco de flag/ban do número).
+  const existente = tenants.get(slug);
+  if (existente && (existente.sock || existente.conectando)) return;
 
-  const t = { sock: null, status: "iniciando", qrDataUrl: null, numero: null, prontoEm: null, fechandoManual: false, tentativas: 0, reconexaoTimer: null };
+  const t = { sock: null, conectando: true, status: "iniciando", qrDataUrl: null, numero: null, prontoEm: null, fechandoManual: false, tentativas: 0, reconexaoTimer: null };
   tenants.set(slug, t);
 
   conectar(slug, tenantDir).catch((err) => {
     console.error(`[${slug}] ❌ Erro ao iniciar:`, err.message);
     const tt = tenants.get(slug);
-    if (tt) { tt.status = "desligado"; tt.sock = null; }
+    if (tt) { tt.status = "desligado"; tt.sock = null; tt.conectando = false; }
   });
 }
 
@@ -98,6 +107,7 @@ async function conectar(slug, tenantDir) {
     markOnlineOnConnect: false,
   });
   t.sock = sock;
+  t.conectando = false; // socket criado → a partir daqui a guarda de `.sock` já protege
 
   sock.ev.on("creds.update", saveCreds);
 
@@ -193,13 +203,30 @@ async function conectar(slug, tenantDir) {
 
         const tt = tenants.get(slug);
         if (!tt || tt.status !== "conectado") continue;
+        if (tt.sock !== sock) continue; // socket órfão (corrida de conexão) não processa
+
+        // Anti-flood: descarta rajada do mesmo remetente (mídia/spam) — evita N respostas
+        // em segundos e reduz risco de ban do número.
+        const agora = Date.now();
+        if (agora - (ultimaMsg.get(jid) || 0) < FLOOD_MS) continue;
+        if (ultimaMsg.size > 5000) ultimaMsg.clear(); // teto de memória (poda simples)
+        ultimaMsg.set(jid, agora);
 
         const texto = msg.message.conversation
           || msg.message.extendedTextMessage?.text
           || "";
 
+        // Chave de sessão inclui o slug para isolar clientes entre tenants.
+        // Mantém remoteJid (identidade estável, mesmo quando é LID).
+        const sessaoKey = `${slug}:${jid}`;
+        const sessao = getSessao(sessaoKey);
+
+        // No modo ATENDENTE o bot fica QUIETO — inclusive para mídia (não fala por cima
+        // do atendente humano). Fora do ATENDENTE, orienta que só entende texto.
         if (!texto.trim()) {
-          await sock.sendMessage(jid, { text: "Por enquanto eu entendo apenas *mensagens de texto* 🙂. Digite *menu* para começar." });
+          if (sessao.estado !== "ATENDENTE") {
+            await sock.sendMessage(jid, { text: "Por enquanto eu entendo apenas *mensagens de texto* 🙂. Digite *menu* para começar." });
+          }
           continue;
         }
 
@@ -209,10 +236,6 @@ async function conectar(slug, tenantDir) {
         const phoneJid = msg.key.senderPn || (isJidUser(jid) ? jid : "");
         const telefone = phoneJid ? (jidDecode(phoneJid)?.user || "") : "";
 
-        // Chave de sessão inclui o slug para isolar clientes entre tenants.
-        // Mantém remoteJid (identidade estável, mesmo quando é LID).
-        const sessaoKey = `${slug}:${jid}`;
-        const sessao = getSessao(sessaoKey);
         const { respostas } = await processarMensagem(jid, texto, sessao, tenantDir, telefone);
         for (const r of respostas) {
           if (r && r.trim()) {
