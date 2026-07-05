@@ -7,6 +7,7 @@ const path = require("path");
 const db = require("./db");
 const calc = require("./caixa-calc");
 const store = require("./store");
+const pdv = require("./pdv"); // normalizarPagamentos (troco só no dinheiro; não confia no cliente)
 const relatorioCaixa = require("../public/relatorio-caixa"); // dual-mode Node/browser
 
 const slugDe = (dir) => path.basename(dir);
@@ -72,11 +73,18 @@ async function abrirCaixa(dir, { fundoTroco, operador, obsAbertura }) {
   if (fundo < 0) throw new Error("Fundo de troco inválido.");
   const aberto = await caixaAberto(dir);
   if (aberto) throw new Error("Já existe um caixa aberto.");
-  const r = await db.query(
-    "INSERT INTO caixas (empresa_id, fundo_troco, operador, obs_abertura) VALUES ($1, $2, $3, $4) RETURNING *",
-    [empId, fundo, (operador || "").trim() || null, (obsAbertura || "").trim() || null]
-  );
-  return r.rows[0];
+  try {
+    const r = await db.query(
+      "INSERT INTO caixas (empresa_id, fundo_troco, operador, obs_abertura) VALUES ($1, $2, $3, $4) RETURNING *",
+      [empId, fundo, (operador || "").trim() || null, (obsAbertura || "").trim() || null]
+    );
+    return r.rows[0];
+  } catch (e) {
+    // Corrida: o pré-check passou mas o índice único (caixas_um_aberto_por_empresa)
+    // barrou o 2º INSERT → mensagem amigável em vez do erro cru do Postgres.
+    if (e && e.code === "23505") throw new Error("Já existe um caixa aberto.");
+    throw e;
+  }
 }
 
 // Recebe um pedido a-receber. Aceita SPLIT (`pagamentos: [{forma, valor}]`) ou uma
@@ -85,18 +93,12 @@ async function abrirCaixa(dir, { fundoTroco, operador, obsAbertura }) {
 // resumo em `pedido.pagamento` (reflete como foi pago de fato).
 async function receberPedido(dir, pedidoId, opts) {
   const empId = await empresaId(dir);
-  let pagamentos = (opts && Array.isArray(opts.pagamentos) && opts.pagamentos.length)
+  const raw = (opts && Array.isArray(opts.pagamentos) && opts.pagamentos.length)
     ? opts.pagamentos
     : [{ forma: opts && opts.forma, valor: opts && opts.valor }];
-  const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
-  pagamentos = pagamentos
-    .map((p) => ({
-      forma: (p && String(p.forma || "").trim()) || "Outros",
-      valor: Math.round((Number(p && p.valor) || 0) * 100) / 100,
-      valorPago: cent2(p && p.valorPago),   // entregue (dinheiro na mão); null = não rastreado
-      troco: cent2(p && p.troco),           // troco devolvido
-    }))
-    .filter((p) => p.valor > 0);
+  // Normaliza no SERVIDOR (troco só no dinheiro; valorPago = valor nas demais formas) —
+  // mesma regra do PDV/Mesas, não confia no valorPago/troco do cliente.
+  const pagamentos = pdv.normalizarPagamentos(raw).filter((p) => p.valor > 0);
   if (!pagamentos.length) throw new Error("Valor deve ser positivo.");
   const soma = Math.round(pagamentos.reduce((s, p) => s + p.valor, 0) * 100) / 100;
   const caixa = await caixaAberto(dir);
@@ -237,21 +239,23 @@ async function estornarRecebimento(dir, pedidoId) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT numero, recebido_em FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT numero, recebido_em, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
+    if (ped.rows[0].status === "cancelado") throw new Error("Pedido cancelado — o cancelamento já deduziu do caixa.");
     if (!ped.rows[0].recebido_em) throw new Error("Este pedido não está recebido.");
     const numero = ped.rows[0].numero;
-    // Líquido por forma NESTE caixa (recebimento − estornos já feitos) = o que
-    // ainda está no caixa para este pedido. Estorna exatamente esse líquido.
+    // Líquido por forma NESTE caixa (recebimento − estornos − CANCELAMENTOS já feitos) =
+    // o que ainda está no caixa para este pedido. Estorna exatamente esse líquido.
+    // Incluir 'cancelamento' impede deduzir DUAS vezes (cancelar E estornar o mesmo pedido).
     const net = await client.query(
       `SELECT forma_pagamento AS forma,
-              SUM(CASE WHEN tipo='recebimento' THEN valor WHEN tipo='estorno' THEN -valor ELSE 0 END) AS net
+              SUM(CASE WHEN tipo='recebimento' THEN valor ELSE -valor END) AS net
          FROM caixa_movimentos
-        WHERE caixa_id = $1 AND pedido_id = $2 AND empresa_id = $3 AND tipo IN ('recebimento','estorno')
+        WHERE caixa_id = $1 AND pedido_id = $2 AND empresa_id = $3 AND tipo IN ('recebimento','estorno','cancelamento')
         GROUP BY forma_pagamento
-        HAVING SUM(CASE WHEN tipo='recebimento' THEN valor WHEN tipo='estorno' THEN -valor ELSE 0 END) > 0`,
+        HAVING SUM(CASE WHEN tipo='recebimento' THEN valor ELSE -valor END) > 0`,
       [caixa.id, pedidoId, empId]
     );
     if (!net.rows.length) {
@@ -296,19 +300,26 @@ async function cancelarRecebido(dir, pedidoId) {
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
     if (ped.rows[0].status === "cancelado") throw new Error("Pedido já cancelado.");
     const numero = ped.rows[0].numero;
-    // Recebimentos deste pedido NESTE caixa (espelha forma/valor no cancelamento).
-    const recs = await client.query(
-      "SELECT forma_pagamento, valor FROM caixa_movimentos WHERE caixa_id = $1 AND pedido_id = $2 AND tipo = 'recebimento' AND empresa_id = $3",
+    // Líquido por forma NESTE caixa (recebimento − estornos − cancelamentos) = o que
+    // ainda está no caixa. Deduz exatamente esse líquido (defensivo: se já houvesse um
+    // estorno, não deduz de novo o que já saiu). HAVING > 0 → nada a deduzir se já zerou.
+    const net = await client.query(
+      `SELECT forma_pagamento AS forma,
+              SUM(CASE WHEN tipo='recebimento' THEN valor ELSE -valor END) AS net
+         FROM caixa_movimentos
+        WHERE caixa_id = $1 AND pedido_id = $2 AND empresa_id = $3 AND tipo IN ('recebimento','estorno','cancelamento')
+        GROUP BY forma_pagamento
+        HAVING SUM(CASE WHEN tipo='recebimento' THEN valor ELSE -valor END) > 0`,
       [caixa.id, pedidoId, empId]
     );
-    if (!recs.rows.length) {
+    if (!net.rows.length) {
       throw new Error("O recebimento deste pedido não está no caixa aberto (talvez de um caixa já fechado). Não é possível cancelar com reflexo no caixa.");
     }
-    for (const r of recs.rows) {
+    for (const r of net.rows) {
       await client.query(
         `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
          VALUES ($1, $2, 'cancelamento', $3, $4, $5, $6)`,
-        [caixa.id, empId, r.forma_pagamento, Number(r.valor) || 0, pedidoId, "Cancelamento pedido #" + numero]
+        [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Cancelamento pedido #" + numero]
       );
     }
     await client.query(
@@ -332,6 +343,14 @@ async function registrarMovimento(dir, { tipo, valor, descricao }) {
   if (v <= 0) throw new Error("Valor deve ser positivo.");
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa primeiro.");
+  // Sangria não pode tirar mais do que o dinheiro em gaveta (senão o esperado em
+  // espécie fica negativo — impossível na conferência do fechamento).
+  if (tipo === "sangria") {
+    const emCaixa = calc.resumoCaixa(caixa, await _movimentos(caixa.id)).esperadoEspecie;
+    if (v > emCaixa + 0.001) {
+      throw new Error("Sangria (R$ " + v.toFixed(2) + ") maior que o dinheiro em caixa (R$ " + (Number(emCaixa) || 0).toFixed(2) + ").");
+    }
+  }
   const r = await db.query(
     `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, valor, descricao)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -359,7 +378,7 @@ async function resumo(dir) {
   // nº/cliente do pedido (recebimentos) — é o que o dono confere ao olhar o caixa.
   const mov = await db.query(
     `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.valor_pago, m.troco, m.descricao, m.criado_em,
-            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em
+            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em, p.status
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
       WHERE m.caixa_id = $1
@@ -391,6 +410,7 @@ async function resumo(dir) {
       // Retirada). Exclui mesa (sem pedido_id → paga na mesa) e balcão (venda paga na
       // hora → correção é cancelar, não estornar).
       estornavel: r.tipo === "recebimento" && r.pedido_id != null && r.recebido_em != null
+        && r.status !== "cancelado" // já cancelado → o cancelamento deduziu; não estornar de novo
         && !(r.origem === "pdv" && r.tipo_entrega === "Balcão"),
     })),
   };
@@ -399,11 +419,16 @@ async function resumo(dir) {
 // Formas eletrônicas do relatório = união das configuradas (menos dinheiro) com as
 // que de fato tiveram recebimento — espelha a regra do front (corrige Pix fora da
 // config) e mantém a montagem do relatório com dados do servidor.
-function _formasEletronicas(pagamentos, recebidoPorForma) {
+function _formasEletronicas(pagamentos, recebidoPorForma, contadoPorForma) {
   const formas = (pagamentos || []).filter((f) => !calc.ehDinheiro(f));
-  for (const f in (recebidoPorForma || {})) {
-    if (!calc.ehDinheiro(f) && !formas.includes(f)) formas.push(f);
-  }
+  const unir = (obj) => {
+    for (const f in (obj || {})) {
+      if (!calc.ehDinheiro(f) && !formas.includes(f)) formas.push(f);
+    }
+  };
+  unir(recebidoPorForma);
+  unir(contadoPorForma); // formas LANÇADAS na conferência (ex.: "Cartão" do fallback) —
+  // sem isto entravam na diferença salva mas sumiam do total impresso do relatório.
   return formas;
 }
 
@@ -455,7 +480,7 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     fechadoEm: new Date().toISOString(),
     operador: caixa.operador || "",
     formaDinheiro,
-    formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma),
+    formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma, eletronicoPorForma),
     recebidoPorForma: resumo.recebidoPorForma || {},
     canceladoPorForma: resumo.canceladoPorForma || {},
     fundoTroco: Number(caixa.fundo_troco) || 0,
@@ -476,12 +501,16 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     relatorio,
   };
 
-  await db.query(
+  // `AND status='aberto'` + checagem de rowCount: em duplo clique / 2 abas, só o 1º
+  // fechamento grava; o 2º afeta 0 linhas e lança ANTES da rota enfileirar o relatório
+  // (evita 2 impressões e a sobrescrita do detalhe_fechamento).
+  const upd = await db.query(
     `UPDATE caixas SET status='fechado', fechado_em=now(),
             contado_dinheiro=$2, contado_eletronico=$3, diferenca=$4, detalhe_fechamento=$5
-       WHERE id=$1`,
+       WHERE id=$1 AND status='aberto'`,
     [caixa.id, contadoDinheiro, contadoEletronico, diferenca, JSON.stringify(detalhe)]
   );
+  if (!upd.rowCount) throw new Error("O caixa já foi fechado.");
   return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico, relatorio };
 }
 
