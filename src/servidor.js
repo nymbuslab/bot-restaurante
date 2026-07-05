@@ -1313,18 +1313,34 @@ app.patch("/api/admin/tenants/:slug/plano", exigeSuperAdmin, async (req, res) =>
   }
 });
 
-// Libera acesso manual (cortesia) — assinante sem Stripe.
+// Libera acesso manual (cortesia). Funciona com ou sem Stripe: se houver assinatura
+// viva, PAUSA a cobrança no Stripe (behavior:void) para o cartão NÃO ser cobrado no
+// fim do trial — a cortesia sozinha é invisível ao Stripe. O webhook, por sua vez,
+// preserva a cortesia (ver aplicarSubscription em src/stripe.js).
 app.patch("/api/admin/tenants/:slug/assinatura/cortesia", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
-  if (!(await empresas.buscarPorSlug(slug))) return res.status(404).json({ erro: "Tenant não encontrado." });
+  const emp = await empresas.buscarPorSlug(slug);
+  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+  let pausado = true;
+  if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
+    try { await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId); }
+    catch (e) { pausado = false; console.error("cortesia: falha ao pausar no Stripe:", e.message); }
+  }
   await empresas.atualizarAssinatura(slug, { status: "cortesia", trialAte: null, proximaCobranca: null });
-  res.json({ ok: true, assinaturaStatus: "cortesia" });
+  res.json({ ok: true, assinaturaStatus: "cortesia", pausadoNoStripe: pausado });
 });
 
-// Revoga a cortesia (volta a "nenhuma" e derruba o bot).
+// Revoga a cortesia (volta a "nenhuma" e derruba o bot). Se a cortesia havia pausado
+// a cobrança no Stripe, RETOMA o ciclo normal — o webhook seguinte reflete o status
+// real (o tenant volta a pagar/ficar a receber).
 app.patch("/api/admin/tenants/:slug/assinatura/revogar", exigeSuperAdmin, async (req, res) => {
   const slug = req.params.slug;
-  if (!(await empresas.buscarPorSlug(slug))) return res.status(404).json({ erro: "Tenant não encontrado." });
+  const emp = await empresas.buscarPorSlug(slug);
+  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+  if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
+    try { await stripeBilling.retomarAssinatura(emp.stripeSubscriptionId); }
+    catch (e) { console.error("revogar: falha ao retomar no Stripe:", e.message); }
+  }
   await empresas.atualizarAssinatura(slug, { status: "nenhuma" });
   await multiBot.desconectar(slug).catch(() => {});
   res.json({ ok: true, assinaturaStatus: "nenhuma" });

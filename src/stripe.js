@@ -311,6 +311,13 @@ async function slugDoCustomer(customerId) {
 
 // Aplica o estado de uma subscription do Stripe ao tenant (grava + liga/desliga bot).
 async function aplicarSubscription(slug, sub, customerId) {
+  // Cortesia é um override manual do super-admin (acesso comp, cobrança pausada no
+  // Stripe). NENHUM evento do Stripe deve sobrescrevê-la nem derrubar o bot — só o
+  // master, ao revogar a cortesia, sai desse estado. Sem isto, o fim do trial (ou o
+  // past_due de uma fatura) apagava a cortesia e bloqueava o tenant.
+  const atual = await empresas.buscarPorSlug(slug).catch(() => null);
+  if (atual && atual.assinaturaStatus === "cortesia") return;
+
   const status = mapStatus(sub.status);
   const periodEnd = sub.current_period_end
     || (sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].current_period_end);
@@ -371,6 +378,9 @@ async function tratarEvento(event) {
     case "invoice.payment_failed": {
       const slug = await slugDoCustomer(obj.customer);
       if (slug) {
+        // Cortesia não é derrubada por fatura em atraso (a cobrança devia estar pausada).
+        const emp = await empresas.buscarPorSlug(slug).catch(() => null);
+        if (emp && emp.assinaturaStatus === "cortesia") break;
         await empresas.atualizarAssinatura(slug, { status: "past_due" });
         await multiBot.desconectar(slug).catch(() => {});
       }
