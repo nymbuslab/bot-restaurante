@@ -286,6 +286,20 @@ async function pausarAssinatura(stripeSubscriptionId) {
   return true;
 }
 
+// Anula (void) as faturas ABERTAS do customer. Usada ao conceder cortesia a um
+// tenant que já tinha fatura em aberto (past_due): pausar só evita cobranças
+// futuras; a fatura já finalizada segue sendo cobrada até ser anulada. Idempotente
+// (sem faturas abertas → não faz nada). Devolve quantas anulou.
+async function anularFaturasAbertas(stripeCustomerId) {
+  if (!stripe || !stripeCustomerId) return 0;
+  const r = await stripe.invoices.list({ customer: stripeCustomerId, limit: 50 });
+  const abertas = r.data.filter((f) => f.status === "open");
+  for (const f of abertas) {
+    await stripe.invoices.voidInvoice(f.id).catch((e) => console.error("void fatura:", e.message));
+  }
+  return abertas.length;
+}
+
 // Retoma a cobrança de uma assinatura pausada (usada ao REATIVAR um tenant).
 async function retomarAssinatura(stripeSubscriptionId) {
   if (!stripe || !stripeSubscriptionId) return false;
@@ -396,7 +410,7 @@ async function tratarEvento(event) {
 module.exports = {
   stripe, CONFIGURADO, PRICE_ID, PRICE_ID_COMPLETO, PUBLISHABLE_KEY, PLANO_INFO, planoDoPrice,
   criarCheckout, criarPortal, verificarEvento, tratarEvento,
-  listarFaturas, cancelarAssinatura, pausarAssinatura, retomarAssinatura,
+  listarFaturas, cancelarAssinatura, pausarAssinatura, retomarAssinatura, anularFaturasAbertas,
   garantirCustomer, criarSetupIntent, ativarAssinaturaComSetup, trocarPlano,
   listarCartoes, criarSetupIntentCartao, definirCartaoPadrao, removerCartao,
 };

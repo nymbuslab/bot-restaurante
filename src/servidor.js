@@ -1323,8 +1323,13 @@ app.patch("/api/admin/tenants/:slug/assinatura/cortesia", exigeSuperAdmin, async
   if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
   let pausado = true;
   if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
-    try { await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId); }
-    catch (e) { pausado = false; console.error("cortesia: falha ao pausar no Stripe:", e.message); }
+    try {
+      await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId);
+      // Anula fatura já em aberto (caso a cortesia venha depois do trial vencer):
+      // a pausa só evita cobranças futuras; a fatura finalizada seguiria cobrando.
+      await stripeBilling.anularFaturasAbertas(emp.stripeCustomerId);
+    }
+    catch (e) { pausado = false; console.error("cortesia: falha ao pausar/anular no Stripe:", e.message); }
   }
   await empresas.atualizarAssinatura(slug, { status: "cortesia", trialAte: null, proximaCobranca: null });
   res.json({ ok: true, assinaturaStatus: "cortesia", pausadoNoStripe: pausado });
