@@ -233,7 +233,7 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
   try {
     await client.query("BEGIN");
     const m = await client.query(
-      "SELECT id, status FROM mesas WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, status, aberta_em FROM mesas WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, mesaId]
     );
     if (!m.rows[0]) throw new Error("Mesa não encontrada.");
@@ -247,9 +247,24 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
         [cx.id, empId, p.forma || "Outros", v, mesaId, "Mesa " + (nomeMesa || mesaId), cent2(p.valorPago), cent2(p.troco)]
       );
     }
+    // Resumo das formas da SESSÃO (parciais + fechamento) → grava em pedidos.pagamento,
+    // como PDV/Receber já fazem — sem isto a receita de mesa some do gráfico de formas
+    // do Dashboard (que agrega por pedidos.pagamento).
+    const abertaEm = m.rows[0].aberta_em;
+    let resumo = "";
+    if (abertaEm) {
+      const fq = await client.query(
+        `SELECT forma_pagamento AS forma, SUM(valor) AS total
+           FROM caixa_movimentos
+          WHERE empresa_id = $1 AND mesa_id = $2 AND tipo = 'recebimento' AND criado_em >= $3
+          GROUP BY forma_pagamento ORDER BY SUM(valor) DESC`,
+        [empId, mesaId, abertaEm]
+      );
+      resumo = fq.rows.map((x) => (x.forma || "Outros") + " R$ " + (Number(x.total) || 0).toFixed(2).replace(".", ",")).join(" · ");
+    }
     await client.query(
-      "UPDATE pedidos SET recebido_em = now() WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL",
-      [empId, mesaId]
+      "UPDATE pedidos SET recebido_em = now(), pagamento = COALESCE(NULLIF($3,''), pagamento) WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL",
+      [empId, mesaId, resumo]
     );
     const r = await client.query(
       `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL

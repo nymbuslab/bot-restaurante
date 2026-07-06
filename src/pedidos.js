@@ -112,14 +112,19 @@ async function lerTodos(dir, filtro) {
 // notificação do painel detectar pedido novo e montar o modal. Só `origem = 'web'`:
 // vendas de PDV (Balcão/Entrega/Retirada) e Mesa NÃO disparam o alerta (são iniciadas
 // pelo operador, não precisam avisar). Retorna null se não há pedido web.
-async function ultimo(dir) {
+async function ultimo(dir, full) {
   const empId = await empresaId(dir);
+  // O poll de 6s só precisa do `numero` — sem `full`, NÃO puxa o jsonb `itens` (que
+  // trafegava/serializava a cada poll à toa). O detalhe (cliente/itens/total, p/ o modal
+  // de pedido novo) é buscado sob demanda só quando um pedido novo é detectado.
+  const cols = full ? "numero, cliente, itens, total" : "numero";
   const r = await db.query(
-    "SELECT numero, cliente, itens, total FROM pedidos WHERE empresa_id = $1 AND origem = 'web' ORDER BY id DESC LIMIT 1",
+    `SELECT ${cols} FROM pedidos WHERE empresa_id = $1 AND origem = 'web' ORDER BY id DESC LIMIT 1`,
     [empId]
   );
   const row = r.rows[0];
   if (!row) return null;
+  if (!full) return { numero: row.numero };
   return {
     numero: row.numero,
     cliente: row.cliente,
@@ -272,12 +277,15 @@ function esquecer(slug) {
   delete idCache[slug];
 }
 
-// Quantos pedidos da empresa contêm o item (por id) no jsonb `itens`.
+// Quantos pedidos da empresa contêm o item (por id). Via `itens_venda` (projeção
+// indexada por empresa_id/item_id) em vez de `itens @> jsonb` sem índice GIN (seq scan).
 async function contarVendasDoItem(dir, itemId) {
   const empId = await empresaId(dir);
+  const idNum = parseInt(itemId, 10);
+  if (!Number.isFinite(idNum)) return 0; // id não-numérico não existe em itens_venda (bigint)
   const r = await db.query(
-    "SELECT count(*)::int AS n FROM pedidos WHERE empresa_id = $1 AND itens @> $2::jsonb",
-    [empId, JSON.stringify([{ id: itemId }])]
+    "SELECT count(DISTINCT pedido_id)::int AS n FROM itens_venda WHERE empresa_id = $1 AND item_id = $2",
+    [empId, idNum]
   );
   return r.rows[0] ? r.rows[0].n : 0;
 }

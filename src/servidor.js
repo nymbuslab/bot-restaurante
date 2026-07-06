@@ -3,6 +3,7 @@
 // ============================================================
 
 const express = require("express");
+const compression = require("compression");
 const path    = require("path");
 const fs      = require("fs");
 const crypto  = require("crypto");
@@ -106,10 +107,14 @@ const publicoLimiter    = limitador(15, 60, "Muitas requisições. Aguarde um mo
 const esqueciLimiter    = limitador(60, 5,  "Muitas solicitações de redefinição. Tente novamente mais tarde."); // esqueci a senha
 const contaLimiter      = limitador(15, 10, TENTE_DEPOIS); // trocar senha/e-mail/excluir conta — anti brute-force da senha atual
 const botLimiter        = limitador(15, 10, TENTE_DEPOIS); // conectar/resetar o bot — evita flood de reconexões (risco de ban do número)
+const downloadLimiter   = limitador(15, 15, TENTE_DEPOIS); // download público do .exe (proxy do GitHub) — anti-amplificação de banda
 
 // ---- Webhook do Stripe — raw body, ANTES do express.json ----
 // A verificação da assinatura (constructEvent) exige o corpo BRUTO; por isso
 // esta rota usa express.raw e é registrada antes do parser JSON global.
+// Dedup do webhook: o Stripe re-entrega o MESMO event.id em retries; `tratarEvento` já
+// é idempotente, mas isto evita reprocessar (e reordenações raras) — Set com poda simples.
+const stripeEventsVistos = new Set();
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).end();
   let event;
@@ -117,6 +122,15 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
     event = stripeBilling.verificarEvento(req.body, req.headers["stripe-signature"]);
   } catch (e) {
     return res.status(400).send(`Assinatura do webhook inválida: ${e.message}`);
+  }
+  if (event.id) {
+    if (stripeEventsVistos.has(event.id)) return res.json({ received: true, duplicado: true });
+    stripeEventsVistos.add(event.id);
+    if (stripeEventsVistos.size > 2000) { // poda: mantém os ~1000 mais recentes
+      const recentes = [...stripeEventsVistos].slice(-1000);
+      stripeEventsVistos.clear();
+      recentes.forEach((id) => stripeEventsVistos.add(id));
+    }
   }
   try {
     await stripeBilling.tratarEvento(event);
@@ -128,8 +142,12 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
 });
 
 app.use(express.json({ limit: "1mb" }));
+// Compressão gzip: o front é ~630 KB de JS/CSS crus + todo JSON de API — comprime
+// ~75-80% (maior ganho de first paint/rede da plataforma). Antes do static p/ cobrir os assets.
+app.use(compression());
 // A raiz "/" é servida pelo express.static → public/index.html (landing pública).
-app.use(express.static(path.join(__dirname, "..", "public")));
+// maxAge curto: sem build/hashing, evita cache imutável, mas poupa revalidação 304 na sessão.
+app.use(express.static(path.join(__dirname, "..", "public"), { maxAge: "1h" }));
 
 // ---- Autenticação de restaurante — Supabase Auth (JWT) ----
 // O token é o access_token (JWT) do Supabase. O middleware valida o JWT e
@@ -379,7 +397,7 @@ async function resolverAssetAgente() {
   return _agenteCache;
 }
 
-app.get("/downloads/nymbus-impressora.exe", async (req, res) => {
+app.get("/downloads/nymbus-impressora.exe", downloadLimiter, async (req, res) => {
   try {
     const { url } = await resolverAssetAgente();
     const dl = await fetch(url, { headers: { "User-Agent": "nymbus-app" } });
@@ -435,7 +453,7 @@ app.post("/api/assinatura/checkout", exigeAuth, assinaturaLimiter, async (req, r
 
 // Abre o Customer Portal (trocar cartão / cancelar / ver faturas).
 // Troca de plano (upgrade/downgrade) de uma assinatura viva, com proration.
-app.post("/api/assinatura/plano", exigeAuth, async (req, res) => {
+app.post("/api/assinatura/plano", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   const plano = req.body && req.body.plano;
   if (plano !== "essencial" && plano !== "completo") return res.status(400).json({ erro: "Plano inválido." });
@@ -451,7 +469,7 @@ app.post("/api/assinatura/plano", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/assinatura/portal", exigeAuth, async (req, res) => {
+app.post("/api/assinatura/portal", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -480,7 +498,7 @@ app.post("/api/assinatura/setup-intent", exigeAuth, assinaturaLimiter, async (re
 });
 
 // Checkout PRÓPRIO — passo 2: confirma o cartão e cria a assinatura (trial 7d).
-app.post("/api/assinatura/confirmar", exigeAuth, async (req, res) => {
+app.post("/api/assinatura/confirmar", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   const { setupIntentId, plano } = req.body || {};
   if (!setupIntentId) return res.status(400).json({ erro: "setupIntentId é obrigatório." });
@@ -896,7 +914,7 @@ app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
 });
 
 // Passo 1 de adicionar cartão: SetupIntent para o Payment Element do painel.
-app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, async (req, res) => {
+app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -911,7 +929,7 @@ app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, async (req, res) => 
   }
 });
 
-app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, async (req, res) => {
+app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -927,7 +945,7 @@ app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, async (req, res) => {
   }
 });
 
-app.delete("/api/assinatura/cartoes/:id", exigeAuth, async (req, res) => {
+app.delete("/api/assinatura/cartoes/:id", exigeAuth, assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -1741,7 +1759,9 @@ app.get("/api/dashboard", exigeAuth, async (req, res) => {
 // painel detectar pedido novo sem baixar a lista inteira.
 app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
   try {
-    const p = await pedidos.ultimo(req.tenantDir);
+    // `?full=1` traz o detalhe (cliente/itens/total) p/ o modal de pedido novo; o poll
+    // de 6s chama sem `full` (só o número) — não puxa o jsonb à toa.
+    const p = await pedidos.ultimo(req.tenantDir, req.query.full === "1");
     res.json(p || { numero: 0 });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao consultar pedidos." });

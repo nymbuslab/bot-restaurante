@@ -153,15 +153,20 @@ async function restaurarBots() {
 }
 setTimeout(restaurarBots, 10_000);   // 10s após o boot (deixa o servidor subir)
 
-// Impede que erros do bot/WhatsApp derrubem o servidor.
-// O bot pode travar ou cair; o painel continua no ar.
-process.on("uncaughtException", (err) => {
-  console.error("❌ Erro não tratado (servidor continua):", err.message);
+// Erros ASSÍNCRONOS (rejeições) do bot/WhatsApp NÃO derrubam o servidor — o handler de
+// mensagem tem try/catch, e uma rejeição transitória (rede/Baileys) não deve reciclar o
+// processo. Só loga (com stack p/ diagnóstico); o painel continua no ar.
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ Promise sem tratamento (servidor continua):", (reason && reason.stack) || (reason && reason.message) || reason);
 });
 
-process.on("unhandledRejection", (reason) => {
-  // Loga só a mensagem (não o objeto inteiro) — evita despejar payload/PII no log.
-  console.error("❌ Promise sem tratamento (servidor continua):", reason?.message || reason);
+// Erro SÍNCRONO não tratado (uncaughtException) é raro e pode deixar o processo em estado
+// corrompido (conexão/lock parcial no pool pg). Em vez de seguir servindo respostas
+// possivelmente inconsistentes, encerra: o Fly reinicia num estado limpo e restaurarBots()
+// religa os bots no boot (~segundos); o health check confirma a volta.
+process.on("uncaughtException", (err) => {
+  console.error("❌ Erro NÃO TRATADO — encerrando para o Fly reciclar num estado limpo:", (err && err.stack) || (err && err.message) || err);
+  setTimeout(() => process.exit(1), 200).unref();
 });
 
 servidor.iniciar(PORTA);

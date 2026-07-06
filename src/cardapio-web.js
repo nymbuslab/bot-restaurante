@@ -105,7 +105,9 @@ function recalcularItens(cardapio, itensPayload) {
       observacao: String((p && p.observacao) || "").slice(0, 200),
     });
   });
-  return { itens: itens, subtotal: subtotal };
+  // Arredonda a centavos (paridade com pdv.recalcularVenda) — evita 10.30000000001 no
+  // objeto em memória e em qualquer consumidor futuro do valor bruto.
+  return { itens: itens, subtotal: Math.round(subtotal * 100) / 100 };
 }
 
 // Nomes (sem repetição) dos itens do payload que são "só no local" (apenasLocal).

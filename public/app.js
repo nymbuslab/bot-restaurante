@@ -389,6 +389,7 @@ if ($("np-imprimir")) {
 }
 
 async function checarPedidoNovo() {
+  if (document.hidden) return; // aba em segundo plano → não faz poll (economia de rede/DB)
   const r = await api("GET", "/api/pedidos/ultimo");
   if (!r) return;
   const d = await r.json().catch(() => null);
@@ -411,7 +412,11 @@ async function checarPedidoNovo() {
       carregarPedidos();        // atualiza a lista (linhas novas ganham "NOVO")
       marcarPedidosVistos();    // estando na aba, o badge da sidebar fica zerado
     } else {
-      abrirNovoPedido(d);  // modal rico só fora da aba Pedidos
+      // Detalhe (cliente/itens/total) buscado só AGORA, quando há pedido novo (o poll
+      // de 6s trafega só o número). Modal rico só fora da aba Pedidos.
+      const rf = await api("GET", "/api/pedidos/ultimo?full=1");
+      const df = (rf && rf.ok) ? await rf.json().catch(() => null) : null;
+      abrirNovoPedido(df || { numero });
     }
     atualizarBadgePedidos();
   }
@@ -940,7 +945,7 @@ async function resetarBot() {
 }
 
 setInterval(() => {
-  if ($("cfg-sub-conexao").classList.contains("ativa")) atualizarStatus();
+  if (!document.hidden && $("cfg-sub-conexao").classList.contains("ativa")) atualizarStatus();
 }, 4000);
 
 // ============================================================
@@ -5010,10 +5015,19 @@ document.addEventListener("keydown", (e) => {
 $("btnAtualizarPedidos").addEventListener("click", carregarPedidos);
 $("btnExportarPedidos").addEventListener("click", exportarPedidosCSV);
 
-// Auto-refresh de pedidos enquanto a aba estiver ativa
+// Auto-refresh de pedidos enquanto a aba estiver ativa (e a página visível)
 setInterval(() => {
-  if ($("aba-pedidos").classList.contains("ativa")) carregarPedidos();
+  if (!document.hidden && $("aba-pedidos").classList.contains("ativa")) carregarPedidos();
 }, 15000);
+
+// Aba em segundo plano não faz polling (economia de rede/DB — escala com nº de tenants).
+// Ao voltar a ficar visível, atualiza na hora o que ficou pausado.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  checarPedidoNovo();
+  if ($("cfg-sub-conexao").classList.contains("ativa")) atualizarStatus();
+  if ($("aba-pedidos").classList.contains("ativa")) carregarPedidos();
+});
 
 // ============================================================
 // Utilidades + carga inicial
