@@ -52,6 +52,10 @@ taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
 avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa),
 desconto (numeric; abatido na venda — usado pelo PDV; web fica 0),
 impresso_em (timestamptz; null = ainda não impresso pelo agente de impressão desktop),
+reservado_em / reservado_por (timestamptz / text; CLAIM do agente — o poll reserva os
+  pendentes atomicamente [FOR UPDATE SKIP LOCKED] por id de sessão do agente; reserva
+  expira em 30s. Evita 2 agentes do mesmo tenant imprimirem a mesma comanda. Mesma dupla
+  de colunas em `impressao_fila`),
 origem (text 'web' | 'pdv' | 'mesa'; de onde o pedido entrou — escopa o alerta de
   "novo pedido" e a impressão do agente ao 'web', e dá o "Canal" na lista de Pedidos)
 ```

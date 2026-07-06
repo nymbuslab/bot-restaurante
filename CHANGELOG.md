@@ -746,3 +746,15 @@ Marcos entregues com efeito observável no sistema. Mais recente por último.
 ## [0.79.4] — Assinatura: cortesia não cobra nem bloqueia mais
 
 - **Cortesia agora desliga a cobrança no Stripe.** Antes, liberar acesso de cortesia pelo painel master só mudava o status internamente — se o restaurante tinha assinatura com cartão, o Stripe **cobrava mesmo assim** no fim do trial de 7 dias e o sistema ainda **bloqueava** o acesso quando a cobrança falhava (restaurante "cobrado e bloqueado" apesar da cortesia). Agora, ao conceder cortesia, o sistema **pausa a cobrança no Stripe** (o cartão não é cobrado) e **anula qualquer fatura em aberto**; e **nenhum evento do Stripe apaga mais a cortesia nem derruba o bot**. Ao **revogar** a cortesia, a cobrança volta ao ciclo normal. *(O restaurante afetado teve a fatura em aberto anulada e a assinatura pausada.)*
+
+## [0.80.0] — Auditoria da plataforma: mais rápido, mais seguro, sem duplicar
+
+Revisão completa da plataforma (todas as telas + o agente de impressão), com correções em produção.
+
+- **Painel mais rápido.** O site passou a ser comprimido (arquivos até ~75% menores) e as telas mais pesadas (Pedidos, Dashboard) buscam só o necessário — abre e navega mais leve, inclusive no celular.
+- **Caixa mais confiável.** Corrigido um caso em que **cancelar um pedido já estornado (ou estornar um já cancelado) descontava o valor duas vezes** da gaveta; a **sangria** não deixa mais o caixa ficar negativo; e fechar o caixa com **duplo clique** não gera mais dois relatórios.
+- **Cardápio.** Desligar **"Disponível"** de um item passa a valer **na hora** (sem precisar clicar em "Salvar cardápio") — some do cardápio do cliente imediatamente. Os campos deixam claro que **estoque em branco = ilimitado** e que **cada variação/sabor tem o próprio estoque** (o produto-pai não controla os sabores).
+- **Agente de impressão (v0.2.5).** Dois computadores com o agente aberto **não imprimem mais a mesma comanda em duplicata**; e quando a sessão expira (troca de senha), o agente **volta para a tela de login** em vez de parar de imprimir calado. *(Requer atualizar o agente pelo painel → Configurações → Impressora.)*
+- **Dashboard.** O **faturamento** deixa de somar a taxa de entrega (mostra a venda de produtos); pagamentos de **mesa** voltam a aparecer no gráfico de formas de pagamento.
+- **Segurança.** Proteções extras contra abuso nas telas de **conta** e **assinatura**; **trocar a senha encerra as outras sessões** abertas.
+- **Marca.** A aba do navegador do painel agora mostra **"Painel — Nymbus Pedidos"**.
