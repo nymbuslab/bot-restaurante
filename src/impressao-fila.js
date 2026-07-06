@@ -46,14 +46,23 @@ async function enfileirar(dir, tipo, vias, client) {
 }
 
 // Trabalhos ainda não impressos (alvo do polling do agente), em ordem de chegada.
-async function pendentes(dir) {
+async function pendentes(dir, agenteId) {
   const empId = await empresaId(dir);
+  const ag = String(agenteId || "").slice(0, 64) || "sem-id";
+  // Claim ATÔMICO (ver pedidos.pendentes): reserva os pendentes deste agente e evita que
+  // 2 agentes do mesmo tenant imprimam o mesmo trabalho em duplicata.
   const r = await db.query(
-    `SELECT id, tipo, vias, criado_em FROM impressao_fila
-      WHERE empresa_id = $1 AND impresso_em IS NULL
-      ORDER BY id ASC
-      LIMIT 50`,
-    [empId]
+    `UPDATE impressao_fila SET reservado_em = now(), reservado_por = $2
+      WHERE id IN (
+        SELECT id FROM impressao_fila
+         WHERE empresa_id = $1 AND impresso_em IS NULL
+           AND (reservado_em IS NULL OR reservado_em < now() - interval '30 seconds' OR reservado_por = $2)
+         ORDER BY id ASC
+         LIMIT 50
+         FOR UPDATE SKIP LOCKED
+      )
+      RETURNING id, tipo, vias, criado_em`,
+    [empId, ag]
   );
   return r.rows.map(mapRow);
 }

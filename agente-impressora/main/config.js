@@ -13,6 +13,15 @@ const DEFAULTS = {
   copias: 1,
 };
 
+// Allowlist do servidor: o agente só fala com os domínios de PRODUÇÃO. Sem isto, um
+// config.json local adulterado (malware) para `http://host-atacante` faria o próximo boot
+// entregar o JWT do dono (e, no login, e-mail+senha) ao atacante. Fora da lista → default.
+const APIBASE_PERMITIDAS = ["https://bot-restaurante.fly.dev", "https://pedidos.nymbuslab.com.br"];
+function apiBaseSegura(v) {
+  const s = (typeof v === "string" ? v.trim().replace(/\/+$/, "") : "");
+  return APIBASE_PERMITIDAS.includes(s) ? s : DEFAULTS.apiBase;
+}
+
 function umDe(v, lista, padrao) { return lista.includes(v) ? v : padrao; }
 function clamp(n, min, max, padrao) {
   const x = parseInt(n, 10);
@@ -27,7 +36,7 @@ function normalizarConfig(parcial) {
   let cupom = vias.cupom !== false;
   if (!cozinha && !cupom) cozinha = true; // nunca zera as duas (senao nao imprime nada)
   return {
-    apiBase: (typeof p.apiBase === "string" && p.apiBase.trim()) ? p.apiBase.trim().replace(/\/+$/, "") : DEFAULTS.apiBase,
+    apiBase: apiBaseSegura(p.apiBase),
     email: typeof p.email === "string" ? p.email : "",
     conexao: umDe(p.conexao, ["rede", "serial", "usb"], DEFAULTS.conexao),
     alvo: typeof p.alvo === "string" ? p.alvo.trim() : "",

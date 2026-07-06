@@ -1,7 +1,14 @@
+const crypto = require("crypto");
 const api = require("./api");
+const auth = require("./auth");
 const { montarJob, montarJobDeVias } = require("./print-job");
 const transporte = require("./transporte");
 const config = require("./config");
+
+// Id desta SESSÃO do agente (memória) — vai no ?agente= dos polls para o CLAIM no servidor:
+// o mesmo agente re-tenta suas próprias reservas na hora; outro agente do tenant espera a
+// reserva expirar (30s) → nunca sai a mesma comanda em 2 impressoras. Ao reiniciar, novo id.
+const AGENTE_ID = crypto.randomUUID();
 
 const INTERVALO_MS = 3000; // PDV/Mesas/Caixa são sob demanda → poll mais curto p/ baixa latência
 const TENANT_TTL_MS = 5 * 60 * 1000; // recarrega config do tenant a cada 5 min (nome/marca/link)
@@ -45,7 +52,7 @@ async function marcarImpresso(numero) {
 async function processarFila(opts) {
   const log = (opts && opts.onLog) || (() => {});
   let r;
-  try { r = await api.get("/api/agente/fila"); } catch (_) { return; }
+  try { r = await api.get("/api/agente/fila?agente=" + AGENTE_ID); } catch (_) { return; }
   if (!r.ok) return;
   const itens = await r.json().catch(() => []);
   const cfg = config.carregar();
@@ -74,9 +81,17 @@ async function umCiclo(opts) {
   const status = (opts && opts.onStatus) || (() => {});
   if (!tenantConfig || (Date.now() - tenantEm) > TENANT_TTL_MS) await carregarTenant();
   let r;
-  try { r = await api.get("/api/agente/pendentes"); }
+  try { r = await api.get("/api/agente/pendentes?agente=" + AGENTE_ID); }
   catch (e) { falhas++; status({ tipo: "sem-conexao" }); log("Sem conexao com o servidor. Retentando..."); return calcBackoff(falhas); }
-  if (!r.ok) { falhas++; status({ tipo: "erro", http: r.status }); log("Erro " + r.status + " ao buscar pedidos."); return calcBackoff(falhas); }
+  if (!r.ok) {
+    falhas++;
+    // 401 + sessão já limpa (o renovar automático falhou) = refresh morto (troca de senha /
+    // revogação). Sinaliza o renderer para VOLTAR AO LOGIN em vez de repetir "Erro 401" pra
+    // sempre (senão o restaurante para de imprimir sem entender por quê).
+    if (r.status === 401 && !auth.estaLogado()) { status({ tipo: "deslogado" }); log("Sessão expirada — faça login novamente."); return calcBackoff(falhas); }
+    status({ tipo: "erro", http: r.status }); log("Erro " + r.status + " ao buscar pedidos.");
+    return calcBackoff(falhas);
+  }
   falhas = 0;
   status({ tipo: "ok" });
   const pendentes = await r.json().catch(() => []);

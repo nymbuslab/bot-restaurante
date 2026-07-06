@@ -153,14 +153,24 @@ async function avisarPedido(dir, id) {
 // senão imprimiriam em duplicidade; PDV Entrega/Retirada nascem "a receber" e cairiam
 // neste filtro se fosse só por recebido_em) E não impressos (impresso_em nulo) E ainda
 // não recebidos. Ordena por numero (imprime na ordem que caíram).
-async function pendentes(dir) {
+async function pendentes(dir, agenteId) {
   const empId = await empresaId(dir);
+  const ag = String(agenteId || "").slice(0, 64) || "sem-id";
+  // Claim ATÔMICO: reserva (reservado_em/por) os pendentes livres, cuja reserva expirou
+  // (outro agente caiu) OU já são deste agente (retry). FOR UPDATE SKIP LOCKED faz 2
+  // agentes reservarem linhas DISJUNTAS → cada trabalho sai em UMA impressora só.
   const r = await db.query(
-    `SELECT * FROM pedidos
-      WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL AND origem = 'web'
-      ORDER BY numero ASC
-      LIMIT 50`,
-    [empId]
+    `UPDATE pedidos SET reservado_em = now(), reservado_por = $2
+      WHERE id IN (
+        SELECT id FROM pedidos
+         WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL AND origem = 'web'
+           AND (reservado_em IS NULL OR reservado_em < now() - interval '30 seconds' OR reservado_por = $2)
+         ORDER BY numero ASC
+         LIMIT 50
+         FOR UPDATE SKIP LOCKED
+      )
+      RETURNING *`,
+    [empId, ag]
   );
   return r.rows.map(mapRow);
 }

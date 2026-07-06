@@ -344,7 +344,7 @@ app.post("/api/agente/refresh", refreshLimiter, async (req, res) => {
 // Pedidos novos (cardápio web) que o agente ainda não imprimiu — alvo do polling.
 app.get("/api/agente/pendentes", exigeAuth, async (req, res) => {
   try {
-    res.json(await pedidos.pendentes(req.tenantDir));
+    res.json(await pedidos.pendentes(req.tenantDir, req.query.agente)); // `agente` = id da sessão (claim)
   } catch (e) {
     res.status(500).json({ erro: "Falha ao consultar pendentes." });
   }
@@ -363,7 +363,7 @@ app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, async (req, res) => 
 // Fila GENÉRICA (PDV/Mesas/Caixa/reimpressão): cada item já traz o TEXTO das vias.
 app.get("/api/agente/fila", exigeAuth, async (req, res) => {
   try {
-    res.json(await impressaoFila.pendentes(req.tenantDir));
+    res.json(await impressaoFila.pendentes(req.tenantDir, req.query.agente)); // `agente` = id da sessão (claim)
   } catch (e) {
     res.status(500).json({ erro: "Falha ao consultar a fila." });
   }

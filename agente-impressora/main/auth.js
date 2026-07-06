@@ -12,7 +12,13 @@ function arqRefresh() {
 }
 function guardarRefresh(refresh) {
   const v = String(refresh || "");
-  try { fs.writeFileSync(arqRefresh(), safeStorage.encryptString(v)); logadoCache = !!v; } catch (_) {}
+  logadoCache = !!v; // a sessão vale NESTA execução mesmo que não dê para persistir
+  try {
+    // Só grava se o SO tem cifra (Windows/DPAPI sempre tem). Sem cifra (ex.: Linux sem
+    // keyring) NÃO gravamos em claro — a sessão fica só em memória (perde no restart), em
+    // vez de estourar o encryptString e ser engolido silenciosamente pelo catch.
+    if (safeStorage.isEncryptionAvailable()) fs.writeFileSync(arqRefresh(), safeStorage.encryptString(v));
+  } catch (_) {}
 }
 function lerRefresh() {
   try { return safeStorage.decryptString(fs.readFileSync(arqRefresh())); } catch (_) { return ""; }

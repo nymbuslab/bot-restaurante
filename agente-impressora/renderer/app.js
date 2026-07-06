@@ -65,6 +65,8 @@ $("btnTeste").addEventListener("click", async () => {
 window.api.onLog(log);
 window.api.onStatus((s) => {
   const f = $("faixaStatus");
+  // Sessão expirada (refresh morto) → volta à tela de login em vez de ficar em "Erro 401".
+  if (s.tipo === "deslogado") { $("telaLogin").hidden = false; $("telaApp").hidden = true; return; }
   if (s.tipo === "ok") { f.textContent = "IMPRESSORA ATIVA — aguardando pedidos"; f.className = "faixa ok"; }
   else if (s.tipo === "sem-conexao") { f.textContent = "Sem conexão com o servidor"; f.className = "faixa aviso"; }
   else { f.textContent = "Erro " + (s.http || ""); f.className = "faixa erro"; }
