@@ -1939,6 +1939,12 @@ function preencherConfig() {
     : [];
   if ($("freteForaArea")) $("freteForaArea").value = raioCfg.foraDaArea === "bloqueia" ? "bloqueia" : "retirada";
   renderFaixas();
+  const bairroCfg = (c.frete && c.frete.bairro) || {};
+  bairrosFrete = Array.isArray(bairroCfg.faixas)
+    ? bairroCfg.faixas.map((b) => ({ nome: String(b.nome || ""), valor: Number(b.valor) || 0 }))
+    : [];
+  if ($("freteBairroForaArea")) $("freteBairroForaArea").value = bairroCfg.foraDaArea === "bloqueia" ? "bloqueia" : "retirada";
+  renderBairros();
   renderEntregaModo();
   $("cfgBoasVindas").value = c.mensagens.boasVindas || "";
   $("cfgBoasVindasRetorno").value = c.mensagens.boasVindasRetorno || "";
@@ -2095,14 +2101,19 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   configAtual.atendimento.aberto = $("cfgAberto").checked;
   configAtual.atendimento.tempoEstimado = $("cfgTempo").value;
   configAtual.atendimento.taxaEntrega = Dinheiro.valor("cfgTaxaEntrega");
-  // Modo de frete. "raio" só é permitido no Plano Completo (servidor também valida em Parte 3).
+  // Modo de frete. "raio"/"bairro" só são permitidos no Plano Completo (servidor também valida em Parte 3).
   const modoSel = (document.querySelector('input[name="freteModo"]:checked') || {}).value || "fixo";
   if (!configAtual.frete) configAtual.frete = {};
-  configAtual.frete.modo = (modoSel === "raio" && planoAtual === "completo") ? "raio" : "fixo";
+  const modoPermitido = (planoAtual === "completo") ? modoSel : "fixo";
+  configAtual.frete.modo = ["raio", "bairro"].includes(modoPermitido) ? modoPermitido : "fixo";
   if (configAtual.frete.modo === "raio") {
     if (!configAtual.frete.raio) configAtual.frete.raio = {};
     configAtual.frete.raio.faixas = lerFaixasDoDOM();           // coordEmpresa/enderecoBase: o servidor preenche
     configAtual.frete.raio.foraDaArea = (($("freteForaArea") || {}).value === "bloqueia") ? "bloqueia" : "retirada";
+  } else if (configAtual.frete.modo === "bairro") {
+    if (!configAtual.frete.bairro) configAtual.frete.bairro = {};
+    configAtual.frete.bairro.faixas = lerBairrosDoDOM();
+    configAtual.frete.bairro.foraDaArea = (($("freteBairroForaArea") || {}).value === "bloqueia") ? "bloqueia" : "retirada";
   }
   configAtual.horarios = lerHorariosDoDOM();
   configAtual.mensagens.boasVindas = $("cfgBoasVindas").value;
@@ -2145,10 +2156,12 @@ document.querySelectorAll(".cfg-subnav button").forEach((btn) => {
 // e um upsell (não persiste como raio — o save clampa pra fixo).
 function renderEntregaModo() {
   const completo = planoAtual === "completo";
-  const lock = $("freteRaioLock");
-  const label = $("freteModoRaioLabel");
-  if (lock) lock.hidden = completo;
-  if (label) label.classList.toggle("bloqueado", !completo);
+  // Cadeado nos dois modos avançados (raio e bairro).
+  [["freteRaioLock", "freteModoRaioLabel"], ["freteBairroLock", "freteModoBairroLabel"]].forEach(([lockId, labelId]) => {
+    const lock = $(lockId), label = $(labelId);
+    if (lock) lock.hidden = completo;
+    if (label) label.classList.toggle("bloqueado", !completo);
+  });
 
   const modoVisual = (document.querySelector('input[name="freteModo"]:checked') || {}).value || "fixo";
   // Destaque do card selecionado por classe (não :has, que reavalia o documento
@@ -2157,25 +2170,31 @@ function renderEntregaModo() {
     const r = el.querySelector('input[name="freteModo"]');
     el.classList.toggle("selecionado", !!(r && r.checked));
   });
-  const ehRaio = modoVisual === "raio";
   const painelFixo = $("fretePainelFixo");
   const painelRaio = $("fretePainelRaio");
-  if (painelFixo) painelFixo.hidden = ehRaio;
-  if (painelRaio) painelRaio.hidden = !ehRaio;
-  // Dentro do painel raio: Completo vê a config (Parte 3); Essencial vê o upsell.
-  const upsell = $("freteUpsell");
-  const raioConfig = $("freteRaioConfig");
-  if (upsell) upsell.hidden = completo;
-  if (raioConfig) raioConfig.hidden = !completo;
+  const painelBairro = $("fretePainelBairro");
+  if (painelFixo) painelFixo.hidden = modoVisual !== "fixo";
+  if (painelRaio) painelRaio.hidden = modoVisual !== "raio";
+  if (painelBairro) painelBairro.hidden = modoVisual !== "bairro";
+  // Dentro de cada modo avançado: Completo vê a config; Essencial vê o upsell.
+  if ($("freteUpsell")) $("freteUpsell").hidden = completo;
+  if ($("freteRaioConfig")) $("freteRaioConfig").hidden = !completo;
+  if ($("freteBairroUpsell")) $("freteBairroUpsell").hidden = completo;
+  if ($("freteBairroConfig")) $("freteBairroConfig").hidden = !completo;
 }
 
 document.querySelectorAll('input[name="freteModo"]').forEach((r) => {
   r.addEventListener("change", renderEntregaModo);
 });
-// Essencial: clicar na opção "Frete por raio" (bloqueada) abre o card de upgrade
-// em vez de selecionar — preventDefault impede o rádio de marcar.
+// Essencial: clicar na opção "Frete por raio"/"Frete por bairro" (bloqueadas) abre o
+// card de upgrade em vez de selecionar — preventDefault impede o rádio de marcar.
 if ($("freteModoRaioLabel")) {
   $("freteModoRaioLabel").addEventListener("click", (e) => {
+    if (planoAtual !== "completo") { e.preventDefault(); abrirUpsell("freteRaio"); }
+  });
+}
+if ($("freteModoBairroLabel")) {
+  $("freteModoBairroLabel").addEventListener("click", (e) => {
     if (planoAtual !== "completo") { e.preventDefault(); abrirUpsell("freteRaio"); }
   });
 }
@@ -2793,6 +2812,54 @@ if ($("btnAddFaixa")) {
     faixasFrete.push({ ini, fim: ini + 2, valor: 0 });
     renderFaixas();
   });
+}
+
+// ---- Bairros de frete por bairro (Plano Completo) ----
+let bairrosFrete = []; // [{ nome, valor }]
+
+function lerBairrosDoDOM() {
+  const linhas = [];
+  document.querySelectorAll("#freteBairrosBody tr").forEach((tr) => {
+    const nome = ((tr.querySelector(".fb-nome") || {}).value || "").trim();
+    const valorId = (tr.querySelector(".fb-valor") || {}).id;
+    const valor = (valorId && window.Dinheiro) ? Dinheiro.valor(valorId) : 0;
+    if (nome) linhas.push({ nome, valor });
+  });
+  return linhas;
+}
+
+function renderBairros() {
+  const body = $("freteBairrosBody");
+  if (!body) return;
+  body.innerHTML = bairrosFrete.map((b, i) =>
+    "<tr>" +
+      '<td><input type="text" class="fb-nome" placeholder="Ex.: Centro" value="' + escapar(b.nome || "") + '" /></td>' +
+      '<td><input type="text" inputmode="numeric" class="fb-valor" id="fbValor' + i + '" /></td>' +
+      '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover bairro">✕</button></td>' +
+    "</tr>"
+  ).join("");
+  bairrosFrete.forEach((b, i) => {
+    if (window.Dinheiro) { Dinheiro.mascarar("fbValor" + i); Dinheiro.setValor("fbValor" + i, Number(b.valor) || 0); }
+  });
+  body.querySelectorAll(".ff-remover").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      bairrosFrete = lerBairrosDoDOM();
+      bairrosFrete.splice(Number(btn.dataset.i), 1);
+      renderBairros();
+    });
+  });
+}
+
+if ($("btnAddBairro")) {
+  $("btnAddBairro").addEventListener("click", () => {
+    bairrosFrete = lerBairrosDoDOM();
+    bairrosFrete.push({ nome: "", valor: 0 });
+    renderBairros();
+  });
+}
+
+if ($("btnVerPlanosBairro")) {
+  $("btnVerPlanosBairro").addEventListener("click", () => abrirUpsell("freteRaio"));
 }
 
 // ============================================================
