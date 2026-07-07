@@ -2,6 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const {
   calcularDistanciaKm, encontrarFaixa, montarEnderecoCompleto, freteDeConfig, calcularFreteRaio,
+  normalizarNome, encontrarBairro, resolverFreteBairro,
 } = require("../src/frete");
 
 // ---- calcularDistanciaKm (Haversine) ----
@@ -64,4 +65,49 @@ test("calcularFreteRaio: fora do raio → indisponível", () => {
 });
 test("calcularFreteRaio: sem coordenadas → indisponível", () => {
   assert.equal(calcularFreteRaio(null, { lat: 1, lon: 1 }, FAIXAS).entrega_disponivel, false);
+});
+
+// ---- normalizarNome ----
+test("normalizarNome: remove acento, caixa e espaços duplicados", () => {
+  assert.equal(normalizarNome("  Jardim  AMÉRICA "), "jardim america");
+  assert.equal(normalizarNome("São João"), "sao joao");
+});
+
+// ---- encontrarBairro ----
+const BAIRROS = [{ nome: "Centro", valor: 5 }, { nome: "Jardim América", valor: 8 }];
+test("encontrarBairro: match exato ignora acento/caixa/espaço", () => {
+  assert.deepEqual(encontrarBairro("centro", BAIRROS), { nome: "Centro", valor: 5 });
+  assert.deepEqual(encontrarBairro(" jardim  america ", BAIRROS), { nome: "Jardim América", valor: 8 });
+});
+test("encontrarBairro: sem match / vazio / lista vazia → null", () => {
+  assert.equal(encontrarBairro("Vila Santa Rosa", BAIRROS), null);
+  assert.equal(encontrarBairro("", BAIRROS), null);
+  assert.equal(encontrarBairro("Centro", []), null);
+  assert.equal(encontrarBairro("Centro", null), null);
+});
+
+// ---- resolverFreteBairro ----
+test("resolverFreteBairro: casa → disponível + valor + foraDaArea da config", () => {
+  const f = freteDeConfig({ frete: { modo: "bairro", bairro: { faixas: BAIRROS, foraDaArea: "bloqueia" } } });
+  const r = resolverFreteBairro(f, "CENTRO");
+  assert.equal(r.entrega_disponivel, true);
+  assert.equal(r.valor_frete, 5);
+  assert.equal(r.bairro, "Centro");
+  assert.equal(r.foraDaArea, "bloqueia");
+});
+test("resolverFreteBairro: não casa → indisponível + foraDaArea default", () => {
+  const f = freteDeConfig({ frete: { modo: "bairro", bairro: { faixas: BAIRROS } } });
+  const r = resolverFreteBairro(f, "Outro Bairro");
+  assert.equal(r.entrega_disponivel, false);
+  assert.equal(r.valor_frete, null);
+  assert.equal(r.foraDaArea, "retirada");
+});
+
+// ---- freteDeConfig: bloco bairro ----
+test("freteDeConfig: bloco bairro normalizado (descarta linha sem nome)", () => {
+  const f = freteDeConfig({ frete: { modo: "bairro", bairro: { faixas: [{ nome: "Centro", valor: 5 }, { valor: 9 }] } } });
+  assert.equal(f.modo, "bairro");
+  assert.equal(f.bairro.faixas.length, 1);
+  assert.equal(f.bairro.faixas[0].nome, "Centro");
+  assert.equal(f.bairro.foraDaArea, "retirada");
 });
