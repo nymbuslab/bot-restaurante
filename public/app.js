@@ -2195,7 +2195,7 @@ if ($("freteModoRaioLabel")) {
 }
 if ($("freteModoBairroLabel")) {
   $("freteModoBairroLabel").addEventListener("click", (e) => {
-    if (planoAtual !== "completo") { e.preventDefault(); abrirUpsell("freteRaio"); }
+    if (planoAtual !== "completo") { e.preventDefault(); abrirUpsell("bairro"); }
   });
 }
 
@@ -2859,7 +2859,7 @@ if ($("btnAddBairro")) {
 }
 
 if ($("btnVerPlanosBairro")) {
-  $("btnVerPlanosBairro").addEventListener("click", () => abrirUpsell("freteRaio"));
+  $("btnVerPlanosBairro").addEventListener("click", () => abrirUpsell("bairro"));
 }
 
 // ============================================================
@@ -4049,6 +4049,16 @@ const UPSELL_FEATURES = {
       'Frete pela <strong>distância (km)</strong> até o cliente',
       'Faixas de preço por raio, calculadas pelo <strong>CEP</strong>',
       'Fora da área vira <strong>retirada</strong> automaticamente',
+    ],
+  },
+  bairro: {
+    icone: _svgUpsell('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'),
+    titulo: "Cobre frete por bairro",
+    sub: 'O <strong>frete por bairro</strong> faz parte do <strong>Plano Completo</strong>. Cadastre os bairros que você atende e defina um valor fixo de entrega para cada um.',
+    beneficios: [
+      '<strong>Valor de entrega</strong> fixo definido por bairro',
+      'Bairro <strong>identificado</strong> automaticamente pelo endereço do cliente',
+      'Fora da área: oferecer <strong>retirada</strong> ou bloquear o pedido',
     ],
   },
 };
