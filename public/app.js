@@ -4933,7 +4933,7 @@ async function pdvConfirmarEntrega() {
   const telefone = g("pdvEntTelefone");
   if (!campos.logradouro || !campos.numero) { toast("Informe a rua e o número.", "erro"); return; }
   const btn = $("pdvEntConfirmar"); btn.disabled = true; btn.textContent = "Calculando…";
-  const r = await api("POST", "/api/pdv/frete", { cep: campos.cep, numero: campos.numero });
+  const r = await api("POST", "/api/pdv/frete", { cep: campos.cep, numero: campos.numero, bairro: campos.bairro });
   btn.disabled = false; btn.textContent = "Confirmar endereço";
   if (!r) return;
   const d = await r.json().catch(() => ({}));
