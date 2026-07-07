@@ -143,13 +143,14 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   *Reverte a decisão "fora de escopo" acima — precisa de aval consciente.*
 - [ ] **Relatórios de verdade** (P/M) — faturamento agregado, mais vendidos, mix de pagamento,
   horário de pico. Dados já estão em `pedidos`.
-- [ ] **Refino de UX tela a tela (benchmark concorrentes)** (P, em curso) — revisão das telas do painel
+- [x] **Refino de UX tela a tela (benchmark concorrentes)** — ✅ **concluído**: revisão das telas do painel
   contra os ERPs do segmento (iFood Gestor, Saipos, Goomer, Anota AI, Menew), corrigindo atrito e
   trazendo padrões de mercado **dentro do escopo** (sem virar KDS). Dashboard ✅ (header + análises);
-  **Pedidos** ✅ (resumo, cancelado, prévia, canal, ações rápidas). Detalhe acionável por tela no
-  `PROGRESSO.md`. PDV ✅ (confirmar cancelar, badge, digitar qtd, fluxo por tipo de venda + origem).
-  Atual: **Tela de Mesas** — split no pagamento, reforço anti-fraude do cancelar, transferir/juntar (UI),
-  resumo de ocupação, alerta de tempo, nº de pessoas (valor por pessoa na conta/fechamento).
+  **Pedidos** ✅ (resumo, cancelado, prévia, canal, ações rápidas); **PDV** ✅ (confirmar cancelar, badge,
+  digitar qtd, fluxo por tipo de venda + origem); **Mesas** ✅ (split no pagamento, reforço anti-fraude do
+  cancelar, transferir/juntar, resumo de ocupação, alerta de tempo, nº de pessoas). Fechado com a
+  **auditoria completa da plataforma** (todas as telas + agente de impressão) — ver `CHANGELOG.md` v0.80.0.
+  Detalhe acionável por tela no `PROGRESSO.md`.
 
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
@@ -266,4 +267,3 @@ aplicada. **Requer no ambiente:** `PUBLIC_URL` (`CARDAPIO_LINK_SECRET` virou opc
 - **Confiança no cliente** → preço/total **sempre** recalculados no servidor; nunca devolver jsonb cru.
 - **Token** TTL curto; ausente/expirado → confirmação cai no telefone do checkout.
 - **Loja fechada / bot offline** → bloquear envio / salvar sem confirmar (não perde venda).
-
