@@ -758,3 +758,12 @@ Revisão completa da plataforma (todas as telas + o agente de impressão), com c
 - **Dashboard.** O **faturamento** deixa de somar a taxa de entrega (mostra a venda de produtos); pagamentos de **mesa** voltam a aparecer no gráfico de formas de pagamento.
 - **Segurança.** Proteções extras contra abuso nas telas de **conta** e **assinatura**; **trocar a senha encerra as outras sessões** abertas.
 - **Marca.** A aba do navegador do painel agora mostra **"Painel — Nymbus Pedidos"**.
+
+## [0.81.0] — Frete por bairro (Plano Completo)
+
+- Nova **modalidade de frete por bairro** no Plano Completo: em Configurações → Entrega, o
+  restaurante cadastra os bairros que atende e um **valor fixo para cada um**. Quando o cliente
+  informa o endereço, o bairro é identificado e o frete correspondente é aplicado.
+- Se o bairro do cliente **não** estiver na lista, vale a mesma regra do frete por raio: **oferecer
+  retirada** ou **bloquear a entrega** (à escolha do restaurante).
+- Funciona **no cardápio web e no PDV** (venda no balcão em modo Entrega).

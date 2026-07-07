@@ -139,6 +139,15 @@ chave nunca no frontend; evitar chamadas repetidas (cache).
 **Validação:** testes puros (Haversine com casos conhecidos; `encontrarFaixa` bordas) + Playwright
 no checkout (dentro do raio, fora→retirada, CEP inválido) + smoke real de geocode.
 
+### Modo por bairro (Plano Completo)
+
+3ª modalidade de frete: o restaurante cadastra bairros com **valor fixo por bairro** (aba
+Entrega). O bairro do cliente vem do endereço (CEP autopreenche ou o cliente digita) e casa por
+**igualdade normalizada exata** (acento/maiúscula/espaço ignorados). Sem match → política
+`foraDaArea` (`retirada`/`bloqueia`), igual ao raio. **Não usa Geoapify.** Vale no cardápio web e
+no PDV. Puro em `src/frete.js` (`normalizarNome`/`encontrarBairro`/`resolverFreteBairro`);
+`config.frete.bairro = { faixas: [{nome, valor}], foraDaArea }`.
+
 ## Parte 4 — Escolher / assinar o Completo
 
 - **Cadastro (wizard):** seletor de plano (Essencial/Completo) na etapa de conta/plano; o trial
