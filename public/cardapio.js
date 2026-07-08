@@ -693,7 +693,7 @@
       var comp = (l.composicao || []).length ? '<p class="cd-linha-comp">' + esc(l.composicao.map(function (c) { return c.itens.join(", "); }).join(" · ")) + "</p>" : "";
       var vars = (l.variacoes || []).length ? '<p class="cd-linha-ops">' + esc(l.variacoes.map(opTxt).join(", ")) + "</p>" : "";
       var ops = (l.opcionais || []).length ? '<p class="cd-linha-ops">' + esc(l.opcionais.map(opTxt).join(", ")) + "</p>" : "";
-      var obs = l.observacao ? '<p class="cd-linha-obs">📝 ' + esc(l.observacao) + "</p>" : "";
+      var obs = l.observacao ? '<p class="cd-linha-obs"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + esc(l.observacao) + "</p>" : "";
       div.innerHTML =
         '<div class="cd-linha-corpo">' +
           '<p class="cd-linha-nome">' + esc(l.nome) + "</p>" + vars + comp + ops + obs +
@@ -774,7 +774,7 @@
         sub += '<div class="cd-resumo-add-titulo">Adicionais</div>';
         sub += l.opcionais.map(function (o) { return '<div class="cd-resumo-add">- ' + esc(opTxt(o)) + "</div>"; }).join("");
       }
-      if (l.observacao) sub += '<div class="cd-resumo-obs">📝 ' + esc(l.observacao) + "</div>";
+      if (l.observacao) sub += '<div class="cd-resumo-obs"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' + esc(l.observacao) + "</div>";
       return '<div class="cd-resumo-linha">' +
         '<div class="cd-resumo-esq"><div><span class="q">' + l.qtd + "x</span> " + esc(l.nome) + "</div>" + sub + "</div>" +
         '<span class="cd-resumo-preco">' + money(precoLinha(l)) + "</span>" +

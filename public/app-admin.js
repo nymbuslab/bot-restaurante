@@ -736,15 +736,15 @@ function renderTenantModal(d) {
   const outroPlano = planoTenantAtual === "completo" ? "Essencial" : "Completo";
   botoes.push(`<button class="secundario mini" data-acao="trocarplano">Mudar para Plano ${outroPlano}</button>`);
   if (st === "cortesia") {
-    botoes.push(`<button class="secundario mini" data-acao="revogar">Revogar cortesia</button>`);
+    botoes.push(`<button class="perigo mini" data-acao="revogar">Revogar cortesia</button>`);
   } else {
     botoes.push(`<button class="secundario mini" data-acao="cortesia">Liberar acesso (cortesia)</button>`);
   }
   if (d.temAssinaturaStripe && ["trialing", "active", "past_due"].includes(st)) {
-    botoes.push(`<button class="secundario mini" data-acao="cancelar">Cancelar assinatura</button>`);
+    botoes.push(`<button class="perigo mini" data-acao="cancelar">Cancelar assinatura</button>`);
   }
   if (d.ativo) {
-    botoes.push(`<button class="secundario mini" data-acao="suspender">Suspender</button>`);
+    botoes.push(`<button class="perigo mini" data-acao="suspender">Suspender</button>`);
   } else {
     botoes.push(`<button class="secundario mini" data-acao="reativar">Reativar</button>`);
   }
