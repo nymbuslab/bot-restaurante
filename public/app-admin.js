@@ -66,11 +66,19 @@ async function apiAdmin(metodo, url, corpo) {
 // ============================================================
 // TOAST
 // ============================================================
+// Ícones de feedback (toast) — nunca emoji na UI, sempre SVG.
+const ICO_CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+const ICO_ALERTA = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
 function toast(msg, tipo = "sucesso") {
   const container = $("toast-container");
   const el = document.createElement("div");
   el.className = `toast ${tipo}`;
-  el.textContent = msg;
+  const ico = document.createElement("span");
+  ico.className = "toast-ico";
+  ico.innerHTML = tipo === "erro" ? ICO_ALERTA : ICO_CHECK;
+  const txt = document.createElement("span");
+  txt.textContent = msg;
+  el.append(ico, txt);
   container.appendChild(el);
   setTimeout(() => {
     el.classList.add("saindo");
@@ -736,15 +744,15 @@ function renderTenantModal(d) {
   const outroPlano = planoTenantAtual === "completo" ? "Essencial" : "Completo";
   botoes.push(`<button class="secundario mini" data-acao="trocarplano">Mudar para Plano ${outroPlano}</button>`);
   if (st === "cortesia") {
-    botoes.push(`<button class="secundario mini" data-acao="revogar">Revogar cortesia</button>`);
+    botoes.push(`<button class="perigo mini" data-acao="revogar">Revogar cortesia</button>`);
   } else {
     botoes.push(`<button class="secundario mini" data-acao="cortesia">Liberar acesso (cortesia)</button>`);
   }
   if (d.temAssinaturaStripe && ["trialing", "active", "past_due"].includes(st)) {
-    botoes.push(`<button class="secundario mini" data-acao="cancelar">Cancelar assinatura</button>`);
+    botoes.push(`<button class="perigo mini" data-acao="cancelar">Cancelar assinatura</button>`);
   }
   if (d.ativo) {
-    botoes.push(`<button class="secundario mini" data-acao="suspender">Suspender</button>`);
+    botoes.push(`<button class="perigo mini" data-acao="suspender">Suspender</button>`);
   } else {
     botoes.push(`<button class="secundario mini" data-acao="reativar">Reativar</button>`);
   }
@@ -1045,7 +1053,7 @@ async function salvarPlataforma() {
       suporteWhatsapp: $("cfg-suporte-wa").value,
     });
     const d = await r.json().catch(() => ({}));
-    if (r.ok) { toast("✓ Dados da plataforma salvos!"); }
+    if (r.ok) { toast("Dados da plataforma salvos!"); }
     else { aviso.textContent = d.erro || "Não foi possível salvar."; aviso.className = "aviso erro"; }
   } catch (e) {
     if (e.message !== "Sessão expirada") { aviso.textContent = "Erro ao conectar."; aviso.className = "aviso erro"; }
@@ -1070,7 +1078,7 @@ async function salvarAcessoMaster() {
     if (r.ok) {
       $("acc-nova").value = ""; $("acc-atual").value = "";
       if (d.email) $("acc-email").value = d.email;
-      toast("✓ Acesso atualizado!");
+      toast("Acesso atualizado!");
     } else { aviso.textContent = d.erro || "Não foi possível alterar."; aviso.className = "aviso erro"; }
   } catch (e) {
     if (e.message !== "Sessão expirada") { aviso.textContent = "Erro ao conectar."; aviso.className = "aviso erro"; }

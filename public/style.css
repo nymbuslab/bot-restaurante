@@ -27,6 +27,7 @@
   --success-subtle: rgba(34,197,94,0.12);
   --error: #EF4444;
   --error-subtle: rgba(239,68,68,0.12);
+  --error-hover: #DC2626;
   --warning: #EAB308;
   --warning-subtle: rgba(234,179,8,0.12);
   --info: #3B82F6;
@@ -40,9 +41,23 @@
   --radius: 10px;
   --radius-lg: 14px;
   --radius-xl: 18px;
+
+  /* Escala de espaçamento única (usar no lugar de valores soltos 12/14/18/26/28…) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
 }
 
 * { box-sizing: border-box; }
+
+/* Foco de teclado visível e consistente (acessibilidade — WCAG 2.4.7). Só aparece
+   na navegação por teclado, não no clique do mouse. Inputs mantêm o halo próprio. */
+:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 
 /* Rolagem suave ao clicar nos links âncora (nav da landing). O scroll-padding
    compensa a nav sticky (74px) pra a seção não parar escondida atrás dela.
@@ -1669,6 +1684,13 @@ button:disabled {
 }
 
 .pedidos-topo .sub { margin-bottom: 0; }
+/* Título de tela padrão (20px), igual a Cardápio/Config/Assinatura — Pedidos e
+   Mesas usavam <h2> puro (15px). */
+.pedidos-topo h2, .mesas-topo h2, .tela-topo h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+/* Cabeçalho de tela genérico (Dashboard/PDV/Caixa) — mesmo padrão dos demais. */
+.tela-topo { margin-bottom: 16px; }
+.tela-topo h2 { margin: 0; }
+.tela-topo .sub { margin: 4px 0 0; }
 .pedidos-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- Pedidos: métricas + filtros ---------- */
@@ -1721,7 +1743,7 @@ button:disabled {
 .metrica-num { display: flex; align-items: baseline; gap: 8px; }
 .metrica-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; white-space: nowrap; background: var(--secondary-subtle); color: var(--secondary); padding: 4px 8px; border-radius: var(--radius-sm); }
 .metrica-trend.subiu { background: var(--success-subtle); color: var(--success); }
-.metrica-trend.desceu { background: var(--danger-subtle); color: var(--danger); }
+.metrica-trend.desceu { background: var(--error-subtle); color: var(--error); }
 .metrica-trend span { line-height: 1; }
 .metrica-ontem { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .metrica-card.destaque .metrica-valor {
@@ -1766,7 +1788,7 @@ button:disabled {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.filtro-chip.ativo { background: var(--accent); color: #fff; box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.4); }
+.filtro-chip.ativo { background: var(--accent); color: #fff; }
 .filtro-chip:not(.ativo):hover { color: var(--text-primary); }
 .filtro-datas { display: inline-flex; align-items: center; gap: 8px; }
 .filtro-datas input { width: auto; }
@@ -1955,7 +1977,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .canal-tag svg { flex-shrink: 0; }
 .canal-whats svg  { color: #25D366; }
 .canal-balcao svg { color: var(--info); }
-.canal-mesa svg   { color: #f59e0b; }
+.canal-mesa svg   { color: var(--accent-fg); }
 .pedido-card-tags { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Ações rápidas na linha (desktop, Plano Completo) — aparecem ao passar o mouse */
@@ -2141,6 +2163,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 
 .toast.saindo { animation: toastOut 0.25s ease both; }
+.toast-ico { display: flex; flex: none; }
+.toast-ico svg { display: block; }
 
 .toast.sucesso {
   background: var(--bg-surface);
@@ -2293,7 +2317,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   border-radius: var(--radius); padding: 13px; font-size: 14px; font-weight: 700;
   cursor: pointer; transition: background 0.15s, transform 0.1s;
 }
-.np-btn-primario:hover { background: #6f50ce; }
+.np-btn-primario:hover { background: var(--accent-hover); }
 .np-btn-primario:active { transform: scale(0.98); }
 .np-btn-secundario {
   background: var(--bg-elevated); color: var(--text-secondary);
@@ -2412,7 +2436,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   border: none !important;
 }
 
-.modal-confirmar:hover { background: #DC2626 !important; }
+.modal-confirmar:hover { background: var(--error-hover) !important; }
 
 /* ---------- Simulador de chat ---------- */
 /* Cabeçalho de ação */
@@ -3328,7 +3352,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .var-est { width: 70px; font-size: 13px; text-align: center; }
 .var-estmin { width: 56px; font-size: 13px; text-align: center; }
 .var-order { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; flex-shrink: 0; }
-.var-order:hover:not(:disabled) { background: var(--bg-hover); }
+.var-order:hover:not(:disabled) { background: var(--bg-elevated); }
 .var-order:disabled { opacity: 0.3; cursor: default; }
 
 /* ---------- Mobile: bordas de edição sempre visíveis ---------- */
@@ -4256,11 +4280,11 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-preco-lista { list-style: none; padding: 0; margin: 0 0 26px; text-align: left; display: flex; flex-direction: column; gap: 12px; }
 .lp-preco-lista li { position: relative; padding-left: 28px; font-size: 14.5px; color: var(--text-primary); }
 .lp-preco-lista li::before {
-  content: "✓"; position: absolute; left: 0; top: 1px;
+  content: ""; position: absolute; left: 0; top: 1px;
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--success-subtle); color: var(--success);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
+  background: var(--success-subtle);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
 }
 /* Item não incluído no plano (Essencial): X cinza + texto esmaecido. */
 .lp-preco-lista li.lp-li-no { color: var(--text-disabled); }
@@ -4832,9 +4856,9 @@ html.embed, html.embed body { background: var(--bg-primary); }
 
 /* Selo de status de pagamento na lista de Pedidos (Plano Completo) */
 .selo-pag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; vertical-align: 1px; white-space: nowrap; }
-.selo-pago { background: rgba(52,211,153,0.14); color: #34d399; }
-.selo-areceber { background: rgba(251,191,36,0.14); color: #fbbf24; }
-.selo-cancelado { background: rgba(239,68,68,0.14); color: #ef4444; }
+.selo-pago { background: var(--success-subtle); color: var(--success); }
+.selo-areceber { background: var(--warning-subtle); color: var(--warning); }
+.selo-cancelado { background: var(--error-subtle); color: var(--error); }
 
 /* Botão de cancelar item no modal de pedido */
 .ped-item { align-items: center; }
@@ -4844,7 +4868,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
   background: transparent; border: none; border-radius: var(--radius-sm);
   color: var(--text-disabled); cursor: pointer; transition: color .15s, background .15s;
 }
-.ped-item-del:hover { color: var(--danger); background: rgba(239,68,68,.1); }
+.ped-item-del:hover { color: var(--error); background: rgba(239,68,68,.1); }
 
 /* Banner de pedido cancelado no topo do modal */
 .ped-cancelado-banner {
@@ -4855,9 +4879,9 @@ html.embed, html.embed body { background: var(--bg-primary); }
 
 /* Botão "Cancelar pedido" nas ações do modal */
 .btn-cancelar-pedido {
-  color: var(--danger); background: transparent; border: 1px solid rgba(239,68,68,.35);
+  color: var(--error); background: transparent; border: 1px solid rgba(239,68,68,.35);
 }
-.btn-cancelar-pedido:hover { background: rgba(239,68,68,.1); border-color: var(--danger); }
+.btn-cancelar-pedido:hover { background: rgba(239,68,68,.1); border-color: var(--error); }
 
 /* ---- Modal de pré-visualização de impressão ---- */
 /* Acima dos outros modais (1000): é aberto de dentro do modal de detalhe do pedido. */
@@ -5723,7 +5747,7 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   color: var(--text-disabled); cursor: pointer;
   transition: color .15s, background .15s;
 }
-.mesa-item-del:hover { color: var(--danger); background: rgba(239,68,68,.1); }
+.mesa-item-del:hover { color: var(--error); background: rgba(239,68,68,.1); }
 .mesa-acoes-row {
   display: flex;
   gap: 8px;
@@ -5945,3 +5969,15 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 }
 .mon-inc-tipo { display: block; font-weight: 600; color: var(--text-primary); }
 .mon-inc-msg { display: block; margin-top: 2px; font-size: 12px; color: var(--text-secondary); word-break: break-word; }
+
+/* ===== Botão de EXCLUIR/REMOVER — centraliza a lixeira SVG canônica (Fase 2B) =====
+   Estes botões antes traziam um glifo "×"/"✕"; agora recebem o ICO_LIXEIRA (14px).
+   Regra única: centraliza e fixa o tamanho do SVG em todos eles. Cor/hover ficam
+   nas regras próprias de cada classe (já em token --error). */
+.comp-chip-del, .comp-sg-del, .opc-del, .var-del, .pag-pill-del, .fc-del,
+.ff-remover, .mesa-cart-rm, .mesa-tag-rm, .pdv-pg-item button {
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+.comp-chip-del svg, .comp-sg-del svg, .opc-del svg, .var-del svg,
+.pag-pill-del svg, .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
+.mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }

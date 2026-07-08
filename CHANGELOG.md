@@ -770,3 +770,25 @@ Revisão completa da plataforma (todas as telas + o agente de impressão), com c
   automaticamente** (pelo mesmo ViaCEP que identifica o cliente), deixando o nome mais certeiro — ou
   o restaurante digita o nome à mão.
 - Funciona **no cardápio web e no PDV** (venda no balcão em modo Entrega).
+
+## [0.82.0] — Padronização visual da plataforma
+
+Auditoria visual completa (todas as telas) e alinhamento ao design system.
+
+- **Ícone de excluir padronizado:** remover/excluir agora é sempre uma **lixeira** — antes, em várias
+  telas (formas de pagamento, faixas de frete, bairros, opcionais/variações, lançamentos do caixa,
+  itens e seleção de mesa), aparecia um "×". O **X** ficou reservado só para **fechar** janelas.
+- **Botões de remover que não funcionavam:** o realce vermelho ao passar o mouse em alguns botões de
+  remover (Pedidos, Mesas) **não aparecia** por um erro de cor interno — corrigido, agora funciona.
+- **Painel do administrador:** ações que **cancelam/suspendem** um restaurante ou **revogam cortesia**
+  agora aparecem em **vermelho** (destrutivas), como no resto da plataforma — antes ficavam iguais às
+  ações neutras, fácil de clicar por engano.
+- **Sem emojis na interface — só ícones:** avisos/confirmações (os "toasts"), a observação do pedido
+  no cardápio, a demonstração da landing e a lista de recursos passam a usar **ícones SVG** no lugar
+  de emojis (📝, 👋, 👇, ⚠️) e do "✓" de texto. Toast de sucesso mostra um check; o de erro, um alerta.
+- **Acessibilidade:** navegação por teclado agora mostra um **contorno de foco** visível e consistente.
+- **Consistência de cores:** ajustes finos para tudo usar a paleta da marca (fim de um laranja solto
+  e de selos de pagamento com tons ligeiramente diferentes do padrão).
+- **Títulos de tela consistentes:** todas as telas passam a ter um título padronizado. **Pedidos** e
+  **Mesas** (que ficavam menores) foram alinhados; e **Dashboard** ("Visão geral"), **PDV** ("Venda no
+  balcão") e **Caixa** ("Caixa do dia"), que não tinham título, ganharam o seu.
