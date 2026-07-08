@@ -103,7 +103,7 @@ src/
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> bot: saudação envia o LINK do cardápio web (/c/:slug?p=token); estados MENU/ATENDENTE
   cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, token HMAC do link)
-  frete.js            -> frete por raio (Plano Completo): Haversine + faixas (puros) + geocodificar() Geoapify c/ cache (tabela geo_cache)
+  frete.js            -> frete avançado (Plano Completo): por RAIO (Haversine + faixas + geocodificar() Geoapify c/ cache geo_cache) e por BAIRRO (normalizarNome/encontrarBairro/resolverFreteBairro — match exato normalizado, sem geocode). Puros
   cep.js              -> busca de CEP (ViaCEP) com cache no banco (tabela ceps)
   email.js            -> e-mail transacional via Resend (boas-vindas, reset de senha, assinatura, avisos)
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async

@@ -52,15 +52,49 @@ function normalizar(s) {
   return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+// Normaliza NOME (bairro) p/ comparação: minúsculas + REMOVE ACENTO + colapsa
+// espaços + trim. Distinta de `normalizar` (que não remove acento). Pura.
+function normalizarNome(s) {
+  return String(s || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Acha o bairro cadastrado que casa (igualdade normalizada EXATA) com o do
+// cliente. `faixas`: [{ nome, valor }]. Retorna { nome, valor } ou null. Pura.
+function encontrarBairro(nomeCliente, faixas) {
+  if (!Array.isArray(faixas)) return null;
+  const alvo = normalizarNome(nomeCliente);
+  if (!alvo) return null;
+  for (const f of faixas) {
+    if (!f || !f.nome) continue;
+    if (normalizarNome(f.nome) === alvo) return { nome: f.nome, valor: Number(f.valor) || 0 };
+  }
+  return null;
+}
+
+// Resolve o frete por bairro a partir da config normalizada + bairro do cliente.
+// `f` = freteDeConfig(config). Retorna { entrega_disponivel, valor_frete,
+// foraDaArea, bairro }. Pura.
+function resolverFreteBairro(f, bairroCliente) {
+  const bloco = (f && f.bairro) || {};
+  const foraDaArea = bloco.foraDaArea === "bloqueia" ? "bloqueia" : "retirada";
+  const faixas = Array.isArray(bloco.faixas) ? bloco.faixas : [];
+  const m = encontrarBairro(bairroCliente, faixas);
+  if (!m) return { entrega_disponivel: false, valor_frete: null, foraDaArea, bairro: null };
+  return { entrega_disponivel: true, valor_frete: m.valor, foraDaArea, bairro: m.nome };
+}
+
 // Normaliza o bloco de frete da config (compat: taxaEntrega legado em
 // atendimento). Pura — usada por servidor e checkout (fonte única).
 function freteDeConfig(config) {
   const c = config || {};
   const frete = c.frete || {};
-  const modo = frete.modo === "raio" ? "raio" : "fixo";
+  const modo = frete.modo === "raio" ? "raio" : frete.modo === "bairro" ? "bairro" : "fixo";
   const taxaLegado = (c.atendimento && c.atendimento.taxaEntrega) || 0;
   const taxaFixa = Number(frete.taxaFixa != null ? frete.taxaFixa : taxaLegado) || 0;
   const raio = frete.raio || {};
+  const bairro = frete.bairro || {};
   return {
     modo,
     taxaFixa,
@@ -69,6 +103,12 @@ function freteDeConfig(config) {
       enderecoBase: raio.enderecoBase || "",
       faixas: Array.isArray(raio.faixas) ? raio.faixas : [],
       foraDaArea: raio.foraDaArea === "bloqueia" ? "bloqueia" : "retirada",
+    },
+    bairro: {
+      faixas: Array.isArray(bairro.faixas)
+        ? bairro.faixas.filter((b) => b && b.nome).map((b) => ({ nome: String(b.nome), valor: Number(b.valor) || 0 }))
+        : [],
+      foraDaArea: bairro.foraDaArea === "bloqueia" ? "bloqueia" : "retirada",
     },
   };
 }
@@ -132,4 +172,5 @@ async function geocodificar(enderecoCompleto) {
 module.exports = {
   calcularDistanciaKm, encontrarFaixa, montarEnderecoCompleto, normalizar,
   freteDeConfig, calcularFreteRaio, geocodificar,
+  normalizarNome, encontrarBairro, resolverFreteBairro,
 };

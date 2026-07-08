@@ -606,9 +606,9 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
       // só o modo e a política de fora-da-área; o valor sai do POST .../frete.
       frete: (function () {
         const f = frete.freteDeConfig(config);
-        return f.modo === "raio"
-          ? { modo: "raio", foraDaArea: f.raio.foraDaArea, configurado: !!(f.raio.coordEmpresa && f.raio.faixas.length) }
-          : { modo: "fixo", taxaFixa: f.taxaFixa };
+        if (f.modo === "raio") return { modo: "raio", foraDaArea: f.raio.foraDaArea, configurado: !!(f.raio.coordEmpresa && f.raio.faixas.length) };
+        if (f.modo === "bairro") return { modo: "bairro", foraDaArea: f.bairro.foraDaArea, configurado: f.bairro.faixas.length > 0 };
+        return { modo: "fixo", taxaFixa: f.taxaFixa };
       })(),
       taxaEntrega: frete.freteDeConfig(config).taxaFixa, // compat (checkout antigo)
       pagamentos: Array.isArray(config.pagamentos) ? config.pagamentos : [],
@@ -704,11 +704,21 @@ app.post("/api/c/:slug/frete", publicoLimiter, async (req, res) => {
     const dir = empresas.tenantDir(emp.slug);
     await store.ensure(dir);
     const f = frete.freteDeConfig(store.getConfig(dir));
-    if (f.modo !== "raio") return res.status(400).json({ erro: "Frete por raio não está ativo." });
+    const b = req.body || {};
+
+    // Modo BAIRRO: casa o bairro informado (sem geocodificar).
+    if (f.modo === "bairro") {
+      const r = frete.resolverFreteBairro(f, b.bairro);
+      if (!r.entrega_disponivel) {
+        return res.json({ entrega_disponivel: false, foraDaArea: r.foraDaArea, mensagem: "Não atendemos seu bairro." });
+      }
+      return res.json({ entrega_disponivel: true, valor_frete: r.valor_frete, bairro: r.bairro, foraDaArea: r.foraDaArea });
+    }
+
+    if (f.modo !== "raio") return res.status(400).json({ erro: "Cálculo de frete não está ativo." });
     if (!f.raio.coordEmpresa || !f.raio.faixas.length) {
       return res.json({ entrega_disponivel: false, foraDaArea: f.raio.foraDaArea, mensagem: "Entrega indisponível no momento." });
     }
-    const b = req.body || {};
     const cepDig = String(b.cep || "").replace(/\D/g, "");
     const numero = String(b.numero || "").trim().slice(0, 20);
     if (cepDig.length !== 8) return res.status(400).json({ erro: "CEP inválido." });
@@ -780,6 +790,12 @@ function sanitizarEnderecoCampos(c) {
 async function calcularFretePdv(dir, tipoEntrega, enderecoCampos) {
   if (tipoEntrega !== "Entrega") return { taxa: 0, entrega_disponivel: true };
   const f = frete.freteDeConfig(store.getConfig(dir));
+  if (f.modo === "bairro") {
+    const ec = sanitizarEnderecoCampos(enderecoCampos);
+    const r = frete.resolverFreteBairro(f, ec.bairro);
+    if (!r.entrega_disponivel) return { taxa: 0, entrega_disponivel: false, foraDaArea: true };
+    return { taxa: Number(r.valor_frete) || 0, entrega_disponivel: true };
+  }
   if (f.modo !== "raio") return { taxa: Number(f.taxaFixa) || 0, entrega_disponivel: true };
   if (!f.raio.coordEmpresa || !f.raio.faixas.length) return { taxa: 0, entrega_disponivel: false, foraDaArea: true };
   const ec = sanitizarEnderecoCampos(enderecoCampos);
@@ -842,7 +858,12 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     const f = frete.freteDeConfig(config);
     let taxaEntrega = 0;
     if (tipoEntrega === "Entrega") {
-      if (f.modo === "raio") {
+      if (f.modo === "bairro") {
+        const ec = sanitizarEnderecoCampos(b.enderecoCampos);
+        const r = frete.resolverFreteBairro(f, ec.bairro);
+        if (!r.entrega_disponivel) return res.status(409).json({ erro: "Não atendemos seu bairro." });
+        taxaEntrega = r.valor_frete;
+      } else if (f.modo === "raio") {
         if (!f.raio.coordEmpresa || !f.raio.faixas.length) return res.status(409).json({ erro: "Entrega indisponível no momento." });
         const ec = sanitizarEnderecoCampos(b.enderecoCampos);
         if (ec.cep.length !== 8 || !ec.numero) return res.status(400).json({ erro: "Endereço incompleto para entrega (CEP e número)." });
@@ -1445,6 +1466,11 @@ function normalizarConfigServidor(body) {
       .filter((f) => f && typeof f === "object")
       .map((f) => { const ini = nn(f.ini); return Object.assign({}, f, { ini: ini, fim: Math.max(nn(f.fim), ini), valor: nn(f.valor) }); });
   }
+  if (body.frete && body.frete.bairro && Array.isArray(body.frete.bairro.faixas)) {
+    body.frete.bairro.faixas = body.frete.bairro.faixas
+      .filter((b) => b && typeof b === "object" && String(b.nome || "").trim())
+      .map((b) => ({ nome: String(b.nome).trim().slice(0, 80), valor: nn(b.valor) }));
+  }
   if (body.mensagens && typeof body.mensagens === "object") {
     for (const k in body.mensagens) {
       if (typeof body.mensagens[k] === "string") body.mensagens[k] = body.mensagens[k].slice(0, MAX_MSG_CONFIG);
@@ -1466,11 +1492,11 @@ app.put("/api/config", exigeAuth, async (req, res) => {
     normalizarConfigServidor(body);
     let avisoFrete = null;
     // Frete por raio: feature do Plano Completo (gate no servidor, não confia no front).
-    if (body.frete && body.frete.modo === "raio") {
+    if (body.frete && (body.frete.modo === "raio" || body.frete.modo === "bairro")) {
       const emp = await empresas.buscarPorSlug(req.slug);
       if (!empresas.temFreteRaio(emp)) {
-        body.frete.modo = "fixo"; // sem Completo → não ativa o raio
-      } else {
+        body.frete.modo = "fixo"; // sem Completo → não ativa frete avançado (raio/bairro)
+      } else if (body.frete.modo === "raio") {
         // Geocodifica o endereço da empresa 1x (regeocodifica só se o endereço mudou).
         const raio = body.frete.raio || (body.frete.raio = {});
         const endEmpresa = frete.montarEnderecoCompleto(body.restaurante || {});
@@ -1909,7 +1935,7 @@ app.post("/api/pdv/frete", exigeAuth, async (req, res) => {
   try {
     await store.ensure(req.tenantDir);
     const b = req.body || {};
-    const r = await calcularFretePdv(req.tenantDir, "Entrega", { cep: b.cep, numero: b.numero });
+    const r = await calcularFretePdv(req.tenantDir, "Entrega", { cep: b.cep, numero: b.numero, bairro: b.bairro });
     res.json({
       entrega_disponivel: r.entrega_disponivel,
       valor_frete: r.taxa,

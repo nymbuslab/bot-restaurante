@@ -577,6 +577,14 @@
                 </span>
                 <span class="cfg-frete-lock" id="freteRaioLock" hidden><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Plano Completo</span>
               </label>
+              <label class="cfg-frete-modo" id="freteModoBairroLabel">
+                <input type="radio" name="freteModo" value="bairro" id="freteModoBairro" />
+                <span class="cfg-frete-modo-txt">
+                  <strong>Frete por bairro</strong>
+                  <span class="sub">Um valor fixo para cada bairro que você atende.</span>
+                </span>
+                <span class="cfg-frete-lock" id="freteBairroLock" hidden><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Plano Completo</span>
+              </label>
             </div>
 
             <!-- Painel: frete fixo -->
@@ -605,6 +613,29 @@
                 <div class="campo cfg-fora-area">
                   <label for="freteForaArea">Quando o cliente está fora da área de entrega</label>
                   <select id="freteForaArea">
+                    <option value="retirada">Oferecer retirada no local</option>
+                    <option value="bloqueia">Bloquear entrega (não atende)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Painel: frete por bairro -->
+            <div class="cfg-frete-painel" id="fretePainelBairro" hidden>
+              <div class="cfg-frete-upsell" id="freteBairroUpsell" hidden>
+                <p>O <strong>frete por bairro</strong> aplica um valor fixo para cada bairro que você atende. Disponível no <strong>Plano Completo</strong>.</p>
+                <button type="button" class="mini" id="btnVerPlanosBairro">Ver planos</button>
+              </div>
+              <div class="cfg-frete-bairro-config" id="freteBairroConfig" hidden>
+                <p class="sub">Cadastre os bairros que você atende e o valor do frete de cada um. <strong>Dica:</strong> digite um CEP do bairro para preencher o nome automaticamente (ou digite à mão). O bairro do cliente é identificado pelo endereço informado no pedido.</p>
+                <table class="cfg-faixas-tabela">
+                  <thead><tr><th>CEP</th><th>Bairro</th><th>Valor (R$)</th><th></th></tr></thead>
+                  <tbody id="freteBairrosBody"></tbody>
+                </table>
+                <button type="button" class="secundario mini" id="btnAddBairro">+ Adicionar bairro</button>
+                <div class="campo cfg-fora-area">
+                  <label for="freteBairroForaArea">Quando o cliente está fora da área de entrega</label>
+                  <select id="freteBairroForaArea">
                     <option value="retirada">Oferecer retirada no local</option>
                     <option value="bloqueia">Bloquear entrega (não atende)</option>
                   </select>
