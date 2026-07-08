@@ -3,7 +3,7 @@ name: copy-nymbus
 description: >-
   Voz de marca e método de copywriting de venda da Nymbus Pedidos (SaaS de pedidos no
   WhatsApp para restaurantes). Use SEMPRE que for escrever, reescrever, revisar ou
-  encurtar QUALQUER texto voltado ao usuário do produto — landing, títulos e descrições
+  encurtar QUALQUER texto voltado ao usuário do produto: landing, títulos e descrições
   de telas do painel, cards de recurso, planos, botões/CTAs, mensagens do bot no
   WhatsApp, e-mails transacionais, textos de onboarding, estados vazios e mensagens de
   erro. Acione mesmo quando o pedido for só "resume esse texto", "deixa mais curto",
@@ -14,12 +14,12 @@ description: >-
 # Copywriting da Nymbus Pedidos
 
 Guia de voz e método para escrever a parte textual do produto como **material de
-marketing e venda** — não como descrição técnica nem como resumo seco. O objetivo de
+marketing e venda**, não como descrição técnica nem como resumo seco. O objetivo de
 cada texto é fazer o dono de restaurante **entender o ganho e agir**.
 
 ## Quem lê (e por que isso muda tudo)
 
-O leitor é **dono ou gerente de restaurante pequeno/médio** — não é técnico, não liga pra
+O leitor é **dono ou gerente de restaurante pequeno/médio**. Não é técnico, não liga pra
 "multi-tenant" ou "WebSocket". Ele pensa em **pedido perdido, comissão que come o lucro,
 fila no balcão, mesa que não fecha certo, papel de comanda**. Escreva na língua dele:
 concreta, do dia a dia da operação. Se uma frase só faz sentido pra quem programa,
@@ -32,9 +32,9 @@ por pedido**. O cliente pede pelo WhatsApp, o pedido cai no painel, o restaurant
 e (no Plano Completo) imprime a comanda, controla mesas, PDV e caixa.
 
 Âncoras de venda que sempre valem a pena lembrar:
-- **Sem taxa por pedido / sem comissão** — o diferencial nº 1 contra iFood e afins.
+- **Sem taxa por pedido / sem comissão:** o diferencial nº 1 contra iFood e afins.
 - **Valor fixo por mês** (Essencial R$ 79, Completo R$ 99), **7 dias grátis, sem cartão** pra criar conta.
-- **Sem app pra baixar** — o cliente já tem o WhatsApp aberto.
+- **Sem app pra baixar:** o cliente já tem o WhatsApp aberto.
 - **No ar em minutos**, edições valem no próximo pedido.
 
 ## Os 6 princípios da voz
@@ -92,6 +92,32 @@ linha ("Frete por raio e por bairro", "Caixa do dia").
 Curtíssima, cordial, orienta a próxima ação. Formatação do WhatsApp: `*negrito*` pro que
 importa. Sem parágrafo longo. O cliente está no celular, com fome.
 
+## Microcopy de interface (painel)
+
+O painel não é copy de venda, é **microcopy de operação**: botões, erros, estados vazios,
+confirmações, tooltips. Aqui o dono está trabalhando, muitas vezes com pressa ou
+frustrado. O texto tem que **tirar dúvida e destravar a ação**, não vender. Valem os
+mesmos princípios da voz (frase curta, sem travessão-conector, sem emoji, pt-BR), com
+estes padrões por tipo:
+
+- **CTA / botão:** comece por verbo e seja específico sobre o resultado. "Criar conta",
+  "Salvar alterações", "Receber pagamento". Nunca "Enviar", "OK" ou "Confirmar" solto.
+- **Mensagem de erro:** *o que aconteceu + por que + como resolver*, sem culpar o usuário.
+  Ex.: "Pagamento recusado. O banco não autorizou. Tente outro cartão ou fale com o banco."
+- **Estado vazio:** *o que é isto + por que está vazio + como começar*. Vazio é
+  oportunidade de orientar, não um branco. Ex.: "Nenhum pedido ainda. Quando o primeiro
+  chegar pelo WhatsApp, ele aparece aqui."
+- **Confirmação (ação destrutiva):** diga a ação concreta e a consequência; rotule os
+  botões pela ação. "Excluir 3 itens?" + "Isso não dá pra desfazer." + botões
+  "Excluir" / "Cancelar" (nunca "Tem certeza?" com "OK/Cancelar").
+- **Tooltip:** curto e útil, nunca o óbvio. Explique o que não está claro na tela, não
+  repita o rótulo.
+- **Loading:** reduza a ansiedade e sete expectativa ("Salvando…", "Gerando o relatório…").
+- **Onboarding:** um conceito por vez, revelado quando é preciso, não tudo de uma vez.
+
+**Tom por contexto:** sucesso = comemora sem exagero; erro = empático e com saída; aviso =
+claro e acionável; neutro = informativo e enxuto.
+
 ## Exemplos antes/depois
 
 **1 — Matar o travessão-conector (a regra dura):**
@@ -124,5 +150,23 @@ Bom: `Todo cliente é respondido na mesma hora, até no pico do almoço.`
 
 Quando a tarefa é revisar textos já escritos (ex.: a landing), entregue **antes/depois**
 lado a lado por trecho, com uma linha curta do *porquê* de cada mudança. Não reescreva o
-que já está bom só pra mostrar serviço — aponte "já está ótimo" quando for o caso. Deixe
+que já está bom só pra mostrar serviço. Aponte "já está ótimo" quando for o caso. Deixe
 o dono aprovar a redação antes de qualquer edição em arquivo.
+
+Quando houver **trade-off real de tom** num trecho (ex.: um CTA ou título que pode ser
+mais direto ou mais aspiracional), ofereça 2–3 alternativas em tabela, com a sua
+recomendação marcada:
+
+| Opção | Texto | Tom | Melhor quando |
+|-------|-------|-----|---------------|
+| A | ... | direto | ... |
+| B | ... | aspiracional | ... |
+
+Para o resto, uma proposta forte basta. Não infle a resposta com variações que não
+agregam.
+
+---
+
+Os padrões de microcopy de interface (erros, estados vazios, confirmações, tooltips)
+foram adaptados da skill pública `ux-copy` do repositório oficial da Anthropic
+(anthropics/knowledge-work-plugins), vertidos para a voz da Nymbus e pt-BR.
