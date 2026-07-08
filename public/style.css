@@ -4631,8 +4631,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 
 /* ---- Aba Entrega: modo de frete (fixo | raio) ---- */
 .cfg-frete-card { display: flex; flex-direction: column; gap: 16px; }
-.cfg-frete-modos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 640px) { .cfg-frete-modos { grid-template-columns: 1fr; } }
+.cfg-frete-modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 760px) { .cfg-frete-modos { grid-template-columns: 1fr; } }
 .cfg-frete-modo {
   display: flex; align-items: flex-start; gap: 10px; position: relative;
   padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
