@@ -68,6 +68,10 @@ Estas não são de estilo, são de padronização do projeto:
   dúvida, use afirmação qualitativa ("sem comissão") em vez de estatística inventada.
 - **CTA em verbo de ação**, curto e sem fricção: "Começar grátis", "Criar conta grátis",
   "Já tenho conta". Nada de "Clique aqui".
+- **"Excluir" vs "Remover":** use **Excluir** só quando apaga de vez um registro
+  (item do cardápio, categoria, conta). Use **Remover** para tirar algo de uma lista ou
+  rascunho, ou limpar um recurso (cartão, foto, ingrediente, forma de pagamento, mesa da
+  configuração). O verbo sinaliza ao usuário se a ação é destrutiva ou reversível.
 
 ### Tiques que soam robóticos (evitar)
 
