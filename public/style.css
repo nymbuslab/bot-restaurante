@@ -1781,7 +1781,7 @@ button:disabled {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.filtro-chip.ativo { background: var(--accent); color: #fff; box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.4); }
+.filtro-chip.ativo { background: var(--accent); color: #fff; }
 .filtro-chip:not(.ativo):hover { color: var(--text-primary); }
 .filtro-datas { display: inline-flex; align-items: center; gap: 8px; }
 .filtro-datas input { width: auto; }
