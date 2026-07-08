@@ -21,6 +21,7 @@ const clientes = require("./clientes");
 const auditoria = require("./auditoria");
 const cep = require("./cep");
 const frete = require("./frete");
+const assets = require("./assets");
 const mail = require("./email");
 const db = require("./db");
 const multiBot = require("./multi-bot");
@@ -145,9 +146,40 @@ app.use(express.json({ limit: "1mb" }));
 // Compressão gzip: o front é ~630 KB de JS/CSS crus + todo JSON de API — comprime
 // ~75-80% (maior ganho de first paint/rede da plataforma). Antes do static p/ cobrir os assets.
 app.use(compression());
-// A raiz "/" é servida pelo express.static → public/index.html (landing pública).
-// maxAge curto: sem build/hashing, evita cache imutável, mas poupa revalidação 304 na sessão.
-app.use(express.static(path.join(__dirname, "..", "public"), { maxAge: "1h" }));
+
+// Cache-busting (sem build): as páginas HTML são servidas FRESCAS (Cache-Control:
+// no-cache) com `?v=<versão>` injetado nos assets locais. A versão é um hash do
+// conteúdo de TODOS os CSS/JS de public/ → muda a cada deploy real e é estável
+// entre restarts do mesmo código. Assim o navegador pega os assets novos NA HORA
+// (sem hard refresh), enquanto os assets versionados seguem cacheáveis. Este
+// middleware precede o express.static para interceptar as páginas .html.
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
+const ASSET_V = assets.versaoAssets(PUBLIC_DIR);
+const _htmlCache = new Map();
+function enviarHtml(res, arquivo) {
+  try {
+    let html = _htmlCache.get(arquivo);
+    if (html == null) {
+      html = assets.injetarVersao(fs.readFileSync(path.join(PUBLIC_DIR, arquivo), "utf8"), ASSET_V);
+      _htmlCache.set(arquivo, html);
+    }
+    res.set("Cache-Control", "no-cache").type("html").send(html);
+  } catch (_) {
+    res.status(404).send("Não encontrado.");
+  }
+}
+app.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  const rel = req.path === "/" ? "index.html" : req.path.replace(/^\/+/, "");
+  if (!rel.endsWith(".html")) return next();
+  const full = path.join(PUBLIC_DIR, rel);
+  if (!full.startsWith(PUBLIC_DIR + path.sep) || !fs.existsSync(full)) return next();
+  enviarHtml(res, rel);
+});
+
+// Assets (CSS/JS/imagens): versionados via `?v` na URL, então cacheáveis. As
+// páginas .html são tratadas acima (fora do static, sempre frescas).
+app.use(express.static(PUBLIC_DIR, { maxAge: "1h" }));
 
 // ---- Autenticação de restaurante — Supabase Auth (JWT) ----
 // O token é o access_token (JWT) do Supabase. O middleware valida o JWT e
@@ -622,12 +654,12 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
 
 // Página do cardápio web (casca estática; o JS lê o slug da URL e busca a API acima).
 app.get("/c/:slug", (_req, res) => {
-  res.sendFile(path.join(__dirname, "..", "public", "cardapio.html"));
+  enviarHtml(res, "cardapio.html");
 });
 
 // Página de redefinição de senha (link do e-mail: /redefinir-senha?token=...).
 app.get("/redefinir-senha", (_req, res) => {
-  res.sendFile(path.join(__dirname, "..", "public", "redefinir-senha.html"));
+  enviarHtml(res, "redefinir-senha.html");
 });
 
 // Busca de CEP com cache no banco (substitui a chamada direta do front ao ViaCEP).
