@@ -1623,14 +1623,14 @@ function renderEditorComposicao() {
 
   container.querySelectorAll(".comp-sg-del").forEach((el) =>
     el.addEventListener("click", (e) => {
-      editorComposicao.splice(+e.target.dataset.sg, 1);
+      editorComposicao.splice(+e.currentTarget.dataset.sg, 1);
       renderEditorComposicao();
     })
   );
 
   container.querySelectorAll(".comp-chip-del").forEach((el) =>
     el.addEventListener("click", (e) => {
-      const si = +e.target.dataset.sg, ii = +e.target.dataset.ii;
+      const si = +e.currentTarget.dataset.sg, ii = +e.currentTarget.dataset.ii;
       editorComposicao[si].itens.splice(ii, 1);
       renderEditorComposicao();
     })
@@ -1720,7 +1720,7 @@ function renderEditorOpcionais() {
 
   container.querySelectorAll(".opc-del").forEach((el) =>
     el.addEventListener("click", (e) => {
-      editorOpcionais.splice(+e.target.dataset.oi, 1);
+      editorOpcionais.splice(+e.currentTarget.dataset.oi, 1);
       renderEditorOpcionais();
     })
   );
@@ -1786,7 +1786,7 @@ function renderEditorVariacoes() {
     el.addEventListener("input", (e) => { editorVariacoes[+e.target.dataset.vi].estoqueMinimo = e.target.value; })
   );
   container.querySelectorAll(".var-del").forEach((el) =>
-    el.addEventListener("click", (e) => { editorVariacoes.splice(+e.target.dataset.vi, 1); renderEditorVariacoes(); })
+    el.addEventListener("click", (e) => { editorVariacoes.splice(+e.currentTarget.dataset.vi, 1); renderEditorVariacoes(); })
   );
   atualizarEstoquePaiUI();
 }
