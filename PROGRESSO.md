@@ -12,6 +12,8 @@ _(nada no momento)_
 
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
+- [ ] **(P2, opcional) Padronização visual — 2 itens adiados de propósito** — na padronização (CHANGELOG 0.82.0) ficaram de fora, por serem plumbing arriscado sem ganho visual: (1) unificar a **escala global de botões** (mexe no `button` base → afeta todos); (2) **rename das classes de estado** (`.ativo`/`.ativa`/`.selecionado` → 1 nome só). Retomar só se quiser.
+
 > **Tela de Mesas — melhorias concluídas** (revisão tela a tela vs. Saipos/Goomer/Consumer/Colibri/Linx): split + reforço do cancelar, transferir/juntar, resumo de ocupação, alerta de mesa parada e nº de pessoas — todos em ✅ Concluído.
 
 #### Tela de PDV — evolução futura (opcional)
