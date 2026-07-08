@@ -1686,7 +1686,11 @@ button:disabled {
 .pedidos-topo .sub { margin-bottom: 0; }
 /* Título de tela padrão (20px), igual a Cardápio/Config/Assinatura — Pedidos e
    Mesas usavam <h2> puro (15px). */
-.pedidos-topo h2, .mesas-topo h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+.pedidos-topo h2, .mesas-topo h2, .tela-topo h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+/* Cabeçalho de tela genérico (Dashboard/PDV/Caixa) — mesmo padrão dos demais. */
+.tela-topo { margin-bottom: 16px; }
+.tela-topo h2 { margin: 0; }
+.tela-topo .sub { margin: 4px 0 0; }
 .pedidos-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- Pedidos: métricas + filtros ---------- */

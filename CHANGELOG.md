@@ -789,5 +789,6 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - **Acessibilidade:** navegação por teclado agora mostra um **contorno de foco** visível e consistente.
 - **Consistência de cores:** ajustes finos para tudo usar a paleta da marca (fim de um laranja solto
   e de selos de pagamento com tons ligeiramente diferentes do padrão).
-- **Títulos de tela:** **Pedidos** e **Mesas** agora exibem o título no mesmo tamanho das demais telas
-  (antes ficavam menores que Cardápio/Configurações).
+- **Títulos de tela consistentes:** todas as telas passam a ter um título padronizado. **Pedidos** e
+  **Mesas** (que ficavam menores) foram alinhados; e **Dashboard** ("Visão geral"), **PDV** ("Venda no
+  balcão") e **Caixa** ("Caixa do dia"), que não tinham título, ganharam o seu.
