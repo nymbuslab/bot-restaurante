@@ -133,12 +133,15 @@ function flash(id, msg) {
 // ============================================================
 // MODAL DE CONFIRMAÇÃO (substitui window.confirm)
 // ============================================================
-function confirmar(titulo, mensagem, txtConfirmar = "Confirmar") {
+function confirmar(titulo, mensagem, txtConfirmar = "Confirmar", txtCancelar = "Cancelar") {
   return new Promise((resolve) => {
     const overlay = $("modal-overlay");
     $("modal-titulo").textContent = titulo;
     $("modal-mensagem").textContent = mensagem;
     $("modal-confirmar").textContent = txtConfirmar;
+    // Rótulo do botão de dispensar é sempre reescrito (o #modal-cancelar é
+    // compartilhado; o default "Cancelar" reseta o que outra chamada tiver mudado).
+    $("modal-cancelar").textContent = txtCancelar;
     overlay.style.display = "flex";
     overlay.classList.remove("saindo");
 
@@ -329,7 +332,7 @@ function abrirNovoPedido(d) {
           <span class="np-item-preco">R$ ${moedaBR(sub)}</span>
         </div>`;
       }).join("")
-    : `<div class="np-item np-item-vazio">Veja os detalhes no pedido.</div>`;
+    : `<div class="np-item np-item-vazio">Não deu pra montar a lista aqui. Abra o pedido na aba Pedidos para ver os itens.</div>`;
   $("np-total").textContent = "R$ " + moedaBR(d.total || 0);
   const btnNpImp = $("np-imprimir");
   if (btnNpImp) { btnNpImp.hidden = false; marcarImprBloqueado(btnNpImp, planoAtual !== "completo"); }
@@ -361,7 +364,7 @@ function reimprimirPedido(id) {
 async function enviaReimpressao(id, via) {
   const r = await api("POST", "/api/pedidos/" + id + "/reimprimir", { via });
   if (r && r.ok) toast("Enviado para impressão.");
-  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao reimprimir.", "erro"); }
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível reimprimir. Confira se o agente de impressão está aberto.", "erro"); }
 }
 const ICO_REIMP = {
   cozinha: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2v6h6"/><path d="M4 22V4a2 2 0 0 1 2-2h8l6 6v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>',
@@ -570,7 +573,7 @@ function renderAssinatura(a) {
   } else if (a.status === "canceled") {
     info.innerHTML = `Sua assinatura foi cancelada. Reative para voltar a usar o bot.`;
   } else {
-    info.innerHTML = `Você ainda não ativou o teste grátis de 7 dias.`;
+    info.innerHTML = `Você ainda não ativou seu teste grátis. São 7 dias sem cobrança para usar tudo, e você pode cancelar antes sem custo.`;
   }
 
   acoes.innerHTML = "";
@@ -758,7 +761,7 @@ async function definirPadrao(id, btn) {
 }
 
 async function removerCartao(id, btn) {
-  const ok = await confirmar("Remover cartão", "Tem certeza que deseja remover este cartão?");
+  const ok = await confirmar("Remover cartão?", "Ele deixa de ser usado nas próximas cobranças.", "Remover cartão");
   if (!ok) return;
   btn.disabled = true;
   const r = await api("DELETE", `/api/assinatura/cartoes/${id}`);
@@ -1406,7 +1409,7 @@ async function salvarEditorItem() {
   btn.textContent = "Salvar alterações";
 
   if (r && r.ok) {
-    toast("Item salvo com sucesso!");
+    toast("Item salvo!");
     fecharEditorItem();
     renderCardapio();
   } else {
@@ -1484,14 +1487,14 @@ $("editor-foto-input").addEventListener("change", async () => {
     });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      toast(d.erro || "Erro ao enviar a imagem.", "erro");
+      toast(d.erro || "Não foi possível enviar a imagem. Tente de novo.", "erro");
       return;
     }
     const { url } = await r.json();
     editorFotoUrl = url;
     atualizarPreviewFoto();
   } catch {
-    toast("Erro de rede ao enviar a imagem.", "erro");
+    toast("Não foi possível enviar a imagem. Verifique a conexão e tente de novo.", "erro");
   } finally {
     btn.disabled = false;
     btn.textContent = editorFotoUrl ? "Trocar foto" : "Enviar foto";
@@ -1532,13 +1535,13 @@ async function enviarImagemIdentidade(file, btn, rotulo) {
     const r = await fetch("/api/imagem", { method: "POST", headers: { Authorization: "Bearer " + token }, body: form });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      toast(d.erro || "Erro ao enviar a " + rotulo + ".", "erro");
+      toast(d.erro || "Não foi possível enviar a " + rotulo + ". Tente de novo.", "erro");
       return null;
     }
     const { url } = await r.json();
     return url;
   } catch {
-    toast("Erro de rede ao enviar a " + rotulo + ".", "erro");
+    toast("Não foi possível enviar a " + rotulo + ". Verifique a conexão e tente de novo.", "erro");
     return null;
   } finally {
     btn.disabled = false;
@@ -2147,7 +2150,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (r && r.ok) {
     let aviso = null;
     try { aviso = (await r.json()).avisoFrete; } catch (_) { /* sem corpo */ }
-    toast(aviso ? "Salvo — " + aviso : "Configurações salvas!");
+    toast(aviso ? "Configurações salvas. " + aviso : "Configurações salvas!");
   }
 });
 
@@ -2352,7 +2355,7 @@ async function abrirCaixa() {
   const obsAbertura = ($("caixaObs").value || "").trim();
   const r = await api("POST", "/api/caixa/abrir", { fundoTroco: fundo, operador, obsAbertura });
   if (r && r.ok) { toast("Caixa aberto!"); carregarCaixa(); }
-  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao abrir caixa."); }
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível abrir o caixa. Confira os valores e tente de novo."); }
 }
 
 function renderCaixaAberto(data) {
@@ -2426,7 +2429,7 @@ function renderCaixaAberto(data) {
     </tr>` : "";
   const tabelaMov = ((data.movimentos && data.movimentos.length) || fundo > 0)
     ? `<table class="cx-tabela"><thead><tr><th>Hora</th><th>Nº</th><th>Tipo</th><th>Cliente</th><th class="cx-num">Valor</th><th class="cx-num">Pago</th><th class="cx-num">Troco</th><th>Forma</th><th></th></tr></thead><tbody>${linhasMov}${linhaAbertura}</tbody></table>`
-    : "<p class='sub'>Nenhuma movimentação neste caixa ainda. Receba no detalhe do pedido (aba Pedidos).</p>";
+    : "<p class='sub'>Nenhuma movimentação ainda. Receba um pedido pela aba Pedidos e o lançamento aparece aqui.</p>";
 
   cont.innerHTML = `
     <div class="cx-header">
@@ -2504,7 +2507,7 @@ async function movimentoCaixa(tipo) {
   if (vals.cxMovValor <= 0) { toast("Informe um valor maior que zero."); return; }
   const r = await api("POST", "/api/caixa/movimento", { tipo, valor: vals.cxMovValor, descricao: vals.cxMovMotivo });
   if (r && r.ok) { toast("Registrado."); carregarCaixa(); }
-  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha."); }
+  else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não deu para registrar a movimentação. Tente de novo."); }
 }
 
 // Denominações BRL em centavos (cédulas + moedas), de R$ 200 a R$ 0,05.
@@ -2658,7 +2661,7 @@ function renderFechamentoCaixa(data) {
   function renderLista() {
     $("fcLista").innerHTML = lancamentos.length
       ? lancamentos.map((l, i) => `<div class="fc-lanc"><span>${escapar(l.forma)}</span><span>R$ ${fmtBRn(l.valor)}</span><button type="button" class="fc-del" data-i="${i}" aria-label="Remover">${ICO_LIXEIRA}</button></div>`).join("")
-      : "<p class='sub'>Nenhum lançamento ainda.</p>";
+      : "<p class='sub'>Nenhum lançamento ainda. Informe os valores de cartão e Pix para conferir com o esperado.</p>";
     $("fcLista").querySelectorAll(".fc-del").forEach((b) =>
       b.addEventListener("click", () => { lancamentos.splice(+b.dataset.i, 1); renderLista(); recalcEletronico(); }));
   }
@@ -2707,7 +2710,7 @@ async function fecharCaixaFinal(data, contagem, lancamentos) {
   // O relatório é montado no SERVIDOR (fonte única e autoritativa); o front só
   // envia a conferência e recebe o texto pronto pra prévia/impressão.
   const r = await api("POST", "/api/caixa/fechar", { contagem, eletronico: lancamentos });
-  if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao fechar."); return; }
+  if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível fechar o caixa. Tente de novo."); return; }
   const res = await r.json();
   const dif = res.diferenca;
   toast(dif === 0 ? "Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
@@ -2746,7 +2749,7 @@ async function verHistoricoCaixa() {
           </div>
         </div>`;
       }).join("")
-    : "<p class='sub'>Nenhum caixa fechado ainda.</p>";
+    : "<p class='sub'>Nenhum caixa fechado ainda. Quando você fechar o caixa do dia, o resumo fica guardado aqui pra reabrir.</p>";
   const sec = document.createElement("div");
   sec.id = "caixaHistBox";
   sec.className = "caixa-resumo cx-hist";
@@ -3060,7 +3063,7 @@ async function carregarDashboard() {
     const elTop = $("dashTop10");
     if (elTop) elTop.innerHTML = top10.length
       ? top10.map((t) => `<li><span class="dash-top-nome">${escapar(t.nome)}</span><span class="dash-top-val">R$ ${moedaBR(t.valor)}</span></li>`).join("")
-      : '<li class="dash-vazio">Sem vendas no mês.</li>';
+      : '<li class="dash-vazio">Ainda sem vendas no mês. Seus itens campeões aparecem aqui conforme os pedidos entram.</li>';
 
     // ---- Ranking de grupos (por quantidade) ----
     const ranking = d.ranking || [];
@@ -3068,7 +3071,7 @@ async function carregarDashboard() {
     const elRank = $("dashRankGrupos");
     if (elRank) elRank.innerHTML = ranking.length
       ? ranking.map((r2) => `<div class="dash-rank-linha"><span class="dash-rank-nome">${escapar(r2.nome)}</span><span class="dash-rank-barra"><span style="width:${Math.round((r2.qtd / maxG) * 100)}%"></span></span><span class="dash-rank-qtd">${r2.qtd}</span></div>`).join("")
-      : '<p class="dash-vazio">Sem vendas no mês.</p>';
+      : '<p class="dash-vazio">Ainda sem vendas no mês. O ranking por categoria aparece aqui quando as vendas começam.</p>';
 
     // ---- Visão geral (qualidade/origem das vendas do mês) ----
     const vg = d.visao || {};
@@ -3936,7 +3939,7 @@ async function avisarCliente(p) {
   if (p.avisadoEm) {
     const ok = await confirmar(
       "Avisar novamente?",
-      "Isso vai enviar OUTRA mensagem de aviso para o cliente no WhatsApp. Deseja continuar?",
+      "O cliente vai receber outra mensagem de aviso no WhatsApp.",
       "Enviar novamente"
     );
     if (!ok) return;
@@ -4951,7 +4954,7 @@ async function pdvConfirmarEntrega() {
   btn.disabled = false; btn.textContent = "Confirmar endereço";
   if (!r) return;
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) { toast(d.erro || "Falha ao calcular o frete.", "erro"); return; }
+  if (!r.ok) { toast(d.erro || "Não foi possível calcular o frete. Confira o endereço e tente de novo.", "erro"); return; }
   if (d.incompleto) { toast("Para o frete por raio, informe CEP e número.", "erro"); return; }
   // Fora da área: não prossegue com frete grátis em silêncio — o operador decide
   // (Retirada/Balcão ou corrigir o endereço). Mantém o overlay aberto.
@@ -5046,10 +5049,10 @@ async function finalizarVendaPdv() {
   const r = await api("POST", "/api/pdv/vender", body);
   btn.textContent = rotulo;
   if (!r) return;
-  if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
+  if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Não foi possível registrar a venda. Confira os itens e tente de novo.", "erro"); btn.disabled = false; return; }
   // Sem supressão client-side: o servidor já escopa o alerta de "novo pedido" só ao
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
-  toast(ehBalcao ? "Venda registrada — disponível em Pedidos." : "Pedido enviado — a receber em Pedidos.");
+  toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
@@ -5584,7 +5587,7 @@ function renderMesaItens() {
     });
   });
   if (!todos.length) {
-    lista.innerHTML = '<p class="sub" style="text-align:center;padding:32px 0">Nenhum item lançado ainda.</p>';
+    lista.innerHTML = '<p class="sub" style="text-align:center;padding:32px 0">Nenhum item lançado ainda. Os pedidos que você lançar na mesa aparecem aqui.</p>';
     return;
   }
   var canDel = d && d.status !== "fechando";
@@ -5735,7 +5738,7 @@ function abrirModalPessoas(modo) {
   var X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   var titulo = modo === "editar" ? "Nº de pessoas — Mesa " + pdvEsc(d.nome) : "Abrir Mesa " + pdvEsc(d.nome);
   var rodape = modo === "editar"
-    ? '<button type="button" class="secundario" id="mesaPessoasCancelar">Cancelar</button><button type="button" class="primario" id="mesaPessoasConfirmar">Salvar</button>'
+    ? '<button type="button" class="secundario" id="mesaPessoasCancelar">Cancelar</button><button type="button" class="primario" id="mesaPessoasConfirmar">Salvar pessoas</button>'
     : '<button type="button" class="secundario" id="mesaPessoasPular">Abrir sem informar</button><button type="button" class="primario" id="mesaPessoasConfirmar">Abrir mesa</button>';
   $("mesasPessoasCaixa").innerHTML =
     '<button type="button" class="pdv-modal-x" id="mesaPessoasFechar" aria-label="Fechar">' + X + "</button>" +
@@ -5785,7 +5788,7 @@ async function mesaSolicitarConta() {
   var d = mesaState.detalhe;
   if (!d) return;
   var r = await api("POST", "/api/mesas/" + d.id + "/solicitar-conta");
-  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro.", "erro"); return; }
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Não foi possível pedir a conta. Tente de novo.", "erro"); return; }
   await mesaRecarregarDetalhe(d.id);
 }
 
@@ -5793,7 +5796,7 @@ async function mesaReabrir() {
   var d = mesaState.detalhe;
   if (!d) return;
   var r = await api("POST", "/api/mesas/" + d.id + "/reabrir");
-  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao reabrir.", "erro"); return; }
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Não foi possível reabrir a mesa. Tente de novo.", "erro"); return; }
   await mesaRecarregarDetalhe(d.id);
   toast("Mesa reaberta.");
 }
@@ -5819,7 +5822,7 @@ async function mesaCancelar() {
     if (!conf) return;
   }
   var r = await api("POST", "/api/mesas/" + d.id + "/cancelar", { motivo: motivo });
-  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro ao cancelar.", "erro"); return; }
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Não foi possível cancelar a mesa. Tente de novo.", "erro"); return; }
   toast("Mesa " + d.nome + " cancelada.");
   fecharMesaPainel();
   await mesaAtualizarLista();
@@ -5898,7 +5901,7 @@ async function mesaConfirmarTransferir() {
   var juntar = destino && destino.status !== "livre";
   var btn = $("mesaTransfConfirmar"); btn.disabled = true;
   var r = await api("POST", "/api/mesas/" + d.id + "/transferir/" + destinoId, {});
-  if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Falha ao transferir.", "erro"); return; }
+  if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Não foi possível transferir a mesa. Tente de novo.", "erro"); return; }
   fecharMesaTransferir();
   fecharMesaPainel();
   toast(juntar
@@ -6156,7 +6159,7 @@ function renderMesasConfigLista() {
     b.addEventListener("click", async function () {
       var id = Number(b.dataset.id);
       var ok = await api("DELETE", "/api/mesas/" + id);
-      if (!ok.ok) { var e2 = await ok.json().catch(function () { return {}; }); toast(e2.erro || "Não foi possível remover (mesa ocupada?).", "erro"); return; }
+      if (!ok.ok) { var e2 = await ok.json().catch(function () { return {}; }); toast(e2.erro || "Não foi possível remover a mesa. Ela pode estar ocupada. Feche ou esvazie antes de remover.", "erro"); return; }
       mesaState.lista = mesaState.lista.filter(function (m) { return m.id !== id; });
       renderMesasConfigLista();
       renderMesasGrade();
@@ -6313,7 +6316,7 @@ async function mesaConfirmarPagamento() {
   btn.disabled = true;
   if (mesaPagarModo === "parcial") {
     var r = await api("POST", "/api/mesas/" + d.id + "/receber-parcial", { pagamentos: registrados });
-    if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Erro.", "erro"); return; }
+    if (!r || !r.ok) { btn.disabled = false; var e = (r && await r.json().catch(function () { return {}; })) || {}; toast(e.erro || "Não foi possível receber o pagamento. Tente de novo.", "erro"); return; }
     mesaState.detalhe = await r.json();
     $("mesasPagarOverlay").hidden = true;
     toast("Recebido " + pdvMoney(pagoAgora) + ".");
@@ -6321,7 +6324,7 @@ async function mesaConfirmarPagamento() {
     await mesaAtualizarLista();
   } else {
     var r2 = await api("POST", "/api/mesas/" + d.id + "/pagar", { pagamentos: registrados });
-    if (!r2 || !r2.ok) { btn.disabled = false; var e2 = (r2 && await r2.json().catch(function () { return {}; })) || {}; toast(e2.erro || "Erro ao fechar.", "erro"); return; }
+    if (!r2 || !r2.ok) { btn.disabled = false; var e2 = (r2 && await r2.json().catch(function () { return {}; })) || {}; toast(e2.erro || "Não foi possível fechar a mesa. Tente de novo.", "erro"); return; }
     $("mesasPagarOverlay").hidden = true;
     toast("Mesa " + d.nome + " fechada!");
     fecharMesaPainel();
@@ -6333,7 +6336,7 @@ async function mesaIniciarFechamento() {
   var d = mesaState.detalhe;
   if (!d) return;
   var r = await api("POST", "/api/mesas/" + d.id + "/fechar-conta");
-  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Erro.", "erro"); return; }
+  if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Não foi possível iniciar o fechamento. Tente de novo.", "erro"); return; }
   mesaState.detalhe = await r.json();
   abrirMesaPainel();
   abrirMesaPagar("fechar");
