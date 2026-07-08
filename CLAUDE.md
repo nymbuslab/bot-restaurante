@@ -105,6 +105,7 @@ src/
   cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, token HMAC do link)
   frete.js            -> frete avançado (Plano Completo): por RAIO (Haversine + faixas + geocodificar() Geoapify c/ cache geo_cache) e por BAIRRO (normalizarNome/encontrarBairro/resolverFreteBairro — match exato normalizado, sem geocode). Puros
   cep.js              -> busca de CEP (ViaCEP) com cache no banco (tabela ceps)
+  assets.js           -> cache-busting SEM build: versaoAssets (hash do conteúdo dos css/js de public/) + injetarVersao (injeta ?v nos assets das páginas HTML). Puro; o servidor.js serve HTML fresco (no-cache) com a versão
   email.js            -> e-mail transacional via Resend (boas-vindas, reset de senha, assinatura, avisos)
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)

@@ -792,3 +792,10 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - **Títulos de tela consistentes:** todas as telas passam a ter um título padronizado. **Pedidos** e
   **Mesas** (que ficavam menores) foram alinhados; e **Dashboard** ("Visão geral"), **PDV** ("Venda no
   balcão") e **Caixa** ("Caixa do dia"), que não tinham título, ganharam o seu.
+
+## [0.83.0] — Atualizações aparecem na hora (cache-busting)
+
+- Depois de uma atualização publicada, o **painel e o cardápio web carregam a versão nova
+  imediatamente** — antes o navegador podia segurar os arquivos antigos por até 1 hora, exigindo um
+  "recarregar forçado" (Ctrl+Shift+R) para ver as mudanças. Agora cada versão publicada é identificada
+  automaticamente e o navegador busca a mais recente sozinho.
