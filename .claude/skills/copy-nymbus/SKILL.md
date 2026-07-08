@@ -69,7 +69,29 @@ Estas não são de estilo, são de padronização do projeto:
 - **CTA em verbo de ação**, curto e sem fricção: "Começar grátis", "Criar conta grátis",
   "Já tenho conta". Nada de "Clique aqui".
 
+### Tiques que soam robóticos (evitar)
+
+O travessão-conector é o mais gritante, mas há uma família de muletas que denunciam texto
+de IA ou de manual. Corte na revisão:
+
+- **Frases-enfeite sem conteúdo:** "Vale ressaltar que", "É importante notar que", "No
+  mundo de hoje", "Nos dias atuais", "Em um cenário cada vez mais...", "Por assim dizer".
+- **Fechos batidos:** "Em conclusão", "Em suma" no começo de parágrafo, "Por fim, mas não
+  menos importante".
+- **Conectores empolados repetidos:** "Ademais", "Outrossim", "Destarte", "Isto posto".
+  Prefira "Além disso", "Também", "Por isso" com moderação.
+- **Superlativo vazio:** "solução completa", "de forma eficiente", "experiência única",
+  "poderosa ferramenta". Troque por prova concreta.
+
+A régua: leia em voz alta. Se soa como um bom vendedor conversando, passou. Se soa como
+um release corporativo, reescreva.
+
 ## Fórmulas que funcionam
+
+Para o arsenal completo de **fórmulas de headline**, o **esqueleto de uma landing** (ordem
+de seções que converte) e a **fórmula de CTA**, consulte
+[references/frameworks.md](references/frameworks.md) ao criar um hero, títulos de card ou
+uma seção nova. Os padrões do dia a dia ficam abaixo.
 
 ### Card de recurso (título + 1–2 frases)
 Estrutura: **título curto = a promessa** · corpo = benefício + como/prova, em 1 ou 2
