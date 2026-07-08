@@ -2833,13 +2833,17 @@ function renderBairros() {
   if (!body) return;
   body.innerHTML = bairrosFrete.map((b, i) =>
     "<tr>" +
-      '<td><input type="text" class="fb-nome" placeholder="Ex.: Centro" value="' + escapar(b.nome || "") + '" /></td>' +
+      '<td><input type="text" class="fb-cep" id="fbCep' + i + '" inputmode="numeric" maxlength="9" placeholder="CEP (opcional)" /></td>' +
+      '<td><input type="text" class="fb-nome" id="fbNome' + i + '" placeholder="Ex.: Centro" value="' + escapar(b.nome || "") + '" /></td>' +
       '<td><input type="text" inputmode="numeric" class="fb-valor" id="fbValor' + i + '" /></td>' +
       '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover bairro">✕</button></td>' +
     "</tr>"
   ).join("");
   bairrosFrete.forEach((b, i) => {
     if (window.Dinheiro) { Dinheiro.mascarar("fbValor" + i); Dinheiro.setValor("fbValor" + i, Number(b.valor) || 0); }
+    // CEP é só um AJUDANTE: preenche o campo Bairro pelo ViaCEP (não é armazenado).
+    // Se o CEP não trouxer bairro (ex.: CEP único de cidade), o campo fica como está → digita à mão.
+    if (window.EnderecoCep) EnderecoCep.ligarBuscaCep({ cep: "fbCep" + i, bairro: "fbNome" + i });
   });
   body.querySelectorAll(".ff-remover").forEach((btn) => {
     btn.addEventListener("click", () => {

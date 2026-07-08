@@ -766,4 +766,7 @@ Revisão completa da plataforma (todas as telas + o agente de impressão), com c
   informa o endereço, o bairro é identificado e o frete correspondente é aplicado.
 - Se o bairro do cliente **não** estiver na lista, vale a mesma regra do frete por raio: **oferecer
   retirada** ou **bloquear a entrega** (à escolha do restaurante).
+- No cadastro, cada bairro tem um campo **CEP opcional**: digitar um CEP do bairro **preenche o nome
+  automaticamente** (pelo mesmo ViaCEP que identifica o cliente), deixando o nome mais certeiro — ou
+  o restaurante digita o nome à mão.
 - Funciona **no cardápio web e no PDV** (venda no balcão em modo Entrega).
