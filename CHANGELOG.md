@@ -770,3 +770,20 @@ Revisão completa da plataforma (todas as telas + o agente de impressão), com c
   automaticamente** (pelo mesmo ViaCEP que identifica o cliente), deixando o nome mais certeiro — ou
   o restaurante digita o nome à mão.
 - Funciona **no cardápio web e no PDV** (venda no balcão em modo Entrega).
+
+## [0.82.0] — Padronização visual da plataforma
+
+Auditoria visual completa (todas as telas) e alinhamento ao design system.
+
+- **Ícone de excluir padronizado:** remover/excluir agora é sempre uma **lixeira** — antes, em várias
+  telas (formas de pagamento, faixas de frete, bairros, opcionais/variações, lançamentos do caixa,
+  itens e seleção de mesa), aparecia um "×". O **X** ficou reservado só para **fechar** janelas.
+- **Botões de remover que não funcionavam:** o realce vermelho ao passar o mouse em alguns botões de
+  remover (Pedidos, Mesas) **não aparecia** por um erro de cor interno — corrigido, agora funciona.
+- **Painel do administrador:** ações que **cancelam/suspendem** um restaurante ou **revogam cortesia**
+  agora aparecem em **vermelho** (destrutivas), como no resto da plataforma — antes ficavam iguais às
+  ações neutras, fácil de clicar por engano.
+- **Cardápio web:** a observação do pedido usa um **ícone** no lugar do emoji.
+- **Acessibilidade:** navegação por teclado agora mostra um **contorno de foco** visível e consistente.
+- **Consistência de cores:** ajustes finos para tudo usar a paleta da marca (fim de um laranja solto
+  e de selos de pagamento com tons ligeiramente diferentes do padrão).
