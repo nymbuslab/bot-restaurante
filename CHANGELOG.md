@@ -799,3 +799,17 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   imediatamente** — antes o navegador podia segurar os arquivos antigos por até 1 hora, exigindo um
   "recarregar forçado" (Ctrl+Shift+R) para ver as mudanças. Agora cada versão publicada é identificada
   automaticamente e o navegador busca a mais recente sozinho.
+
+## [0.84.0] — Textos mais claros na landing e no painel
+
+- **Avisos de erro que ajudam:** quando algo falha (imprimir, fechar o caixa, receber pagamento,
+  calcular frete), o aviso agora diz o que aconteceu e o que fazer, no lugar de um "Erro." ou
+  "Falha." seco.
+- **Telas vazias que orientam:** áreas sem dados (Caixa, Dashboard, Mesas) explicam o que vai
+  aparecer ali e como começar, em vez de só "Nenhum registro".
+- **Cancelar mesa mais claro:** o botão de sair vira "Voltar", não mais um segundo "Cancelar"
+  confuso ao lado de "Cancelar mesa".
+- **Landing revisada:** cards e planos mais enxutos; entram o frete **por bairro** e a vitrine de
+  destaques do cardápio.
+- **Escrita mais natural:** revisão geral tirando travessões e jargão dos textos.
+- **Botões Exportar/Atualizar** (Pedidos) com ícones no lugar de símbolos de texto.

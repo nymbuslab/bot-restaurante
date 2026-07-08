@@ -170,6 +170,7 @@ fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é im
 ## Convenções
 
 - Comentários e textos ao usuário em português.
+- **Textos ao usuário** seguem a voz da marca da skill `copy-nymbus` (`.claude/skills/`): benefício antes de recurso, frase curta, **sem travessão (—) como conector**, sem emoji. Auditoria/reescrita de copy pode usar o agente `copywriter`.
 - Formatação WhatsApp: `*negrito*`, `_itálico_`.
 - Evitar dependências novas sem necessidade; manter o front-end sem framework.
 - Não expor senhas em respostas da API.

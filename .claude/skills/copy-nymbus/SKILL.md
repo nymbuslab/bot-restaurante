@@ -17,6 +17,11 @@ Guia de voz e método para escrever a parte textual do produto como **material d
 marketing e venda**, não como descrição técnica nem como resumo seco. O objetivo de
 cada texto é fazer o dono de restaurante **entender o ganho e agir**.
 
+> Esta é a **camada de marca da Nymbus**. O método geral e reutilizável (fórmulas,
+> microcopy, anti-tiques) vive na skill pessoal `copywriting` (`~/.claude/skills/`); aqui
+> ficam as especificidades da Nymbus. Este arquivo é autossuficiente — não depende da
+> pessoal para funcionar.
+
 ## Quem lê (e por que isso muda tudo)
 
 O leitor é **dono ou gerente de restaurante pequeno/médio**. Não é técnico, não liga pra
