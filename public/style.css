@@ -5960,3 +5960,15 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 }
 .mon-inc-tipo { display: block; font-weight: 600; color: var(--text-primary); }
 .mon-inc-msg { display: block; margin-top: 2px; font-size: 12px; color: var(--text-secondary); word-break: break-word; }
+
+/* ===== Botão de EXCLUIR/REMOVER — centraliza a lixeira SVG canônica (Fase 2B) =====
+   Estes botões antes traziam um glifo "×"/"✕"; agora recebem o ICO_LIXEIRA (14px).
+   Regra única: centraliza e fixa o tamanho do SVG em todos eles. Cor/hover ficam
+   nas regras próprias de cada classe (já em token --error). */
+.comp-chip-del, .comp-sg-del, .opc-del, .var-del, .pag-pill-del, .fc-del,
+.ff-remover, .mesa-cart-rm, .mesa-tag-rm, .pdv-pg-item button {
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+.comp-chip-del svg, .comp-sg-del svg, .opc-del svg, .var-del svg,
+.pag-pill-del svg, .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
+.mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }

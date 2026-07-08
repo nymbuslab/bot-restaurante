@@ -12,6 +12,9 @@ const cabecalhos = {
   Authorization: "",
 };
 
+// Ícone canônico de EXCLUIR/REMOVER (lixeira). X é só para FECHAR (design system).
+const ICO_LIXEIRA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+
 // Limpeza: o assistente de onboarding no painel foi revertido (virou wizard no
 // cadastro). Remove qualquer chave residual "onbPasso:*" guardada no navegador.
 try {
@@ -1565,13 +1568,13 @@ function renderEditorComposicao() {
     div.className = "comp-subgrupo";
 
     const chipsHtml = sg.itens.map((it, ii) =>
-      `<span class="comp-chip">${escapar(it)}<button type="button" class="comp-chip-del" data-sg="${si}" data-ii="${ii}" aria-label="Remover">×</button></span>`
+      `<span class="comp-chip">${escapar(it)}<button type="button" class="comp-chip-del" data-sg="${si}" data-ii="${ii}" aria-label="Remover">${ICO_LIXEIRA}</button></span>`
     ).join("");
 
     div.innerHTML = `
       <div class="comp-subgrupo-cabeca">
         <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" data-sg="${si}" />
-        <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">×</button>
+        <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">${ICO_LIXEIRA}</button>
       </div>
       <div class="comp-sg-regras">
         <label class="comp-sg-obrig-lbl"><input type="checkbox" class="comp-sg-obrig" data-sg="${si}" ${sg.obrigatorio ? "checked" : ""} /> Obrigatório</label>
@@ -1688,7 +1691,7 @@ function renderEditorOpcionais() {
         <span class="opc-rs">R$</span>
         <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
       </div>
-      <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">×</button>
+      <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">${ICO_LIXEIRA}</button>
     `;
     container.appendChild(div);
   });
@@ -1744,7 +1747,7 @@ function renderEditorVariacoes() {
       <button type="button" class="var-order" data-vi="${vi}" data-dir="down" aria-label="Descer" title="Descer"${vi === editorVariacoes.length - 1 ? ' disabled' : ''}>
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </button>
-      <button type="button" class="perigo mini var-del" data-vi="${vi}" aria-label="Remover">×</button>
+      <button type="button" class="perigo mini var-del" data-vi="${vi}" aria-label="Remover">${ICO_LIXEIRA}</button>
     `;
     container.appendChild(div);
   });
@@ -1985,7 +1988,7 @@ function renderPagamentos() {
   configAtual.pagamentos.forEach((p, i) => {
     const pill = document.createElement("span");
     pill.className = "pag-pill";
-    pill.innerHTML = `<span class="pag-pill-txt">${escapar(p)}</span><button type="button" class="pag-pill-del" data-del-pg="${i}" aria-label="Remover">×</button>`;
+    pill.innerHTML = `<span class="pag-pill-txt">${escapar(p)}</span><button type="button" class="pag-pill-del" data-del-pg="${i}" aria-label="Remover">${ICO_LIXEIRA}</button>`;
     cont.appendChild(pill);
   });
   const add = document.createElement("button");
@@ -2646,7 +2649,7 @@ function renderFechamentoCaixa(data) {
   }
   function renderLista() {
     $("fcLista").innerHTML = lancamentos.length
-      ? lancamentos.map((l, i) => `<div class="fc-lanc"><span>${escapar(l.forma)}</span><span>R$ ${fmtBRn(l.valor)}</span><button type="button" class="fc-del" data-i="${i}" aria-label="Remover">✕</button></div>`).join("")
+      ? lancamentos.map((l, i) => `<div class="fc-lanc"><span>${escapar(l.forma)}</span><span>R$ ${fmtBRn(l.valor)}</span><button type="button" class="fc-del" data-i="${i}" aria-label="Remover">${ICO_LIXEIRA}</button></div>`).join("")
       : "<p class='sub'>Nenhum lançamento ainda.</p>";
     $("fcLista").querySelectorAll(".fc-del").forEach((b) =>
       b.addEventListener("click", () => { lancamentos.splice(+b.dataset.i, 1); renderLista(); recalcEletronico(); }));
@@ -2789,7 +2792,7 @@ function renderFaixas() {
       '<td><input type="number" class="ff-ini" min="0" step="0.1" value="' + (Number(f.ini) || 0) + '" /></td>' +
       '<td><input type="number" class="ff-fim" min="0" step="0.1" value="' + (Number(f.fim) || 0) + '" /></td>' +
       '<td><input type="text" inputmode="numeric" class="ff-valor" id="ffValor' + i + '" /></td>' +
-      '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover faixa">✕</button></td>' +
+      '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover faixa">' + ICO_LIXEIRA + '</button></td>' +
     "</tr>"
   ).join("");
   faixasFrete.forEach((f, i) => {
@@ -2836,7 +2839,7 @@ function renderBairros() {
       '<td><input type="text" class="fb-cep" id="fbCep' + i + '" inputmode="numeric" maxlength="9" placeholder="CEP (opcional)" /></td>' +
       '<td><input type="text" class="fb-nome" id="fbNome' + i + '" placeholder="Ex.: Centro" value="' + escapar(b.nome || "") + '" /></td>' +
       '<td><input type="text" inputmode="numeric" class="fb-valor" id="fbValor' + i + '" /></td>' +
-      '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover bairro">✕</button></td>' +
+      '<td><button type="button" class="ff-remover" data-i="' + i + '" aria-label="Remover bairro">' + ICO_LIXEIRA + '</button></td>' +
     "</tr>"
   ).join("");
   bairrosFrete.forEach((b, i) => {
@@ -3375,7 +3378,7 @@ function renderPedReceberLista() {
   const box = $("pedReceberLista");
   if (box) {
     box.innerHTML = pedReceberPagamentos.map((p, i) =>
-      '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmppg="' + i + '" aria-label="Remover">&times;</button></div>'
+      '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmppg="' + i + '" aria-label="Remover">' + ICO_LIXEIRA + '</button></div>'
     ).join("");
     box.querySelectorAll("[data-rmppg]").forEach((b) => b.addEventListener("click", () => { pedReceberPagamentos.splice(Number(b.dataset.rmppg), 1); renderPedReceberLista(); }));
   }
@@ -3681,7 +3684,6 @@ function abrirModalPedido(p) {
   const subtotal = p.itens.reduce((acc, i) => acc + (i.preco + extrasDe(i)) * i.qtd, 0);
 
   const podeModificar = !p.recebidoEm && p.status !== "cancelado";
-  const ICO_LIXEIRA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
 
   // Itens como cards de leitura — com botão de cancelar item se pedido modificável
   const itensHtml = p.itens.map((i, idx) => {
@@ -4975,7 +4977,7 @@ function pdvAddPagamento() {
 function renderPdvPgLista() {
   const box = $("pdvPgLista");
   box.innerHTML = pdvPagamentos.map((p, i) =>
-    '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmpg="' + i + '" aria-label="Remover">×</button></div>'
+    '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmpg="' + i + '" aria-label="Remover">' + ICO_LIXEIRA + '</button></div>'
   ).join("");
   box.querySelectorAll("[data-rmpg]").forEach((b) => b.addEventListener("click", () => { pdvPagamentos.splice(Number(b.dataset.rmpg), 1); renderPdvPgLista(); }));
   pdvPagarRecalc();
@@ -6064,7 +6066,7 @@ function renderMesaCart() {
     return '<div class="mesa-cart-linha">' +
       '<span class="mesa-cart-linha-nome">' + c.qtd + "x " + pdvEsc(c.nome) + "</span>" +
       '<span class="mesa-cart-linha-preco">' + pdvMoney(c.preco * c.qtd) + "</span>" +
-      '<button type="button" class="mesa-cart-rm" data-idx="' + i + '" aria-label="Remover">&times;</button>' +
+      '<button type="button" class="mesa-cart-rm" data-idx="' + i + '" aria-label="Remover">' + ICO_LIXEIRA + '</button>' +
       "</div>";
   }).join("");
   itensEl.querySelectorAll(".mesa-cart-rm").forEach(function (b) {
@@ -6132,13 +6134,13 @@ function renderMesasConfigLista() {
   var existentes = mesaState.lista.map(function (m) {
     return '<span class="mesa-tag">' + pdvEsc(m.nome) +
       (m.status === "livre"
-        ? '<button type="button" class="mesa-tag-rm" data-id="' + m.id + '" aria-label="Remover mesa ' + pdvEsc(m.nome) + '">&times;</button>'
+        ? '<button type="button" class="mesa-tag-rm" data-id="' + m.id + '" aria-label="Remover mesa ' + pdvEsc(m.nome) + '">' + ICO_LIXEIRA + '</button>'
         : "") +
       "</span>";
   }).join("");
   var pendentes = mesaState.cfgPendentes.map(function (n, i) {
     return '<span class="mesa-tag" style="opacity:.7">' + pdvEsc(n) +
-      '<button type="button" class="mesa-tag-rm" data-idx="' + i + '" aria-label="Remover">&times;</button>' +
+      '<button type="button" class="mesa-tag-rm" data-idx="' + i + '" aria-label="Remover">' + ICO_LIXEIRA + '</button>' +
       "</span>";
   }).join("");
   el.innerHTML = existentes + pendentes;
@@ -6273,7 +6275,7 @@ function renderMesaPgLista() {
   var box = $("mesaPgLista");
   if (box) {
     box.innerHTML = mesaPagamentos.map(function (p, i) {
-      return '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmmpg="' + i + '" aria-label="Remover">&times;</button></div>';
+      return '<div class="pdv-pg-item">' + pdvIconeForma(p.forma) + "<span>" + pdvEsc(p.forma) + "</span><strong>" + pdvMoney(p.valor) + '</strong><button type="button" data-rmmpg="' + i + '" aria-label="Remover">' + ICO_LIXEIRA + '</button></div>';
     }).join("");
     box.querySelectorAll("[data-rmmpg]").forEach(function (b) {
       b.addEventListener("click", function () { mesaPagamentos.splice(Number(b.dataset.rmmpg), 1); renderMesaPgLista(); });
