@@ -2156,6 +2156,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 
 .toast.saindo { animation: toastOut 0.25s ease both; }
+.toast-ico { display: flex; flex: none; }
+.toast-ico svg { display: block; }
 
 .toast.sucesso {
   background: var(--bg-surface);
@@ -4271,11 +4273,11 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-preco-lista { list-style: none; padding: 0; margin: 0 0 26px; text-align: left; display: flex; flex-direction: column; gap: 12px; }
 .lp-preco-lista li { position: relative; padding-left: 28px; font-size: 14.5px; color: var(--text-primary); }
 .lp-preco-lista li::before {
-  content: "✓"; position: absolute; left: 0; top: 1px;
+  content: ""; position: absolute; left: 0; top: 1px;
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--success-subtle); color: var(--success);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
+  background: var(--success-subtle);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2322C55E' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
 }
 /* Item não incluído no plano (Essencial): X cinza + texto esmaecido. */
 .lp-preco-lista li.lp-li-no { color: var(--text-disabled); }

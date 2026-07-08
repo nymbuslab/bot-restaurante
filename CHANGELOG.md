@@ -783,7 +783,9 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - **Painel do administrador:** ações que **cancelam/suspendem** um restaurante ou **revogam cortesia**
   agora aparecem em **vermelho** (destrutivas), como no resto da plataforma — antes ficavam iguais às
   ações neutras, fácil de clicar por engano.
-- **Cardápio web:** a observação do pedido usa um **ícone** no lugar do emoji.
+- **Sem emojis na interface — só ícones:** avisos/confirmações (os "toasts"), a observação do pedido
+  no cardápio, a demonstração da landing e a lista de recursos passam a usar **ícones SVG** no lugar
+  de emojis (📝, 👋, 👇, ⚠️) e do "✓" de texto. Toast de sucesso mostra um check; o de erro, um alerta.
 - **Acessibilidade:** navegação por teclado agora mostra um **contorno de foco** visível e consistente.
 - **Consistência de cores:** ajustes finos para tudo usar a paleta da marca (fim de um laranja solto
   e de selos de pagamento com tons ligeiramente diferentes do padrão).

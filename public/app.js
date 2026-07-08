@@ -14,6 +14,9 @@ const cabecalhos = {
 
 // Ícone canônico de EXCLUIR/REMOVER (lixeira). X é só para FECHAR (design system).
 const ICO_LIXEIRA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+// Ícones de feedback (toast) — nunca emoji na UI, sempre SVG.
+const ICO_CHECK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+const ICO_ALERTA = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
 
 // Limpeza: o assistente de onboarding no painel foi revertido (virou wizard no
 // cadastro). Remove qualquer chave residual "onbPasso:*" guardada no navegador.
@@ -104,7 +107,12 @@ function toast(msg, tipo = "sucesso") {
   const container = $("toast-container");
   const el = document.createElement("div");
   el.className = `toast ${tipo}`;
-  el.textContent = msg;
+  const ico = document.createElement("span");
+  ico.className = "toast-ico";
+  ico.innerHTML = tipo === "erro" ? ICO_ALERTA : ICO_CHECK;
+  const txt = document.createElement("span");
+  txt.textContent = msg;
+  el.append(ico, txt);
   container.appendChild(el);
   setTimeout(() => {
     el.classList.add("saindo");
@@ -461,7 +469,7 @@ async function trocarPlanoAcao(novoPlano) {
   if (!window.confirm(msg)) return;
   const r = await api("POST", "/api/assinatura/plano", { plano: novoPlano });
   if (r && r.ok) {
-    toast("✓ Plano atualizado!");
+    toast("Plano atualizado!");
     await carregarConta();      // atualiza planoAtual (gating da aba Entrega)
     await carregarAssinatura(); // re-renderiza a aba Assinatura com o novo plano
   } else {
@@ -745,7 +753,7 @@ async function definirPadrao(id, btn) {
   btn.disabled = true;
   const r = await api("PATCH", `/api/assinatura/cartoes/${id}/padrao`);
   const d = r ? await r.json().catch(() => ({})) : {};
-  if (r && r.ok) { toast("✓ Cartão padrão atualizado!"); await carregarCartoes(); }
+  if (r && r.ok) { toast("Cartão padrão atualizado!"); await carregarCartoes(); }
   else { toast((d && d.erro) || "Não foi possível definir o cartão padrão.", "erro"); btn.disabled = false; }
 }
 
@@ -755,7 +763,7 @@ async function removerCartao(id, btn) {
   btn.disabled = true;
   const r = await api("DELETE", `/api/assinatura/cartoes/${id}`);
   const d = r ? await r.json().catch(() => ({})) : {};
-  if (r && r.ok) { toast("✓ Cartão removido."); await carregarCartoes(); }
+  if (r && r.ok) { toast("Cartão removido."); await carregarCartoes(); }
   else { toast((d && d.erro) || "Não foi possível remover o cartão.", "erro"); btn.disabled = false; }
 }
 
@@ -821,7 +829,7 @@ if ($("cartao-form")) $("cartao-form").addEventListener("submit", async (e) => {
     btn.disabled = false; btn.textContent = "Salvar cartão"; return;
   }
   fecharModalCartao();
-  toast("✓ Cartão adicionado!");
+  toast("Cartão adicionado!");
   await carregarCartoes();
 });
 
@@ -1398,7 +1406,7 @@ async function salvarEditorItem() {
   btn.textContent = "Salvar alterações";
 
   if (r && r.ok) {
-    toast("✓ Item salvo com sucesso!");
+    toast("Item salvo com sucesso!");
     fecharEditorItem();
     renderCardapio();
   } else {
@@ -1822,7 +1830,7 @@ $("btnSalvarCardapio").addEventListener("click", async (e) => {
   const r = await api("PUT", "/api/cardapio", cardapioAtual);
   btn.disabled = false;
   btn.textContent = "Salvar cardápio";
-  if (r && r.ok) toast("✓ Cardápio salvo! Já está valendo para os clientes.");
+  if (r && r.ok) toast("Cardápio salvo! Já está valendo para os clientes.");
 });
 
 // ============================================================
@@ -2139,7 +2147,7 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (r && r.ok) {
     let aviso = null;
     try { aviso = (await r.json()).avisoFrete; } catch (_) { /* sem corpo */ }
-    toast(aviso ? "✓ Salvo — " + aviso : "✓ Configurações salvas!");
+    toast(aviso ? "Salvo — " + aviso : "Configurações salvas!");
   }
 });
 
@@ -2343,7 +2351,7 @@ async function abrirCaixa() {
   const operador = ($("caixaOperador").value || "").trim();
   const obsAbertura = ($("caixaObs").value || "").trim();
   const r = await api("POST", "/api/caixa/abrir", { fundoTroco: fundo, operador, obsAbertura });
-  if (r && r.ok) { toast("✓ Caixa aberto!"); carregarCaixa(); }
+  if (r && r.ok) { toast("Caixa aberto!"); carregarCaixa(); }
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao abrir caixa."); }
 }
 
@@ -2495,7 +2503,7 @@ async function movimentoCaixa(tipo) {
   if (!vals) return;
   if (vals.cxMovValor <= 0) { toast("Informe um valor maior que zero."); return; }
   const r = await api("POST", "/api/caixa/movimento", { tipo, valor: vals.cxMovValor, descricao: vals.cxMovMotivo });
-  if (r && r.ok) { toast("✓ Registrado."); carregarCaixa(); }
+  if (r && r.ok) { toast("Registrado."); carregarCaixa(); }
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha."); }
 }
 
@@ -2621,7 +2629,7 @@ function renderFechamentoCaixa(data) {
     el.classList.remove("fc-sobra", "fc-falta");
     if (dif > 0) { el.textContent = "+R$ " + fmtBRn(dif) + " ▲ sobrou"; el.classList.add("fc-sobra"); }
     else if (dif < 0) { el.textContent = "−R$ " + fmtBRn(-dif) + " ▼ faltou"; el.classList.add("fc-falta"); }
-    else { el.textContent = "R$ 0,00 ✓ bateu"; }
+    else { el.textContent = "R$ 0,00 bateu"; }
   }
   function contagemAtual() {
     const c = {};
@@ -2702,7 +2710,7 @@ async function fecharCaixaFinal(data, contagem, lancamentos) {
   if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Falha ao fechar."); return; }
   const res = await r.json();
   const dif = res.diferenca;
-  toast(dif === 0 ? "✓ Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
+  toast(dif === 0 ? "Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
   if (res.relatorio) verRelatorio("Relatório de fechamento", res.relatorio);
   carregarCaixa();
 }
@@ -2717,7 +2725,7 @@ async function verHistoricoCaixa() {
   const lista = await r.json();
   const difTxt = (c) => {
     if (c.diferenca == null) return { txt: "—", cls: "" };
-    if (c.diferenca === 0) return { txt: "✓ ok", cls: "chi-ok" };
+    if (c.diferenca === 0) return { txt: "ok", cls: "chi-ok" };
     return c.diferenca > 0
       ? { txt: "▲ +R$ " + fmtBRn(c.diferenca), cls: "chi-sobra" }
       : { txt: "▼ −R$ " + fmtBRn(-c.diferenca), cls: "chi-falta" };
@@ -2931,7 +2939,7 @@ $("formEmail").addEventListener("submit", async (e) => {
   if (r && r.ok) {
     $("contaEmail").textContent = data.email || novoEmail;
     alternarFormConta("formEmail", false);
-    toast("✓ E-mail alterado!");
+    toast("E-mail alterado!");
   } else {
     avisoConta("avisoEmail", (data && data.erro) || "Não foi possível alterar o e-mail.");
   }
@@ -2952,7 +2960,7 @@ $("formSenha").addEventListener("submit", async (e) => {
   const data = r ? await r.json().catch(() => ({})) : {};
   if (r && r.ok) {
     alternarFormConta("formSenha", false);
-    toast("✓ Senha alterada!");
+    toast("Senha alterada!");
   } else {
     avisoConta("avisoSenha", (data && data.erro) || "Não foi possível alterar a senha.");
   }
@@ -2976,7 +2984,7 @@ $("btnExportarDados").addEventListener("click", async () => {
     a.href = url; a.download = "nymbus-dados-" + slug + ".json";
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    toast("✓ Dados exportados!");
+    toast("Dados exportados!");
   } catch (e) {
     toast("Não foi possível exportar os dados.", "erro");
   } finally {
@@ -3403,7 +3411,7 @@ async function pedReceberConfirmar() {
   const r = await api("POST", "/api/caixa/receber/" + p.id, { pagamentos: registrados });
   if (r && r.ok) {
     fecharPedReceber();
-    toast("✓ Recebido!");
+    toast("Recebido!");
     if (typeof pedReceberCallback === "function") pedReceberCallback();
     if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
   } else {
@@ -3853,7 +3861,7 @@ function montarAcoes(p) {
   } else if (p.avisadoEm) {
     const quando = new Date(p.avisadoEm).toLocaleString("pt-BR");
     cont.innerHTML = `
-      <span class="pedido-avisado">✓ Cliente avisado em ${quando}</span>
+      <span class="pedido-avisado">Cliente avisado em ${quando}</span>
       <button class="secundario mini" id="btn-avisar">Avisar novamente</button>`;
   } else {
     cont.innerHTML = `<button id="btn-avisar">${escapar(textoAvisar(p))}</button>`;
@@ -3944,7 +3952,7 @@ async function avisarCliente(p) {
 
   if (r.ok) {
     p.avisadoEm = data.avisadoEm || new Date().toISOString(); // atualiza o cache (referência)
-    toast("✓ Cliente avisado!");
+    toast("Cliente avisado!");
     montarAcoes(p); // re-renderiza no estado "avisado"
   } else {
     const erro = data.erro || "Erro ao avisar o cliente.";
@@ -5041,7 +5049,7 @@ async function finalizarVendaPdv() {
   if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Falha ao registrar a venda.", "erro"); btn.disabled = false; return; }
   // Sem supressão client-side: o servidor já escopa o alerta de "novo pedido" só ao
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
-  toast(ehBalcao ? "✓ Venda registrada — disponível em Pedidos." : "✓ Pedido enviado — a receber em Pedidos.");
+  toast(ehBalcao ? "Venda registrada — disponível em Pedidos." : "Pedido enviado — a receber em Pedidos.");
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
@@ -5234,7 +5242,7 @@ $("simForm").addEventListener("submit", async (e) => {
     simAtualizarEstado(data.estado);
   } catch {
     typing.remove();
-    simAdicionarMensagensBot(["⚠️ Erro ao conectar com o servidor."]);
+    simAdicionarMensagensBot(["Erro ao conectar com o servidor."]);
   }
 
   simInput.disabled = false;
