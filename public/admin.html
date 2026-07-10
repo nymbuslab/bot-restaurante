@@ -1582,10 +1582,12 @@
           <div class="linha">
             <div class="campo cli-cep"><label for="cliCep">CEP</label><input id="cliCep" inputmode="numeric" placeholder="00000-000" /><span class="cep-hint" id="cliCepHint"></span></div>
             <div class="campo cli-log"><label for="cliLogradouro">Logradouro</label><input id="cliLogradouro" maxlength="120" placeholder="Ex.: Av. Principal" /></div>
-            <div class="campo cli-num"><label for="cliNumero">Número</label><input id="cliNumero" maxlength="15" placeholder="Nº" /></div>
           </div>
           <div class="linha">
+            <div class="campo cli-num"><label for="cliNumero">Número</label><input id="cliNumero" maxlength="15" placeholder="Nº" /></div>
             <div class="campo"><label for="cliBairro">Bairro</label><input id="cliBairro" maxlength="80" placeholder="Bairro" /></div>
+          </div>
+          <div class="linha">
             <div class="campo"><label for="cliComplemento">Complemento</label><input id="cliComplemento" maxlength="80" placeholder="Apto, bloco (opcional)" /></div>
             <div class="campo"><label for="cliCidade">Cidade</label><input id="cliCidade" maxlength="80" placeholder="Cidade" /></div>
             <div class="campo cli-uf"><label for="cliUf">UF</label><input id="cliUf" maxlength="2" placeholder="UF" /></div>
@@ -1604,8 +1606,10 @@
 
         <div class="cli-secao">
           <h4 class="cli-secao-titulo">Permissões</h4>
-          <div class="campo toggle"><input type="checkbox" id="cliBloqLimite" /><label for="cliBloqLimite">Bloquear venda ao estourar o limite</label></div>
-          <div class="campo toggle"><input type="checkbox" id="cliBloqVenc" /><label for="cliBloqVenc">Bloquear venda quando houver conta vencida</label></div>
+          <div class="cli-perms">
+            <div class="campo toggle"><input type="checkbox" id="cliBloqVenc" /><label for="cliBloqVenc">Bloqueio Conta Vencida</label></div>
+            <div class="campo toggle"><input type="checkbox" id="cliBloqLimite" /><label for="cliBloqLimite">Bloqueio Saldo Limite</label></div>
+          </div>
           <div class="cli-liberar" id="cliLiberarWrap" hidden>
             <span class="cli-liberado" id="cliLiberadoTag" hidden>Próxima venda já liberada</span>
             <button type="button" class="secundario mini" id="cliLiberarBtn">Liberar próxima venda</button>

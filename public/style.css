@@ -1586,9 +1586,13 @@ button:disabled {
   text-transform: uppercase;
   color: var(--text-secondary);
 }
-.cli-cep { flex: 0 0 130px; }
-.cli-num { flex: 0 0 90px; }
-.cli-uf { flex: 0 0 84px; }
+/* Campos estreitos: precisam da mesma especificidade de `.linha > .campo`
+   (0,2,0) + a classe, senão o flex:1/min-width:140px base vence. min-width:0
+   deixa encolher em telas pequenas (sem barra de rolagem horizontal). */
+.linha > .campo.cli-cep { flex: 0 0 120px; min-width: 0; }   /* cabe "00000-000" (9 chars) */
+.linha > .campo.cli-num { flex: 0 0 96px; min-width: 0; }    /* cabe ~6 dígitos */
+.linha > .campo.cli-uf  { flex: 0 0 72px; min-width: 0; }    /* 2 caracteres */
+.cli-perms { display: flex; gap: 28px; flex-wrap: wrap; }
 .cli-hint { font-size: 12px; margin-top: 4px; display: block; min-height: 14px; }
 .cli-hint.erro { color: var(--error); }
 .cli-hint.ok { color: var(--success); }
