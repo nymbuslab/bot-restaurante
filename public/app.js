@@ -6457,6 +6457,10 @@ function setClienteTipo(tipo) {
   $("lblCliApelido").textContent = pj ? "Nome fantasia" : "Apelido";
   $("lblCliDoc").textContent = pj ? "CNPJ" : "CPF";
   $("lblCliIe").textContent = pj ? "Inscrição estadual" : "RG";
+  $("cliNome").placeholder = pj ? "Ex.: Padaria Pão Quente Ltda" : "Ex.: João da Silva";
+  $("cliApelido").placeholder = pj ? "Nome fantasia" : "Como o cliente é chamado";
+  $("cliDoc").placeholder = pj ? "00.000.000/0000-00" : "000.000.000-00";
+  $("cliIe").placeholder = pj ? "Inscrição estadual" : "RG";
   const doc = $("cliDoc");
   doc.value = Documento.formatarDocumento(doc.value, cliTipoAtual);
   validarDocInline();

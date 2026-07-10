@@ -1549,11 +1549,12 @@ button:disabled {
 .cli-vazio h3 { margin: 0; font-size: 15px; color: var(--text-primary); }
 .cli-vazio p { margin: 0; max-width: 380px; font-size: 13px; line-height: 1.5; }
 
-/* Modal de cadastro/edição */
-.cli-modal { width: min(760px, 96vw); }
+/* Modal de cadastro/edição — largura dos formulários da plataforma (como o editor
+   de item). A dupla classe vence o `max-width: 360px` do .modal-caixa base. */
+.modal-caixa.cli-modal { width: 95%; max-width: 720px; }
 .cli-form { padding: 4px 2px; }
 .cli-tipo-seg {
-  display: inline-flex;
+  display: flex;
   padding: 4px;
   gap: 4px;
   background: var(--bg-surface);
@@ -1562,12 +1563,14 @@ button:disabled {
   margin-bottom: 18px;
 }
 .cli-tipo-btn {
-  padding: 8px 20px;
+  flex: 1;
+  padding: 9px 20px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
+  text-align: center;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
