@@ -6699,7 +6699,6 @@ function abrirClienteModal(id) {
   $("cliBloqLimite").checked = false;
   $("cliBloqVenc").checked = false;
   $("cliDocHint").textContent = ""; $("cliDocHint").className = "cli-hint";
-  $("cliCepHint").textContent = ""; $("cliCepHint").className = "cep-hint";
   setClienteTipo("PF");
   atualizarLiberar();
   $("cliente-overlay").style.display = "flex";
@@ -6844,7 +6843,7 @@ function fecharClienteModal() {
   if ($("cliDoc")) $("cliDoc").addEventListener("input", (e) => { e.target.value = Documento.formatarDocumento(e.target.value, cliTipoAtual); validarDocInline(); });
   if ($("cliTel")) $("cliTel").addEventListener("input", (e) => { e.target.value = Documento.formatarTelefone(e.target.value); });
   if ($("cliDiaVenc")) $("cliDiaVenc").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 2); });
-  if (window.EnderecoCep) EnderecoCep.ligarBuscaCep({ cep: "cliCep", hint: "cliCepHint", logradouro: "cliLogradouro", numero: "cliNumero", bairro: "cliBairro", cidade: "cliCidade", uf: "cliUf" });
+  if (window.EnderecoCep) EnderecoCep.ligarBuscaCep({ cep: "cliCep", logradouro: "cliLogradouro", numero: "cliNumero", bairro: "cliBairro", cidade: "cliCidade", uf: "cliUf" });
   $("cliBloqLimite").addEventListener("change", atualizarLiberar);
   $("cliBloqVenc").addEventListener("change", atualizarLiberar);
   $("cliSalvarBtn").addEventListener("click", salvarCliente);
