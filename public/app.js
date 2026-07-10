@@ -1993,55 +1993,33 @@ function atualizarChipStatus(real) {
   }
 }
 
+// Formas de pagamento: conjunto FIXO (só liga/desliga por toggle). Espelha a
+// ordem canônica de src/pagamentos.js. "A Prazo" (fiado) só entra na Fase 3.
+const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
+const FORMA_SUB = {};
+
 function renderPagamentos() {
   const cont = $("pagamentosContainer");
   cont.innerHTML = "";
-  configAtual.pagamentos.forEach((p, i) => {
-    const pill = document.createElement("span");
-    pill.className = "pag-pill";
-    pill.innerHTML = `<span class="pag-pill-txt">${escapar(p)}</span><button type="button" class="pag-pill-del" data-del-pg="${i}" aria-label="Remover">${ICO_LIXEIRA}</button>`;
-    cont.appendChild(pill);
+  if (!Array.isArray(configAtual.pagamentos)) configAtual.pagamentos = [];
+  const ligadas = new Set(configAtual.pagamentos);
+  FORMAS_FIXAS.forEach((forma) => {
+    const row = document.createElement("label");
+    row.className = "cfg-pag-row";
+    const sub = FORMA_SUB[forma] ? `<span class="cfg-pag-sub">${FORMA_SUB[forma]}</span>` : "";
+    row.innerHTML =
+      `<span class="cfg-pag-texto"><span class="cfg-pag-nome">${escapar(forma)}</span>${sub}</span>` +
+      `<span class="switch"><input type="checkbox" data-forma="${forma}"${ligadas.has(forma) ? " checked" : ""}></span>`;
+    cont.appendChild(row);
   });
-  const add = document.createElement("button");
-  add.type = "button";
-  add.className = "pag-add";
-  add.id = "btnAddPagamento";
-  add.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar Método`;
-  cont.appendChild(add);
-
-  cont.querySelectorAll("[data-del-pg]").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      configAtual.pagamentos.splice(+e.currentTarget.dataset.delPg, 1);
-      renderPagamentos();
+  cont.querySelectorAll("[data-forma]").forEach((el) =>
+    el.addEventListener("change", () => {
+      const set = new Set(configAtual.pagamentos);
+      if (el.checked) set.add(el.dataset.forma);
+      else set.delete(el.dataset.forma);
+      configAtual.pagamentos = FORMAS_FIXAS.filter((f) => set.has(f)); // mantém a ordem canônica
     })
   );
-  add.addEventListener("click", adicionarPagamentoInline);
-}
-
-// "+ Adicionar Método": insere um input inline que vira pill ao confirmar (Enter/blur).
-function adicionarPagamentoInline() {
-  const cont = $("pagamentosContainer");
-  const existente = cont.querySelector(".pag-input");
-  if (existente) { existente.focus(); return; }
-  const add = $("btnAddPagamento");
-  const input = document.createElement("input");
-  input.className = "pag-input";
-  input.placeholder = "Nome do método";
-  cont.insertBefore(input, add);
-  input.focus();
-  let confirmado = false;
-  const commit = () => {
-    if (confirmado) return;
-    confirmado = true;
-    const v = input.value.trim();
-    if (v) configAtual.pagamentos.push(v);
-    renderPagamentos();
-  };
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); commit(); }
-    else if (e.key === "Escape") { confirmado = true; renderPagamentos(); }
-  });
-  input.addEventListener("blur", commit);
 }
 
 // Recalcula AO VIVO o texto de horário (campo read-only) e o badge a partir da

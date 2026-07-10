@@ -64,7 +64,7 @@ function configInicial(nomeRestaurante) {
         retirada: "Olá, {cliente}! Seu pedido #{numero} está pronto para retirada. Pode vir buscar quando quiser!",
       },
     },
-    pagamentos: ["Pix", "Cartão (na entrega)", "Dinheiro"],
+    pagamentos: ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"],
     // Progresso do onboarding (wizard de 4 etapas). `concluido` libera o painel
     // direto; enquanto false, login/cadastro retomam o wizard na `etapa` salva.
     onboarding: { concluido: false, etapa: 2 },

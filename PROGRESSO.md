@@ -4,7 +4,23 @@
 
 ## 🔄 Em Andamento
 
-_(nada no momento)_
+**Feature grande em 4 fases — Clientes + Contas a Receber (fiado) + Formas de pagamento fixas.**
+Plano aprovado (ver `~/.claude/plans/preciso-criar-um-nova-shimmying-walrus.md`). Faz parte do
+Essencial **e** do Completo (sem gate de plano). Reusa `clientes`/`enderecos`/`src/clientes.js`,
+`EnderecoCep` (CEP/ViaCEP), o padrão de `caixa_movimentos`/`caixa.receberPedido`, a fila de
+impressão e `POST /api/pedidos/:id/reimprimir`.
+
+- ✅ **Fase 1 — Formas de pagamento fixas** (concluída, ver ✅). "A Prazo" fica **fora** dos toggles
+  até a Fase 3 (senão seria selecionável no PDV/mesa/checkout sem backend de fiado).
+- 🔜 **Fase 2 — Aba Clientes** (cadastro PF/PJ, CPF/CNPJ, endereço, limite de crédito, permissões,
+  botão "Liberar próxima venda"). Próxima.
+- ⏳ **Fase 3 — Vender A Prazo** no PDV e na Mesa (vínculo a cliente, vencimento por dia fixo do mês,
+  bloqueio por limite/vencimento). Aqui "A Prazo" entra nos toggles + na lista canônica.
+- ⏳ **Fase 4 — Contas a Receber** (sub-abas Receber/Recebidas, baixa integral/parcial, multi-seleção,
+  log de baixas; a baixa entra no caixa do dia).
+
+**Deploy da Fase 1:** rodar `npm run normalizar-pagamentos` (migra as formas antigas dos tenants para
+as canônicas) no deploy. As strings canônicas já funcionam no código antigo, então pode rodar antes.
 
 ## 📋 Próximos Passos
 
@@ -37,6 +53,7 @@ _(nada no momento)_
 
 ## ✅ Concluído
 
+- [x] **Fase 1 (fiado) — Formas de pagamento fixas** — as formas de pagamento eram texto livre em `config.pagamentos` (o dono digitava qualquer método). Agora são um **conjunto FIXO** que só liga/desliga por toggle. Novo módulo PURO `src/pagamentos.js` (`FORMAS_PAGAMENTO` = Dinheiro/PIX/Cartão de Crédito/Cartão de Débito + `normalizarFormasPagamento` que mapeia strings legadas → canônicas [ex.: "Pix"→PIX, "Cartão (na entrega)"→Crédito+Débito] e `ehAPrazo`). Whitelist ao salvar (`normalizarConfigServidor`) + **normaliza na leitura** do painel (`GET /api/config`) para os toggles refletirem certo mesmo antes da migração. Front: `renderPagamentos` (painel) e `renderPagsWiz` (onboarding) viraram 5 toggles com o componente `.switch` (removido o input de texto livre + CSS `.pag-pill`/`.pag-add`); default de tenant novo atualizado (`empresas.js`). Script one-shot `scripts/normalizar-pagamentos.js` (`npm run normalizar-pagamentos`) migra os tenants existentes. **"A Prazo" (fiado) fica de fora dos toggles e da lista canônica até a Fase 3** — senão seria selecionável no PDV/mesa/checkout sem o backend de fiado, corrompendo o caixa. 207/207 testes (9 novos em `test/pagamentos.test.js`) + check; toggles validados no browser (harness com a `style.css` real). — 2026-07-10
 - [x] **Auditoria da escala global de botões (padronização visual, item B) — sistema coerente, sem mudança** — o item pedia "unificar a escala global de botões" (mexeria no `button` base → risco global). Auditoria só-leitura de todos os tamanhos de botão (`style.css`): o que parecia inconsistência acidental se explicou como **duas escalas deliberadas convivendo** — o padrão geral do painel (`13`/`12px`: base `button`, `.mini`, nav/config) e uma escala própria e **compacta do PDV** (`13.5`/`12.5`/`11.5px`) usada de forma consistente em dezenas de elementos (`.pdv-forma`/`.pdv-linha-nome`/`.pdv-op-nome`/`.pdv-stepper`...). As variações restantes são intencionais (densidade da linha em `.mesa-rodape-acoes` 12px vs `.mesa-acoes-row` 13px, steppers 32/28px, `.perigo` menor, CTAs de landing 15px). Único destoque de borda: `.pdv-desc-tipo button` a `13px` dentro da área 13.5px do PDV (nit de 0,5px, imperceptível) — dono optou por **não** mexer. Conclusão: **nada a corrigir**; unificar o `button` base seria churn de alto risco sem ganho. Item fechado pela auditoria, zero código. O item irmão (rename das classes de estado) segue aberto e **não recomendado** em 📋. — 2026-07-09
 - [x] **Skill de copywriting (`copy-nymbus`) + agente `copywriter` + auditorias de copy (landing + painel)** — criada a **fonte de verdade da voz da marca** em `.claude/skills/copy-nymbus/` (voz + copy de venda + microcopy de UI + `references/frameworks.md` com fórmulas de headline/esqueleto de landing/CTA), incorporando o melhor das skills públicas `ux-copy` e `copywriting` (Corey Haines) adaptado à voz Nymbus e pt-BR — **sem dependência externa, uma skill só**. Regra dura: **proibido travessão (—) como conector** (o vício apontado pelo dono) + lista de tiques robóticos + convenção Excluir (apaga de vez) vs Remover (tira de lista/rascunho). Agente `copywriter` read-only (`.claude/agents/copywriter.md`) que segue a skill e entrega antes/depois. **Auditoria da landing:** frete por bairro + vitrine de destaques nos cards/planos, cards de plano com mesma altura (CSS `align-items:stretch` + CTA na base), e copy de venda revisada (10 travessões eliminados, 9 dos 11 cards enxugados; `~2 min`→`Minutos`; card "Sem app pra baixar"). **Auditoria do painel** (3 agentes por categoria): ~45 ajustes — erros nus (`"Erro."`/`"Falha ao X"`) → **"Não foi possível [ação]. [como resolver]"**; estados vazios que orientam (Caixa/Dashboard/Mesas/Assinatura); ~23 travessões e jargão de dev (`PUBLIC_URL`, "toggle", "disparos massivos") removidos; `confirmar()` passou a aceitar o rótulo do botão de dispensar (cancelar mesa usa "Voltar"); glifos `⤓`/`↺` → ícones SVG. Validado: 198/198 testes + check; modal, botões, landing (cards/planos) conferidos no navegador. Commits `82b01a0`/`2304e89`/`4978ea2` (skill+agente), landing e `830f7f3`/`8c70eb3` (painel). — 2026-07-08
 - [x] **Fix — excluir item da composição/opcional/variação pelo clique no ícone** — os 4 botões de lixeira do editor de item liam a posição via `e.target` (o SVG interno do ícone quando o clique caía sobre o desenho) → `dataset` undefined → `NaN` → `splice` falhava em silêncio (só dava pra excluir a categoria inteira). Troca para `e.currentTarget` (sempre o botão) em `comp-chip-del`/`comp-sg-del`/`opc-del`/`var-del`. `public/app.js`, commit `c0cd281`. — 2026-07-08

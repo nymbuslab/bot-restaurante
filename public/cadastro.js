@@ -237,47 +237,45 @@
       Dinheiro.mascarar("wizTaxa");
       renderPagsWiz();
     }
+    // Formas de pagamento: conjunto FIXO (só liga/desliga), igual ao painel.
+    // "A Prazo" (fiado) só entra na Fase 3. Espelha src/pagamentos.js.
+    const WIZ_FORMAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
+    const WIZ_FORMA_SUB = {};
     function renderPagsWiz() {
       const cont = $("wizPagamentos");
       cont.innerHTML = "";
-      cfg.pagamentos.forEach((p, i) => {
-        const pill = document.createElement("span");
-        pill.className = "pag-pill";
-        pill.innerHTML = `<span class="pag-pill-txt"></span><button type="button" class="pag-pill-del" aria-label="Remover"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`;
-        pill.querySelector(".pag-pill-txt").textContent = p;
-        pill.querySelector(".pag-pill-del").addEventListener("click", () => { cfg.pagamentos.splice(i, 1); renderPagsWiz(); });
-        cont.appendChild(pill);
+      if (!Array.isArray(cfg.pagamentos)) cfg.pagamentos = [];
+      const ligadas = new Set(cfg.pagamentos);
+      WIZ_FORMAS.forEach((forma) => {
+        const row = document.createElement("label");
+        row.className = "cfg-pag-row";
+        const texto = document.createElement("span");
+        texto.className = "cfg-pag-texto";
+        const nome = document.createElement("span");
+        nome.className = "cfg-pag-nome";
+        nome.textContent = forma;
+        texto.appendChild(nome);
+        if (WIZ_FORMA_SUB[forma]) {
+          const sub = document.createElement("span");
+          sub.className = "cfg-pag-sub";
+          sub.textContent = WIZ_FORMA_SUB[forma];
+          texto.appendChild(sub);
+        }
+        const sw = document.createElement("span");
+        sw.className = "switch";
+        const inp = document.createElement("input");
+        inp.type = "checkbox";
+        inp.checked = ligadas.has(forma);
+        inp.addEventListener("change", () => {
+          const set = new Set(cfg.pagamentos);
+          if (inp.checked) set.add(forma); else set.delete(forma);
+          cfg.pagamentos = WIZ_FORMAS.filter((f) => set.has(f)); // ordem canônica
+        });
+        sw.appendChild(inp);
+        row.appendChild(texto);
+        row.appendChild(sw);
+        cont.appendChild(row);
       });
-      const add = document.createElement("button");
-      add.type = "button";
-      add.className = "pag-add";
-      add.id = "wizAddPag";
-      add.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar`;
-      add.addEventListener("click", addPagInline);
-      cont.appendChild(add);
-    }
-    function addPagInline() {
-      const cont = $("wizPagamentos");
-      if (cont.querySelector(".pag-input")) { cont.querySelector(".pag-input").focus(); return; }
-      const add = $("wizAddPag");
-      const input = document.createElement("input");
-      input.className = "pag-input";
-      input.placeholder = "Nome do método";
-      cont.insertBefore(input, add);
-      input.focus();
-      let confirmado = false;
-      const commit = () => {
-        if (confirmado) return;
-        confirmado = true;
-        const v = input.value.trim();
-        if (v) cfg.pagamentos.push(v);
-        renderPagsWiz();
-      };
-      input.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter") { ev.preventDefault(); commit(); }
-        else if (ev.key === "Escape") { confirmado = true; renderPagsWiz(); }
-      });
-      input.addEventListener("blur", commit);
     }
 
     $("btnVoltar4").addEventListener("click", () => irPara(3));

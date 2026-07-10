@@ -94,6 +94,7 @@ src/
   supabase.js         -> clients do Supabase (Auth admin/anon + Storage)
   stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas, trocaPlano (upgrade/downgrade)
   planos.js           -> mapa PURO de planos (Essencial/Completo): PLANO_INFO + planoDoPrice (price→plano)
+  pagamentos.js       -> formas de pagamento PURO: vocabulário FIXO (FORMAS_PAGAMENTO: Dinheiro/PIX/Crédito/Débito; "A Prazo"/fiado entra na Fase 3) + normalizarFormasPagamento (whitelist/migra strings legadas) + ehAPrazo. `config.pagamentos` só aceita canônicos (whitelist ao salvar + normaliza na leitura do painel)
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
   incidentes.js       -> histórico de incidentes (tabela incidentes): registrar (agrupa rajadas em janela de 5min) / listar / limparAntigos; alimenta a aba Monitoramento do master (GET /api/admin/incidentes)
   servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso + FILA genérica /api/agente/fila·:id/impresso) + reimprimir (POST /api/pedidos/:id/reimprimir) + download do agente (GET /downloads/nymbus-impressora.exe)

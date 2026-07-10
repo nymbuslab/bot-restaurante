@@ -28,6 +28,7 @@ const multiBot = require("./multi-bot");
 const { supabaseAdmin, supabaseAnon } = require("./supabase");
 const stripeBilling = require("./stripe");
 const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("./validacao");
+const formasPag = require("./pagamentos");
 const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
@@ -1477,7 +1478,10 @@ app.post("/api/bot/resetar", botLimiter, exigeAuth, async (req, res) => {
 app.get("/api/config", exigeAuth, async (req, res) => {
   try {
     await store.ensure(req.tenantDir);
-    res.json(store.getConfig(req.tenantDir));
+    const cfg = store.getConfig(req.tenantDir);
+    // Formas de pagamento sempre canônicas na leitura do painel — mesmo antes de
+    // rodar a migração (npm run normalizar-pagamentos), os toggles refletem certo.
+    res.json(Object.assign({}, cfg, { pagamentos: formasPag.normalizarFormasPagamento(cfg.pagamentos) }));
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler a configuração." });
   }
@@ -1490,6 +1494,9 @@ const MAX_MSG_CONFIG = 4096;
 function normalizarConfigServidor(body) {
   if (!body || typeof body !== "object") return;
   const nn = (v) => Math.max(0, Number(String(v == null ? 0 : v).replace(",", ".")) || 0);
+  // Formas de pagamento: vocabulário FIXO (não confia no cliente). Whitelist +
+  // dedupe na ordem canônica; migra strings legadas de texto livre no caminho.
+  if ("pagamentos" in body) body.pagamentos = formasPag.normalizarFormasPagamento(body.pagamentos);
   if (body.atendimento && typeof body.atendimento === "object" && "taxaEntrega" in body.atendimento) {
     body.atendimento.taxaEntrega = nn(body.atendimento.taxaEntrega);
   }

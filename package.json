@@ -11,7 +11,8 @@
     "start": "node index.js",
     "test": "node --test test/*.test.js",
     "check": "node scripts/check-syntax.js",
-    "setup-storage": "node scripts/setup-storage.js"
+    "setup-storage": "node scripts/setup-storage.js",
+    "normalizar-pagamentos": "node scripts/normalizar-pagamentos.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

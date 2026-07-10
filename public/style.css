@@ -1613,55 +1613,20 @@ button:disabled {
 .hor-fechado .hor-dia { color: var(--text-disabled); }
 
 /* Entrega e pagamento — pills */
-.cfg-pagamentos {
+.cfg-pagamentos { display: flex; flex-direction: column; gap: 0; }
+.cfg-pag-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
-}
-.pag-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--accent-subtle);
-  color: var(--text-primary);
-  border: 1px solid rgba(99, 68, 188, 0.3);
-  border-radius: 20px;
-  padding: 6px 8px 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.pag-pill-del {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 4px;
   cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  padding: 0;
+  border-bottom: 1px solid var(--border-subtle);
 }
-.pag-pill-del:hover { background: var(--error-subtle); color: var(--error); }
-.pag-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: 1.5px dashed var(--border);
-  color: var(--text-secondary);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.pag-add:hover { border-color: var(--accent-fg); color: var(--accent-fg); background: none; transform: none; }
-.pag-input { width: 170px; border-radius: 20px; padding: 6px 14px; }
+.cfg-pag-row:last-child { border-bottom: none; }
+.cfg-pag-texto { display: flex; flex-direction: column; gap: 2px; }
+.cfg-pag-nome { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cfg-pag-sub { font-size: 12px; color: var(--text-secondary); }
 
 /* Botão "Gerar automaticamente" sob o campo de texto do horário */
 /* Texto de horário é gerado automaticamente da tabela (campo read-only). */
@@ -5977,10 +5942,10 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
    Estes botões antes traziam um glifo "×"/"✕"; agora recebem o ICO_LIXEIRA (14px).
    Regra única: centraliza e fixa o tamanho do SVG em todos eles. Cor/hover ficam
    nas regras próprias de cada classe (já em token --error). */
-.comp-chip-del, .comp-sg-del, .opc-del, .var-del, .pag-pill-del, .fc-del,
+.comp-chip-del, .comp-sg-del, .opc-del, .var-del, .fc-del,
 .ff-remover, .mesa-cart-rm, .mesa-tag-rm, .pdv-pg-item button {
   display: inline-flex; align-items: center; justify-content: center; line-height: 1;
 }
 .comp-chip-del svg, .comp-sg-del svg, .opc-del svg, .var-del svg,
-.pag-pill-del svg, .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
+.fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
 .mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }
