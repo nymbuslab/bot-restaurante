@@ -1998,6 +1998,15 @@ function atualizarChipStatus(real) {
 // ordem canônica de src/pagamentos.js. "A Prazo" (fiado) só entra na Fase 3.
 const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
 const FORMA_SUB = {};
+// Ícones SVG por forma (design system). Cartão de Crédito/Débito compartilham o cartão.
+const ICO_CARTAO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
+const FORMA_ICONE = {
+  "Dinheiro": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>',
+  "PIX": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  "Cartão de Crédito": ICO_CARTAO,
+  "Cartão de Débito": ICO_CARTAO,
+  "A Prazo": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
+};
 
 function renderPagamentos() {
   const cont = $("pagamentosContainer");
@@ -2005,13 +2014,14 @@ function renderPagamentos() {
   if (!Array.isArray(configAtual.pagamentos)) configAtual.pagamentos = [];
   const ligadas = new Set(configAtual.pagamentos);
   FORMAS_FIXAS.forEach((forma) => {
-    const row = document.createElement("label");
-    row.className = "cfg-pag-row";
+    const card = document.createElement("label");
+    card.className = "cfg-pag-card" + (ligadas.has(forma) ? " on" : "");
     const sub = FORMA_SUB[forma] ? `<span class="cfg-pag-sub">${FORMA_SUB[forma]}</span>` : "";
-    row.innerHTML =
+    card.innerHTML =
+      `<span class="cfg-pag-ico">${FORMA_ICONE[forma] || ""}</span>` +
       `<span class="cfg-pag-texto"><span class="cfg-pag-nome">${escapar(forma)}</span>${sub}</span>` +
       `<span class="switch"><input type="checkbox" data-forma="${forma}"${ligadas.has(forma) ? " checked" : ""}></span>`;
-    cont.appendChild(row);
+    cont.appendChild(card);
   });
   cont.querySelectorAll("[data-forma]").forEach((el) =>
     el.addEventListener("change", () => {
@@ -2019,6 +2029,7 @@ function renderPagamentos() {
       if (el.checked) set.add(el.dataset.forma);
       else set.delete(el.dataset.forma);
       configAtual.pagamentos = FORMAS_FIXAS.filter((f) => set.has(f)); // mantém a ordem canônica
+      el.closest(".cfg-pag-card").classList.toggle("on", el.checked);
     })
   );
 }

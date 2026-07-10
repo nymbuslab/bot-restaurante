@@ -1738,20 +1738,42 @@ button:disabled {
 .hor-fechado .hor-dia { color: var(--text-disabled); }
 
 /* Entrega e pagamento — pills */
-.cfg-pagamentos { display: flex; flex-direction: column; gap: 0; }
-.cfg-pag-row {
+/* Formas de pagamento: cards individuais em grade (liga/desliga). */
+.cfg-pagamentos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+.cfg-pag-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 4px;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   cursor: pointer;
-  border-bottom: 1px solid var(--border-subtle);
+  transition: border-color 0.15s, background 0.15s;
 }
-.cfg-pag-row:last-child { border-bottom: none; }
-.cfg-pag-texto { display: flex; flex-direction: column; gap: 2px; }
+.cfg-pag-card:hover { border-color: var(--text-secondary); }
+.cfg-pag-card.on { border-color: var(--accent); background: var(--accent-subtle); }
+.cfg-pag-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+.cfg-pag-card.on .cfg-pag-ico { background: var(--accent); color: #fff; }
+.cfg-pag-texto { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .cfg-pag-nome { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 .cfg-pag-sub { font-size: 12px; color: var(--text-secondary); }
+.cfg-pag-card .switch { flex-shrink: 0; }
 
 /* Botão "Gerar automaticamente" sob o campo de texto do horário */
 /* Texto de horário é gerado automaticamente da tabela (campo read-only). */

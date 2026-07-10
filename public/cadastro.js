@@ -237,30 +237,33 @@
       Dinheiro.mascarar("wizTaxa");
       renderPagsWiz();
     }
-    // Formas de pagamento: conjunto FIXO (só liga/desliga), igual ao painel.
+    // Formas de pagamento: cards individuais (liga/desliga), igual ao painel.
     // "A Prazo" (fiado) só entra na Fase 3. Espelha src/pagamentos.js.
     const WIZ_FORMAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
-    const WIZ_FORMA_SUB = {};
+    const WIZ_CARTAO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
+    const WIZ_FORMA_ICONE = {
+      "Dinheiro": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>',
+      "PIX": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+      "Cartão de Crédito": WIZ_CARTAO,
+      "Cartão de Débito": WIZ_CARTAO,
+    };
     function renderPagsWiz() {
       const cont = $("wizPagamentos");
       cont.innerHTML = "";
       if (!Array.isArray(cfg.pagamentos)) cfg.pagamentos = [];
       const ligadas = new Set(cfg.pagamentos);
       WIZ_FORMAS.forEach((forma) => {
-        const row = document.createElement("label");
-        row.className = "cfg-pag-row";
+        const card = document.createElement("label");
+        card.className = "cfg-pag-card" + (ligadas.has(forma) ? " on" : "");
+        const ico = document.createElement("span");
+        ico.className = "cfg-pag-ico";
+        ico.innerHTML = WIZ_FORMA_ICONE[forma] || "";
         const texto = document.createElement("span");
         texto.className = "cfg-pag-texto";
         const nome = document.createElement("span");
         nome.className = "cfg-pag-nome";
         nome.textContent = forma;
         texto.appendChild(nome);
-        if (WIZ_FORMA_SUB[forma]) {
-          const sub = document.createElement("span");
-          sub.className = "cfg-pag-sub";
-          sub.textContent = WIZ_FORMA_SUB[forma];
-          texto.appendChild(sub);
-        }
         const sw = document.createElement("span");
         sw.className = "switch";
         const inp = document.createElement("input");
@@ -270,11 +273,13 @@
           const set = new Set(cfg.pagamentos);
           if (inp.checked) set.add(forma); else set.delete(forma);
           cfg.pagamentos = WIZ_FORMAS.filter((f) => set.has(f)); // ordem canônica
+          card.classList.toggle("on", inp.checked);
         });
         sw.appendChild(inp);
-        row.appendChild(texto);
-        row.appendChild(sw);
-        cont.appendChild(row);
+        card.appendChild(ico);
+        card.appendChild(texto);
+        card.appendChild(sw);
+        cont.appendChild(card);
       });
     }
 
