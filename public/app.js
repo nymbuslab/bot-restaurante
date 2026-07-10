@@ -6934,7 +6934,7 @@ function renderContas(cont, lista, aberto, termo) {
     cont.innerHTML = `<div class="cli-vazio">
       <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icone}</svg>
       <h3>${termo ? "Nenhum cliente encontrado" : (aberto ? "Nenhuma venda a prazo em aberto" : "Nenhuma conta recebida ainda")}</h3>
-      <p>${aberto ? "Quando você vender no fiado (forma A Prazo no PDV ou na mesa), as contas dos clientes aparecem aqui para dar baixa." : "As contas a prazo já quitadas ficam aqui, para conferência."}</p>
+      <p>${aberto ? "Quando você vender no fiado (A Prazo, no PDV ou na mesa), a conta do cliente aparece aqui para receber." : "As contas a prazo já quitadas ficam aqui, para conferência."}</p>
     </div>`;
     return;
   }
@@ -7018,7 +7018,7 @@ function renderFiadoModal() {
     let logHtml = "";
     if (log.length) {
       logHtml = `<div class="fiado-v-log">` + log.map((b) =>
-        `<span>Baixado ${moedaBR(b.valor)} · ${fiadoDataHora(b.criadoEm)}${Number(b.restante) > 0 ? " · restante " + moedaBR(b.restante) : " · quitado"}</span>`
+        `<span>Recebido ${moedaBR(b.valor)} · ${fiadoDataHora(b.criadoEm)}${Number(b.restante) > 0 ? " · falta " + moedaBR(b.restante) : " · quitado"}</span>`
       ).join("") + `</div>`;
     }
     html += `<div class="fiado-v${marc ? " sel" : ""}" data-vid="${v.id}">
@@ -7044,7 +7044,7 @@ function renderFiadoModal() {
         <div class="fiado-baixa-resumo"><span id="fiadoSelInfo">0 selecionadas</span><strong id="fiadoSelTotal">R$ 0,00</strong></div>
         <button type="button" class="primario" id="fiadoReceberBtn">Receber</button>
       </div>
-      <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber o total. Para baixa parcial, selecione uma única venda e informe o valor.</p>
+      <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber tudo. Para receber só uma parte, escolha uma única venda e digite o valor.</p>
     </div>`;
   }
   corpo.innerHTML = html;
@@ -7081,7 +7081,7 @@ async function fiadoReceber() {
   if (!fiadoFormaSel) { toast("Escolha a forma do recebimento.", "erro"); return; }
   const valor = window.Dinheiro ? Dinheiro.valor("fiadoValor") : 0;
   const parcial = valor > 0;
-  if (parcial && sel.length > 1) { toast("A baixa parcial é de uma venda por vez. Selecione só uma.", "erro"); return; }
+  if (parcial && sel.length > 1) { toast("Para receber só uma parte, selecione uma única venda.", "erro"); return; }
   const body = { pedidoIds: sel, forma: fiadoFormaSel };
   if (parcial) body.valor = valor;
   const btn = $("fiadoReceberBtn"); if (btn) { btn.disabled = true; btn.textContent = "Recebendo..."; }
@@ -7089,11 +7089,11 @@ async function fiadoReceber() {
     const r = await api("POST", "/api/fiado/baixar", body);
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.erro || "Falha ao receber.");
-    toast(d.comCaixa ? "Recebimento lançado no caixa." : "Baixa registrada.", "sucesso");
+    toast(d.comCaixa ? "Recebimento lançado no caixa." : "Pagamento recebido.", "sucesso");
     await abrirFiadoModal(fiadoModalCliente.id, fiadoModalCliente.nome, fiadoModalCliente.aberto);
     carregarContas(fiadoModalCliente.aberto);
   } catch (e) {
-    toast(e.message || "Não foi possível dar a baixa.", "erro");
+    toast(e.message || "Não foi possível registrar o recebimento.", "erro");
     if (btn) { btn.disabled = false; btn.textContent = "Receber"; }
   }
 }

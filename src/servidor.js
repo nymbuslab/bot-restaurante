@@ -1908,7 +1908,7 @@ app.post("/api/fiado/baixar", exigeAuth, async (req, res) => {
       pedidoIds: b.pedidoIds, forma: b.forma, valor: b.valor, comCaixa,
     }));
   } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível dar a baixa." });
+    res.status(400).json({ erro: e.message || "Não foi possível registrar o recebimento." });
   }
 });
 
