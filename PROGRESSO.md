@@ -18,7 +18,9 @@ impressão e `POST /api/pedidos/:id/reimprimir`.
   bloqueio por limite/vencimento). Próxima. Aqui "A Prazo" entra nos toggles + na lista canônica; o
   `resumoFiado` de clientes.js passa a derivar gasto/saldo/vencido das vendas a prazo em aberto.
 - ⏳ **Fase 4 — Contas a Receber** (sub-abas Receber/Recebidas, baixa integral/parcial, multi-seleção,
-  log de baixas; a baixa entra no caixa do dia).
+  log de baixas; a baixa entra no caixa do dia). **+ Cards de resumo** no topo da aba Clientes
+  (Total a Receber, Novos clientes no mês, Pagamentos em atraso) — ideia do Stitch, depende dos
+  dados de fiado, então fica pra esta fase.
 
 **Deploy (juntar tudo num push só, decisão do dono):** rodar `npm run normalizar-pagamentos` (Fase 1,
 migra as formas antigas). A migração de schema da Fase 2 (`20260710120000_clientes_cadastro.sql`) **já

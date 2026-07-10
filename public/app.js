@@ -6381,6 +6381,22 @@ let cliBuscaTimer;
 let cliEditando = null;      // id em edição, ou null (novo)
 let cliTipoAtual = "PF";     // 'PF' | 'PJ'
 let cliClienteAtual = null;  // objeto carregado (p/ estado de liberação)
+const ICO_EDIT = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+// Avatar: iniciais + cor estável derivada do nome (paleta que combina com o tema escuro).
+const CORES_AVATAR = ["#6344bc", "#4e7cc4", "#3f9e8f", "#b06fb0", "#c48a3f", "#5b8def"];
+function iniciaisCliente(nome) {
+  const partes = String(nome || "").trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return "?";
+  const a = partes[0][0] || "";
+  const b = partes.length > 1 ? partes[partes.length - 1][0] : "";
+  return (a + b).toUpperCase();
+}
+function corAvatar(nome) {
+  const s = String(nome || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return CORES_AVATAR[h % CORES_AVATAR.length];
+}
 
 async function carregarClientes() {
   const cont = $("clientesContainer");
@@ -6408,22 +6424,27 @@ function renderClientes(lista) {
     return;
   }
   const vazio = '<span class="cli-doc-vazio">—</span>';
-  let html = `<div class="tabela-scroll"><table class="pedidos-tabela"><thead><tr>
-    <th>Nome</th><th>Apelido</th><th>CPF / CNPJ</th><th>Telefone</th></tr></thead><tbody>`;
+  let html = `<div class="tabela-scroll"><table class="cli-tabela"><thead><tr>
+    <th>Nome</th><th>Apelido</th><th>CPF / CNPJ</th><th>Telefone</th><th class="cli-acoes-th">Ações</th></tr></thead><tbody>`;
   lista.forEach((c) => {
     const doc = c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : vazio;
     const tel = c.telefone ? escapar(Documento.formatarTelefone(c.telefone)) : vazio;
-    html += `<tr class="pedido-linha cli-linha" data-id="${escapar(c.id)}">
-      <td>${escapar(c.nome) || vazio}</td>
+    const nome = escapar(c.nome) || "Sem nome";
+    html += `<tr class="cli-linha" data-id="${escapar(c.id)}">
+      <td><div class="cli-nome-cel"><span class="cli-avatar" style="background:${corAvatar(c.nome)}">${escapar(iniciaisCliente(c.nome))}</span><span class="cli-nome-txt">${nome}</span></div></td>
       <td>${escapar(c.apelido) || vazio}</td>
       <td>${doc}</td>
       <td>${tel}</td>
+      <td class="cli-acoes-td"><button type="button" class="cli-edit-btn" data-edit="${escapar(c.id)}" aria-label="Editar cliente">${ICO_EDIT}</button></td>
     </tr>`;
   });
-  html += "</tbody></table></div>";
+  html += `</tbody></table></div><p class="cli-contador">Exibindo ${lista.length} ${lista.length === 1 ? "cliente" : "clientes"}</p>`;
   cont.innerHTML = html;
   cont.querySelectorAll(".cli-linha").forEach((tr) =>
     tr.addEventListener("click", () => abrirClienteModal(tr.dataset.id))
+  );
+  cont.querySelectorAll(".cli-edit-btn").forEach((b) =>
+    b.addEventListener("click", (e) => { e.stopPropagation(); abrirClienteModal(b.dataset.edit); })
   );
 }
 

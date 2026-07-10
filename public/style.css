@@ -1480,9 +1480,60 @@ button:disabled {
 .cli-toolbar .busca-wrap { flex: 1 1 260px; }
 .cli-toolbar #btnNovoCliente { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 
-/* Grid de clientes: reusa .tabela-scroll + .pedidos-tabela; linha clicável. */
-.cli-linha { cursor: pointer; }
+/* Grid de clientes: tabela própria (não reusa .pedidos-tabela, que tem larguras
+   fixas específicas de Pedidos que truncavam o nome). Dentro de .tabela-scroll. */
+.cli-tabela { width: 100%; border-collapse: collapse; }
+.cli-tabela th, .cli-tabela td {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.cli-tabela th {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.cli-tabela tbody tr { cursor: pointer; transition: background 0.12s; }
+.cli-tabela tbody tr:hover { background: var(--bg-elevated); }
 .cli-doc-vazio { color: var(--text-disabled); }
+.cli-nome-cel { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cli-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.cli-nome-txt { overflow: hidden; text-overflow: ellipsis; }
+.cli-acoes-th, .cli-acoes-td { width: 64px; text-align: center; }
+.cli-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.cli-edit-btn:hover { background: var(--bg-surface); color: var(--accent-fg); }
+.cli-contador { margin: 12px 4px 0; font-size: 12px; color: var(--text-secondary); }
 
 /* Estado vazio (Receber/Recebidas + grid sem clientes). */
 .cli-vazio {
