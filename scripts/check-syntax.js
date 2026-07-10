@@ -1,6 +1,9 @@
 // ============================================================
 // CHECK DE SINTAXE — o "build" honesto de um app CommonJS puro.
-// Roda `node --check` em todos os .js de src/ e na raiz (index.js).
+// Roda `node --check` em todos os .js de src/, scripts/, public/ e na raiz
+// (index.js). Inclui `public/` porque o front é JS puro sem bundler: um erro
+// de sintaxe lá (ex.: `const` duplicado) mata o script inteiro no browser e
+// derruba TODA a interatividade — `node --check` pega isso antes.
 // Uso: npm run check
 // ============================================================
 
@@ -22,6 +25,7 @@ function coletar(dir) {
 
 coletar(path.join(raiz, "src"));
 coletar(path.join(raiz, "scripts"));
+coletar(path.join(raiz, "public"));
 alvos.push(path.join(raiz, "index.js"));
 
 let erros = 0;

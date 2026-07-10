@@ -6869,8 +6869,7 @@ let fiadoVendas = [];          // vendas carregadas no modal
 let fiadoBaixasLog = [];       // baixas (log) das vendas do modal
 let fiadoSel = new Set();      // ids das vendas marcadas (baixa em lote)
 let fiadoFormaSel = "";        // forma escolhida p/ a baixa
-
-const ICO_PRINTER = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+// (ICO_PRINTER — ícone de impressora — já é declarado no módulo de Pedidos e reusado aqui.)
 
 // Formas válidas p/ a baixa (nunca "A Prazo" — não se paga fiado com fiado).
 function fiadoFormas() {
