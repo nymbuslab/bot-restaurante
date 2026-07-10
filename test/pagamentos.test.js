@@ -2,8 +2,8 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { FORMAS_PAGAMENTO, ehAPrazo, normalizarFormasPagamento } = require("../src/pagamentos");
 
-test("FORMAS_PAGAMENTO: vocabulário fixo em ordem canônica (A Prazo entra na Fase 3)", () => {
-  assert.deepEqual(FORMAS_PAGAMENTO, ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"]);
+test("FORMAS_PAGAMENTO: vocabulário fixo em ordem canônica (inclui A Prazo)", () => {
+  assert.deepEqual(FORMAS_PAGAMENTO, ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito", "A Prazo"]);
 });
 
 test("ehAPrazo: reconhece 'A Prazo' e 'fiado', ignora as demais", () => {
@@ -26,13 +26,13 @@ test("normalizarFormasPagamento: mapeia strings legadas → canônicas", () => {
 
 test("normalizarFormasPagamento: mantém a ordem canônica, não a de entrada", () => {
   assert.deepEqual(
-    normalizarFormasPagamento(["Cartão de Débito", "PIX", "Dinheiro"]),
-    ["Dinheiro", "PIX", "Cartão de Débito"]
+    normalizarFormasPagamento(["A Prazo", "PIX", "Dinheiro"]),
+    ["Dinheiro", "PIX", "A Prazo"]
   );
 });
 
-test("normalizarFormasPagamento: 'A Prazo' ainda é descartado (fiado chega na Fase 3)", () => {
-  assert.deepEqual(normalizarFormasPagamento(["Dinheiro", "A Prazo", "fiado"]), ["Dinheiro"]);
+test("normalizarFormasPagamento: reconhece 'A Prazo' e 'fiado' → A Prazo", () => {
+  assert.deepEqual(normalizarFormasPagamento(["Dinheiro", "fiado"]), ["Dinheiro", "A Prazo"]);
 });
 
 test("normalizarFormasPagamento: crédito e débito específicos", () => {

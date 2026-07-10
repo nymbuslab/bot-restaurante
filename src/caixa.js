@@ -31,7 +31,7 @@ async function _contarAReceber(empId, abertoEm) {
   const r = await db.query(
     `SELECT COUNT(*)::int AS n FROM pedidos
       WHERE empresa_id = $1 AND recebido_em IS NULL AND status <> 'cancelado'
-        AND mesa_id IS NULL AND criado_em >= $2`,
+        AND mesa_id IS NULL AND a_prazo = false AND criado_em >= $2`,
     [empId, abertoEm]
   );
   return r.rows[0].n;

@@ -18,6 +18,7 @@ const store = require("./store");
 const pedidos = require("./pedidos");
 const caixa = require("./caixa");
 const clientes = require("./clientes");
+const fiado = require("./fiado");
 const auditoria = require("./auditoria");
 const cep = require("./cep");
 const frete = require("./frete");
@@ -644,7 +645,8 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
         return { modo: "fixo", taxaFixa: f.taxaFixa };
       })(),
       taxaEntrega: frete.freteDeConfig(config).taxaFixa, // compat (checkout antigo)
-      pagamentos: Array.isArray(config.pagamentos) ? config.pagamentos : [],
+      // "A Prazo" (fiado) NÃO é oferecida ao cliente no cardápio web — só PDV/Mesa.
+      pagamentos: (Array.isArray(config.pagamentos) ? config.pagamentos : []).filter((f) => !formasPag.ehAPrazo(f)),
       cardapio: cardapioWeb.projetarCardapio(store.getCardapio(dir)),
     });
   } catch (e) {
@@ -863,8 +865,9 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     if (tipoEntrega === "Entrega" && endereco.length < 4) return res.status(400).json({ erro: "Informe o endereço de entrega." });
 
     const config = store.getConfig(dir);
-    const pagamentos = Array.isArray(config.pagamentos) ? config.pagamentos : [];
-    if (pagamentos.length && pagamentos.indexOf(pagamento) === -1) return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    // "A Prazo" (fiado) é excluída: o cliente do cardápio web nunca pode escolher fiado.
+    const pagamentos = (Array.isArray(config.pagamentos) ? config.pagamentos : []).filter((f) => !formasPag.ehAPrazo(f));
+    if (formasPag.ehAPrazo(pagamento) || (pagamentos.length && pagamentos.indexOf(pagamento) === -1)) return res.status(400).json({ erro: "Forma de pagamento inválida." });
 
     let recalc;
     try {
@@ -1850,7 +1853,7 @@ app.delete("/api/clientes/:id", exigeAuth, async (req, res) => {
     if (!ok) return res.status(404).json({ erro: "Cliente não encontrado." });
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ erro: "Não foi possível excluir o cliente." });
+    res.status(400).json({ erro: e.message || "Não foi possível excluir o cliente." });
   }
 });
 
@@ -2107,13 +2110,28 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       if (formasConfig.length && pagamentosNorm.some((p) => formasConfig.indexOf(p.forma) === -1)) {
         return res.status(400).json({ erro: "Forma de pagamento inválida." });
       }
-      pdv.validarPagamentos(total, pagamentosNorm);
-      pedido = await caixa.venderLocal(req.tenantDir, {
-        cliente: b.cliente, itens, total, desconto,
-        pagamentos: pagamentosNorm,
-        pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
-        observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
-      });
+      // Venda A Prazo (fiado): forma ÚNICA, exige cliente, NÃO entra no caixa.
+      if (pagamentosNorm.some((p) => formasPag.ehAPrazo(p.forma))) {
+        if (pagamentosNorm.length > 1) return res.status(400).json({ erro: "A venda A Prazo não pode ser dividida com outra forma de pagamento." });
+        try {
+          pedido = await fiado.venderAPrazo(req.tenantDir, {
+            clienteId: b.clienteId, cliente: b.cliente, itens, total, desconto, observacao: obs, origem: "pdv",
+          });
+        } catch (e) {
+          if (e.code === "FIADO_BLOQUEADO") return res.status(403).json({ erro: e.message, bloqueio: e.bloqueio });
+          if (e.code === "FIADO_SEM_CLIENTE") return res.status(400).json({ erro: e.message });
+          if (e.code === "ESTOQUE") return res.status(409).json({ erro: e.message });
+          throw e;
+        }
+      } else {
+        pdv.validarPagamentos(total, pagamentosNorm);
+        pedido = await caixa.venderLocal(req.tenantDir, {
+          cliente: b.cliente, itens, total, desconto,
+          pagamentos: pagamentosNorm,
+          pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
+          observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
+        });
+      }
     } else {
       const clientTx = await db.pool.connect();
       try {
@@ -2453,6 +2471,18 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
     }
     const peds = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
     if (!peds.filter((p) => p.status !== "cancelado").length) return res.status(400).json({ erro: "A mesa não possui pedidos." });
+    // Fechamento A PRAZO (fiado): não cobra agora, vincula a conta ao cliente e
+    // libera a mesa SEM movimento no caixa. Não exige caixa aberto.
+    if (b.aPrazo) {
+      try {
+        await fiado.fecharMesaAPrazo(req.tenantDir, mesaId, b.clienteId);
+        return res.json({ ok: true, aPrazo: true, mesa: await mesasDb.buscarPorId(req.tenantDir, mesaId) });
+      } catch (e) {
+        if (e.code === "FIADO_BLOQUEADO") return res.status(403).json({ erro: e.message, bloqueio: e.bloqueio });
+        if (e.code === "FIADO_SEM_CLIENTE") return res.status(400).json({ erro: e.message });
+        return res.status(400).json({ erro: e.message || "Não foi possível fechar a mesa a prazo." });
+      }
+    }
     const resumo = mesas.calcularTotalMesa(peds, mesa.taxaServico);
     const total = resumo.total; // mesa não tem desconto — não afrouxa a validação com b.desconto
     const recebidoAntes = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);

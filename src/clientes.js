@@ -12,6 +12,7 @@
 const path = require("path");
 const db = require("./db");
 const { validarDocumento } = require("./validacao");
+const fiado = require("./fiado");
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {}; // slug -> empresa_id (uuid)
@@ -246,13 +247,10 @@ async function listar(dir, { busca } = {}) {
   return r.rows.map(mapRow);
 }
 
-// Resumo de crédito do cliente. Fase 2: ainda não há vendas a prazo (a Fase 3
-// adiciona pedidos.cliente_id/a_prazo); gasto=0. A Fase 4 deriva gasto/vencido
-// das vendas a prazo em aberto.
+// Resumo de crédito do cliente (gasto/saldo/vencido), derivado das vendas a prazo
+// em aberto — ver src/fiado.js.
 async function resumoFiado(dir, cli) {
-  const limite = cli.limiteCredito || 0;
-  const gasto = 0;
-  return { gasto, saldo: limite - gasto, vencido: false, emAberto: 0 };
+  return fiado.resumoDoCliente(dir, cli.id, cli.limiteCredito);
 }
 
 async function buscarPorId(dir, id) {
@@ -309,10 +307,15 @@ async function atualizar(dir, id, dados) {
   }
 }
 
-// Exclui o cliente (cascata apaga endereços). Fase 4 bloqueia se houver fiado
-// em aberto — na Fase 2 ainda não há vendas a prazo.
+// Exclui o cliente (cascata apaga endereços). Bloqueia se houver conta a prazo em
+// aberto — senão o ON DELETE SET NULL orfanaria a conta em Contas a Receber.
 async function excluir(dir, id) {
   const empId = await empresaId(dir);
+  const aberto = await db.query(
+    "SELECT COUNT(*)::int AS n FROM pedidos WHERE empresa_id = $1 AND cliente_id = $2 AND a_prazo = true AND recebido_em IS NULL AND status <> 'cancelado'",
+    [empId, id]
+  );
+  if (aberto.rows[0].n > 0) throw new Error("Este cliente tem conta a prazo em aberto. Receba as contas antes de excluir.");
   const r = await db.query("DELETE FROM clientes WHERE empresa_id = $1 AND id = $2", [empId, id]);
   return r.rowCount > 0;
 }

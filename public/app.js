@@ -1995,9 +1995,9 @@ function atualizarChipStatus(real) {
 }
 
 // Formas de pagamento: conjunto FIXO (só liga/desliga por toggle). Espelha a
-// ordem canônica de src/pagamentos.js. "A Prazo" (fiado) só entra na Fase 3.
-const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
-const FORMA_SUB = {};
+// ordem canônica de src/pagamentos.js. "A Prazo" é o fiado (só PDV/Mesa).
+const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito", "A Prazo"];
+const FORMA_SUB = { "A Prazo": "Fiado (só no PDV e nas mesas)" };
 // Ícones SVG por forma (design system). Cartão de Crédito/Débito compartilham o cartão.
 const ICO_CARTAO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
 const FORMA_ICONE = {
@@ -4634,8 +4634,11 @@ let pdvFormaSel = null;
 let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
 let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada'
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
+let pdvFiadoCliente = null; // cliente selecionado p/ venda A Prazo (fiado) | null
+let pdvFiadoBuscaTimer;
 
 function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
+function pdvEhAPrazo(f) { return /a\s*prazo|fiado/i.test(f || ""); }
 
 // Fonte ÚNICA da regra de pagamento (PDV, Receber-Pedidos e Mesa). A partir das formas
 // lançadas na tela, desconta o TROCO (só do dinheiro; o troco volta pro cliente, não
@@ -4685,6 +4688,7 @@ function abrirPdvPagar() {
   pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
   pdvTipoEntrega = "Balcão";
   pdvEntrega = null;
+  pdvFiadoCliente = null;
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false;
   focarModalPdv("pdvPagarCaixa");
@@ -4697,6 +4701,7 @@ function renderPdvPagar() {
   // Só Balcão recebe na hora (paga no caixa). Entrega/Retirada vão para Pedidos como
   // "a receber" — sem bloco de pagamento; o recebimento é feito depois.
   const ehBalcao = pdvTipoEntrega === "Balcão";
+  const ehFiado = ehBalcao && pdvEhAPrazo(pdvFormaSel); // A Prazo: vira modo fiado (cliente, sem troco)
   const tiles = pdvFormasPg.map((f) =>
     '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
   ).join("");
@@ -4726,8 +4731,10 @@ function renderPdvPagar() {
         (ehBalcao
           ? '<span class="pdv-ops-tit">Forma de pagamento</span>' +
             '<div class="pdv-formas">' + tiles + "</div>" +
-            '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
-            '<div class="pdv-pg-lista" id="pdvPgLista"></div>'
+            (ehFiado
+              ? pdvFiadoUI()
+              : '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
+                '<div class="pdv-pg-lista" id="pdvPgLista"></div>')
           : '<div class="pdv-areceber-nota"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Sem cobrança agora: o pedido vai para a aba <strong>Pedidos</strong> como <strong>a receber</strong>. O recebimento é feito depois.</span></div>') +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
@@ -4737,7 +4744,10 @@ function renderPdvPagar() {
         '<div class="pdv-resumo-linha pdv-resumo-desc" id="pdvResDescLinha" hidden><span>Desconto</span><span id="pdvResDesc"></span></div>' +
         '<div class="pdv-resumo-linha pdv-resumo-frete" id="pdvResFreteLinha" hidden><span>Frete</span><span class="pdv-frete-val"><span id="pdvResFrete"></span><button type="button" class="pdv-frete-zerar" id="pdvFreteZerar" title="Não cobrar frete (cortesia)" aria-label="Não cobrar frete"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></span></div>' +
         '<div class="pdv-resumo-tot"><span>Total</span><strong id="pdvPgTotal">' + pdvMoney(total) + "</strong></div>" +
-        (ehBalcao
+        (ehFiado
+          ? '<div class="pdv-resumo-linha pdv-fiado-linha"><span>A prazo</span><span>' + pdvMoney(total) + "</span></div>" +
+            '<div class="pdv-fiado-aviso">Vai para <strong>Contas a Receber</strong>, sem entrar no caixa agora.</div>'
+          : ehBalcao
           ? '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
             '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
             '<div class="pdv-resumo-linha"><span>Troco</span><span id="pdvPgTroco" class="troco">R$ 0,00</span></div>' +
@@ -4747,7 +4757,7 @@ function renderPdvPagar() {
     "</div>" +
     '<div class="pdv-pg-acoes">' +
       '<button type="button" class="secundario" id="pdvVoltar">Voltar</button>' +
-      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos") + "</button>" +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehFiado ? "Registrar venda a prazo" : ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos") + "</button>" +
     "</div>";
   $("pdvPagarCaixa").innerHTML = html;
 
@@ -4774,14 +4784,16 @@ function renderPdvPagar() {
   });
 
   $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((b) => b.addEventListener("click", () => {
+    const eraFiado = pdvEhAPrazo(pdvFormaSel);
     pdvFormaSel = b.dataset.forma;
+    if (eraFiado !== pdvEhAPrazo(pdvFormaSel)) { renderPdvPagar(); return; } // troca de modo (fiado ↔ à vista)
     $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((x) => x.classList.toggle("ativo", x === b));
     const inp = $("pdvPgValor"); if (inp) inp.focus();
   }));
   // Desconto: botão ao lado do recebimento → abre o modal de desconto.
   if ($("pdvDescBtn")) $("pdvDescBtn").addEventListener("click", abrirPdvDescModal);
 
-  if (ehBalcao) {
+  if (ehBalcao && !ehFiado) {
     const valInp = $("pdvPgValor");
     Dinheiro.mascarar(valInp);
     Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
@@ -4789,11 +4801,13 @@ function renderPdvPagar() {
     valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
     pdvSelecionarAoFocar(valInp);
   }
+  if (ehFiado) pdvFiadoWire();
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
   const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
   pdvSyncResumo();
-  if (ehBalcao) renderPdvPgLista(); else pdvPagarRecalc(); // recalc liga/desliga o botão Enviar
+  if (ehFiado) pdvPagarRecalc();
+  else if (ehBalcao) renderPdvPgLista(); else pdvPagarRecalc(); // recalc liga/desliga o botão Enviar
 }
 
 // Atualiza as linhas Subtotal/Desconto/Frete do RESUMO. Subtotal aparece quando há
@@ -4998,7 +5012,10 @@ function pdvPagarRecalc() {
   // Balcão: precisa quitar (falta 0 + ao menos 1 pagamento). Entrega/Retirada: sem
   // pagamento — basta o endereço (Entrega) / sempre ok (Retirada).
   // Total 0 (cortesia/100% de desconto): finaliza sem exigir pagamento.
-  const pode = pdvTipoEntrega === "Balcão"
+  const ehFiado = pdvTipoEntrega === "Balcão" && pdvEhAPrazo(pdvFormaSel);
+  const pode = ehFiado
+    ? !!pdvFiadoCliente // fiado: basta ter cliente selecionado
+    : pdvTipoEntrega === "Balcão"
     ? (total <= 0.001 ? entregaOk : (falta <= 0.001 && pdvPagamentos.length && entregaOk))
     : entregaOk;
   if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !pode;
@@ -5006,11 +5023,15 @@ function pdvPagarRecalc() {
 
 async function finalizarVendaPdv() {
   const ehBalcao = pdvTipoEntrega === "Balcão";
+  const ehFiado = ehBalcao && pdvEhAPrazo(pdvFormaSel);
   const total = pdvTotalCobrar();
   // Só Balcão registra pagamento agora. Entrega/Retirada vão "a receber" (sem pagamento).
   let registrados = [];
   let observacao = "";
-  if (ehBalcao) {
+  if (ehFiado) {
+    if (!pdvFiadoCliente) { toast("Selecione o cliente para a venda a prazo.", "erro"); return; }
+    registrados = [{ forma: "A Prazo", valor: total }]; // fiado: forma única, sem troco
+  } else if (ehBalcao) {
     // Pagamentos REGISTRADOS (somam o total): o troco (dinheiro) é descontado e
     // valor_pago/troco vão anexados por forma — regra única em montarPagamentosRegistrados.
     registrados = montarPagamentosRegistrados(pdvPagamentos, total);
@@ -5027,6 +5048,7 @@ async function finalizarVendaPdv() {
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao,
+    clienteId: ehFiado && pdvFiadoCliente ? pdvFiadoCliente.id : undefined,
     tipoEntrega: pdvTipoEntrega,
     endereco: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.endereco : "",
     enderecoCampos: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.enderecoCampos : null,
@@ -5034,22 +5056,98 @@ async function finalizarVendaPdv() {
     taxaEntrega: pdvFreteValor(),
   };
   const btn = $("pdvFinalizar");
-  const rotulo = ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos";
-  btn.disabled = true; btn.textContent = ehBalcao ? "Registrando…" : "Enviando…";
+  const rotulo = ehFiado ? "Registrar venda a prazo" : ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos";
+  btn.disabled = true; btn.textContent = ehFiado ? "Registrando…" : ehBalcao ? "Registrando…" : "Enviando…";
   const r = await api("POST", "/api/pdv/vender", body);
   btn.textContent = rotulo;
   if (!r) return;
-  if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Não foi possível registrar a venda. Confira os itens e tente de novo.", "erro"); btn.disabled = false; return; }
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    // Fiado bloqueado (limite/vencimento): modal com opção de abrir o cadastro do cliente.
+    if (r.status === 403 && d.bloqueio) { btn.disabled = false; pdvFiadoBloqueio(d, pdvFiadoCliente); return; }
+    toast(d.erro || "Não foi possível registrar a venda. Confira os itens e tente de novo.", "erro"); btn.disabled = false; return;
+  }
   // Sem supressão client-side: o servidor já escopa o alerta de "novo pedido" só ao
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
-  toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
+  toast(ehFiado ? "Venda a prazo registrada. Fica em Contas a Receber." : ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
-  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
+  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; pdvFiadoCliente = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
   renderPdvProdutos();
   renderPdvCarrinho();
+}
+
+// ---- Venda A Prazo (fiado): seletor de cliente no PDV ----
+function pdvFiadoUI() {
+  if (pdvFiadoCliente) {
+    const c = pdvFiadoCliente;
+    const rf = c.resumoFiado || {};
+    const temLimite = (c.limiteCredito || 0) > 0;
+    const info = temLimite ? ("Saldo: R$ " + moedaBR(rf.saldo != null ? rf.saldo : c.limiteCredito))
+      : (c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : "Sem limite definido");
+    return '<div class="pdv-fiado"><div class="pdv-fiado-sel">' +
+      '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
+      '<div class="pdv-fiado-info"><strong>' + escapar(c.nome) + "</strong><small>" + info + "</small></div>" +
+      '<button type="button" class="secundario mini" id="pdvFiadoTrocar">Trocar</button></div></div>';
+  }
+  return '<div class="pdv-fiado">' +
+    '<input id="pdvFiadoBusca" class="pdv-fiado-busca" type="search" placeholder="Buscar cliente por nome, CPF ou telefone" autocomplete="off" />' +
+    '<div class="pdv-fiado-result" id="pdvFiadoResult"></div></div>';
+}
+
+function pdvFiadoWire() {
+  const inp = $("pdvFiadoBusca");
+  if (inp) {
+    inp.addEventListener("input", () => { clearTimeout(pdvFiadoBuscaTimer); pdvFiadoBuscaTimer = setTimeout(pdvFiadoBuscar, 220); });
+    setTimeout(() => inp.focus(), 20);
+  }
+  const tr = $("pdvFiadoTrocar");
+  if (tr) tr.addEventListener("click", () => { pdvFiadoCliente = null; renderPdvPagar(); });
+}
+
+async function pdvFiadoBuscar() {
+  const inp = $("pdvFiadoBusca"), box = $("pdvFiadoResult");
+  if (!inp || !box) return;
+  const termo = inp.value.trim();
+  if (termo.length < 2) { box.innerHTML = ""; return; }
+  try {
+    const r = await api("GET", "/api/clientes?busca=" + encodeURIComponent(termo));
+    if (!r || !r.ok) return;
+    const lista = (await r.json()).slice(0, 6);
+    if (!lista.length) { box.innerHTML = '<div class="pdv-fiado-vazio">Nenhum cliente. Cadastre na aba Clientes.</div>'; return; }
+    box.innerHTML = lista.map((c) =>
+      '<button type="button" class="pdv-fiado-op" data-cli="' + escapar(c.id) + '">' +
+      '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
+      '<span class="pdv-fiado-op-txt"><strong>' + (escapar(c.nome) || "Sem nome") + "</strong>" +
+      (c.documento ? "<small>" + escapar(Documento.formatarDocumento(c.documento, c.tipo)) + "</small>" : "") + "</span></button>"
+    ).join("");
+    box.querySelectorAll("[data-cli]").forEach((b) => b.addEventListener("click", () => pdvFiadoSelecionar(b.dataset.cli)));
+  } catch (e) { /* silencioso */ }
+}
+
+async function pdvFiadoSelecionar(id) {
+  try {
+    const r = await api("GET", "/api/clientes/" + id);
+    if (r && r.ok) pdvFiadoCliente = await r.json();
+  } catch (e) { /* usa o básico se falhar */ }
+  renderPdvPagar();
+}
+
+// Bloqueio de venda a prazo (limite/vencimento): oferece abrir o cadastro do cliente.
+async function pdvFiadoBloqueio(d, cliente) {
+  const abrir = await confirmar("Venda a prazo bloqueada", d.erro || "Cliente bloqueado para venda a prazo.", "Abrir cadastro", "Fechar");
+  if (abrir && cliente) { fecharPdvPagar(); irParaClienteCadastro(cliente.id); }
+}
+
+// Vai para a aba Clientes → sub-aba Cadastro e abre o modal do cliente.
+function irParaClienteCadastro(id) {
+  const btn = document.querySelector("nav button[data-aba='clientes']");
+  if (btn) btn.click();
+  const sub = document.querySelector("#aba-clientes .cli-subnav button[data-sub='cadastro']");
+  if (sub) sub.click();
+  if (id) setTimeout(() => abrirClienteModal(id), 120);
 }
 
 // ---- Wiring do PDV ----
@@ -6184,6 +6282,8 @@ async function salvarConfigurarMesas() {
 var mesaPagamentos = [];   // [{forma, valor}] adicionados nesta tela
 var mesaPgFormaSel = null; // forma selecionada
 var mesaPagarAlvo = 0;     // alvo a cobrir (falta a receber), em reais
+var mesaFiadoCliente = null; // cliente da mesa fechada A Prazo (fiado) | null
+var mesaFiadoTimer;
 
 // Formas de pagamento: prioriza a config do tenant (configAtual.pagamentos), com
 // fallback pro que o PDV carregou e, por fim, um padrão.
@@ -6194,7 +6294,7 @@ function mesaFormasPagamento() {
 }
 function mesaPagoTotal() { return Math.round(mesaPagamentos.reduce(function (s, p) { return s + (Number(p.valor) || 0); }, 0) * 100) / 100; }
 
-function abrirMesaPagar(modo) {
+function abrirMesaPagar(modo, preservar) {
   var d = mesaState.detalhe;
   if (!d) return;
   mesaPagarModo = modo || "fechar";
@@ -6203,10 +6303,12 @@ function abrirMesaPagar(modo) {
   var falta = d.falta != null ? d.falta : Math.max(0, (resumo.total || 0) - recebido);
   mesaPagarAlvo = Math.round(falta * 100) / 100;
   mesaPagamentos = [];
-  var formas = mesaFormasPagamento();
-  mesaPgFormaSel = formas[0] || "Dinheiro";
+  // A Prazo (fiado) só faz sentido ao FECHAR (não em recebimento parcial).
+  var formas = mesaFormasPagamento().filter(function (f) { return mesaPagarModo !== "parcial" || !pdvEhAPrazo(f); });
+  if (!preservar) { mesaPgFormaSel = formas[0] || "Dinheiro"; mesaFiadoCliente = null; }
+  var ehFiado = mesaPagarModo === "fechar" && pdvEhAPrazo(mesaPgFormaSel);
   var titulo = mesaPagarModo === "parcial" ? "Receber Parcial" : "Fechar Conta";
-  var btnLabel = mesaPagarModo === "parcial" ? "Registrar" : "Fechar conta";
+  var btnLabel = ehFiado ? "Fechar a prazo" : mesaPagarModo === "parcial" ? "Registrar" : "Fechar conta";
   var X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   var tiles = formas.map(function (f) {
     return '<button type="button" class="pdv-forma' + (f === mesaPgFormaSel ? " ativo" : "") + '" data-mforma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>";
@@ -6225,13 +6327,16 @@ function abrirMesaPagar(modo) {
       "</div>" +
       '<span class="pdv-ops-tit">Forma de pagamento</span>' +
       '<div class="pdv-formas">' + tiles + "</div>" +
-      '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="mesaPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="mesaPgAdd">Adicionar</button></div>' +
-      '<div class="pdv-pg-lista" id="mesaPgLista"></div>' +
-      '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
-        '<div class="mesa-pagar-linha"><span>Pago</span><span id="mesaPgPago">R$ 0,00</span></div>' +
-        '<div class="mesa-pagar-linha falta"><span>' + (mesaPagarModo === "parcial" ? "Restante" : "Falta") + '</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
-        '<div class="mesa-pagar-linha"><span>Troco</span><span id="mesaPgTroco">R$ 0,00</span></div>' +
-      "</div>" +
+      (ehFiado
+        ? mesaFiadoUI() +
+          '<div class="pdv-fiado-aviso">A conta vai para <strong>Contas a Receber</strong> no nome do cliente. A mesa é liberada sem entrar no caixa.</div>'
+        : '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="mesaPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="mesaPgAdd">Adicionar</button></div>' +
+          '<div class="pdv-pg-lista" id="mesaPgLista"></div>' +
+          '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
+            '<div class="mesa-pagar-linha"><span>Pago</span><span id="mesaPgPago">R$ 0,00</span></div>' +
+            '<div class="mesa-pagar-linha falta"><span>' + (mesaPagarModo === "parcial" ? "Restante" : "Falta") + '</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
+            '<div class="mesa-pagar-linha"><span>Troco</span><span id="mesaPgTroco">R$ 0,00</span></div>' +
+          "</div>") +
     "</div>" +
     '<div class="pdv-modal-rodape">' +
       '<button type="button" class="secundario" id="mesasPagarFechar2">Cancelar</button>' +
@@ -6242,18 +6347,25 @@ function abrirMesaPagar(modo) {
   $("mesasPagarFechar2").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
   $("mesasPagarCaixa").querySelectorAll("[data-mforma]").forEach(function (b) {
     b.addEventListener("click", function () {
+      var eraFiado = pdvEhAPrazo(mesaPgFormaSel);
       mesaPgFormaSel = b.dataset.mforma;
+      if ((mesaPagarModo === "fechar") && eraFiado !== pdvEhAPrazo(mesaPgFormaSel)) { abrirMesaPagar(mesaPagarModo, true); return; }
       $("mesasPagarCaixa").querySelectorAll("[data-mforma]").forEach(function (x) { x.classList.toggle("ativo", x === b); });
       var inp = $("mesaPgValor"); if (inp) inp.focus();
     });
   });
-  var valInp = $("mesaPgValor");
-  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); }
-  $("mesaPgAdd").addEventListener("click", mesaPagAdd);
-  valInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mesaPagAdd(); } });
-  if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
   $("btnMesaConfirmarPag").addEventListener("click", mesaConfirmarPagamento);
-  renderMesaPgLista();
+  if (ehFiado) {
+    mesaFiadoWire();
+    mesaPagRecalc();
+  } else {
+    var valInp = $("mesaPgValor");
+    if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); }
+    $("mesaPgAdd").addEventListener("click", mesaPagAdd);
+    valInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mesaPagAdd(); } });
+    if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
+    renderMesaPgLista();
+  }
 }
 
 function mesaPagAdd() {
@@ -6286,6 +6398,11 @@ function renderMesaPgLista() {
 }
 
 function mesaPagRecalc() {
+  // Fechamento A Prazo (fiado): basta ter cliente selecionado.
+  if (mesaPagarModo === "fechar" && pdvEhAPrazo(mesaPgFormaSel)) {
+    if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !mesaFiadoCliente;
+    return;
+  }
   var pago = mesaPagoTotal();
   var restante = Math.max(0, Math.round((mesaPagarAlvo - pago) * 100) / 100);
   var troco = Math.max(0, Math.round((pago - mesaPagarAlvo) * 100) / 100);
@@ -6297,9 +6414,76 @@ function mesaPagRecalc() {
   if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !pode;
 }
 
+// Seletor de cliente da mesa fechada A Prazo (espelha o do PDV, com estado próprio).
+function mesaFiadoUI() {
+  if (mesaFiadoCliente) {
+    var c = mesaFiadoCliente, rf = c.resumoFiado || {};
+    var temLimite = (c.limiteCredito || 0) > 0;
+    var info = temLimite ? ("Saldo: R$ " + moedaBR(rf.saldo != null ? rf.saldo : c.limiteCredito))
+      : (c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : "Sem limite definido");
+    return '<div class="pdv-fiado"><div class="pdv-fiado-sel">' +
+      '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
+      '<div class="pdv-fiado-info"><strong>' + escapar(c.nome) + "</strong><small>" + info + "</small></div>" +
+      '<button type="button" class="secundario mini" id="mesaFiadoTrocar">Trocar</button></div></div>';
+  }
+  return '<div class="pdv-fiado">' +
+    '<input id="mesaFiadoBusca" class="pdv-fiado-busca" type="search" placeholder="Buscar cliente por nome, CPF ou telefone" autocomplete="off" />' +
+    '<div class="pdv-fiado-result" id="mesaFiadoResult"></div></div>';
+}
+function mesaFiadoWire() {
+  var inp = $("mesaFiadoBusca");
+  if (inp) {
+    inp.addEventListener("input", function () { clearTimeout(mesaFiadoTimer); mesaFiadoTimer = setTimeout(mesaFiadoBuscar, 220); });
+    setTimeout(function () { inp.focus(); }, 20);
+  }
+  var tr = $("mesaFiadoTrocar");
+  if (tr) tr.addEventListener("click", function () { mesaFiadoCliente = null; abrirMesaPagar(mesaPagarModo, true); });
+}
+async function mesaFiadoBuscar() {
+  var inp = $("mesaFiadoBusca"), box = $("mesaFiadoResult");
+  if (!inp || !box) return;
+  var termo = inp.value.trim();
+  if (termo.length < 2) { box.innerHTML = ""; return; }
+  try {
+    var r = await api("GET", "/api/clientes?busca=" + encodeURIComponent(termo));
+    if (!r || !r.ok) return;
+    var lista = (await r.json()).slice(0, 6);
+    if (!lista.length) { box.innerHTML = '<div class="pdv-fiado-vazio">Nenhum cliente. Cadastre na aba Clientes.</div>'; return; }
+    box.innerHTML = lista.map(function (c) {
+      return '<button type="button" class="pdv-fiado-op" data-cli="' + escapar(c.id) + '">' +
+        '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
+        '<span class="pdv-fiado-op-txt"><strong>' + (escapar(c.nome) || "Sem nome") + "</strong>" +
+        (c.documento ? "<small>" + escapar(Documento.formatarDocumento(c.documento, c.tipo)) + "</small>" : "") + "</span></button>";
+    }).join("");
+    box.querySelectorAll("[data-cli]").forEach(function (b) { b.addEventListener("click", function () { mesaFiadoSelecionar(b.dataset.cli); }); });
+  } catch (e) { /* silencioso */ }
+}
+async function mesaFiadoSelecionar(id) {
+  try { var r = await api("GET", "/api/clientes/" + id); if (r && r.ok) mesaFiadoCliente = await r.json(); } catch (e) {}
+  abrirMesaPagar(mesaPagarModo, true);
+}
+
 async function mesaConfirmarPagamento() {
   var d = mesaState.detalhe;
-  if (!d || !mesaPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
+  if (!d) return;
+  // Fechamento A Prazo (fiado): sem cobrança, vincula ao cliente.
+  if (mesaPagarModo === "fechar" && pdvEhAPrazo(mesaPgFormaSel)) {
+    if (!mesaFiadoCliente) { toast("Selecione o cliente para fechar a prazo.", "erro"); return; }
+    var bf = $("btnMesaConfirmarPag"); bf.disabled = true;
+    var rf = await api("POST", "/api/mesas/" + d.id + "/pagar", { aPrazo: true, clienteId: mesaFiadoCliente.id });
+    if (!rf || !rf.ok) {
+      bf.disabled = false;
+      var ef = (rf && await rf.json().catch(function () { return {}; })) || {};
+      if (rf && rf.status === 403 && ef.bloqueio) { pdvFiadoBloqueio(ef, mesaFiadoCliente); return; }
+      toast(ef.erro || "Não foi possível fechar a mesa a prazo.", "erro"); return;
+    }
+    $("mesasPagarOverlay").hidden = true;
+    toast("Mesa " + d.nome + " fechada a prazo. Fica em Contas a Receber.");
+    fecharMesaPainel();
+    await mesaAtualizarLista();
+    return;
+  }
+  if (!mesaPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
   var registrados = montarPagamentosRegistrados(mesaPagamentos, mesaPagarAlvo);
   var pagoAgora = Math.round(registrados.reduce(function (s, p) { return s + p.valor; }, 0) * 100) / 100;
   var btn = $("btnMesaConfirmarPag");

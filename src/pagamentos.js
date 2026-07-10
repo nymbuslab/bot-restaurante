@@ -11,10 +11,8 @@
 // ============================================================
 
 // Ordem canônica de exibição (toggles em Configurações seguem esta ordem).
-// "A Prazo" (fiado) entra AQUI só na Fase 3, quando o PDV/Mesa sabem processá-la
-// e ela é excluída do checkout web. Enquanto não estiver nesta lista,
-// normalizarFormasPagamento a descarta — ninguém consegue habilitá-la ainda.
-const FORMAS_PAGAMENTO = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
+// "A Prazo" é o fiado: vale só no PDV e na Mesa (excluída do checkout web).
+const FORMAS_PAGAMENTO = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito", "A Prazo"];
 
 // É a forma "A Prazo" (fiado)? Usada no PDV/Mesa/caixa para NÃO tratar como
 // dinheiro nem como eletrônico de gaveta (não gera caixa_movimentos na venda).
