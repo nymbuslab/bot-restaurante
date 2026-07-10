@@ -225,6 +225,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
+    if (btn.dataset.aba === "clientes") carregarClientes();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
@@ -6360,6 +6361,264 @@ function mesasInitListeners() {
   $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnVerPlanosMesas").addEventListener("click", function () { abrirUpsell("mesas"); });
 }
+
+// ============================================================
+// CLIENTES (cadastro PF/PJ + limite de crédito). Fase 2 do fiado.
+// Sem gate de plano (Essencial e Completo). Contas a Receber vêm na Fase 4.
+// ============================================================
+let cliBuscaTimer;
+let cliEditando = null;      // id em edição, ou null (novo)
+let cliTipoAtual = "PF";     // 'PF' | 'PJ'
+let cliClienteAtual = null;  // objeto carregado (p/ estado de liberação)
+
+async function carregarClientes() {
+  const cont = $("clientesContainer");
+  if (!cont) return;
+  cont.innerHTML = `<p class="sub" style="padding:16px 4px">Carregando...</p>`;
+  try {
+    const termo = ($("cliBusca") && $("cliBusca").value) || "";
+    const r = await api("GET", "/api/clientes?busca=" + encodeURIComponent(termo));
+    if (!r.ok) throw new Error();
+    renderClientes(await r.json());
+  } catch (e) {
+    cont.innerHTML = `<p class="sub" style="padding:16px 4px">Não foi possível carregar os clientes. Tente atualizar.</p>`;
+  }
+}
+
+function renderClientes(lista) {
+  const cont = $("clientesContainer");
+  if (!lista.length) {
+    const termo = ($("cliBusca") && $("cliBusca").value.trim()) || "";
+    cont.innerHTML = `<div class="cli-vazio">
+      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+      <h3>${termo ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}</h3>
+      <p>${termo ? "Ajuste a busca ou cadastre um novo cliente." : 'Cadastre seu primeiro cliente no botão "Novo cliente".'}</p>
+    </div>`;
+    return;
+  }
+  const vazio = '<span class="cli-doc-vazio">—</span>';
+  let html = `<div class="tabela-scroll"><table class="pedidos-tabela"><thead><tr>
+    <th>Nome</th><th>Apelido</th><th>CPF / CNPJ</th><th>Telefone</th></tr></thead><tbody>`;
+  lista.forEach((c) => {
+    const doc = c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : vazio;
+    const tel = c.telefone ? escapar(Documento.formatarTelefone(c.telefone)) : vazio;
+    html += `<tr class="pedido-linha cli-linha" data-id="${escapar(c.id)}">
+      <td>${escapar(c.nome) || vazio}</td>
+      <td>${escapar(c.apelido) || vazio}</td>
+      <td>${doc}</td>
+      <td>${tel}</td>
+    </tr>`;
+  });
+  html += "</tbody></table></div>";
+  cont.innerHTML = html;
+  cont.querySelectorAll(".cli-linha").forEach((tr) =>
+    tr.addEventListener("click", () => abrirClienteModal(tr.dataset.id))
+  );
+}
+
+// Alterna PF/PJ trocando os rótulos e reaplicando a máscara do documento.
+function setClienteTipo(tipo) {
+  cliTipoAtual = tipo === "PJ" ? "PJ" : "PF";
+  document.querySelectorAll(".cli-tipo-btn").forEach((b) => b.classList.toggle("ativo", b.dataset.tipo === cliTipoAtual));
+  const pj = cliTipoAtual === "PJ";
+  $("lblCliNome").textContent = pj ? "Razão social" : "Nome completo";
+  $("lblCliApelido").textContent = pj ? "Nome fantasia" : "Apelido";
+  $("lblCliDoc").textContent = pj ? "CNPJ" : "CPF";
+  $("lblCliIe").textContent = pj ? "Inscrição estadual" : "RG";
+  const doc = $("cliDoc");
+  doc.value = Documento.formatarDocumento(doc.value, cliTipoAtual);
+  validarDocInline();
+}
+
+function validarDocInline() {
+  const hint = $("cliDocHint");
+  const v = $("cliDoc").value;
+  if (!Documento.digitos(v)) { hint.textContent = ""; hint.className = "cli-hint"; return; }
+  if (Documento.valido(cliTipoAtual, v)) { hint.textContent = ""; hint.className = "cli-hint"; }
+  else { hint.textContent = (cliTipoAtual === "PJ" ? "CNPJ" : "CPF") + " inválido."; hint.className = "cli-hint erro"; }
+}
+
+// Mostra o "Liberar próxima venda" só quando editando um cliente com bloqueio ligado.
+function atualizarLiberar() {
+  const bloq = $("cliBloqLimite").checked || $("cliBloqVenc").checked;
+  const liberado = !!(cliClienteAtual && cliClienteAtual.liberacaoPontual);
+  $("cliLiberarWrap").hidden = !(cliEditando && bloq);
+  $("cliLiberadoTag").hidden = !liberado;
+  $("cliLiberarBtn").hidden = liberado;
+}
+
+const fmtCepCli = (v) => { const d = (v || "").replace(/\D/g, ""); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5, 8)}` : d; };
+
+function abrirClienteModal(id) {
+  cliEditando = id || null;
+  cliClienteAtual = null;
+  $("cliente-titulo").textContent = id ? "Editar cliente" : "Novo cliente";
+  $("cliErro").hidden = true; $("cliErro").textContent = "";
+  $("cliExcluirBtn").hidden = !id;
+  ["cliNome", "cliApelido", "cliDoc", "cliIe", "cliTel", "cliCep", "cliLogradouro",
+   "cliNumero", "cliBairro", "cliComplemento", "cliCidade", "cliUf", "cliDiaVenc"].forEach((f) => { if ($(f)) $(f).value = ""; });
+  Dinheiro.setValor("cliLimite", 0);
+  $("cliGasto").value = "R$ 0,00";
+  $("cliSaldo").value = "R$ 0,00";
+  $("cliBloqLimite").checked = false;
+  $("cliBloqVenc").checked = false;
+  $("cliDocHint").textContent = ""; $("cliDocHint").className = "cli-hint";
+  $("cliCepHint").textContent = ""; $("cliCepHint").className = "cep-hint";
+  setClienteTipo("PF");
+  atualizarLiberar();
+  $("cliente-overlay").style.display = "flex";
+  if (id) preencherCliente(id);
+  else setTimeout(() => $("cliNome").focus(), 30);
+}
+
+async function preencherCliente(id) {
+  try {
+    const r = await api("GET", "/api/clientes/" + id);
+    if (!r.ok) throw new Error();
+    const c = await r.json();
+    cliClienteAtual = c;
+    setClienteTipo(c.tipo || "PF");
+    $("cliNome").value = c.nome || "";
+    $("cliApelido").value = c.apelido || "";
+    $("cliDoc").value = c.documento ? Documento.formatarDocumento(c.documento, c.tipo) : "";
+    $("cliIe").value = c.ieRg || "";
+    $("cliTel").value = c.telefone ? Documento.formatarTelefone(c.telefone) : "";
+    $("cliCep").value = fmtCepCli(c.cep);
+    $("cliLogradouro").value = c.logradouro || "";
+    $("cliNumero").value = c.numero || "";
+    $("cliBairro").value = c.bairro || "";
+    $("cliComplemento").value = c.complemento || "";
+    $("cliCidade").value = c.cidade || "";
+    $("cliUf").value = c.uf || "";
+    Dinheiro.setValor("cliLimite", c.limiteCredito || 0);
+    $("cliDiaVenc").value = c.diaVencimento || "";
+    $("cliBloqLimite").checked = !!c.bloquearLimite;
+    $("cliBloqVenc").checked = !!c.bloquearVencimento;
+    const rf = c.resumoFiado || { gasto: 0, saldo: c.limiteCredito || 0 };
+    $("cliGasto").value = "R$ " + moedaBR(rf.gasto || 0);
+    $("cliSaldo").value = "R$ " + moedaBR(rf.saldo || 0);
+    atualizarLiberar();
+    validarDocInline();
+  } catch (e) {
+    toast("Não foi possível carregar o cliente.", "erro");
+  }
+}
+
+function coletarCliente() {
+  return {
+    tipo: cliTipoAtual,
+    nome: $("cliNome").value.trim(),
+    apelido: $("cliApelido").value.trim(),
+    documento: Documento.digitos($("cliDoc").value),
+    ieRg: $("cliIe").value.trim(),
+    telefone: Documento.digitos($("cliTel").value),
+    cep: ($("cliCep").value || "").replace(/\D/g, ""),
+    logradouro: $("cliLogradouro").value.trim(),
+    numero: $("cliNumero").value.trim(),
+    complemento: $("cliComplemento").value.trim(),
+    bairro: $("cliBairro").value.trim(),
+    cidade: $("cliCidade").value.trim(),
+    uf: $("cliUf").value.trim().toUpperCase(),
+    limiteCredito: Dinheiro.valor("cliLimite"),
+    diaVencimento: parseInt($("cliDiaVenc").value, 10) || null,
+    bloquearLimite: $("cliBloqLimite").checked,
+    bloquearVencimento: $("cliBloqVenc").checked,
+  };
+}
+
+function mostrarErroCli(msg) {
+  const el = $("cliErro");
+  el.textContent = msg;
+  el.hidden = false;
+}
+
+async function salvarCliente() {
+  const dados = coletarCliente();
+  if (!dados.nome) { mostrarErroCli("Informe o nome do cliente."); return; }
+  if (!Documento.valido(dados.tipo, dados.documento)) {
+    mostrarErroCli((dados.tipo === "PJ" ? "CNPJ" : "CPF") + " inválido."); return;
+  }
+  const btn = $("cliSalvarBtn");
+  btn.disabled = true;
+  try {
+    const url = cliEditando ? "/api/clientes/" + cliEditando : "/api/clientes";
+    const r = await api(cliEditando ? "PUT" : "POST", url, dados);
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) { mostrarErroCli(body.erro || "Não foi possível salvar o cliente."); return; }
+    toast(cliEditando ? "Cliente atualizado." : "Cliente cadastrado.", "sucesso");
+    fecharClienteModal();
+    carregarClientes();
+  } catch (e) {
+    mostrarErroCli("Não foi possível salvar o cliente.");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function excluirCliente() {
+  if (!cliEditando) return;
+  const nome = $("cliNome").value.trim() || "este cliente";
+  if (!(await confirmar("Excluir cliente", `Excluir ${nome}? Isso apaga o cadastro e os endereços salvos. Não dá para desfazer.`, "Excluir", "Cancelar"))) return;
+  try {
+    const r = await api("DELETE", "/api/clientes/" + cliEditando);
+    if (!r.ok) { const b = await r.json().catch(() => ({})); toast(b.erro || "Não foi possível excluir o cliente.", "erro"); return; }
+    toast("Cliente excluído.", "sucesso");
+    fecharClienteModal();
+    carregarClientes();
+  } catch (e) {
+    toast("Não foi possível excluir o cliente.", "erro");
+  }
+}
+
+async function liberarProximaVenda() {
+  if (!cliEditando) return;
+  try {
+    const r = await api("POST", "/api/clientes/" + cliEditando + "/liberar");
+    if (!r.ok) throw new Error();
+    if (cliClienteAtual) cliClienteAtual.liberacaoPontual = true;
+    atualizarLiberar();
+    toast("Próxima venda liberada.", "sucesso");
+  } catch (e) {
+    toast("Não foi possível liberar.", "erro");
+  }
+}
+
+function fecharClienteModal() {
+  $("cliente-overlay").style.display = "none";
+}
+
+// Wiring (uma vez, no load — app.js roda no fim do <body>).
+(function wireClientes() {
+  if (!$("aba-clientes")) return;
+  document.querySelectorAll("#aba-clientes .cli-subnav button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#aba-clientes .cli-subnav button").forEach((b) => b.classList.remove("ativo"));
+      document.querySelectorAll("#aba-clientes .cli-sub").forEach((s) => s.classList.remove("ativa"));
+      btn.classList.add("ativo");
+      $("cli-sub-" + btn.dataset.sub).classList.add("ativa");
+    });
+  });
+  if ($("cliBusca")) $("cliBusca").addEventListener("input", () => {
+    clearTimeout(cliBuscaTimer);
+    cliBuscaTimer = setTimeout(carregarClientes, 200);
+  });
+  if ($("btnNovoCliente")) $("btnNovoCliente").addEventListener("click", () => abrirClienteModal(null));
+  document.querySelectorAll(".cli-tipo-btn").forEach((b) => b.addEventListener("click", () => setClienteTipo(b.dataset.tipo)));
+  Dinheiro.mascarar("cliLimite");
+  if ($("cliDoc")) $("cliDoc").addEventListener("input", (e) => { e.target.value = Documento.formatarDocumento(e.target.value, cliTipoAtual); validarDocInline(); });
+  if ($("cliTel")) $("cliTel").addEventListener("input", (e) => { e.target.value = Documento.formatarTelefone(e.target.value); });
+  if ($("cliDiaVenc")) $("cliDiaVenc").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 2); });
+  if (window.EnderecoCep) EnderecoCep.ligarBuscaCep({ cep: "cliCep", hint: "cliCepHint", logradouro: "cliLogradouro", numero: "cliNumero", bairro: "cliBairro", cidade: "cliCidade", uf: "cliUf" });
+  $("cliBloqLimite").addEventListener("change", atualizarLiberar);
+  $("cliBloqVenc").addEventListener("change", atualizarLiberar);
+  $("cliSalvarBtn").addEventListener("click", salvarCliente);
+  $("cliCancelarBtn").addEventListener("click", fecharClienteModal);
+  $("cliFechar").addEventListener("click", fecharClienteModal);
+  $("cliExcluirBtn").addEventListener("click", excluirCliente);
+  $("cliLiberarBtn").addEventListener("click", liberarProximaVenda);
+  $("cliente-overlay").addEventListener("click", (e) => { if (e.target === $("cliente-overlay")) fecharClienteModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("cliente-overlay").style.display === "flex") fecharClienteModal(); });
+})();
 
 // Antes do boot: mostra imediatamente a última aba visitada (só a troca VISUAL, sem
 // carregador — a sessão ainda não existe). Evita piscar o Dashboard no refresh; os dados

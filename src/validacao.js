@@ -47,6 +47,50 @@ function validarCardapio(body) {
   return null;
 }
 
+// ---- Documentos (CPF/CNPJ) — validação PURA por dígito verificador ----
+// Aceita com ou sem máscara (só olha os dígitos). Rejeita tamanho errado e
+// sequências repetidas (000..., 111...), que passam na conta mas são inválidas.
+const soDigitos = (v) => String(v == null ? "" : v).replace(/\D/g, "");
+
+function validarCpf(valor) {
+  const c = soDigitos(valor);
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += Number(c[i]) * (10 - i);
+  let d1 = (soma * 10) % 11; if (d1 === 10) d1 = 0;
+  if (d1 !== Number(c[9])) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += Number(c[i]) * (11 - i);
+  let d2 = (soma * 10) % 11; if (d2 === 10) d2 = 0;
+  return d2 === Number(c[10]);
+}
+
+function validarCnpj(valor) {
+  const c = soDigitos(valor);
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const digito = (base) => {
+    const len = base.length;
+    let pos = len - 7;
+    let soma = 0;
+    for (let i = 0; i < len; i++) {
+      soma += Number(base[i]) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  if (digito(c.slice(0, 12)) !== Number(c[12])) return false;
+  return digito(c.slice(0, 13)) === Number(c[13]);
+}
+
+// Valida o documento conforme o tipo do cliente ('PF' → CPF, 'PJ' → CNPJ).
+// Documento vazio é aceito (campo opcional no cadastro).
+function validarDocumento(tipo, valor) {
+  const c = soDigitos(valor);
+  if (!c) return true;
+  return tipo === "PJ" ? validarCnpj(c) : validarCpf(c);
+}
+
 // Detecta o tipo REAL da imagem pelos magic bytes (não confia no MIME do header,
 // que é falsificável). Retorna { ext, mime } ou null se não for imagem suportada.
 function tipoImagemPorAssinatura(buf) {
@@ -61,6 +105,9 @@ function tipoImagemPorAssinatura(buf) {
 module.exports = {
   validarConfig,
   validarCardapio,
+  validarCpf,
+  validarCnpj,
+  validarDocumento,
   tipoImagemPorAssinatura,
   LIMITE_CONFIG_BYTES,
   LIMITE_CARDAPIO_BYTES,

@@ -1806,6 +1806,65 @@ app.get("/api/pedidos", exigeAuth, async (req, res) => {
   }
 });
 
+// ---- Clientes (cadastro + fiado). Essencial E Completo → só exigeAuth, sem gate. ----
+app.get("/api/clientes", exigeAuth, async (req, res) => {
+  try {
+    res.json(await clientes.listar(req.tenantDir, { busca: req.query.busca }));
+  } catch (e) {
+    console.error("clientes.listar:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar os clientes." });
+  }
+});
+
+app.get("/api/clientes/:id", exigeAuth, async (req, res) => {
+  try {
+    const cli = await clientes.buscarPorId(req.tenantDir, req.params.id);
+    if (!cli) return res.status(404).json({ erro: "Cliente não encontrado." });
+    res.json(cli);
+  } catch (e) {
+    res.status(500).json({ erro: "Não foi possível carregar o cliente." });
+  }
+});
+
+app.post("/api/clientes", exigeAuth, async (req, res) => {
+  try {
+    res.status(201).json(await clientes.criar(req.tenantDir, req.body || {}));
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Não foi possível salvar o cliente." });
+  }
+});
+
+app.put("/api/clientes/:id", exigeAuth, async (req, res) => {
+  try {
+    const cli = await clientes.atualizar(req.tenantDir, req.params.id, req.body || {});
+    if (!cli) return res.status(404).json({ erro: "Cliente não encontrado." });
+    res.json(cli);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Não foi possível salvar o cliente." });
+  }
+});
+
+app.delete("/api/clientes/:id", exigeAuth, async (req, res) => {
+  try {
+    const ok = await clientes.excluir(req.tenantDir, req.params.id);
+    if (!ok) return res.status(404).json({ erro: "Cliente não encontrado." });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ erro: "Não foi possível excluir o cliente." });
+  }
+});
+
+// Libera a PRÓXIMA venda a prazo do cliente mesmo estourado/vencido (consumida na venda).
+app.post("/api/clientes/:id/liberar", exigeAuth, async (req, res) => {
+  try {
+    const ok = await clientes.liberarPontual(req.tenantDir, req.params.id);
+    if (!ok) return res.status(404).json({ erro: "Cliente não encontrado." });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ erro: "Não foi possível liberar o cliente." });
+  }
+});
+
 // Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
 // `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
 // final + mapeia item → grupo pelo cardápio do tenant.

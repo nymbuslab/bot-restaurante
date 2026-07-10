@@ -1435,6 +1435,131 @@ button:disabled {
 .cfg-sub { display: none; }
 .cfg-sub.ativa { display: block; }
 
+/* ===== CLIENTES (cadastro + fiado) ===== */
+/* Sub-abas próprias (escopo separado do cfg-subnav p/ não colidir no JS/CSS). */
+.cli-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: fit-content;
+  max-width: 100%;
+}
+.cli-subnav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cli-subnav button svg { flex-shrink: 0; }
+.cli-subnav button:hover { color: var(--text-primary); }
+.cli-subnav button.ativo { background: var(--accent); color: #fff; }
+.cli-subnav button.ativo svg { color: #fff; }
+.cli-sub { display: none; }
+.cli-sub.ativa { display: block; }
+
+.cli-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.cli-toolbar .busca-wrap { flex: 1 1 260px; }
+.cli-toolbar #btnNovoCliente { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+
+/* Grid de clientes: reusa .tabela-scroll + .pedidos-tabela; linha clicável. */
+.cli-linha { cursor: pointer; }
+.cli-doc-vazio { color: var(--text-disabled); }
+
+/* Estado vazio (Receber/Recebidas + grid sem clientes). */
+.cli-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 56px 24px;
+  color: var(--text-secondary);
+}
+.cli-vazio svg { color: var(--text-disabled); margin-bottom: 4px; }
+.cli-vazio h3 { margin: 0; font-size: 15px; color: var(--text-primary); }
+.cli-vazio p { margin: 0; max-width: 380px; font-size: 13px; line-height: 1.5; }
+
+/* Modal de cadastro/edição */
+.cli-modal { width: min(760px, 96vw); }
+.cli-form { padding: 4px 2px; }
+.cli-tipo-seg {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+}
+.cli-tipo-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cli-tipo-btn:hover { color: var(--text-primary); background: none; }
+.cli-tipo-btn.ativo { background: var(--accent); color: #fff; }
+.cli-secao { margin-bottom: 18px; }
+.cli-secao-titulo {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.cli-cep { flex: 0 0 130px; }
+.cli-num { flex: 0 0 90px; }
+.cli-uf { flex: 0 0 84px; }
+.cli-hint { font-size: 12px; margin-top: 4px; display: block; min-height: 14px; }
+.cli-hint.erro { color: var(--error); }
+.cli-hint.ok { color: var(--success); }
+.cli-liberar { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.cli-liberado { font-size: 12px; font-weight: 600; color: var(--success); }
+.cli-form-erro {
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: var(--error-subtle);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.cli-modal-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.cli-rodape-dir { display: flex; gap: 10px; margin-left: auto; }
+
 /* Conta de acesso (e-mail/senha) */
 .cfg-conta-card { display: flex; flex-direction: column; }
 .cfg-conta-linha {

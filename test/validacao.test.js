@@ -1,6 +1,35 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { validarConfig, validarCardapio, tipoImagemPorAssinatura } = require("../src/validacao");
+const { validarConfig, validarCardapio, tipoImagemPorAssinatura, validarCpf, validarCnpj, validarDocumento } = require("../src/validacao");
+
+// ---- validarCpf / validarCnpj / validarDocumento ----
+test("validarCpf: aceita CPF válido (com e sem máscara)", () => {
+  assert.equal(validarCpf("111.444.777-35"), true);
+  assert.equal(validarCpf("11144477735"), true);
+});
+test("validarCpf: rejeita dígito errado, repetido e tamanho errado", () => {
+  assert.equal(validarCpf("111.444.777-00"), false);
+  assert.equal(validarCpf("111.111.111-11"), false); // todos iguais
+  assert.equal(validarCpf("123"), false);
+  assert.equal(validarCpf(""), false);
+});
+test("validarCnpj: aceita CNPJ válido (com e sem máscara)", () => {
+  assert.equal(validarCnpj("11.222.333/0001-81"), true);
+  assert.equal(validarCnpj("11222333000181"), true);
+});
+test("validarCnpj: rejeita dígito errado, repetido e tamanho errado", () => {
+  assert.equal(validarCnpj("11.222.333/0001-00"), false);
+  assert.equal(validarCnpj("00.000.000/0000-00"), false); // todos iguais
+  assert.equal(validarCnpj("1122233300"), false);
+});
+test("validarDocumento: vazio é aceito; senão valida pelo tipo", () => {
+  assert.equal(validarDocumento("PF", ""), true);
+  assert.equal(validarDocumento("PJ", ""), true);
+  assert.equal(validarDocumento("PF", "111.444.777-35"), true);
+  assert.equal(validarDocumento("PF", "11.222.333/0001-81"), false); // CNPJ no PF
+  assert.equal(validarDocumento("PJ", "11.222.333/0001-81"), true);
+  assert.equal(validarDocumento("PJ", "111.444.777-35"), false); // CPF no PJ
+});
 
 // ---- validarConfig ----
 test("validarConfig: objeto normal passa", () => {

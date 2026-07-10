@@ -100,6 +100,7 @@ src/
   servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso + FILA genérica /api/agente/fila·:id/impresso) + reimprimir (POST /api/pedidos/:id/reimprimir) + download do agente (GET /downloads/nymbus-impressora.exe)
   impressao-fila.js   -> fila de impressão GENÉRICA (tabela impressao_fila): o servidor renderiza o TEXTO das vias e enfileira (PDV/Mesas/Caixa/reimpressão); o agente busca, imprime e marca. Delivery NÃO usa (segue pelo polling de `pedidos`)
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
+  clientes.js         -> clientes por empresa: cadastro em background (bot/checkout, chave empresa_id+telefone) + CRUD admin do painel (PF/PJ, CPF/CNPJ, endereço, limite de crédito/fiado, liberação pontual). CPF/CNPJ validados em validacao.js. Sem gate de plano
   wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> bot: saudação envia o LINK do cardápio web (/c/:slug?p=token); estados MENU/ATENDENTE
@@ -125,6 +126,7 @@ public/
   app.js, app-admin.js, footer.js, style.css -> lógica dos painéis, footer e estilos
   endereco-cep.js     -> util: máscara/busca de CEP (ViaCEP) + composição de endereço
   dinheiro.js         -> util: máscara monetária (centavos primeiro) + formatação BR
+  documento.js        -> PURO (dual-mode): máscara + validação de CPF/CNPJ e telefone (WhatsApp); espelha validarCpf/validarCnpj de src/validacao.js (usado no cadastro de cliente)
   texto.js            -> PURO (dual-mode Node/browser): padroniza nomes (Title Case PT-BR: tituloPt + padronizarNomesCardapio) — no editor (blur) E no servidor ao salvar (PUT /api/cardapio) — testado em test/texto.test.js
   relatorio-caixa.js  -> PURO (dual-mode Node/browser): monta o relatório de fechamento de caixa 80mm — usado NO SERVIDOR por src/caixa.js — testado em test/relatorio-caixa.test.js
   comanda.js          -> PURO (dual-mode Node/browser): monta as 2 vias (cozinha sem preços / cupom com cabeçalho da marca + rodapé de marketing) — testado em test/comanda.test.js
