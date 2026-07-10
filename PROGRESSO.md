@@ -4,36 +4,18 @@
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-07-10**
+_(nada em edição — working tree limpo; Fases 1 a 4 do fiado concluídas, ver ✅ Concluído)_
 
-**Feature grande em 4 fases — Clientes + Contas a Receber (fiado) + Formas de pagamento fixas.**
-Plano aprovado (ver `~/.claude/plans/preciso-criar-um-nova-shimmying-walrus.md`). Essencial **e**
-Completo (sem gate). Entrega em fases; **decisão do dono: segurar os commits e pushar tudo junto
-num deploy só** (nada foi pushado ainda).
+**Deploy pendente** (decisão do dono: segurar os commits e pushar tudo junto num deploy só) —
+nada foi pushado. No deploy: rodar `npm run normalizar-pagamentos` (migra strings legadas de forma
+de pagamento — Fase 1) + `git push` de todos os commits locais das Fases 1–4. Migrações já
+aplicadas no banco via db push (idempotente).
 
-### Feito nesta sessão
-
-- **Fase 1 — Formas de pagamento fixas** (commit `6b824e5`): módulo puro `src/pagamentos.js`, whitelist no servidor, cards individuais com ícone (`e84790d`), script `normalizar-pagamentos`. "A Prazo" fica fora até a Fase 3.
-- **Fase 2 — Aba Clientes** (commit `b0b82ce`): cadastro PF/PJ, validação CPF/CNPJ (`validacao.js` + `public/documento.js`), CRUD em `src/clientes.js`, rotas `/api/clientes`, front com toggle PF/PJ. Migração `20260710120000_clientes_cadastro.sql` **já aplicada no banco** (db push). CRUD verificado end-to-end.
-- **Refinos via Stitch** (DS Nymbus): grid com avatar/ícone editar/contador + fix de truncamento (`f19541d`, inclui fix XSS nas iniciais); formulário na largura da plataforma 720px (`ae2b2a5`); endereço em 3 linhas + permissões horizontais + campos estreitos (`5a16d47`).
-
-### Estado das fases
-
-- ✅ Fase 1, ✅ Fase 2 e ✅ Fase 3 concluídas (ver ✅ Concluído).
-- 🔜 **Fase 4 — Contas a Receber** (sub-abas Receber/Recebidas, baixa integral/parcial + multi-seleção, log de baixas; a baixa entra no caixa do dia) + cards de resumo no topo da aba Clientes (Total a Receber / Novos no mês / Em atraso). Próxima. O backend já tem `pedidos.a_prazo/cliente_id/vencimento/valor_recebido` e `fiado.resumoDoCliente`; falta a baixa (recebimento) que gera `caixa_movimentos` + acumula `valor_recebido` + grava log.
-
-### Em meio de edição
-
-- Nada. Working tree limpo; todos os commits locais, nenhum pushado.
-
-### Próximo passo
-
-- Fase 4 (Contas a Receber). Antes: validar em teste o fluxo A Prazo da Fase 3 no PDV e na Mesa (exige tenant Completo com caixa aberto) — a lógica de dados foi validada por smoke test, mas o fluxo ao vivo (seletor de cliente + bloqueio) não foi dirigido no browser aqui.
-
-### Decisões pendentes
-
-- No deploy (tudo num push só): rodar `npm run normalizar-pagamentos` (Fase 1); migrações das Fases 2 e 3 já aplicadas via db push (`npx supabase db push` é idempotente).
-- Nota de regra: no bloqueio por limite, `limite_credito = 0` = "não configurado" (não bloqueia); só bloqueia com limite > 0.
+**Validação ao vivo pendente:** o fluxo A Prazo (Fase 3 — seletor de cliente/bloqueio no PDV e na
+Mesa) e a baixa (Fase 4) não foram dirigidos no browser logado — exigem tenant Completo com caixa
+aberto. O backend foi validado por **smoke tests contra o banco real** (Essencial e Completo,
+auto-limpos) + visual conferido em harness. Nota de regra: no bloqueio por limite,
+`limite_credito = 0` = "não configurado" (não bloqueia); só bloqueia com limite > 0.
 
 ## 📋 Próximos Passos
 
@@ -66,6 +48,7 @@ num deploy só** (nada foi pushado ainda).
 
 ## ✅ Concluído
 
+- [x] **Fase 4 (fiado) — Contas a Receber (sub-abas Receber e Recebidas)** — as vendas a prazo agora aparecem para listar e dar baixa, sem gate de plano. Nova tabela **`fiado_baixas`** (log de cada baixa: valor, forma, restante, ligação com o movimento do caixa, data) via migração aditiva `20260710160000_fiado_baixas.sql` aplicada por db push. `src/fiado.js` ganhou `listarContas` (clientes com fiado aberto/quitado agregados + **resumo global** p/ os cards: a receber / em atraso / novos no mês), `vendasDoCliente` (vendas do cliente + histórico de baixas p/ o modal) e `baixar` — recebimento **integral ou parcial**, em **lote** (multi-seleção), numa transação: acumula em `pedidos.valor_recebido`, grava linha em `fiado_baixas` e seta `recebido_em` quando quita. **A baixa entra no caixa do dia SÓ no Completo** (`comCaixa` resolvido no servidor por `empresas.temCaixa`: insere `caixa_movimentos` `recebimento` por venda com `valor_pago=valor`/`troco=0`); no **Essencial** só quita a conta + registra o log (sem caixa). Rotas (só `exigeAuth`): `GET /api/fiado/receber|recebidas`, `GET /api/fiado/cliente/:id/vendas`, `POST /api/fiado/baixar`. Front (`public/admin.html`+`app.js`+`style.css`): **3 cards de resumo** no topo da aba Clientes, sub-abas **Receber** (busca + lista de clientes com saldo, vencido em vermelho) e **Recebidas** (conferência), e **modal da conta** (vendas com checkbox p/ baixa em lote, tag de parcial/vencido, tiles de forma [nunca A Prazo], campo de valor [vazio = tudo; parcial = 1 venda], resumo das selecionadas, **Reimprimir** por venda [reusa `POST /api/pedidos/:id/reimprimir`, só Completo] e **log** "Baixado R$ X · dia/hora · restante R$ Y") — reusa o design system `.cli-*` (+ `.fiado-*`). Validado: 234/234 testes + check; **2 smoke tests end-to-end contra o banco real** (Essencial: baixa parcial→integral→lote, migra Receber→Recebidas, sem caixa; Completo: baixa gera `caixa_movimentos` coerente com o CHECK e liga ao log — auto-limpos) + visual conferido em harness. Fluxo ao vivo (logado, Completo com caixa aberto) não dirigido no browser aqui. — 2026-07-10
 - [x] **Fase 3 (fiado) — Vender A Prazo no PDV e na Mesa** — nova forma **A Prazo** (fiado) entra na lista canônica e nos toggles (Config + onboarding), **excluída do checkout web** (só PDV/Mesa; filtrada na projeção pública e barrada no checkout). Migração aditiva `20260710140000_pedido_fiado.sql` (`pedidos.cliente_id`/`a_prazo`/`vencimento`/`valor_recebido` + índice) aplicada via db push. Novo `src/fiado.js`: helpers PUROS `calcularVencimento` (dia fixo do mês, com clamp de mês curto e virada de ano) e `podeVenderAPrazo` (bloqueio por limite [só com limite>0] / vencimento; liberação pontual vence tudo) + `venderAPrazo` (PDV Balcão) e `fecharMesaAPrazo` (Mesa): criam pedido `a_prazo` vinculado ao cliente, **sem `caixa_movimentos`**, com vencimento calculado, baixa de estoque atômica e consumo da liberação pontual — tudo em transação. `resumoDoCliente` deriva gasto/saldo/vencido; `clientes.resumoFiado` passou a usá-lo (gasto real) e `excluir` bloqueia se houver fiado em aberto (evita orfanar a conta). **Caixa não trava com fiado**: `_contarAReceber` ganhou `AND a_prazo = false`. Backend: ramo A Prazo em `POST /api/pdv/vender` (forma única, exige `clienteId`, 403 com `bloqueio` se barrado) e modo `aPrazo` em `POST /api/mesas/:id/pagar`. Front: modo fiado no PDV (`renderPdvPagar`: seletor de cliente com busca + saldo, esconde troco/quitação, `finalizarVendaPdv` manda `clienteId`; 403 → modal `confirmar` com "Abrir cadastro") e na Mesa (`abrirMesaPagar`/`mesaConfirmarPagamento`: A Prazo só no fechar, seletor de cliente, `fecharMesaAPrazo`). Validado: 234/234 testes (17 novos em `test/fiado.test.js`) + check; **smoke test de dados end-to-end contra o banco real** (resumo gasto/saldo, detecção de vencido, bloqueio de exclusão com fiado aberto, quitação — 8/8, auto-limpo) + seletor de cliente conferido no browser (harness). **Fluxo A Prazo ao vivo no PDV/Mesa não dirigido no browser** (exige tenant Completo com caixa aberto). — 2026-07-10
 - [x] **Fase 2 (fiado) — Aba Clientes (cadastro PF/PJ + limite de crédito)** — nova modalidade **Clientes** na sidebar (Essencial e Completo, sem gate). A tabela `clientes` já existia (alimentada pelo bot/checkout); ganhou os campos do cadastro manual via migração aditiva `20260710120000_clientes_cadastro.sql` (tipo PF/PJ, apelido, documento CPF/CNPJ, RG/IE, endereço do cadastro, limite_credito, dia_vencimento, bloquear_limite/vencimento, liberacao_pontual; unique de telefone virou **parcial** + unique parcial de documento; CHECKs de tipo e dia). **Validação CPF/CNPJ pura** por dígito verificador em `src/validacao.js` (+ `validarDocumento`) e espelho no front `public/documento.js` (máscara CPF/CNPJ/telefone WhatsApp, dual-mode). `src/clientes.js` ganhou o CRUD admin (`listar`/`buscarPorId`+`resumoFiado`/`criar`/`atualizar`/`excluir`/`liberarPontual`, com `mapRow` e tradução de erro de duplicidade); rotas `GET/POST /api/clientes`, `GET/PUT/DELETE /api/clientes/:id`, `POST /api/clientes/:id/liberar` (só `exigeAuth`). Front: aba com sub-abas próprias (Cadastro funcional; Receber/Recebidas com estado vazio, dados vêm na Fase 4), grid (Nome/Apelido/CPF-CNPJ/Telefone) com busca, e **modal com toggle PF/PJ** que troca os rótulos (Nome↔Razão social, Apelido↔Nome fantasia, CPF↔CNPJ, RG↔Inscrição estadual), CEP autofill (reusa `EnderecoCep`), limite/gasto/saldo (gasto e saldo derivados; gasto=0 até a Fase 3) e permissões. `resumoFiado` retorna gasto 0 nesta fase (a Fase 3 adiciona `pedidos.cliente_id/a_prazo`). Validado: 217/217 testes (10 novos: CPF/CNPJ + documento) + check; **smoke test do CRUD end-to-end contra o banco real** (criar/listar/buscar/atualizar PF→PJ/dup/liberar/excluir, auto-limpo) + visual conferido no browser (grid, sub-nav, modal PF e PJ com a `style.css` real). Migração aplicada via db push. — 2026-07-10
 - [x] **Fase 1 (fiado) — Formas de pagamento fixas** — as formas de pagamento eram texto livre em `config.pagamentos` (o dono digitava qualquer método). Agora são um **conjunto FIXO** que só liga/desliga por toggle. Novo módulo PURO `src/pagamentos.js` (`FORMAS_PAGAMENTO` = Dinheiro/PIX/Cartão de Crédito/Cartão de Débito + `normalizarFormasPagamento` que mapeia strings legadas → canônicas [ex.: "Pix"→PIX, "Cartão (na entrega)"→Crédito+Débito] e `ehAPrazo`). Whitelist ao salvar (`normalizarConfigServidor`) + **normaliza na leitura** do painel (`GET /api/config`) para os toggles refletirem certo mesmo antes da migração. Front: `renderPagamentos` (painel) e `renderPagsWiz` (onboarding) viraram 5 toggles com o componente `.switch` (removido o input de texto livre + CSS `.pag-pill`/`.pag-add`); default de tenant novo atualizado (`empresas.js`). Script one-shot `scripts/normalizar-pagamentos.js` (`npm run normalizar-pagamentos`) migra os tenants existentes. **"A Prazo" (fiado) fica de fora dos toggles e da lista canônica até a Fase 3** — senão seria selecionável no PDV/mesa/checkout sem o backend de fiado, corrompendo o caixa. 207/207 testes (9 novos em `test/pagamentos.test.js`) + check; toggles validados no browser (harness com a `style.css` real). — 2026-07-10

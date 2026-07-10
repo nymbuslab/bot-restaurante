@@ -214,7 +214,252 @@ async function fecharMesaAPrazo(dir, mesaId, clienteId) {
   }
 }
 
+// ============================================================
+// CONTAS A RECEBER (Fase 4) — listar as contas a prazo por cliente e dar baixa.
+//
+// A baixa (recebimento) entra no caixa do dia SÓ quando o tenant tem caixa
+// (Completo) — o chamador passa `comCaixa` (empresas.temCaixa). No Essencial a
+// baixa apenas quita a conta e registra o log em `fiado_baixas`. Isolado por
+// empresa_id.
+// ============================================================
+const soDigitosF = (v) => String(v == null ? "" : v).replace(/\D/g, "");
+
+// Monta o filtro de busca por cliente (nome/apelido ILIKE + documento/telefone
+// por dígitos) a partir de `$1 = empId`. Devolve { sql, params } com o WHERE
+// acoplado (string começando por " AND (...)" ou vazia).
+function _filtroBusca(alias, empId, busca) {
+  const termo = String(busca || "").trim();
+  const params = [empId];
+  let sql = "";
+  if (termo) {
+    params.push(`%${termo}%`);
+    const partes = [`${alias}.nome ILIKE $${params.length}`, `${alias}.apelido ILIKE $${params.length}`];
+    const dig = soDigitosF(termo);
+    if (dig) {
+      params.push(`%${dig}%`);
+      partes.push(`${alias}.documento LIKE $${params.length}`, `${alias}.telefone LIKE $${params.length}`);
+    }
+    sql = ` AND (${partes.join(" OR ")})`;
+  }
+  return { sql, params };
+}
+
+// Cards do topo (globais, NÃO filtrados pela busca): total a receber, em atraso
+// (vencido em aberto) e clientes novos no mês corrente (fuso BR).
+async function _resumoGeral(empId) {
+  const r = await db.query(
+    `SELECT
+       COALESCE(SUM(total - COALESCE(valor_recebido,0)),0)::float AS a_receber,
+       COALESCE(SUM(CASE WHEN vencimento IS NOT NULL
+                          AND vencimento < (now() AT TIME ZONE 'America/Sao_Paulo')::date
+                         THEN total - COALESCE(valor_recebido,0) ELSE 0 END),0)::float AS em_atraso
+       FROM pedidos
+      WHERE empresa_id = $1 AND a_prazo AND recebido_em IS NULL AND status <> 'cancelado'`,
+    [empId]
+  );
+  const nv = await db.query(
+    `SELECT COUNT(*)::int AS n FROM clientes
+      WHERE empresa_id = $1
+        AND criado_em >= date_trunc('month', (now() AT TIME ZONE 'America/Sao_Paulo'))`,
+    [empId]
+  );
+  const row = r.rows[0] || {};
+  return {
+    aReceber: Math.round((Number(row.a_receber) || 0) * 100) / 100,
+    emAtraso: Math.round((Number(row.em_atraso) || 0) * 100) / 100,
+    novosNoMes: Number(nv.rows[0] && nv.rows[0].n) || 0,
+  };
+}
+
+// Clientes com contas a prazo em aberto (`aberto:true`) ou já quitadas
+// (`aberto:false`), agregados por cliente. Retorna { clientes, resumo } — o
+// resumo é global (p/ os cards do topo).
+async function listarContas(dir, { busca, aberto = true } = {}) {
+  const empId = await empresaId(dir);
+  const { sql: fsql, params } = _filtroBusca("c", empId, busca);
+  const cond = aberto ? "p.recebido_em IS NULL" : "p.recebido_em IS NOT NULL";
+  const ordem = aberto
+    ? "ORDER BY vencido DESC, venc ASC NULLS LAST, c.nome"
+    : "ORDER BY ultimo DESC NULLS LAST, c.nome";
+  const q = await db.query(
+    `SELECT c.id, c.nome, c.apelido, c.tipo, c.documento, c.telefone, c.limite_credito,
+            COUNT(p.id)::int AS vendas,
+            COALESCE(SUM(p.total - COALESCE(p.valor_recebido,0)),0)::float AS aberto,
+            COALESCE(SUM(p.total),0)::float AS total,
+            MIN(p.vencimento)::text AS venc,
+            MAX(p.recebido_em) AS ultimo,
+            BOOL_OR(p.vencimento IS NOT NULL AND p.vencimento < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS vencido
+       FROM clientes c
+       JOIN pedidos p ON p.empresa_id = c.empresa_id AND p.cliente_id = c.id
+      WHERE c.empresa_id = $1 AND p.a_prazo AND ${cond} AND p.status <> 'cancelado'${fsql}
+      GROUP BY c.id
+      ${ordem}
+      LIMIT 500`,
+    params
+  );
+  const clientes = q.rows.map((r) => ({
+    id: r.id, nome: r.nome || "", apelido: r.apelido || "", tipo: r.tipo || "PF",
+    documento: r.documento || "", telefone: r.telefone || "",
+    limiteCredito: Number(r.limite_credito) || 0,
+    vendas: Number(r.vendas) || 0,
+    aberto: Math.round((Number(r.aberto) || 0) * 100) / 100,
+    total: Math.round((Number(r.total) || 0) * 100) / 100,
+    vencimento: r.venc || null,
+    ultimoRecebimento: r.ultimo ? new Date(r.ultimo).toISOString() : null,
+    vencido: !!r.vencido,
+  }));
+  const resumo = await _resumoGeral(empId);
+  return { clientes, resumo };
+}
+
+// Vendas a prazo de um cliente (para o modal), abertas ou quitadas, com o
+// histórico de baixas de cada uma.
+async function vendasDoCliente(dir, clienteId, { aberto = true } = {}) {
+  const empId = await empresaId(dir);
+  const cond = aberto ? "recebido_em IS NULL" : "recebido_em IS NOT NULL";
+  const q = await db.query(
+    `SELECT id, numero, criado_em, recebido_em, vencimento::text AS venc, total,
+            COALESCE(valor_recebido,0) AS valor_recebido, origem, pagamento,
+            (vencimento IS NOT NULL AND vencimento < (now() AT TIME ZONE 'America/Sao_Paulo')::date) AS vencido
+       FROM pedidos
+      WHERE empresa_id = $1 AND cliente_id = $2 AND a_prazo AND ${cond} AND status <> 'cancelado'
+      ORDER BY criado_em`,
+    [empId, clienteId]
+  );
+  const vendas = q.rows.map((r) => {
+    const total = Math.round((Number(r.total) || 0) * 100) / 100;
+    const recebido = Math.round((Number(r.valor_recebido) || 0) * 100) / 100;
+    return {
+      id: r.id, numero: r.numero,
+      criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
+      recebidoEm: r.recebido_em ? new Date(r.recebido_em).toISOString() : null,
+      vencimento: r.venc || null, vencido: !!r.vencido,
+      total, valorRecebido: recebido,
+      restante: Math.round((total - recebido) * 100) / 100,
+      origem: r.origem || "", pagamento: r.pagamento || "",
+    };
+  });
+  const ids = vendas.map((v) => v.id);
+  let baixas = [];
+  if (ids.length) {
+    const b = await db.query(
+      `SELECT pedido_id, valor, forma_pagamento, restante, criado_em
+         FROM fiado_baixas
+        WHERE empresa_id = $1 AND pedido_id = ANY($2::bigint[])
+        ORDER BY criado_em`,
+      [empId, ids]
+    );
+    baixas = b.rows.map((r) => ({
+      pedidoId: r.pedido_id,
+      valor: Math.round((Number(r.valor) || 0) * 100) / 100,
+      forma: r.forma_pagamento || "",
+      restante: Math.round((Number(r.restante) || 0) * 100) / 100,
+      criadoEm: r.criado_em ? new Date(r.criado_em).toISOString() : null,
+    }));
+  }
+  return { vendas, baixas };
+}
+
+// Dá baixa (recebimento) em uma ou mais contas a prazo. `pedidoIds` = vendas a
+// baixar; `forma` = forma do recebimento (canônica, nunca "A Prazo"). Sem
+// `valor` = baixa INTEGRAL de cada venda (do restante). Com `valor` = baixa
+// PARCIAL (só faz sentido p/ 1 venda). `comCaixa` (Completo) → lança um
+// movimento de recebimento no caixa aberto por venda; sem caixa (Essencial) só
+// quita. Tudo numa transação (nada fica meio-baixado). Grava o log em
+// `fiado_baixas` e marca `recebido_em` quando a venda quita.
+async function baixar(dir, opts) {
+  const empId = await empresaId(dir);
+  const o = opts || {};
+  const ids = [...new Set(
+    (Array.isArray(o.pedidoIds) ? o.pedidoIds : [])
+      .map((x) => parseInt(x, 10))
+      .filter((n) => Number.isInteger(n) && n > 0)
+  )];
+  if (!ids.length) throw new Error("Selecione ao menos uma venda para receber.");
+  const forma = String(o.forma || "").trim();
+  if (!forma || /a\s*prazo|fiado/i.test(forma)) throw new Error("Escolha a forma do recebimento.");
+  const parcial = o.valor != null && o.valor !== "";
+  const valorParcial = Math.round((Number(o.valor) || 0) * 100) / 100;
+  if (parcial) {
+    if (ids.length > 1) throw new Error("A baixa parcial é de uma venda por vez.");
+    if (!(valorParcial > 0)) throw new Error("Informe um valor válido.");
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Caixa: só o Completo joga a baixa no caixa do dia. Um caixa aberto por
+    // empresa (índice único garante). Vencido = aberto num dia anterior (fuso BR).
+    let caixaId = null;
+    if (o.comCaixa) {
+      const cx = await client.query(
+        `SELECT id,
+                (aberto_em AT TIME ZONE 'America/Sao_Paulo')::date
+                  < (now() AT TIME ZONE 'America/Sao_Paulo')::date AS vencido
+           FROM caixas WHERE empresa_id = $1 AND status = 'aberto' LIMIT 1`,
+        [empId]
+      );
+      if (!cx.rows[0]) throw new Error("Abra o caixa antes de receber.");
+      if (cx.rows[0].vencido) throw new Error("Feche o caixa do dia anterior antes de receber.");
+      caixaId = cx.rows[0].id;
+    }
+
+    let somaBaixada = 0;
+    const quitados = [];
+    for (const pid of ids) {
+      const pq = await client.query(
+        "SELECT id, total, COALESCE(valor_recebido,0) AS valor_recebido, recebido_em, a_prazo, cliente_id FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+        [empId, pid]
+      );
+      const p = pq.rows[0];
+      if (!p) throw new Error("Venda #" + pid + " não encontrada.");
+      if (!p.a_prazo) throw new Error("A venda #" + pid + " não é a prazo.");
+      if (p.recebido_em) continue; // já quitada (corrida/lote tolerante) — ignora
+      const total = Math.round((Number(p.total) || 0) * 100) / 100;
+      const jaRecebido = Math.round((Number(p.valor_recebido) || 0) * 100) / 100;
+      const restante = Math.round((total - jaRecebido) * 100) / 100;
+      if (restante <= 0) continue;
+      const pago = parcial ? Math.min(valorParcial, restante) : restante;
+      if (pago <= 0) continue;
+
+      let movId = null;
+      if (caixaId) {
+        const mv = await client.query(
+          `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, valor_pago, troco)
+           VALUES ($1, $2, 'recebimento', $3, $4, $5, $4, 0) RETURNING id`,
+          [caixaId, empId, forma, pago, pid]
+        );
+        movId = mv.rows[0].id;
+      }
+      const novoRecebido = Math.round((jaRecebido + pago) * 100) / 100;
+      const restanteDepois = Math.max(0, Math.round((total - novoRecebido) * 100) / 100);
+      const quitou = restanteDepois <= 0.005;
+      await client.query(
+        "UPDATE pedidos SET valor_recebido = $3, recebido_em = CASE WHEN $4 THEN now() ELSE recebido_em END WHERE empresa_id = $1 AND id = $2",
+        [empId, pid, novoRecebido, quitou]
+      );
+      await client.query(
+        `INSERT INTO fiado_baixas (empresa_id, pedido_id, cliente_id, valor, forma_pagamento, restante, caixa_movimento_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [empId, pid, p.cliente_id, pago, forma, restanteDepois, movId]
+      );
+      somaBaixada = Math.round((somaBaixada + pago) * 100) / 100;
+      if (quitou) quitados.push(pid);
+    }
+
+    await client.query("COMMIT");
+    return { ok: true, total: somaBaixada, quitados, comCaixa: !!caixaId };
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   calcularVencimento, podeVenderAPrazo, resumoDoCliente,
   venderAPrazo, fecharMesaAPrazo, esquecer,
+  listarContas, vendasDoCliente, baixar,
 };

@@ -213,3 +213,39 @@ criado_em
 - Cálculos puros em `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`.
   Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
   `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).
+
+## Contas a Receber (fiado)
+
+Sem gate de plano (Essencial **e** Completo). Uma **conta a receber = o próprio `pedido`**
+(reuso máximo: já tem número, itens, total, impressão). Colunas em `pedidos` (migration
+`20260710140000_pedido_fiado.sql`):
+
+```text
+cliente_id (→clientes, on delete set null), a_prazo (bool default false),
+vencimento (date; dia fixo do mês do cliente, calculado na venda), valor_recebido (numeric default 0)
+```
+
+- **Nasce** com `a_prazo=true`, `cliente_id` preenchido, `recebido_em=NULL` e **sem**
+  `caixa_movimentos` (a venda a prazo não entra no caixa na hora). Origem PDV Balcão
+  (`venderAPrazo`) ou Mesa (`fecharMesaAPrazo`). `Valor gasto`/`Saldo` do cliente são
+  **derivados** (soma de `total - valor_recebido` das vendas a prazo em aberto).
+- **Baixa (recebimento, Fase 4 — `fiado.baixar`):** integral ou parcial, em lote. Acumula em
+  `valor_recebido`; quando cobre o `total`, seta `recebido_em` (vai p/ "Recebidas"). A baixa
+  entra no caixa do dia **só no Completo** (`comCaixa` resolvido no servidor por
+  `empresas.temCaixa`): insere `caixa_movimentos` `recebimento` por venda; no Essencial só quita.
+- **Fiado não trava o fechamento do caixa:** `_contarAReceber` exclui `a_prazo=true` (o fiado é
+  recebido depois, não precisa fechar o dia).
+
+**Tabela `fiado_baixas`** (log de cada baixa, migration `20260710160000_fiado_baixas.sql`):
+
+```text
+id, empresa_id, pedido_id (→pedidos), cliente_id (→clientes, set null),
+valor (numeric), forma_pagamento (canônica, nunca "A Prazo"),
+restante (numeric; quanto faltava DEPOIS desta baixa),
+caixa_movimento_id (→caixa_movimentos, set null; NULL no Essencial), criado_em
+```
+
+Alimenta o histórico do modal ("Baixado R$ 5,00 · dia/hora · restante R$ X"). RLS no padrão
+(revoke anon/authenticated). Rotas: `GET /api/fiado/receber|recebidas`,
+`GET /api/fiado/cliente/:id/vendas`, `POST /api/fiado/baixar`. Front em `public/app.js`
+(sub-abas Receber/Recebidas + modal + cards) reusando o design system `.cli-*`/`.fiado-*`.

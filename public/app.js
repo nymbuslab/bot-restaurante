@@ -225,7 +225,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
-    if (btn.dataset.aba === "clientes") carregarClientes();
+    if (btn.dataset.aba === "clientes") { carregarClientes(); carregarResumoFiado(); }
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
@@ -6831,6 +6831,9 @@ function fecharClienteModal() {
       document.querySelectorAll("#aba-clientes .cli-sub").forEach((s) => s.classList.remove("ativa"));
       btn.classList.add("ativo");
       $("cli-sub-" + btn.dataset.sub).classList.add("ativa");
+      if (btn.dataset.sub === "receber") carregarContas(true);
+      else if (btn.dataset.sub === "recebidas") carregarContas(false);
+      else carregarClientes();
     });
   });
   if ($("cliBusca")) $("cliBusca").addEventListener("input", () => {
@@ -6853,6 +6856,271 @@ function fecharClienteModal() {
   $("cliLiberarBtn").addEventListener("click", liberarProximaVenda);
   $("cliente-overlay").addEventListener("click", (e) => { if (e.target === $("cliente-overlay")) fecharClienteModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("cliente-overlay").style.display === "flex") fecharClienteModal(); });
+})();
+
+// ============================================================
+// CONTAS A RECEBER (fiado) — Fase 4. Lista as contas a prazo por cliente e dá
+// baixa (recebimento). Sem gate de plano; a baixa entra no caixa só no Completo
+// (decidido no servidor). Reusa o design system da aba Clientes (.cli-*).
+// ============================================================
+let fiadoBuscaTimer;
+let fiadoModalCliente = null;  // { id, nome, aberto }
+let fiadoVendas = [];          // vendas carregadas no modal
+let fiadoBaixasLog = [];       // baixas (log) das vendas do modal
+let fiadoSel = new Set();      // ids das vendas marcadas (baixa em lote)
+let fiadoFormaSel = "";        // forma escolhida p/ a baixa
+
+const ICO_PRINTER = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+
+// Formas válidas p/ a baixa (nunca "A Prazo" — não se paga fiado com fiado).
+function fiadoFormas() {
+  const cfg = (configAtual && Array.isArray(configAtual.pagamentos)) ? configAtual.pagamentos : [];
+  const usaveis = cfg.filter((f) => !/a\s*prazo|fiado/i.test(f));
+  return usaveis.length ? usaveis : ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
+}
+
+// Aceita 'YYYY-MM-DD' (vencimento) ou ISO completo (data da venda) → dd/mm/aaaa.
+function fiadoDataBR(iso) {
+  if (!iso) return "—";
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[3] + "/" + m[2] + "/" + m[1] : String(iso);
+}
+function fiadoDataHora(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function atualizarCardsFiado(resumo) {
+  if (!resumo) return;
+  if ($("cliCardReceber")) $("cliCardReceber").textContent = moedaBR(resumo.aReceber || 0);
+  if ($("cliCardAtraso")) $("cliCardAtraso").textContent = moedaBR(resumo.emAtraso || 0);
+  if ($("cliCardNovos")) $("cliCardNovos").textContent = String(resumo.novosNoMes || 0);
+  if ($("cliCardAtrasoBox")) $("cliCardAtrasoBox").classList.toggle("cli-card-alerta", (resumo.emAtraso || 0) > 0);
+}
+
+// Cards do topo (leve): só o resumo, sem renderizar a lista.
+async function carregarResumoFiado() {
+  try {
+    const r = await api("GET", "/api/fiado/receber");
+    if (r.ok) { const d = await r.json(); atualizarCardsFiado(d.resumo); }
+  } catch (e) { /* cards não são críticos */ }
+}
+
+async function carregarContas(aberto) {
+  const cont = $(aberto ? "fiadoReceberContainer" : "fiadoRecebidasContainer");
+  if (!cont) return;
+  cont.innerHTML = `<p class="sub" style="padding:16px 4px">Carregando...</p>`;
+  const buscaEl = $(aberto ? "fiadoBuscaReceber" : "fiadoBuscaRecebidas");
+  const termo = (buscaEl && buscaEl.value) || "";
+  try {
+    const url = (aberto ? "/api/fiado/receber" : "/api/fiado/recebidas") + "?busca=" + encodeURIComponent(termo);
+    const r = await api("GET", url);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    atualizarCardsFiado(d.resumo);
+    renderContas(cont, d.clientes || [], aberto, termo.trim());
+  } catch (e) {
+    cont.innerHTML = `<p class="sub" style="padding:16px 4px">Não foi possível carregar. Tente atualizar.</p>`;
+  }
+}
+
+function renderContas(cont, lista, aberto, termo) {
+  if (!lista.length) {
+    const icone = aberto
+      ? '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'
+      : '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+    cont.innerHTML = `<div class="cli-vazio">
+      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icone}</svg>
+      <h3>${termo ? "Nenhum cliente encontrado" : (aberto ? "Nenhuma venda a prazo em aberto" : "Nenhuma conta recebida ainda")}</h3>
+      <p>${aberto ? "Quando você vender no fiado (forma A Prazo no PDV ou na mesa), as contas dos clientes aparecem aqui para dar baixa." : "As contas a prazo já quitadas ficam aqui, para conferência."}</p>
+    </div>`;
+    return;
+  }
+  const colValor = aberto ? "Em aberto" : "Total";
+  const colData = aberto ? "Vencimento" : "Recebido";
+  let html = `<div class="tabela-scroll"><table class="cli-tabela fiado-tabela"><thead><tr>
+    <th>Cliente</th><th class="fiado-col-num">Vendas</th><th class="fiado-col-val">${colValor}</th><th>${colData}</th><th class="cli-acoes-th"></th></tr></thead><tbody>`;
+  lista.forEach((c) => {
+    const nome = escapar(c.nome) || "Sem nome";
+    const doc = c.documento ? `<span class="fiado-cli-doc">${escapar(Documento.formatarDocumento(c.documento, c.tipo))}</span>` : "";
+    const valor = aberto ? c.aberto : c.total;
+    const dataCel = aberto
+      ? (c.vencido ? `<span class="fiado-venc-atraso">${fiadoDataBR(c.vencimento)}</span>` : fiadoDataBR(c.vencimento))
+      : fiadoDataBR(c.ultimoRecebimento);
+    html += `<tr class="cli-linha fiado-linha" data-id="${escapar(c.id)}" data-nome="${escapar(c.nome)}">
+      <td><div class="cli-nome-cel"><span class="cli-avatar" style="background:${corAvatar(c.nome)}">${escapar(iniciaisCliente(c.nome))}</span><span class="cli-nome-txt">${nome}${doc}</span></div></td>
+      <td class="fiado-col-num">${c.vendas}</td>
+      <td class="fiado-col-val fiado-valor">${moedaBR(valor)}</td>
+      <td>${dataCel}</td>
+      <td class="cli-acoes-td"><span class="fiado-abrir">Ver</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  cont.innerHTML = html;
+  cont.querySelectorAll(".fiado-linha").forEach((tr) =>
+    tr.addEventListener("click", () => abrirFiadoModal(tr.dataset.id, tr.dataset.nome, aberto))
+  );
+}
+
+async function abrirFiadoModal(clienteId, nome, aberto) {
+  fiadoModalCliente = { id: clienteId, nome: nome || "Cliente", aberto };
+  fiadoSel = new Set();
+  fiadoFormaSel = fiadoFormas()[0] || "";
+  $("fiado-titulo").textContent = nome || "Conta do cliente";
+  $("fiadoCorpo").innerHTML = `<p class="sub" style="padding:24px 20px">Carregando...</p>`;
+  $("fiado-overlay").style.display = "flex";
+  try {
+    const r = await api("GET", "/api/fiado/cliente/" + clienteId + "/vendas?status=" + (aberto ? "aberto" : "recebidas"));
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    fiadoVendas = d.vendas || [];
+    fiadoBaixasLog = d.baixas || [];
+    if (aberto) fiadoVendas.forEach((v) => fiadoSel.add(v.id)); // pré-marca todas (baixa rápida em lote)
+    renderFiadoModal();
+  } catch (e) {
+    $("fiadoCorpo").innerHTML = `<p class="sub" style="padding:24px 20px">Não foi possível carregar as vendas.</p>`;
+  }
+}
+
+function fiadoBaixasDe(pedidoId) {
+  return fiadoBaixasLog.filter((b) => String(b.pedidoId) === String(pedidoId));
+}
+function fiadoSelecionadas() {
+  return fiadoVendas.filter((v) => fiadoSel.has(v.id));
+}
+function fiadoRestanteSel() {
+  return Math.round(fiadoSelecionadas().reduce((s, v) => s + (Number(v.restante) || 0), 0) * 100) / 100;
+}
+
+function renderFiadoModal() {
+  const aberto = fiadoModalCliente.aberto;
+  const corpo = $("fiadoCorpo");
+  if (!fiadoVendas.length) {
+    corpo.innerHTML = `<div class="cli-vazio" style="padding:30px 12px"><h3>${aberto ? "Sem contas em aberto" : "Sem contas recebidas"}</h3><p>${aberto ? "Este cliente não tem vendas a prazo em aberto." : "Este cliente ainda não teve contas quitadas."}</p></div>`;
+    return;
+  }
+  const podeImprimir = planoAtual === "completo";
+  let html = `<div class="fiado-vendas">`;
+  fiadoVendas.forEach((v) => {
+    const log = fiadoBaixasDe(v.id);
+    const marc = fiadoSel.has(v.id);
+    const check = aberto
+      ? `<label class="fiado-check"><input type="checkbox" data-fsel="${v.id}" ${marc ? "checked" : ""} /></label>`
+      : "";
+    const venc = v.vencimento
+      ? `<span class="fiado-v-venc${v.vencido ? " atraso" : ""}">venc. ${fiadoDataBR(v.vencimento)}</span>`
+      : "";
+    const parcialTag = (aberto && Number(v.valorRecebido) > 0) ? `<span class="fiado-v-parcial">recebido ${moedaBR(v.valorRecebido)}</span>` : "";
+    const valorLinha = `<span class="fiado-v-restante">${moedaBR(aberto ? v.restante : v.total)}</span>`;
+    const printBtn = podeImprimir ? `<button type="button" class="fiado-print" data-fprint="${v.id}" aria-label="Reimprimir">${ICO_PRINTER}</button>` : "";
+    let logHtml = "";
+    if (log.length) {
+      logHtml = `<div class="fiado-v-log">` + log.map((b) =>
+        `<span>Baixado ${moedaBR(b.valor)} · ${fiadoDataHora(b.criadoEm)}${Number(b.restante) > 0 ? " · restante " + moedaBR(b.restante) : " · quitado"}</span>`
+      ).join("") + `</div>`;
+    }
+    html += `<div class="fiado-v${marc ? " sel" : ""}" data-vid="${v.id}">
+      <div class="fiado-v-topo">
+        ${check}
+        <div class="fiado-v-info"><div class="fiado-v-l1"><strong>#${escapar(String(v.numero))}</strong> <span class="fiado-v-data">${fiadoDataBR(v.criadoEm)}</span> ${venc} ${parcialTag}</div></div>
+        ${valorLinha}
+        ${printBtn}
+      </div>
+      ${logHtml}
+    </div>`;
+  });
+  html += `</div>`;
+
+  if (aberto) {
+    const tiles = fiadoFormas().map((f) =>
+      `<button type="button" class="pdv-forma${f === fiadoFormaSel ? " ativo" : ""}" data-fforma="${pdvEsc(f)}">${pdvIconeForma(f)}<span>${pdvEsc(f)}</span></button>`
+    ).join("");
+    html += `<div class="fiado-baixa">
+      <div class="fiado-baixa-formas"><span class="pdv-ops-tit">Forma do recebimento</span><div class="pdv-formas">${tiles}</div></div>
+      <div class="fiado-baixa-linha">
+        <div class="campo-prefixo fiado-valor-campo"><span class="campo-prefixo-moeda">R$</span><input id="fiadoValor" type="text" inputmode="numeric" placeholder="Tudo" /></div>
+        <div class="fiado-baixa-resumo"><span id="fiadoSelInfo">0 selecionadas</span><strong id="fiadoSelTotal">R$ 0,00</strong></div>
+        <button type="button" class="primario" id="fiadoReceberBtn">Receber</button>
+      </div>
+      <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber o total. Para baixa parcial, selecione uma única venda e informe o valor.</p>
+    </div>`;
+  }
+  corpo.innerHTML = html;
+
+  corpo.querySelectorAll("[data-fsel]").forEach((cb) => cb.addEventListener("change", () => {
+    const id = Number(cb.dataset.fsel);
+    if (cb.checked) fiadoSel.add(id); else fiadoSel.delete(id);
+    const card = corpo.querySelector('.fiado-v[data-vid="' + id + '"]');
+    if (card) card.classList.toggle("sel", cb.checked);
+    atualizarFiadoResumoSel();
+  }));
+  corpo.querySelectorAll("[data-fprint]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); reimprimirVenda(Number(b.dataset.fprint)); }));
+  if (aberto) {
+    corpo.querySelectorAll("[data-fforma]").forEach((b) => b.addEventListener("click", () => {
+      fiadoFormaSel = b.dataset.fforma;
+      corpo.querySelectorAll("[data-fforma]").forEach((x) => x.classList.toggle("ativo", x === b));
+    }));
+    if (window.Dinheiro) Dinheiro.mascarar("fiadoValor");
+    $("fiadoReceberBtn").addEventListener("click", fiadoReceber);
+    atualizarFiadoResumoSel();
+  }
+}
+
+function atualizarFiadoResumoSel() {
+  const n = fiadoSel.size;
+  if ($("fiadoSelInfo")) $("fiadoSelInfo").textContent = n + (n === 1 ? " selecionada" : " selecionadas");
+  if ($("fiadoSelTotal")) $("fiadoSelTotal").textContent = moedaBR(fiadoRestanteSel());
+  if ($("fiadoReceberBtn")) $("fiadoReceberBtn").disabled = n === 0;
+}
+
+async function fiadoReceber() {
+  const sel = [...fiadoSel];
+  if (!sel.length) { toast("Selecione ao menos uma venda.", "erro"); return; }
+  if (!fiadoFormaSel) { toast("Escolha a forma do recebimento.", "erro"); return; }
+  const valor = window.Dinheiro ? Dinheiro.valor("fiadoValor") : 0;
+  const parcial = valor > 0;
+  if (parcial && sel.length > 1) { toast("A baixa parcial é de uma venda por vez. Selecione só uma.", "erro"); return; }
+  const body = { pedidoIds: sel, forma: fiadoFormaSel };
+  if (parcial) body.valor = valor;
+  const btn = $("fiadoReceberBtn"); if (btn) { btn.disabled = true; btn.textContent = "Recebendo..."; }
+  try {
+    const r = await api("POST", "/api/fiado/baixar", body);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.erro || "Falha ao receber.");
+    toast(d.comCaixa ? "Recebimento lançado no caixa." : "Baixa registrada.", "sucesso");
+    await abrirFiadoModal(fiadoModalCliente.id, fiadoModalCliente.nome, fiadoModalCliente.aberto);
+    carregarContas(fiadoModalCliente.aberto);
+  } catch (e) {
+    toast(e.message || "Não foi possível dar a baixa.", "erro");
+    if (btn) { btn.disabled = false; btn.textContent = "Receber"; }
+  }
+}
+
+async function reimprimirVenda(pedidoId) {
+  try {
+    const r = await api("POST", "/api/pedidos/" + pedidoId + "/reimprimir", { via: "cupom" });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.erro || ""); }
+    toast("Enviado para impressão.", "sucesso");
+  } catch (e) {
+    toast(e.message || "Não foi possível reimprimir.", "erro");
+  }
+}
+
+function fecharFiadoModal() {
+  $("fiado-overlay").style.display = "none";
+  fiadoModalCliente = null;
+}
+
+(function wireFiado() {
+  if (!$("aba-clientes")) return;
+  if ($("fiadoBuscaReceber")) $("fiadoBuscaReceber").addEventListener("input", () => { clearTimeout(fiadoBuscaTimer); fiadoBuscaTimer = setTimeout(() => carregarContas(true), 220); });
+  if ($("fiadoBuscaRecebidas")) $("fiadoBuscaRecebidas").addEventListener("input", () => { clearTimeout(fiadoBuscaTimer); fiadoBuscaTimer = setTimeout(() => carregarContas(false), 220); });
+  if ($("fiadoFechar")) $("fiadoFechar").addEventListener("click", fecharFiadoModal);
+  if ($("fiado-overlay")) $("fiado-overlay").addEventListener("click", (e) => { if (e.target === $("fiado-overlay")) fecharFiadoModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("fiado-overlay") && $("fiado-overlay").style.display === "flex") fecharFiadoModal(); });
 })();
 
 // Antes do boot: mostra imediatamente a última aba visitada (só a troca VISUAL, sem

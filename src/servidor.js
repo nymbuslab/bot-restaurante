@@ -1868,6 +1868,50 @@ app.post("/api/clientes/:id/liberar", exigeAuth, async (req, res) => {
   }
 });
 
+// ---- Contas a Receber (fiado) — Fase 4 ----
+// Sem gate de plano (Essencial e Completo). A baixa entra no caixa do dia SÓ no
+// Completo (tem caixa); no Essencial ela apenas quita a conta + registra o log.
+app.get("/api/fiado/receber", exigeAuth, async (req, res) => {
+  try {
+    res.json(await fiado.listarContas(req.tenantDir, { busca: req.query.busca, aberto: true }));
+  } catch (e) {
+    console.error("fiado.receber:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar as contas a receber." });
+  }
+});
+
+app.get("/api/fiado/recebidas", exigeAuth, async (req, res) => {
+  try {
+    res.json(await fiado.listarContas(req.tenantDir, { busca: req.query.busca, aberto: false }));
+  } catch (e) {
+    console.error("fiado.recebidas:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar as contas recebidas." });
+  }
+});
+
+app.get("/api/fiado/cliente/:id/vendas", exigeAuth, async (req, res) => {
+  try {
+    const aberto = req.query.status !== "recebidas";
+    res.json(await fiado.vendasDoCliente(req.tenantDir, req.params.id, { aberto }));
+  } catch (e) {
+    console.error("fiado.vendas:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar as vendas do cliente." });
+  }
+});
+
+app.post("/api/fiado/baixar", exigeAuth, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    const comCaixa = empresas.temCaixa(emp);
+    const b = req.body || {};
+    res.json(await fiado.baixar(req.tenantDir, {
+      pedidoIds: b.pedidoIds, forma: b.forma, valor: b.valor, comCaixa,
+    }));
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Não foi possível dar a baixa." });
+  }
+});
+
 // Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
 // `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
 // final + mapeia item → grupo pelo cardápio do tenant.

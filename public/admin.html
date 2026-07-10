@@ -815,6 +815,21 @@
         </div>
       </div>
 
+      <div class="cli-cards" id="cliCards">
+        <div class="cli-card">
+          <span class="cli-card-lbl">A receber</span>
+          <strong class="cli-card-val" id="cliCardReceber">R$ 0,00</strong>
+        </div>
+        <div class="cli-card" id="cliCardAtrasoBox">
+          <span class="cli-card-lbl">Em atraso</span>
+          <strong class="cli-card-val" id="cliCardAtraso">R$ 0,00</strong>
+        </div>
+        <div class="cli-card">
+          <span class="cli-card-lbl">Novos no mês</span>
+          <strong class="cli-card-val" id="cliCardNovos">0</strong>
+        </div>
+      </div>
+
       <div class="cli-subnav" role="tablist">
         <button type="button" class="ativo" data-sub="cadastro" role="tab">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
@@ -844,22 +859,30 @@
         <div id="clientesContainer"></div>
       </div>
 
-      <!-- SUB-ABA: RECEBER (dados chegam na Fase 4) -->
+      <!-- SUB-ABA: RECEBER (contas a prazo em aberto) -->
       <div class="cli-sub" id="cli-sub-receber">
-        <div class="cli-vazio">
-          <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          <h3>Nenhuma venda a prazo em aberto</h3>
-          <p>Quando você vender no fiado (forma A Prazo no PDV ou na mesa), as contas dos clientes aparecem aqui para dar baixa.</p>
+        <div class="cli-toolbar">
+          <div class="busca-wrap">
+            <span class="busca-icone">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <input type="search" id="fiadoBuscaReceber" class="pedidos-busca" placeholder="Buscar cliente por nome, CPF ou CNPJ" />
+          </div>
         </div>
+        <div id="fiadoReceberContainer"></div>
       </div>
 
-      <!-- SUB-ABA: RECEBIDAS (dados chegam na Fase 4) -->
+      <!-- SUB-ABA: RECEBIDAS (contas a prazo já quitadas) -->
       <div class="cli-sub" id="cli-sub-recebidas">
-        <div class="cli-vazio">
-          <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          <h3>Nenhuma conta recebida ainda</h3>
-          <p>As contas a prazo já quitadas ficam aqui, para conferência.</p>
+        <div class="cli-toolbar">
+          <div class="busca-wrap">
+            <span class="busca-icone">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <input type="search" id="fiadoBuscaRecebidas" class="pedidos-busca" placeholder="Buscar cliente por nome, CPF ou CNPJ" />
+          </div>
         </div>
+        <div id="fiadoRecebidasContainer"></div>
       </div>
     </section>
 
@@ -1631,6 +1654,20 @@
           <button id="cliSalvarBtn">Salvar cliente</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Contas a Receber: conta do cliente (vendas a prazo + baixa). Corpo montado no app.js. -->
+  <div id="fiado-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="fiado-titulo">
+    <div class="modal-caixa fiado-modal">
+      <div class="editor-header">
+        <div class="editor-header-info">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+          <h3 id="fiado-titulo">Conta do cliente</h3>
+        </div>
+        <button class="secundario mini" id="fiadoFechar" aria-label="Fechar">✕</button>
+      </div>
+      <div class="fiado-corpo" id="fiadoCorpo"></div>
     </div>
   </div>
 
