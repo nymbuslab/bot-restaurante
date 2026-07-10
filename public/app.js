@@ -5488,6 +5488,7 @@ var mesaState = {
   modo: "itens",
   cfgPendentes: [],
   alertaParadaMin: 30, // minutos sem novo pedido p/ marcar "mesa parada" (0 = off)
+  caixaVencido: false, // caixa do dia anterior aberto → modo "só fechar" (fecha/recebe, não abre/lança)
 };
 var mesasPdvCatAtual = "";
 var mesasInitDone = false;
@@ -5501,6 +5502,8 @@ async function carregarMesas() {
   $("mesasSemCaixa").hidden = true;
   $("mesasVencido").hidden = true;
   $("mesasConteudo").hidden = true;
+  if ($("mesasSoFecharAviso")) $("mesasSoFecharAviso").hidden = true;
+  mesaState.caixaVencido = false;
 
   try {
     // Gate: Plano Completo via GET /api/caixa (retorna 403 se não Completo)
@@ -5508,7 +5511,10 @@ async function carregarMesas() {
     if (!rCaixa || rCaixa.status === 403) { $("mesasLock").hidden = false; return; }
     const caixaData = rCaixa.ok ? await rCaixa.json() : {};
     if (!caixaData.caixa) { $("mesasSemCaixa").hidden = false; return; }
-    if (caixaData.caixa.vencido) { $("mesasVencido").hidden = false; return; }
+    // Caixa do dia anterior aberto (vencido): modo "só fechar" — carrega as mesas para
+    // fechar/receber as abertas (quebra o deadlock caixa↔mesa), mas bloqueia abrir/lançar.
+    mesaState.caixaVencido = !!caixaData.caixa.vencido;
+    if (mesaState.caixaVencido && $("mesasSoFecharAviso")) $("mesasSoFecharAviso").hidden = false;
 
     const rMesas = await api("GET", "/api/mesas");
     if (!rMesas || rMesas.status === 403) { $("mesasLock").hidden = false; return; }
@@ -5538,7 +5544,7 @@ function renderMesasGrade() {
     var btn = document.createElement("button");
     btn.type = "button";
     var parada = mesaParadaMin(m);
-    btn.className = "mesa-card" + (m.status !== "livre" ? " s-" + m.status : "") + (parada != null ? " parada" : "") + (m.id === mesaState.selecionadaId ? " ativa" : "");
+    btn.className = "mesa-card" + (m.status !== "livre" ? " s-" + m.status : "") + (parada != null ? " parada" : "") + (m.id === mesaState.selecionadaId ? " ativa" : "") + (mesaState.caixaVencido && m.status === "livre" ? " mesa-bloqueada" : "");
     btn.dataset.id = m.id;
     var infoHtml = "";
     if (mesaState.mostrarInfo && m.status !== "livre") {
@@ -5620,6 +5626,11 @@ function mesaPorPessoaTxt(pp, total, pes) {
 }
 
 async function mesaSelecionarCard(id) {
+  // Modo "só fechar" (caixa vencido): não deixa ABRIR mesa livre; só fechar as abertas.
+  if (mesaState.caixaVencido) {
+    var mSel = (mesaState.lista || []).find(function (x) { return x.id === id; });
+    if (mSel && mSel.status === "livre") { toast("Feche o caixa do dia anterior para abrir novas mesas.", "erro"); return; }
+  }
   mesaState.selecionadaId = id;
   renderMesasGrade();
   var r = await api("GET", "/api/mesas/" + id);
@@ -5641,6 +5652,10 @@ function abrirMesaPainel() {
   badge.textContent = badgeLabel[d.status] || d.status.toUpperCase();
   $("mesasPainelOverlay").classList.add("visivel");
   $("mesasPainel").classList.add("aberto");
+  // Modo "só fechar" (caixa vencido): esconde a aba Lançar (não lança itens novos).
+  var lancarBtn = $("mesaAbaLancarBtn");
+  if (lancarBtn) lancarBtn.hidden = mesaState.caixaVencido;
+  if (mesaState.caixaVencido && mesaState.modo === "lancar") mesaState.modo = "itens";
   mesaMudarAba(mesaState.modo || "itens");
   renderMesaAcoes();
   renderMesaTotais();
@@ -6536,6 +6551,7 @@ function mesasInitListeners() {
   $("btnMesaImprimirConta").addEventListener("click", mesaImprimirConta);
   $("btnMesaReceberParcial").addEventListener("click", function () { abrirMesaPagar("parcial"); });
   $("btnMesaFecharConta").addEventListener("click", mesaIniciarFechamento);
+  if ($("mesasIrCaixa")) $("mesasIrCaixa").addEventListener("click", function () { var b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
   $("mesasMostrarInfo").addEventListener("change", function (e) {
     mesaState.mostrarInfo = e.target.checked;
     renderMesasGrade();

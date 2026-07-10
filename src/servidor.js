@@ -2029,6 +2029,16 @@ async function exigePdv(req, res) {
   return true;
 }
 
+// Bloqueia ATIVIDADE NOVA (abrir mesa / lançar itens) quando o caixa do dia
+// anterior segue aberto (vencido). Fechar/receber/cancelar mesas continua
+// liberado (modo "só fechar") — é o que quebra o deadlock caixa↔mesa. Retorna
+// true se bloqueou (já respondeu 400).
+async function bloqueiaMesaSeVencido(req, res, acao) {
+  const cx = await caixa.caixaAberto(req.tenantDir);
+  if (cx && cx.vencido) { res.status(400).json({ erro: "Feche o caixa do dia anterior para " + acao + ".", caixaVencido: true }); return true; }
+  return false;
+}
+
 // Cálculo de frete no PDV (autenticada). Front usa para o modo raio (CEP+número);
 // no fixo retorna a taxa direto. Não expõe a chave/coords da empresa.
 app.post("/api/pdv/frete", exigeAuth, async (req, res) => {
@@ -2270,6 +2280,7 @@ app.delete("/api/mesas/:id", exigeAuth, async (req, res) => {
 
 app.post("/api/mesas/:id/abrir", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
+  if (await bloqueiaMesaSeVencido(req, res, "abrir novas mesas")) return;
   try {
     await store.ensure(req.tenantDir);
     const b = req.body || {};
@@ -2298,6 +2309,7 @@ app.post("/api/mesas/:id/pessoas", exigeAuth, async (req, res) => {
 // vinculado à mesa (não recebido). A impressão da cozinha é disparada pelo painel.
 app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
   if (!(await exigePdv(req, res))) return;
+  if (await bloqueiaMesaSeVencido(req, res, "lançar itens")) return;
   try {
     const mesaId = Number(req.params.id);
     const b = req.body || {};

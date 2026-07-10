@@ -5738,6 +5738,12 @@ html.embed, html.embed body { background: var(--bg-primary); }
   grid-template-columns: repeat(auto-fill, minmax(var(--mesa-sz), 1fr));
   gap: 8px;
 }
+/* Modo "só fechar" (caixa vencido): banner + mesas livres desabilitadas. */
+.mesas-sofechar { margin-bottom: 16px; }
+.mesas-sofechar button { margin-left: auto; flex-shrink: 0; }
+.mesa-card.mesa-bloqueada { opacity: 0.4; }
+.mesa-card.mesa-bloqueada:hover { border-color: var(--border); transform: none; }
+
 .mesa-card {
   position: relative;
   aspect-ratio: 1 / 1;
