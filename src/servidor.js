@@ -37,6 +37,7 @@ const estoque = require("../public/estoque"); // dual-mode Node/browser
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarGrupos (dual-mode)
+const convenios = require("../public/convenios");    // normalizarConvenios (dual-mode)
 const pdv = require("./pdv");
 const dashboardCalc = require("./dashboard-calc");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
@@ -1484,7 +1485,10 @@ app.get("/api/config", exigeAuth, async (req, res) => {
     const cfg = store.getConfig(req.tenantDir);
     // Formas de pagamento sempre canônicas na leitura do painel — mesmo antes de
     // rodar a migração (npm run normalizar-pagamentos), os toggles refletem certo.
-    res.json(Object.assign({}, cfg, { pagamentos: formasPag.normalizarFormasPagamento(cfg.pagamentos) }));
+    res.json(Object.assign({}, cfg, {
+      pagamentos: formasPag.normalizarFormasPagamento(cfg.pagamentos),
+      convenios: convenios.normalizarConvenios(cfg.convenios),
+    }));
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler a configuração." });
   }
@@ -1500,6 +1504,8 @@ function normalizarConfigServidor(body) {
   // Formas de pagamento: vocabulário FIXO (não confia no cliente). Whitelist +
   // dedupe na ordem canônica; migra strings legadas de texto livre no caminho.
   if ("pagamentos" in body) body.pagamentos = formasPag.normalizarFormasPagamento(body.pagamentos);
+  // Convênios de vencimento (fiado): saneia faixas/tipos e descarta inválidos (não confia no cliente).
+  if ("convenios" in body) body.convenios = convenios.normalizarConvenios(body.convenios);
   if (body.atendimento && typeof body.atendimento === "object" && "taxaEntrega" in body.atendimento) {
     body.atendimento.taxaEntrega = nn(body.atendimento.taxaEntrega);
   }
