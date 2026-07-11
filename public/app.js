@@ -7039,9 +7039,12 @@ function renderFiadoModal() {
     ).join("");
     html += `<div class="fiado-baixa">
       <div class="fiado-baixa-formas"><span class="pdv-ops-tit">Forma do recebimento</span><div class="pdv-formas">${tiles}</div></div>
+      <div class="fiado-baixa-total">
+        <span id="fiadoSelInfo">Nenhuma venda selecionada</span>
+        <strong id="fiadoSelTotal">R$ 0,00</strong>
+      </div>
       <div class="fiado-baixa-linha">
         <div class="campo-prefixo fiado-valor-campo"><span class="campo-prefixo-moeda">R$</span><input id="fiadoValor" type="text" inputmode="numeric" placeholder="Tudo" /></div>
-        <div class="fiado-baixa-resumo"><span id="fiadoSelInfo">0 selecionadas</span><strong id="fiadoSelTotal">R$ 0,00</strong></div>
         <button type="button" class="primario" id="fiadoReceberBtn">Receber</button>
       </div>
       <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber tudo. Para receber só uma parte, escolha uma única venda e digite o valor.</p>
@@ -7050,7 +7053,10 @@ function renderFiadoModal() {
   corpo.innerHTML = html;
 
   corpo.querySelectorAll("[data-fsel]").forEach((cb) => cb.addEventListener("change", () => {
-    const id = Number(cb.dataset.fsel);
+    // id do pedido vem do banco como STRING (bigint). fiadoSel guarda strings
+    // (pré-seleção usa v.id), então aqui NÃO converter p/ Number — senão "2" e 2
+    // viram entradas diferentes no Set (desmarcar não remove, marcar duplica).
+    const id = cb.dataset.fsel;
     if (cb.checked) fiadoSel.add(id); else fiadoSel.delete(id);
     const card = corpo.querySelector('.fiado-v[data-vid="' + id + '"]');
     if (card) card.classList.toggle("sel", cb.checked);
@@ -7070,7 +7076,8 @@ function renderFiadoModal() {
 
 function atualizarFiadoResumoSel() {
   const n = fiadoSel.size;
-  if ($("fiadoSelInfo")) $("fiadoSelInfo").textContent = n + (n === 1 ? " selecionada" : " selecionadas");
+  if ($("fiadoSelInfo")) $("fiadoSelInfo").textContent =
+    n === 0 ? "Nenhuma venda selecionada" : (n === 1 ? "1 venda selecionada" : n + " vendas selecionadas");
   if ($("fiadoSelTotal")) $("fiadoSelTotal").textContent = moedaBR(fiadoRestanteSel());
   if ($("fiadoReceberBtn")) $("fiadoReceberBtn").disabled = n === 0;
 }
