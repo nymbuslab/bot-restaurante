@@ -168,7 +168,8 @@ function mapRow(r) {
     cidade: r.cidade || "",
     uf: r.uf || "",
     limiteCredito: Number(r.limite_credito) || 0,
-    diaVencimento: r.dia_vencimento == null ? null : Number(r.dia_vencimento),
+    diaVencimento: r.dia_vencimento == null ? null : Number(r.dia_vencimento), // legado
+    convenioId: r.convenio_id || "",
     bloquearLimite: !!r.bloquear_limite,
     bloquearVencimento: !!r.bloquear_vencimento,
     liberacaoPontual: !!r.liberacao_pontual,
@@ -201,7 +202,8 @@ function normalizarDados(d) {
     cidade: String(d.cidade || "").trim(),
     uf: String(d.uf || "").trim().toUpperCase().slice(0, 2),
     limiteCredito: Math.max(0, Number(d.limiteCredito) || 0),
-    diaVencimento: normalizarDiaVenc(d.diaVencimento),
+    diaVencimento: normalizarDiaVenc(d.diaVencimento), // legado (não vem mais da UI; fica null)
+    convenioId: String(d.convenioId || "").trim().slice(0, 60),
     bloquearLimite: !!d.bloquearLimite,
     bloquearVencimento: !!d.bloquearVencimento,
   };
@@ -271,12 +273,12 @@ async function criar(dir, dados) {
     const r = await db.query(
       `INSERT INTO clientes (empresa_id, tipo, nome, apelido, documento, ie_rg, telefone,
          cep, logradouro, numero, complemento, bairro, cidade, uf,
-         limite_credito, dia_vencimento, bloquear_limite, bloquear_vencimento)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         limite_credito, dia_vencimento, bloquear_limite, bloquear_vencimento, convenio_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [empId, d.tipo, d.nome, d.apelido, d.documento, d.ieRg, d.telefone,
        d.cep, d.logradouro, d.numero, d.complemento, d.bairro, d.cidade, d.uf,
-       d.limiteCredito, d.diaVencimento, d.bloquearLimite, d.bloquearVencimento]
+       d.limiteCredito, d.diaVencimento, d.bloquearLimite, d.bloquearVencimento, d.convenioId]
     );
     return mapRow(r.rows[0]);
   } catch (e) {
@@ -294,12 +296,12 @@ async function atualizar(dir, id, dados) {
       `UPDATE clientes SET tipo=$3, nome=$4, apelido=$5, documento=$6, ie_rg=$7, telefone=$8,
          cep=$9, logradouro=$10, numero=$11, complemento=$12, bairro=$13, cidade=$14, uf=$15,
          limite_credito=$16, dia_vencimento=$17, bloquear_limite=$18, bloquear_vencimento=$19,
-         atualizado_em=now()
+         convenio_id=$20, atualizado_em=now()
        WHERE empresa_id=$1 AND id=$2
        RETURNING *`,
       [empId, id, d.tipo, d.nome, d.apelido, d.documento, d.ieRg, d.telefone,
        d.cep, d.logradouro, d.numero, d.complemento, d.bairro, d.cidade, d.uf,
-       d.limiteCredito, d.diaVencimento, d.bloquearLimite, d.bloquearVencimento]
+       d.limiteCredito, d.diaVencimento, d.bloquearLimite, d.bloquearVencimento, d.convenioId]
     );
     return r.rows[0] ? mapRow(r.rows[0]) : null;
   } catch (e) {
