@@ -5,12 +5,13 @@
 // NULL (conta a receber) e SEM movimento no caixa na hora. Origem PDV (Balcão) ou
 // Mesa (fechamento a prazo). A baixa (recebimento posterior) vem na Fase 4.
 //
-// Helpers PUROS (calcularVencimento, podeVenderAPrazo) são testados em
-// test/fiado.test.js.
+// Helper PURO (podeVenderAPrazo) é testado em test/fiado.test.js. O vencimento
+// é calculado pelo convênio do cliente (public/convenios.js).
 // ============================================================
 const path = require("path");
 const db = require("./db");
 const store = require("./store");
+const convenios = require("../public/convenios");
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {};
@@ -23,22 +24,6 @@ async function empresaId(dir) {
   return idCache[slug];
 }
 function esquecer(slug) { delete idCache[slug]; }
-
-// PURO: vencimento = dia fixo do mês (próxima ocorrência do `dia`, hoje ou depois).
-// `hojeISO` = 'YYYY-MM-DD' (data BR). `dia` = 1..31 ou null (sem vencimento).
-// Se o dia já passou no mês corrente, vai para o mês seguinte; clampa em meses
-// curtos (ex.: dia 31 em fevereiro → último dia). Retorna 'YYYY-MM-DD' ou null.
-function calcularVencimento(hojeISO, dia) {
-  const d = parseInt(dia, 10);
-  if (!Number.isInteger(d) || d < 1 || d > 31) return null;
-  const [ano, mes, diaHoje] = String(hojeISO).split("-").map(Number); // mes 1..12
-  if (!ano || !mes || !diaHoje) return null;
-  let alvoAno = ano, alvoMes = mes;
-  if (d < diaHoje) { alvoMes++; if (alvoMes > 12) { alvoMes = 1; alvoAno++; } }
-  const ultimoDia = new Date(alvoAno, alvoMes, 0).getDate(); // último dia do mês alvo (1-indexado)
-  const diaClamp = Math.min(d, ultimoDia);
-  return `${alvoAno}-${String(alvoMes).padStart(2, "0")}-${String(diaClamp).padStart(2, "0")}`;
-}
 
 // PURO: decide se pode vender a prazo. `gasto` = soma das vendas a prazo em aberto;
 // `temVencida` = há venda vencida em aberto. liberacaoPontual libera qualquer
@@ -108,7 +93,7 @@ async function venderAPrazo(dir, venda) {
   try {
     await client.query("BEGIN");
     const cq = await client.query(
-      `SELECT id, nome, limite_credito, dia_vencimento, bloquear_limite, bloquear_vencimento, liberacao_pontual,
+      `SELECT id, nome, limite_credito, convenio_id, bloquear_limite, bloquear_vencimento, liberacao_pontual,
               (now() AT TIME ZONE 'America/Sao_Paulo')::date::text AS hoje
          FROM clientes WHERE empresa_id = $1 AND id = $2 FOR UPDATE`,
       [empId, venda.clienteId]
@@ -124,7 +109,9 @@ async function venderAPrazo(dir, venda) {
     if (!decisao.ok) { const e = new Error(decisao.texto); e.code = "FIADO_BLOQUEADO"; e.bloqueio = decisao.motivo; throw e; }
 
     const novoCardapio = await store.baixarEstoqueTx(client, dir, itens);
-    const vencimento = calcularVencimento(c.hoje, c.dia_vencimento);
+    const cfg = store.getConfig(dir) || {};
+    const convenio = (Array.isArray(cfg.convenios) ? cfg.convenios : []).find((v) => v.id === c.convenio_id) || null;
+    const vencimento = convenios.calcularVencimentoConvenio(c.hoje, convenio);
     const nomeCli = (venda.cliente || c.nome || "Cliente").slice(0, 120);
     const ped = await client.query(
       `INSERT INTO pedidos
@@ -171,7 +158,7 @@ async function fecharMesaAPrazo(dir, mesaId, clienteId) {
     if (!m.rows[0]) throw new Error("Mesa não encontrada.");
     if (m.rows[0].status === "livre") throw new Error("Mesa não está aberta.");
     const cq = await client.query(
-      `SELECT id, nome, limite_credito, dia_vencimento, bloquear_limite, bloquear_vencimento, liberacao_pontual,
+      `SELECT id, nome, limite_credito, convenio_id, bloquear_limite, bloquear_vencimento, liberacao_pontual,
               (now() AT TIME ZONE 'America/Sao_Paulo')::date::text AS hoje
          FROM clientes WHERE empresa_id = $1 AND id = $2 FOR UPDATE`,
       [empId, clienteId]
@@ -192,7 +179,9 @@ async function fecharMesaAPrazo(dir, mesaId, clienteId) {
     const decisao = podeVenderAPrazo(cliente, totalMesa, cred.gasto, cred.vencidas > 0);
     if (!decisao.ok) { const e = new Error(decisao.texto); e.code = "FIADO_BLOQUEADO"; e.bloqueio = decisao.motivo; throw e; }
 
-    const vencimento = calcularVencimento(c.hoje, c.dia_vencimento);
+    const cfg = store.getConfig(dir) || {};
+    const convenio = (Array.isArray(cfg.convenios) ? cfg.convenios : []).find((v) => v.id === c.convenio_id) || null;
+    const vencimento = convenios.calcularVencimentoConvenio(c.hoje, convenio);
     // Marca os pedidos abertos da mesa como fiado (mantém mesa_id e recebido_em NULL).
     await client.query(
       `UPDATE pedidos SET a_prazo = true, cliente_id = $3, vencimento = $4, pagamento = 'A Prazo'
@@ -459,7 +448,7 @@ async function baixar(dir, opts) {
 }
 
 module.exports = {
-  calcularVencimento, podeVenderAPrazo, resumoDoCliente,
+  podeVenderAPrazo, resumoDoCliente,
   venderAPrazo, fecharMesaAPrazo, esquecer,
   listarContas, vendasDoCliente, baixar,
 };

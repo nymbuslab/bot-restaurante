@@ -1,35 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { calcularVencimento, podeVenderAPrazo } = require("../src/fiado");
-
-// ---- calcularVencimento (dia fixo do mês) ----
-test("calcularVencimento: dia futuro no mês corrente", () => {
-  assert.equal(calcularVencimento("2026-07-10", 15), "2026-07-15");
-});
-test("calcularVencimento: dia == hoje vence hoje", () => {
-  assert.equal(calcularVencimento("2026-07-10", 10), "2026-07-10");
-});
-test("calcularVencimento: dia já passou → mês seguinte", () => {
-  assert.equal(calcularVencimento("2026-07-10", 5), "2026-08-05");
-});
-test("calcularVencimento: vira o ano", () => {
-  assert.equal(calcularVencimento("2026-12-20", 5), "2027-01-05");
-});
-test("calcularVencimento: clampa dia 31 em fevereiro (não-bissexto)", () => {
-  assert.equal(calcularVencimento("2026-02-15", 31), "2026-02-28");
-});
-test("calcularVencimento: fevereiro bissexto → 29", () => {
-  assert.equal(calcularVencimento("2028-02-15", 31), "2028-02-29");
-});
-test("calcularVencimento: dia 31 existe em janeiro", () => {
-  assert.equal(calcularVencimento("2026-01-15", 31), "2026-01-31");
-});
-test("calcularVencimento: dia inválido/ausente → null", () => {
-  assert.equal(calcularVencimento("2026-07-10", null), null);
-  assert.equal(calcularVencimento("2026-07-10", 0), null);
-  assert.equal(calcularVencimento("2026-07-10", 32), null);
-  assert.equal(calcularVencimento("2026-07-10", undefined), null);
-});
+const { podeVenderAPrazo } = require("../src/fiado");
 
 // ---- podeVenderAPrazo ----
 const base = { limiteCredito: 100, bloquearLimite: false, bloquearVencimento: false, liberacaoPontual: false };
