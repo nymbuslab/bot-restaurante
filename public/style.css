@@ -1976,42 +1976,62 @@ button:disabled {
 .modal-caixa.conv-modal { width: 95%; max-width: 640px; }
 .conv-form { padding: 16px 24px; }
 .conv-form > .campo { margin-bottom: 14px; }
+/* Grade compacta de faixas: Dias [de a até] | Vencimento [=/+ valor] | Mês | del.
+   Colunas fixas (a grade fica à esquerda, sem esticar nem estourar no desktop). */
 .conv-faixas-head, .conv-faixa {
   display: grid;
-  /* minmax(0,1fr) na coluna Tipo deixa a grade ENCOLHER pra caber no container
-     (senão estoura por 1-2px e o overflow-x mostra barra à toa no desktop). A
-     última coluna é 34px = largura real do botão de lixeira (32 + 1px de borda
-     de cada lado), senão ele estoura a coluna por 2px. */
-  grid-template-columns: 50px 50px minmax(0, 1fr) 64px 52px 34px;
-  gap: 8px; align-items: center;
+  grid-template-columns: 130px 108px 52px 34px;
+  gap: 14px; align-items: center;
 }
 .conv-faixas-head { padding: 0 2px 6px; }
 .conv-faixas-head span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
 .conv-faixas { display: flex; flex-direction: column; gap: 8px; }
-.conv-faixa input, .conv-faixa select {
-  width: 100%; min-width: 0; padding: 8px 8px; text-align: center;
+.conv-dias, .conv-venc { display: flex; align-items: center; gap: 7px; }
+.conv-dias > span { color: var(--text-secondary); font-size: 12px; }
+.conv-faixa input {
+  width: 46px; min-width: 0; padding: 8px 4px; text-align: center;
   background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
   color: var(--text-primary); font-size: 13px;
 }
-.conv-faixa select { text-align: left; }
+.conv-venc input { width: 54px; }
 .conv-faixa input:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Botão que alterna o tipo: "=" (dia fixo) ou "+" (N dias). */
+.conv-tipo-btn {
+  flex: none; width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center; /* centra "=" e "+" igual */
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-surface); color: var(--accent-fg, var(--accent));
+  font-size: 17px; font-weight: 700; line-height: 1; cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.conv-tipo-btn:hover { border-color: var(--accent); }
+.conv-tipo-btn.dias { color: var(--text-primary); }
 .conv-faixa-del {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  width: 34px; height: 34px; border-radius: var(--radius-sm);
   border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer;
 }
 .conv-faixa-del:hover { color: var(--error); border-color: var(--error); }
-.conv-add-faixa { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; }
-.conv-nota { margin: 12px 0 0; font-size: 12px; }
+.conv-add-faixa { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; }
+/* Bloco de ajuda: explica a regra ao dono. */
+.conv-ajuda {
+  margin-top: 16px; padding: 12px 14px 14px;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);
+}
+.conv-ajuda-tit { margin: 0 0 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.conv-ajuda ul { margin: 0; padding-left: 18px; }
+.conv-ajuda ul + .conv-ajuda-tit { margin-top: 12px; }
+.conv-ajuda li { font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 3px; }
+.conv-ajuda li:last-child { margin-bottom: 0; }
+.conv-ajuda strong { color: var(--text-primary); font-weight: 600; }
 .conv-erro {
   margin-top: 12px; padding: 10px 12px; font-size: 13px;
   background: var(--error-subtle); border: 1px solid var(--error); border-radius: var(--radius-sm); color: var(--text-primary);
 }
-/* No desktop a grade cabe (minmax acima) — sem barra. Só em tela bem estreita
-   (celular) a grade ganha largura mínima e rola na horizontal, pra não espremer. */
+/* No desktop a grade (colunas fixas ~366px) cabe à esquerda, sem barra. Só em
+   tela bem estreita (celular) o container rola na horizontal, pra não espremer. */
 @media (max-width: 560px) {
   .conv-faixas-scroll { overflow-x: auto; }
-  .conv-faixas-head, .conv-faixa { min-width: 420px; }
 }
 
 /* Botão "Gerar automaticamente" sob o campo de texto do horário */

@@ -2080,22 +2080,21 @@ function addFaixaRow(f) {
   const row = document.createElement("div");
   row.className = "conv-faixa";
   const dias = f.tipo === "dias";
+  const inp = (cf, len, val, lbl) => `<input data-cf="${cf}" type="text" inputmode="numeric" maxlength="${len}" value="${escapar(convVal(val))}" aria-label="${lbl}" />`;
   row.innerHTML =
-    `<input data-cf="de" type="text" inputmode="numeric" maxlength="2" value="${escapar(convVal(f.de))}" aria-label="Dia inicial" />` +
-    `<input data-cf="ate" type="text" inputmode="numeric" maxlength="2" value="${escapar(convVal(f.ate))}" aria-label="Dia final" />` +
-    `<select data-cf="tipo" aria-label="Tipo"><option value="fixo"${dias ? "" : " selected"}>= dia fixo</option><option value="dias"${dias ? " selected" : ""}>+ dias</option></select>` +
-    `<input data-cf="valor" type="text" inputmode="numeric" maxlength="3" value="${escapar(convVal(f.valor))}" aria-label="Valor" />` +
-    `<input data-cf="meses" type="text" inputmode="numeric" maxlength="2" value="${escapar(convVal(f.meses))}" aria-label="Mês" />` +
+    `<div class="conv-dias">${inp("de", 2, f.de, "Dia inicial")}<span>a</span>${inp("ate", 2, f.ate, "Dia final")}</div>` +
+    `<div class="conv-venc"><button type="button" class="conv-tipo-btn${dias ? " dias" : ""}" data-cf="tipo" data-tipo="${dias ? "dias" : "fixo"}" title="Alternar: = dia fixo do mês / + dias após a compra">${dias ? "+" : "="}</button>${inp("valor", 3, f.valor, "Valor")}</div>` +
+    inp("meses", 2, f.meses, "Mês") +
     `<button type="button" class="conv-faixa-del" aria-label="Remover faixa">${ICO_LIXEIRA}</button>`;
   $("convFaixas").appendChild(row);
-  const tipoSel = row.querySelector('[data-cf="tipo"]');
+  const tipoBtn = row.querySelector('[data-cf="tipo"]');
   const mesesInp = row.querySelector('[data-cf="meses"]');
-  const syncMeses = () => { const d = tipoSel.value === "dias"; mesesInp.disabled = d; if (d) mesesInp.value = "0"; };
-  tipoSel.addEventListener("change", syncMeses);
-  syncMeses();
+  const sync = () => { const d = tipoBtn.dataset.tipo === "dias"; tipoBtn.textContent = d ? "+" : "="; tipoBtn.classList.toggle("dias", d); mesesInp.disabled = d; if (d) mesesInp.value = "0"; };
+  tipoBtn.addEventListener("click", () => { tipoBtn.dataset.tipo = tipoBtn.dataset.tipo === "dias" ? "fixo" : "dias"; sync(); });
+  sync();
   row.querySelector(".conv-faixa-del").addEventListener("click", () => row.remove());
-  row.querySelectorAll('input[inputmode="numeric"]').forEach((inp) =>
-    inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, ""); })
+  row.querySelectorAll('input[inputmode="numeric"]').forEach((i) =>
+    i.addEventListener("input", () => { i.value = i.value.replace(/\D/g, ""); })
   );
 }
 
@@ -2103,7 +2102,7 @@ function addFaixaRow(f) {
 // homônimas no mesmo escopo se sobrescrevem e a última vence).
 function lerFaixasConvenioDoDOM() {
   return Array.from(document.querySelectorAll("#convFaixas .conv-faixa")).map((row) => {
-    const tipo = row.querySelector('[data-cf="tipo"]').value === "dias" ? "dias" : "fixo";
+    const tipo = row.querySelector('[data-cf="tipo"]').dataset.tipo === "dias" ? "dias" : "fixo";
     const num = (sel) => parseInt(row.querySelector(sel).value, 10) || 0;
     return { de: num('[data-cf="de"]'), ate: num('[data-cf="ate"]'), tipo, valor: num('[data-cf="valor"]'), meses: tipo === "dias" ? 0 : num('[data-cf="meses"]') };
   });

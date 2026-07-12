@@ -1697,11 +1697,24 @@
       <div class="conv-form">
         <div class="campo"><label for="convNome">Nome do convênio</label><input id="convNome" maxlength="60" placeholder="Ex.: Vence todo dia 10" /></div>
         <div class="conv-faixas-scroll">
-          <div class="conv-faixas-head"><span>De</span><span>Até</span><span>Tipo</span><span>Valor</span><span>Mês</span><span></span></div>
+          <div class="conv-faixas-head"><span>Dias</span><span>Vencimento</span><span>Mês</span><span></span></div>
           <div class="conv-faixas" id="convFaixas"></div>
         </div>
         <button type="button" class="secundario mini conv-add-faixa" id="btnAddFaixa"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar faixa</button>
-        <p class="sub conv-nota">As faixas dividem o mês pelo dia da compra e devem cobrir os dias 1 a 31. Tipo "= dia fixo": vence nesse dia do mês (+ meses). Tipo "+ dias": vence tantos dias após a compra.</p>
+        <div class="conv-ajuda">
+          <p class="conv-ajuda-tit">Como montar</p>
+          <ul>
+            <li><strong>Dias:</strong> de qual a qual dia do mês a compra caiu. Ex.: 1 a 15.</li>
+            <li><strong>Vencimento:</strong> o botão define a conta. <strong>=</strong> um dia fixo do mês (ex.: todo dia 10). <strong>+</strong> N dias após a compra (ex.: 30 dias).</li>
+            <li><strong>Mês:</strong> vale só no <strong>=</strong>. Quantos meses à frente. 0 = neste mês, 1 = mês seguinte.</li>
+            <li>Junte quantas linhas precisar. Elas devem cobrir os dias <strong>1 a 31</strong>.</li>
+          </ul>
+          <p class="conv-ajuda-tit">Exemplos</p>
+          <ul>
+            <li><strong>Todo dia 10, mês seguinte:</strong> Dias 1 a 31, <strong>=</strong> 10, Mês 1. Comprou 09/07, vence 10/08.</li>
+            <li><strong>30 dias para pagar:</strong> Dias 1 a 31, <strong>+</strong> 30. Comprou 09/07, vence 08/08.</li>
+          </ul>
+        </div>
         <div class="conv-erro" id="convErro" hidden></div>
       </div>
       <div class="cli-modal-rodape">
