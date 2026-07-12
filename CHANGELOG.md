@@ -813,3 +813,22 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   destaques do cardápio.
 - **Escrita mais natural:** revisão geral tirando travessões e jargão dos textos.
 - **Botões Exportar/Atualizar** (Pedidos) com ícones no lugar de símbolos de texto.
+
+## [0.85.0] — Clientes e Contas a Receber (fiado)
+
+- **Cadastro de clientes:** nova aba Clientes (nos dois planos) com cadastro Pessoa Física/Jurídica,
+  CPF/CNPJ, endereço e limite de crédito.
+- **Venda a prazo (fiado):** venda "A Prazo" no PDV e nas mesas, vinculada a um cliente, com bloqueio
+  por limite de crédito ou por conta vencida (e liberação pontual da próxima venda).
+- **Contas a Receber:** aba para ver quem deve e dar baixa (receber), integral ou parcial. Na baixa
+  parcial, o valor abate a dívida das vendas selecionadas, da mais vencida para a mais nova. O cliente
+  pode pagar parte da conta como um todo, não só uma venda específica.
+- **Convênios de vencimento:** em vez de um "dia fixo", você cria convênios (ex.: "vence todo dia 10 do
+  mês seguinte" ou "30 dias após a compra"), com faixas por dia da compra. O cliente escolhe o convênio
+  no cadastro.
+- **Recebimento de fiado só na aba Receber:** na tela de Pedidos, a venda a prazo aparece com o selo
+  "A Prazo" (sem receber por lá), evitando receber por engano antes do prazo.
+- **Fiado no caixa:** a venda a prazo aparece na movimentação e no fechamento do caixa, mas não entra na
+  conferência (o dinheiro só conta quando a conta é recebida).
+- **Formas de pagamento fixas:** Dinheiro, PIX, Cartão de Crédito, Cartão de Débito e A Prazo, ligadas
+  por toggle. Cards de pagamento redesenhados e telas de Clientes padronizadas com o resto do painel.
