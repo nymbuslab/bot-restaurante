@@ -351,8 +351,9 @@ async function vendasDoCliente(dir, clienteId, { aberto = true } = {}) {
 
 // Dá baixa (recebimento) em uma ou mais contas a prazo. `pedidoIds` = vendas a
 // baixar; `forma` = forma do recebimento (canônica, nunca "A Prazo"). Sem
-// `valor` = baixa INTEGRAL de cada venda (do restante). Com `valor` = baixa
-// PARCIAL (só faz sentido p/ 1 venda). `comCaixa` (Completo) → lança um
+// `valor` = baixa INTEGRAL (quita cada venda selecionada). Com `valor` = baixa
+// PARCIAL: abate o valor da dívida das vendas selecionadas, da mais vencida p/ a
+// mais nova (o cliente abate da conta como um todo). `comCaixa` (Completo) → lança um
 // movimento de recebimento no caixa aberto por venda; sem caixa (Essencial) só
 // quita. Tudo numa transação (nada fica meio-baixado). Grava o log em
 // `fiado_baixas` e marca `recebido_em` quando a venda quita.
@@ -369,10 +370,7 @@ async function baixar(dir, opts) {
   if (!forma || /a\s*prazo|fiado/i.test(forma)) throw new Error("Escolha a forma do recebimento.");
   const parcial = o.valor != null && o.valor !== "";
   const valorParcial = Math.round((Number(o.valor) || 0) * 100) / 100;
-  if (parcial) {
-    if (ids.length > 1) throw new Error("A baixa parcial é de uma venda por vez.");
-    if (!(valorParcial > 0)) throw new Error("Informe um valor válido.");
-  }
+  if (parcial && !(valorParcial > 0)) throw new Error("Informe um valor válido.");
 
   const client = await db.pool.connect();
   try {
@@ -394,22 +392,30 @@ async function baixar(dir, opts) {
       caixaId = cx.rows[0].id;
     }
 
+    // Busca as vendas selecionadas em ORDEM (mais vencida/antiga primeiro) e trava.
+    // Numa baixa PARCIAL o valor é abatido da dívida da mais antiga p/ a mais nova
+    // (o cliente abate da conta como um todo, não de uma venda específica). Numa
+    // baixa INTEGRAL cada venda selecionada é quitada.
+    const pq = await client.query(
+      `SELECT id, total, COALESCE(valor_recebido,0) AS valor_recebido, cliente_id
+         FROM pedidos
+        WHERE empresa_id = $1 AND id = ANY($2::bigint[])
+          AND a_prazo = true AND recebido_em IS NULL AND status <> 'cancelado'
+        ORDER BY vencimento ASC NULLS LAST, id ASC
+        FOR UPDATE`,
+      [empId, ids]
+    );
+
     let somaBaixada = 0;
     const quitados = [];
-    for (const pid of ids) {
-      const pq = await client.query(
-        "SELECT id, total, COALESCE(valor_recebido,0) AS valor_recebido, recebido_em, a_prazo, cliente_id FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
-        [empId, pid]
-      );
-      const p = pq.rows[0];
-      if (!p) throw new Error("Venda #" + pid + " não encontrada.");
-      if (!p.a_prazo) throw new Error("A venda #" + pid + " não é a prazo.");
-      if (p.recebido_em) continue; // já quitada (corrida/lote tolerante) — ignora
+    let restanteValor = parcial ? valorParcial : null; // null = integral (quita cada venda)
+    for (const p of pq.rows) {
+      if (parcial && restanteValor <= 0.005) break; // valor parcial já distribuído
       const total = Math.round((Number(p.total) || 0) * 100) / 100;
       const jaRecebido = Math.round((Number(p.valor_recebido) || 0) * 100) / 100;
       const restante = Math.round((total - jaRecebido) * 100) / 100;
       if (restante <= 0) continue;
-      const pago = parcial ? Math.min(valorParcial, restante) : restante;
+      const pago = parcial ? Math.min(restante, restanteValor) : restante;
       if (pago <= 0) continue;
 
       let movId = null;
@@ -417,7 +423,7 @@ async function baixar(dir, opts) {
         const mv = await client.query(
           `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, valor_pago, troco)
            VALUES ($1, $2, 'recebimento', $3, $4, $5, $4, 0) RETURNING id`,
-          [caixaId, empId, forma, pago, pid]
+          [caixaId, empId, forma, pago, p.id]
         );
         movId = mv.rows[0].id;
       }
@@ -426,16 +432,18 @@ async function baixar(dir, opts) {
       const quitou = restanteDepois <= 0.005;
       await client.query(
         "UPDATE pedidos SET valor_recebido = $3, recebido_em = CASE WHEN $4 THEN now() ELSE recebido_em END WHERE empresa_id = $1 AND id = $2",
-        [empId, pid, novoRecebido, quitou]
+        [empId, p.id, novoRecebido, quitou]
       );
       await client.query(
         `INSERT INTO fiado_baixas (empresa_id, pedido_id, cliente_id, valor, forma_pagamento, restante, caixa_movimento_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [empId, pid, p.cliente_id, pago, forma, restanteDepois, movId]
+        [empId, p.id, p.cliente_id, pago, forma, restanteDepois, movId]
       );
       somaBaixada = Math.round((somaBaixada + pago) * 100) / 100;
-      if (quitou) quitados.push(pid);
+      if (parcial) restanteValor = Math.round((restanteValor - pago) * 100) / 100;
+      if (quitou) quitados.push(p.id);
     }
+    if (!pq.rows.length) throw new Error("Nenhuma venda a prazo em aberto entre as selecionadas.");
 
     await client.query("COMMIT");
     return { ok: true, total: somaBaixada, quitados, comCaixa: !!caixaId };

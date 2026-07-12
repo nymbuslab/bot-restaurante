@@ -7189,7 +7189,7 @@ function renderFiadoModal() {
         <div class="campo-prefixo fiado-valor-campo"><span class="campo-prefixo-moeda">R$</span><input id="fiadoValor" type="text" inputmode="numeric" placeholder="Tudo" /></div>
         <button type="button" class="primario" id="fiadoReceberBtn">Receber</button>
       </div>
-      <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber tudo. Para receber só uma parte, escolha uma única venda e digite o valor.</p>
+      <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber tudo. Para abater só uma parte, digite o valor. Ele é aplicado nas vendas selecionadas, da mais vencida para a mais nova.</p>
     </div>`;
   }
   corpo.innerHTML = html;
@@ -7230,7 +7230,6 @@ async function fiadoReceber() {
   if (!fiadoFormaSel) { toast("Escolha a forma do recebimento.", "erro"); return; }
   const valor = window.Dinheiro ? Dinheiro.valor("fiadoValor") : 0;
   const parcial = valor > 0;
-  if (parcial && sel.length > 1) { toast("Para receber só uma parte, selecione uma única venda.", "erro"); return; }
   const body = { pedidoIds: sel, forma: fiadoFormaSel };
   if (parcial) body.valor = valor;
   const btn = $("fiadoReceberBtn"); if (btn) { btn.disabled = true; btn.textContent = "Recebendo..."; }
