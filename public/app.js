@@ -6814,6 +6814,18 @@ function atualizarLiberar() {
 
 const fmtCepCli = (v) => { const d = (v || "").replace(/\D/g, ""); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5, 8)}` : d; };
 
+// Popula o <select> de convênio do cadastro a partir de configAtual.convenios e
+// deixa `selecionadoId` marcado (ou "Sem convênio").
+function popularConvenioSelect(selecionadoId) {
+  const sel = $("cliConvenio");
+  if (!sel) return;
+  const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios : [];
+  sel.innerHTML = '<option value="">Sem convênio</option>' + lista.map((c) =>
+    `<option value="${escapar(c.id)}">${escapar(c.nome) || "Sem nome"}</option>`
+  ).join("");
+  sel.value = selecionadoId || "";
+}
+
 function abrirClienteModal(id) {
   cliEditando = id || null;
   cliClienteAtual = null;
@@ -6821,7 +6833,8 @@ function abrirClienteModal(id) {
   $("cliErro").hidden = true; $("cliErro").textContent = "";
   $("cliExcluirBtn").hidden = !id;
   ["cliNome", "cliApelido", "cliDoc", "cliIe", "cliTel", "cliCep", "cliLogradouro",
-   "cliNumero", "cliBairro", "cliComplemento", "cliCidade", "cliUf", "cliDiaVenc"].forEach((f) => { if ($(f)) $(f).value = ""; });
+   "cliNumero", "cliBairro", "cliComplemento", "cliCidade", "cliUf"].forEach((f) => { if ($(f)) $(f).value = ""; });
+  popularConvenioSelect("");
   Dinheiro.setValor("cliLimite", 0);
   $("cliGasto").value = "R$ 0,00";
   $("cliSaldo").value = "R$ 0,00";
@@ -6855,7 +6868,7 @@ async function preencherCliente(id) {
     $("cliCidade").value = c.cidade || "";
     $("cliUf").value = c.uf || "";
     Dinheiro.setValor("cliLimite", c.limiteCredito || 0);
-    $("cliDiaVenc").value = c.diaVencimento || "";
+    popularConvenioSelect(c.convenioId || "");
     $("cliBloqLimite").checked = !!c.bloquearLimite;
     $("cliBloqVenc").checked = !!c.bloquearVencimento;
     const rf = c.resumoFiado || { gasto: 0, saldo: c.limiteCredito || 0 };
@@ -6884,7 +6897,7 @@ function coletarCliente() {
     cidade: $("cliCidade").value.trim(),
     uf: $("cliUf").value.trim().toUpperCase(),
     limiteCredito: Dinheiro.valor("cliLimite"),
-    diaVencimento: parseInt($("cliDiaVenc").value, 10) || null,
+    convenioId: $("cliConvenio").value,
     bloquearLimite: $("cliBloqLimite").checked,
     bloquearVencimento: $("cliBloqVenc").checked,
   };
@@ -6974,7 +6987,6 @@ function fecharClienteModal() {
   Dinheiro.mascarar("cliLimite");
   if ($("cliDoc")) $("cliDoc").addEventListener("input", (e) => { e.target.value = Documento.formatarDocumento(e.target.value, cliTipoAtual); validarDocInline(); });
   if ($("cliTel")) $("cliTel").addEventListener("input", (e) => { e.target.value = Documento.formatarTelefone(e.target.value); });
-  if ($("cliDiaVenc")) $("cliDiaVenc").addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 2); });
   if (window.EnderecoCep) EnderecoCep.ligarBuscaCep({ cep: "cliCep", logradouro: "cliLogradouro", numero: "cliNumero", bairro: "cliBairro", cidade: "cliCidade", uf: "cliUf" });
   $("cliBloqLimite").addEventListener("change", atualizarLiberar);
   $("cliBloqVenc").addEventListener("change", atualizarLiberar);

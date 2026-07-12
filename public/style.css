@@ -1589,7 +1589,7 @@ button:disabled {
 /* Densidade do formulário de cliente (muitos campos): menos altura, menos rolagem. */
 .cli-form .campo { margin-bottom: 9px; }
 .cli-form .campo label { margin-bottom: 3px; }
-.cli-form .campo input { padding: 8px 12px; }
+.cli-form .campo input, .cli-form .campo select { padding: 8px 12px; }
 /* Campos estreitos: precisam da mesma especificidade de `.linha > .campo`
    (0,2,0) + a classe, senão o flex:1/min-width:140px base vence. min-width:0
    deixa encolher em telas pequenas (sem barra de rolagem horizontal). */
