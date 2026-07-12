@@ -184,7 +184,7 @@ detalhe_fechamento (jsonb: cédulas contadas, lançamentos eletrônicos,
 **Tabela `caixa_movimentos`**:
 
 ```text
-id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'cancelamento'|'estorno'|'sangria'|'suprimento'),
+id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'cancelamento'|'estorno'|'sangria'|'suprimento'|'venda_prazo'),
 forma_pagamento (só recebimento), valor (numeric; LÍQUIDO que entra na gaveta),
 pedido_id (→pedidos, null), mesa_id (→mesas, null), descricao (motivo de sangria/suprimento),
 valor_pago (numeric, null; quanto o cliente ENTREGOU), troco (numeric, null; troco devolvido),
@@ -225,10 +225,17 @@ cliente_id (→clientes, on delete set null), a_prazo (bool default false),
 vencimento (date; calculado na venda pelo Convênio do cliente — foto), valor_recebido (numeric default 0)
 ```
 
-- **Nasce** com `a_prazo=true`, `cliente_id` preenchido, `recebido_em=NULL` e **sem**
-  `caixa_movimentos` (a venda a prazo não entra no caixa na hora). Origem PDV Balcão
-  (`venderAPrazo`) ou Mesa (`fecharMesaAPrazo`). `Valor gasto`/`Saldo` do cliente são
+- **Nasce** com `a_prazo=true`, `cliente_id` preenchido, `recebido_em=NULL`. Origem PDV
+  Balcão (`venderAPrazo`) ou Mesa (`fecharMesaAPrazo`). Se há caixa aberto (Completo), lança
+  um `caixa_movimentos` **`venda_prazo`** (INFORMATIVO): aparece na movimentação e no relatório
+  de fechamento, mas **não conta na conferência** (`caixa-calc.resumoCaixa` soma em `vendasPrazo`,
+  fora dos totais) — o dinheiro só entra na baixa. `Valor gasto`/`Saldo` do cliente são
   **derivados** (soma de `total - valor_recebido` das vendas a prazo em aberto).
+- **Recebimento é EXCLUSIVO da aba Receber** (Clientes). `caixa.receberPedido` **rejeita**
+  `a_prazo`; na tela Pedidos o fiado tem selo "A Prazo" (sem botão de receber). `fiado.baixar`
+  faz o recebimento: **integral** (quita cada venda selecionada) ou **parcial** (abate o valor
+  da dívida das vendas selecionadas, da mais vencida p/ a mais nova, distribuindo entre elas).
+  A baixa entra no caixa do dia como `recebimento` (só no Completo) + grava `fiado_baixas`.
 
 ### Convênios de vencimento
 
