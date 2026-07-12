@@ -1552,7 +1552,21 @@ button:disabled {
 /* Modal de cadastro/edição — largura dos formulários da plataforma (como o editor
    de item). A dupla classe vence o `max-width: 360px` do .modal-caixa base. */
 .modal-caixa.cli-modal { width: 95%; max-width: 720px; }
-.cli-form { padding: 4px 2px; }
+/* Modais da tela de Clientes (cadastro/fiado/convênio) seguem o MESMO padrão dos
+   demais (editor de item, detalhe do pedido): sem padding próprio do modal (o
+   header/corpo/rodapé cuidam do espaço), altura limitada e rolagem INTERNA. Isso
+   mata a "sobra" no topo (antes: 28px do modal + 18px do header) e a barra de
+   rolagem da página quando o conteúdo passa por poucos px. */
+.modal-caixa.cli-modal,
+.modal-caixa.fiado-modal,
+.modal-caixa.conv-modal {
+  padding: 0;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.cli-form { padding: 16px 24px; }
 .cli-tipo-seg {
   display: flex;
   padding: 4px;
@@ -1616,8 +1630,8 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 18px;
-  padding-top: 16px;
+  flex-shrink: 0;
+  padding: 14px 24px;
   border-top: 1px solid var(--border-subtle);
 }
 .cli-rodape-dir { display: flex; gap: 10px; margin-left: auto; }
@@ -1654,7 +1668,7 @@ button:disabled {
 
 /* Modal da conta do cliente */
 .modal-caixa.fiado-modal { width: 95%; max-width: 620px; }
-.fiado-corpo { padding: 6px 2px 2px; }
+.fiado-corpo { padding: 16px 24px; }
 .fiado-vendas { display: flex; flex-direction: column; gap: 10px; max-height: 46vh; overflow-y: auto; padding-right: 2px; }
 .fiado-v {
   border: 1px solid var(--border);
@@ -1960,7 +1974,7 @@ button:disabled {
 
 /* Editor de convênio (modal) */
 .modal-caixa.conv-modal { width: 95%; max-width: 640px; }
-.conv-form { padding: 4px 2px; }
+.conv-form { padding: 16px 24px; }
 .conv-form > .campo { margin-bottom: 14px; }
 .conv-faixas-head, .conv-faixa {
   display: grid;
