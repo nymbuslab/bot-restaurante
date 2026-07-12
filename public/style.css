@@ -1881,14 +1881,19 @@ button:disabled {
 /* Formas de pagamento: cards individuais em grade (liga/desliga). */
 .cfg-pagamentos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
 }
-.cfg-pag-card {
+/* Card de forma de pagamento: horizontal e espaçoso — ícone + nome à esquerda,
+   toggle à direita. Altura uniforme; estado ligado com realce sutil.
+   Seletor com `.cfg-pagamentos` (0,2,0) para VENCER `.campo label` (0,1,1), que
+   senão força `display:block` e empilha os filhos (o card é um <label> em .campo). */
+.cfg-pagamentos .cfg-pag-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 14px;
+  min-height: 64px;
+  padding: 13px 18px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1901,8 +1906,8 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   border-radius: 10px;
   background: var(--bg-surface);
@@ -1911,9 +1916,80 @@ button:disabled {
 }
 .cfg-pag-card.on .cfg-pag-ico { background: var(--accent); color: #fff; }
 .cfg-pag-texto { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.cfg-pag-nome { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.cfg-pag-sub { font-size: 12px; color: var(--text-secondary); }
+/* text-transform/letter-spacing: reset — o card é um <label> dentro de .campo e
+   herdaria o UPPERCASE de `.campo label`; o nome da forma vai em caixa natural. */
+.cfg-pag-nome { font-size: 15px; font-weight: 600; color: var(--text-primary); text-transform: none; letter-spacing: normal; }
+.cfg-pag-sub { font-size: 12px; color: var(--text-secondary); text-transform: none; letter-spacing: normal; line-height: 1.35; }
 .cfg-pag-card .switch { flex-shrink: 0; }
+.cfg-pag-card .switch { flex-shrink: 0; }
+
+/* ---- Convênios (regras de vencimento do fiado) ---- */
+.cfg-convenios-secao { margin-top: 22px; }
+.cfg-secao-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.cfg-secao-head h3 { margin: 0; font-size: 15px; color: var(--text-primary); }
+.cfg-secao-head .cfg-secao-sub { margin: 2px 0 0; }
+.cfg-secao-head button { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.conv-lista { display: flex; flex-direction: column; gap: 10px; }
+.conv-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.conv-item-info { flex: 1; min-width: 0; }
+.conv-item-nome { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.conv-item-resumo { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.45; }
+.conv-item-acoes { display: flex; gap: 6px; flex: none; }
+.conv-acao {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.conv-acao:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+.conv-acao.perigo:hover { color: var(--error); border-color: var(--error); }
+.conv-vazio {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  padding: 30px 20px; color: var(--text-secondary);
+  border: 1px dashed var(--border); border-radius: var(--radius);
+}
+.conv-vazio svg { color: var(--text-disabled); }
+.conv-vazio h4 { margin: 2px 0 0; font-size: 14px; color: var(--text-primary); }
+.conv-vazio p { margin: 0; max-width: 340px; font-size: 12.5px; line-height: 1.5; }
+
+/* Editor de convênio (modal) */
+.modal-caixa.conv-modal { width: 95%; max-width: 640px; }
+.conv-form { padding: 4px 2px; }
+.conv-form > .campo { margin-bottom: 14px; }
+.conv-faixas-head, .conv-faixa {
+  display: grid;
+  grid-template-columns: 56px 56px 1fr 72px 60px 32px;
+  gap: 8px; align-items: center;
+}
+.conv-faixas-head { padding: 0 2px 6px; }
+.conv-faixas-head span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
+.conv-faixas { display: flex; flex-direction: column; gap: 8px; }
+.conv-faixa input, .conv-faixa select {
+  width: 100%; padding: 8px 8px; text-align: center;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-primary); font-size: 13px;
+}
+.conv-faixa select { text-align: left; }
+.conv-faixa input:disabled { opacity: 0.4; cursor: not-allowed; }
+.conv-faixa-del {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer;
+}
+.conv-faixa-del:hover { color: var(--error); border-color: var(--error); }
+.conv-add-faixa { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; }
+.conv-nota { margin: 12px 0 0; font-size: 12px; }
+.conv-erro {
+  margin-top: 12px; padding: 10px 12px; font-size: 13px;
+  background: var(--error-subtle); border: 1px solid var(--error); border-radius: var(--radius-sm); color: var(--text-primary);
+}
+.conv-faixas-scroll { overflow-x: auto; }
 
 /* Botão "Gerar automaticamente" sob o campo de texto do horário */
 /* Texto de horário é gerado automaticamente da tabela (campo read-only). */

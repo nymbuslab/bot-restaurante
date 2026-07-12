@@ -1975,6 +1975,7 @@ function preencherConfig() {
   atualizarChipStatus(realAberto);
   renderHorarios();
   renderPagamentos();
+  renderConvenios();
   renderImpressoraGate(); // sub-aba Impressora: Completo vê o download; Essencial, o upsell
 }
 
@@ -2033,6 +2034,134 @@ function renderPagamentos() {
     })
   );
 }
+
+// ============================================================
+// CONVÊNIOS — regras de vencimento do fiado (aba Pagamentos). Editam
+// configAtual.convenios e persistem no mesmo PUT /api/config. O cálculo do
+// vencimento é do servidor (public/convenios.js). Sem gate de plano.
+// ============================================================
+let convEditando = null; // id em edição, ou null (novo)
+const convVal = (x) => (x === null || x === undefined ? "" : String(x));
+function novoConvId() {
+  const r = (window.crypto && crypto.randomUUID) ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
+  return "cv_" + r;
+}
+
+function renderConvenios() {
+  const cont = $("convenioLista");
+  if (!cont) return;
+  const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios : [];
+  if (!lista.length) {
+    cont.innerHTML = `<div class="conv-vazio">
+      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <h4>Nenhum convênio ainda</h4>
+      <p>Crie um convênio para definir quando o fiado vence. Depois, escolha o convênio no cadastro do cliente.</p>
+    </div>`;
+    return;
+  }
+  cont.innerHTML = `<div class="conv-lista">` + lista.map((c) =>
+    `<div class="conv-item" data-id="${escapar(c.id)}">
+      <div class="conv-item-info">
+        <div class="conv-item-nome">${escapar(c.nome) || "Sem nome"}</div>
+        <div class="conv-item-resumo">${escapar(Convenios.resumoFaixas(c))}</div>
+      </div>
+      <div class="conv-item-acoes">
+        <button type="button" class="conv-acao" data-edit="${escapar(c.id)}" aria-label="Editar convênio">${ICO_EDIT}</button>
+        <button type="button" class="conv-acao perigo" data-del="${escapar(c.id)}" aria-label="Excluir convênio">${ICO_LIXEIRA}</button>
+      </div>
+    </div>`
+  ).join("") + `</div>`;
+  cont.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => abrirConvenioModal(b.dataset.edit)));
+  cont.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => excluirConvenio(b.dataset.del)));
+}
+
+function addFaixaRow(f) {
+  f = f || { de: "", ate: "", tipo: "fixo", valor: "", meses: 0 };
+  const row = document.createElement("div");
+  row.className = "conv-faixa";
+  const dias = f.tipo === "dias";
+  row.innerHTML =
+    `<input data-cf="de" type="text" inputmode="numeric" maxlength="2" value="${escapar(convVal(f.de))}" aria-label="Dia inicial" />` +
+    `<input data-cf="ate" type="text" inputmode="numeric" maxlength="2" value="${escapar(convVal(f.ate))}" aria-label="Dia final" />` +
+    `<select data-cf="tipo" aria-label="Tipo"><option value="fixo"${dias ? "" : " selected"}>= dia fixo</option><option value="dias"${dias ? " selected" : ""}>+ dias</option></select>` +
+    `<input data-cf="valor" type="text" inputmode="numeric" maxlength="3" value="${escapar(convVal(f.valor))}" aria-label="Valor" />` +
+    `<input data-cf="meses" type="text" inputmode="numeric" maxlength="2" value="${escapar(convVal(f.meses))}" aria-label="Mês" />` +
+    `<button type="button" class="conv-faixa-del" aria-label="Remover faixa">${ICO_LIXEIRA}</button>`;
+  $("convFaixas").appendChild(row);
+  const tipoSel = row.querySelector('[data-cf="tipo"]');
+  const mesesInp = row.querySelector('[data-cf="meses"]');
+  const syncMeses = () => { const d = tipoSel.value === "dias"; mesesInp.disabled = d; if (d) mesesInp.value = "0"; };
+  tipoSel.addEventListener("change", syncMeses);
+  syncMeses();
+  row.querySelector(".conv-faixa-del").addEventListener("click", () => row.remove());
+  row.querySelectorAll('input[inputmode="numeric"]').forEach((inp) =>
+    inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, ""); })
+  );
+}
+
+function lerFaixasDoDOM() {
+  return Array.from(document.querySelectorAll("#convFaixas .conv-faixa")).map((row) => {
+    const tipo = row.querySelector('[data-cf="tipo"]').value === "dias" ? "dias" : "fixo";
+    const num = (sel) => parseInt(row.querySelector(sel).value, 10) || 0;
+    return { de: num('[data-cf="de"]'), ate: num('[data-cf="ate"]'), tipo, valor: num('[data-cf="valor"]'), meses: tipo === "dias" ? 0 : num('[data-cf="meses"]') };
+  });
+}
+
+function abrirConvenioModal(id) {
+  convEditando = id || null;
+  const c = convEditando ? (configAtual.convenios || []).find((x) => x.id === convEditando) : null;
+  $("convenio-titulo").textContent = convEditando ? "Editar convênio" : "Novo convênio";
+  $("convErro").hidden = true; $("convErro").textContent = "";
+  $("convNome").value = c ? (c.nome || "") : "";
+  $("convFaixas").innerHTML = "";
+  const faixas = (c && Array.isArray(c.faixas) && c.faixas.length) ? c.faixas : [{ de: 1, ate: 31, tipo: "fixo", valor: "", meses: 1 }];
+  faixas.forEach((f) => addFaixaRow(f));
+  $("convenio-overlay").style.display = "flex";
+  setTimeout(() => $("convNome").focus(), 30);
+}
+
+function fecharConvenioModal() { $("convenio-overlay").style.display = "none"; }
+
+async function salvarConvenio() {
+  const obj = { id: convEditando || novoConvId(), nome: $("convNome").value.trim(), faixas: lerFaixasDoDOM() };
+  const erro = Convenios.validarConvenio(obj);
+  if (erro) { $("convErro").textContent = erro; $("convErro").hidden = false; return; }
+  const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios.slice() : [];
+  const idx = lista.findIndex((c) => c.id === obj.id);
+  if (idx >= 0) lista[idx] = obj; else lista.push(obj);
+  const btn = $("convSalvar"); btn.disabled = true; btn.textContent = "Salvando...";
+  const bkp = configAtual.convenios;
+  configAtual.convenios = lista;
+  const r = await api("PUT", "/api/config", configAtual);
+  btn.disabled = false; btn.textContent = "Salvar convênio";
+  if (!r || !r.ok) { configAtual.convenios = bkp; $("convErro").textContent = "Não foi possível salvar. Tente de novo."; $("convErro").hidden = false; return; }
+  fecharConvenioModal();
+  renderConvenios();
+  toast("Convênio salvo.", "sucesso");
+}
+
+async function excluirConvenio(id) {
+  const c = (configAtual.convenios || []).find((x) => x.id === id);
+  const ok = await confirmar("Excluir convênio?", `"${(c && c.nome) || "Convênio"}" será removido. Clientes que usam esse convênio ficam sem vencimento nas próximas vendas (contas já lançadas não mudam).`, "Excluir");
+  if (!ok) return;
+  const bkp = configAtual.convenios;
+  configAtual.convenios = (configAtual.convenios || []).filter((x) => x.id !== id);
+  const r = await api("PUT", "/api/config", configAtual);
+  if (!r || !r.ok) { configAtual.convenios = bkp; toast("Não foi possível excluir.", "erro"); return; }
+  renderConvenios();
+  toast("Convênio excluído.", "sucesso");
+}
+
+(function wireConvenios() {
+  if (!$("btnNovoConvenio")) return;
+  $("btnNovoConvenio").addEventListener("click", () => abrirConvenioModal(null));
+  $("btnAddFaixa").addEventListener("click", () => addFaixaRow(null));
+  $("convSalvar").addEventListener("click", salvarConvenio);
+  $("convCancelar").addEventListener("click", fecharConvenioModal);
+  $("convFechar").addEventListener("click", fecharConvenioModal);
+  $("convenio-overlay").addEventListener("click", (e) => { if (e.target === $("convenio-overlay")) fecharConvenioModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("convenio-overlay").style.display === "flex") fecharConvenioModal(); });
+})();
 
 // Recalcula AO VIVO o texto de horário (campo read-only) e o badge a partir da
 // tabela de horários + toggle. O texto é gerado automaticamente — sem botão.
