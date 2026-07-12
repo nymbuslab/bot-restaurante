@@ -66,8 +66,9 @@
   }
 
   function _slug(nome) {
-    return "cv_" + String(nome || "conv").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "cv_conv";
+    const base = String(nome || "conv").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+    return "cv_" + (base || "conv");
   }
 
   // PURO: saneia a lista p/ persistir em config.convenios. Descarta inválidos, coage

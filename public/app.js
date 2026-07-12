@@ -2099,7 +2099,9 @@ function addFaixaRow(f) {
   );
 }
 
-function lerFaixasDoDOM() {
+// Nome específico (NÃO `lerFaixasDoDOM` — já existe uma p/ o frete por raio; funções
+// homônimas no mesmo escopo se sobrescrevem e a última vence).
+function lerFaixasConvenioDoDOM() {
   return Array.from(document.querySelectorAll("#convFaixas .conv-faixa")).map((row) => {
     const tipo = row.querySelector('[data-cf="tipo"]').value === "dias" ? "dias" : "fixo";
     const num = (sel) => parseInt(row.querySelector(sel).value, 10) || 0;
@@ -2123,7 +2125,7 @@ function abrirConvenioModal(id) {
 function fecharConvenioModal() { $("convenio-overlay").style.display = "none"; }
 
 async function salvarConvenio() {
-  const obj = { id: convEditando || novoConvId(), nome: $("convNome").value.trim(), faixas: lerFaixasDoDOM() };
+  const obj = { id: convEditando || novoConvId(), nome: $("convNome").value.trim(), faixas: lerFaixasConvenioDoDOM() };
   const erro = Convenios.validarConvenio(obj);
   if (erro) { $("convErro").textContent = erro; $("convErro").hidden = false; return; }
   const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios.slice() : [];

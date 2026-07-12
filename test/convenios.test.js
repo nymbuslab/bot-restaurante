@@ -109,3 +109,23 @@ test("resumoFaixas: texto legível", () => {
   const s = resumoFaixas(cv([{ de: 1, ate: 31, tipo: "fixo", valor: 10, meses: 1 }]));
   assert.match(s, /10/);
 });
+
+test("resumoFaixas: ramo dias (N dias após a compra)", () => {
+  const s = resumoFaixas(cv([{ de: 1, ate: 31, tipo: "dias", valor: 30, meses: 0 }]));
+  assert.match(s, /30 dias/);
+});
+
+test("normalizarConvenios: desambigua ids colididos (mesmo nome → ids distintos)", () => {
+  const out = normalizarConvenios([
+    { nome: "Todo 10", faixas: [{ de: 1, ate: 31, tipo: "fixo", valor: 10, meses: 1 }] },
+    { nome: "Todo 10", faixas: [{ de: 1, ate: 31, tipo: "fixo", valor: 10, meses: 1 }] },
+  ]);
+  assert.strictEqual(out.length, 2);
+  assert.notStrictEqual(out[0].id, out[1].id);
+});
+
+test("normalizarConvenios: nome só com símbolos ainda gera id não vazio", () => {
+  const out = normalizarConvenios([{ nome: "@@@", faixas: [{ de: 1, ate: 31, tipo: "fixo", valor: 10, meses: 1 }] }]);
+  assert.strictEqual(out.length, 1);
+  assert.match(out[0].id, /^cv_.+/); // não fica "cv_" pelado
+});
