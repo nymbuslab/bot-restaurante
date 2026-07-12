@@ -3378,9 +3378,10 @@ function tagTipo(p) {
 function seloPagamento(p) {
   if (p.status === "cancelado") return '<span class="selo-pag selo-cancelado">Cancelado</span>';
   if (planoAtual !== "completo") return "";
-  return p.recebidoEm
-    ? '<span class="selo-pag selo-pago">Recebido</span>'
-    : '<span class="selo-pag selo-areceber">A receber</span>';
+  if (p.recebidoEm) return '<span class="selo-pag selo-pago">Recebido</span>';
+  // Fiado: selo próprio "A Prazo" (recebido só na aba Receber, não aqui).
+  if (p.aPrazo) return '<span class="selo-pag selo-aprazo">A Prazo</span>';
+  return '<span class="selo-pag selo-areceber">A receber</span>';
 }
 
 // Canal de origem do pedido (inferido, sem campo dedicado no banco):
@@ -4005,6 +4006,12 @@ function montarAcoes(p) {
       const nota = document.createElement("span");
       nota.className = "pedido-nota-mesa";
       nota.textContent = "Recebimento pela aba Mesas";
+      cont.appendChild(nota);
+    } else if (p.aPrazo) {
+      // Fiado é recebido só na aba Clientes > Receber (respeita vencimento, parcial, log).
+      const nota = document.createElement("span");
+      nota.className = "pedido-nota-mesa";
+      nota.textContent = "Recebimento pela aba Receber";
       cont.appendChild(nota);
     } else {
       const extra = document.createElement("button");

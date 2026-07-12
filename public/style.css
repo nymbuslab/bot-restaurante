@@ -5232,6 +5232,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .selo-pag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; vertical-align: 1px; white-space: nowrap; }
 .selo-pago { background: var(--success-subtle); color: var(--success); }
 .selo-areceber { background: var(--warning-subtle); color: var(--warning); }
+.selo-aprazo { background: var(--accent-subtle); color: var(--accent-fg); }
 .selo-cancelado { background: var(--error-subtle); color: var(--error); }
 
 /* Botão de cancelar item no modal de pedido */

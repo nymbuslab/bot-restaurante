@@ -109,13 +109,16 @@ async function receberPedido(dir, pedidoId, opts) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT id, recebido_em, total, origem FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, recebido_em, total, origem, a_prazo FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
     // Mesa se recebe na aba Mesas (com taxa de serviço/fechamento). Trava no servidor,
     // não só no front — evita desencontrar a conta da mesa por requisição forjada.
     if (ped.rows[0].origem === "mesa") throw new Error("Pedido de mesa é recebido na aba Mesas.");
+    // Fiado (a prazo) é recebido SÓ na aba Clientes > Receber (respeita vencimento,
+    // distribui parcial, registra a baixa). Trava no servidor, não só no front.
+    if (ped.rows[0].a_prazo) throw new Error("Venda a prazo é recebida na aba Clientes > Receber.");
     if (ped.rows[0].recebido_em) throw new Error("Pedido já recebido.");
     const total = Math.round((Number(ped.rows[0].total) || 0) * 100) / 100;
     if (Math.abs(soma - total) > 0.01) {

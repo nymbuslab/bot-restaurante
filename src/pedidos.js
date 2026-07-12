@@ -44,6 +44,7 @@ function mapRow(r) {
     impressoEm: r.impresso_em ? new Date(r.impresso_em).toISOString() : null,
     mesaId: r.mesa_id == null ? null : r.mesa_id,
     origem: r.origem || "web",
+    aPrazo: !!r.a_prazo, // venda fiado: recebida SÓ na aba Clientes > Receber (não aqui)
   };
 }
 
