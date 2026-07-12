@@ -222,13 +222,33 @@ Sem gate de plano (Essencial **e** Completo). Uma **conta a receber = o próprio
 
 ```text
 cliente_id (→clientes, on delete set null), a_prazo (bool default false),
-vencimento (date; dia fixo do mês do cliente, calculado na venda), valor_recebido (numeric default 0)
+vencimento (date; calculado na venda pelo Convênio do cliente — foto), valor_recebido (numeric default 0)
 ```
 
 - **Nasce** com `a_prazo=true`, `cliente_id` preenchido, `recebido_em=NULL` e **sem**
   `caixa_movimentos` (a venda a prazo não entra no caixa na hora). Origem PDV Balcão
   (`venderAPrazo`) ou Mesa (`fecharMesaAPrazo`). `Valor gasto`/`Saldo` do cliente são
   **derivados** (soma de `total - valor_recebido` das vendas a prazo em aberto).
+
+### Convênios de vencimento
+
+O vencimento não é mais um "dia fixo" no cliente; vem de um **Convênio** (regra nomeada,
+por restaurante) que o cliente referencia. Estrutura em `config.convenios` (jsonb) e coluna
+`clientes.convenio_id` (migration `20260711120000_cliente_convenio.sql`). O `dia_vencimento`
+antigo fica como legado (migrado por `scripts/migrar-convenios.js`).
+
+```text
+config.convenios[]: { id, nome, faixas: [ { de, ate, tipo:"fixo"|"dias", valor, meses } ] }
+```
+
+- Faixas por **dia da compra** (cobrem 1–31, validado ao salvar). `tipo "fixo"` (=): vence no
+  dia `valor` do mês, deslocado por `meses` (clamp em mês curto). `tipo "dias"` (+): vence
+  `valor` dias após a compra (`meses` ignorado). Sem convênio / dia sem faixa = **sem
+  vencimento** (null; nunca em atraso).
+- Cálculo puro em `public/convenios.js` (`calcularVencimentoConvenio`), aplicado na venda por
+  `src/fiado.js`. O `pedidos.vencimento` é **foto** — mudar o convênio depois não altera
+  contas já lançadas. Editor na aba Pagamentos → seção Convênios. Ver o design em
+  `docs/superpowers/specs/2026-07-11-convenios-vencimento-fiado-design.md`.
 - **Baixa (recebimento, Fase 4 — `fiado.baixar`):** integral ou parcial, em lote. Acumula em
   `valor_recebido`; quando cobre o `total`, seta `recebido_em` (vai p/ "Recebidas"). A baixa
   entra no caixa do dia **só no Completo** (`comCaixa` resolvido no servidor por
