@@ -99,3 +99,16 @@ test("esperadoEletronico: desconta o cancelado eletrônico", () => {
   // recebido elet = 80; cancelado elet = 30 → 50
   assert.equal(esperadoEletronico(r), 50);
 });
+
+test("resumoCaixa: venda a prazo é informativa (não conta na conferência)", () => {
+  const movsFiado = [
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 40 },
+    { tipo: "venda_prazo", forma_pagamento: "A Prazo", valor: 100 }, // NÃO conta
+  ];
+  const r = resumoCaixa({ fundo_troco: 0 }, movsFiado);
+  assert.equal(r.vendasPrazo, 100);
+  assert.equal(r.totalRecebido, 40);            // fiado fora
+  assert.equal(r.recebidoDinheiro, 40);
+  assert.equal(r.esperadoEspecie, 40);          // fundo 0 + 40, sem os 100
+  assert.equal(totalEmCaixa({ fundo_troco: 0 }, r), 40); // fiado não infla o caixa
+});

@@ -491,6 +491,7 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     sangrias: resumo.sangrias || 0,
     cancelamentos,
     totalCancelado: resumo.cancelamentos || 0,
+    vendasPrazo: resumo.vendasPrazo || 0,
     contadoDinheiro,
     eletronicoPorForma,
   });

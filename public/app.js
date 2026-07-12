@@ -2488,6 +2488,7 @@ function renderCaixaAberto(data) {
   const suprimentos = Number(r.suprimentos) || 0;
   const sangrias = Number(r.sangrias) || 0;
   const cancelamentos = Number(r.cancelamentos) || 0;
+  const vendasPrazo = Number(r.vendasPrazo) || 0; // fiado: informativo, não conta
   const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (esperado geral)
   const totalFaturamento = totalRecebido;
 
@@ -2506,21 +2507,22 @@ function renderCaixaAberto(data) {
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
-  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento", estorno: "Estorno" };
+  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento", estorno: "Estorno", venda_prazo: "Venda a prazo" };
   const ehNeg = (t) => t === "sangria" || t === "cancelamento" || t === "estorno";
   const linhasMov = (data.movimentos || []).map((m) => {
     const neg = ehNeg(m.tipo);
-    const rowCls = m.tipo === "recebimento" ? "" : "cx-row-mov" + (neg ? " cx-row-sangria" : "");
-    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno";
-    const num = temPedido ? "#" + (m.numero != null ? m.numero : "—") : "—";
-    const cliente = m.tipo === "recebimento" ? escapar(m.cliente || m.descricao || "—")
+    const prazo = m.tipo === "venda_prazo"; // fiado: informativo, não conta na conferência
+    const rowCls = m.tipo === "recebimento" ? "" : ("cx-row-mov" + (neg ? " cx-row-sangria" : "") + (prazo ? " cx-row-prazo" : ""));
+    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno" || prazo;
+    const num = (temPedido && m.numero != null) ? "#" + m.numero : "—";
+    const cliente = (m.tipo === "recebimento" || prazo) ? escapar(m.cliente || m.descricao || "—")
       : ((m.tipo === "cancelamento" || m.tipo === "estorno") ? escapar(m.cliente || m.descricao || tipoLabel[m.tipo])
         : (m.descricao ? escapar(m.descricao) : "—"));
     const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
     // Pago (entregue) e Troco: só em recebimento COM rastreio (Fase 2+); senão "—".
     const pagoTxt = (m.tipo === "recebimento" && m.valorPago != null) ? "R$ " + fmtBRn(m.valorPago) : "—";
     const trocoTxt = (m.tipo === "recebimento" && m.troco != null && m.troco > 0) ? "R$ " + fmtBRn(m.troco) : "—";
-    const forma = temPedido ? escapar(m.forma || "—") : "—";
+    const forma = (temPedido && m.forma) ? escapar(m.forma) : "—";
     const acao = m.estornavel
       ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
     return `<tr class="${rowCls}">
@@ -2590,6 +2592,7 @@ function renderCaixaAberto(data) {
         <div class="caixa-linha"><span>Valor inicial (troco)</span><span>R$ ${fmtBRn(fundo)}</span></div>
         <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(suprimentos)}</span></div>
         <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
+        ${vendasPrazo > 0 ? `<div class="caixa-linha cx-linha-prazo"><span>Vendas a prazo (não conta)</span><span>R$ ${fmtBRn(vendasPrazo)}</span></div>` : ""}
         <div class="cx-box">
           <span class="cx-box-rotulo">Total Faturamento</span>
           <span class="cx-box-formula">Total de vendas (todas as formas)</span>

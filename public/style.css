@@ -5159,6 +5159,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .cx-tabela .cx-td-num { white-space: nowrap; color: var(--text-secondary); }
 .cx-td-hora { white-space: nowrap; color: var(--text-secondary); }
 .cx-row-sangria td { color: var(--accent-fg); }
+/* Venda a prazo (fiado): informativa, não conta na conferência — atenuada. */
+.cx-row-prazo td { color: var(--text-secondary); }
+.cx-row-prazo .caixa-tab-valor { color: var(--text-secondary); font-style: italic; }
+.cx-linha-prazo { color: var(--text-secondary); font-style: italic; }
 .cx-row-abertura td { color: var(--text-secondary); font-style: italic; }
 /* "Caixas anteriores": respiro do extrato + entrada suave (fade/slide). */
 .cx-hist { margin-top: 16px; animation: cxHistIn .22s ease both; }

@@ -83,6 +83,14 @@
     L.push(linhaValor("Total em Caixa", "R$ " + fmtBR(totalCaixa)));
     L.push(sep("="));
 
+    // VENDAS A PRAZO (fiado) — informativo: aconteceram no turno mas NÃO entram na
+    // conferência (o dinheiro entra na baixa, não agora).
+    if (Number(d.vendasPrazo) > 0) {
+      L.push("VENDAS A PRAZO (FIADO)");
+      L.push(linhaValor("Total (nao conta no fechamento)", "R$ " + fmtBR(d.vendasPrazo)));
+      L.push(sep("="));
+    }
+
     // CANCELAMENTOS (detalhe) — rastro anti-fraude: cada pedido pago cancelado.
     const cancs = Array.isArray(d.cancelamentos) ? d.cancelamentos : [];
     if (cancs.length) {

@@ -2170,12 +2170,15 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       if (formasConfig.length && pagamentosNorm.some((p) => formasConfig.indexOf(p.forma) === -1)) {
         return res.status(400).json({ erro: "Forma de pagamento inválida." });
       }
-      // Venda A Prazo (fiado): forma ÚNICA, exige cliente, NÃO entra no caixa.
+      // Venda A Prazo (fiado): forma ÚNICA, exige cliente. Não conta na conferência
+      // do caixa, mas registra um movimento informativo (venda_prazo) — PDV é Completo
+      // com caixa aberto, então comCaixa=true.
       if (pagamentosNorm.some((p) => formasPag.ehAPrazo(p.forma))) {
         if (pagamentosNorm.length > 1) return res.status(400).json({ erro: "A venda A Prazo não pode ser dividida com outra forma de pagamento." });
         try {
           pedido = await fiado.venderAPrazo(req.tenantDir, {
             clienteId: b.clienteId, cliente: b.cliente, itens, total, desconto, observacao: obs, origem: "pdv",
+            comCaixa: true,
           });
         } catch (e) {
           if (e.code === "FIADO_BLOQUEADO") return res.status(403).json({ erro: e.message, bloqueio: e.bloqueio });
@@ -2534,10 +2537,12 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
     const peds = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
     if (!peds.filter((p) => p.status !== "cancelado").length) return res.status(400).json({ erro: "A mesa não possui pedidos." });
     // Fechamento A PRAZO (fiado): não cobra agora, vincula a conta ao cliente e
-    // libera a mesa SEM movimento no caixa. Não exige caixa aberto.
+    // libera a mesa. Não exige caixa aberto; se houver, registra um movimento
+    // informativo (venda_prazo) que aparece no caixa mas não conta na conferência.
     if (b.aPrazo) {
       try {
-        await fiado.fecharMesaAPrazo(req.tenantDir, mesaId, b.clienteId);
+        const comCaixaMesa = empresas.temCaixa(await empresas.buscarPorSlug(req.slug));
+        await fiado.fecharMesaAPrazo(req.tenantDir, mesaId, b.clienteId, comCaixaMesa);
         return res.json({ ok: true, aPrazo: true, mesa: await mesasDb.buscarPorId(req.tenantDir, mesaId) });
       } catch (e) {
         if (e.code === "FIADO_BLOQUEADO") return res.status(403).json({ erro: e.message, bloqueio: e.bloqueio });

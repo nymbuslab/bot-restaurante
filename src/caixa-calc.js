@@ -10,7 +10,7 @@ function resumoCaixa(caixa, movimentos) {
   // o relatório/extrato mostra a venda E o cancelamento, e o total deduz o cancelado.
   const recebidoPorForma = {}, canceladoPorForma = {};
   let totalRecebido = 0, recebidoDinheiro = 0, suprimentos = 0, sangrias = 0;
-  let cancelamentos = 0, canceladoDinheiro = 0;
+  let cancelamentos = 0, canceladoDinheiro = 0, vendasPrazo = 0;
   for (const m of movimentos || []) {
     const v = Number(m.valor) || 0;
     if (m.tipo === "recebimento") {
@@ -29,6 +29,10 @@ function resumoCaixa(caixa, movimentos) {
       suprimentos += v;
     } else if (m.tipo === "sangria") {
       sangrias += v;
+    } else if (m.tipo === "venda_prazo") {
+      // Venda a prazo (fiado): INFORMATIVO. Aparece no extrato/fechamento, mas
+      // NÃO entra na conferência (o dinheiro não entrou agora; entra na baixa).
+      vendasPrazo += v;
     }
   }
   const fundo = Number(caixa && caixa.fundo_troco) || 0;
@@ -37,6 +41,7 @@ function resumoCaixa(caixa, movimentos) {
   return {
     recebidoPorForma, totalRecebido, recebidoDinheiro, suprimentos, sangrias,
     cancelamentos, canceladoPorForma, canceladoDinheiro, esperadoEspecie,
+    vendasPrazo,
   };
 }
 

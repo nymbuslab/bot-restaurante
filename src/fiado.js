@@ -73,9 +73,25 @@ async function resumoDoCliente(dir, clienteId, limiteCredito) {
   return { gasto: c.gasto, saldo: Math.round((limite - c.gasto) * 100) / 100, vencido: c.vencidas > 0, emAberto: c.abertas };
 }
 
-// Cria a venda a prazo (pedido a_prazo, sem caixa). Valida o crédito do cliente
-// e consome a liberação pontual, tudo numa transação. Baixa de estoque atômica.
-// Lança Error com code:
+// Registra a venda a prazo no caixa aberto (se o tenant tem caixa) como movimento
+// INFORMATIVO 'venda_prazo': aparece na movimentação e no fechamento, mas NÃO conta
+// na conferência (o dinheiro entra na baixa, não agora). Roda dentro da transação do
+// chamador. Sem `comCaixa` (Essencial) ou sem caixa aberto → no-op.
+async function _lancarVendaPrazoNoCaixa(client, empId, comCaixa, valor, pedidoId, descricao) {
+  if (!comCaixa || !(Number(valor) > 0)) return;
+  const cx = await client.query("SELECT id FROM caixas WHERE empresa_id = $1 AND status = 'aberto' LIMIT 1", [empId]);
+  if (!cx.rows[0]) return;
+  await client.query(
+    `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
+     VALUES ($1, $2, 'venda_prazo', 'A Prazo', $3, $4, $5)`,
+    [cx.rows[0].id, empId, valor, pedidoId, descricao || null]
+  );
+}
+
+// Cria a venda a prazo (pedido a_prazo). Valida o crédito do cliente e consome a
+// liberação pontual, tudo numa transação. Baixa de estoque atômica. Se o tenant
+// tem caixa aberto, lança um movimento INFORMATIVO 'venda_prazo' (não conta na
+// conferência). Lança Error com code:
 //   'FIADO_SEM_CLIENTE'  — clienteId ausente
 //   'FIADO_BLOQUEADO'    — limite/vencimento (e.bloqueio = 'limite'|'vencimento')
 //   'ESTOQUE'            — faltou estoque (de store.baixarEstoqueTx)
@@ -125,6 +141,7 @@ async function venderAPrazo(dir, venda) {
     );
     const row = ped.rows[0];
     if (c.liberacao_pontual) await client.query("UPDATE clientes SET liberacao_pontual = false WHERE id = $1", [venda.clienteId]);
+    await _lancarVendaPrazoNoCaixa(client, empId, venda.comCaixa, total, row.id, null);
     await client.query("COMMIT");
     store.sincronizarCardapio(dir, novoCardapio);
     return {
@@ -144,7 +161,7 @@ async function venderAPrazo(dir, venda) {
 // Fecha a mesa "a prazo": marca os pedidos abertos da mesa como a_prazo (vinculados
 // ao cliente, com vencimento), libera a mesa e NÃO gera movimento no caixa. Valida
 // o crédito do cliente pelo total consumido. Não exige caixa aberto (é fiado).
-async function fecharMesaAPrazo(dir, mesaId, clienteId) {
+async function fecharMesaAPrazo(dir, mesaId, clienteId, comCaixa) {
   const empId = await empresaId(dir);
   if (!clienteId) { const e = new Error("Selecione o cliente para fechar a mesa a prazo."); e.code = "FIADO_SEM_CLIENTE"; throw e; }
   const client = await db.pool.connect();
@@ -193,6 +210,7 @@ async function fecharMesaAPrazo(dir, mesaId, clienteId) {
       "UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL WHERE empresa_id = $1 AND id = $2 RETURNING *",
       [empId, mesaId]
     );
+    await _lancarVendaPrazoNoCaixa(client, empId, comCaixa, totalMesa, null, "Mesa " + mesaId);
     await client.query("COMMIT");
     return { mesa: r.rows[0], total: totalMesa, vencimento, cliente: c.nome };
   } catch (e) {
