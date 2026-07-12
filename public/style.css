@@ -1978,14 +1978,18 @@ button:disabled {
 .conv-form > .campo { margin-bottom: 14px; }
 .conv-faixas-head, .conv-faixa {
   display: grid;
-  grid-template-columns: 56px 56px 1fr 72px 60px 32px;
+  /* minmax(0,1fr) na coluna Tipo deixa a grade ENCOLHER pra caber no container
+     (senão estoura por 1-2px e o overflow-x mostra barra à toa no desktop). A
+     última coluna é 34px = largura real do botão de lixeira (32 + 1px de borda
+     de cada lado), senão ele estoura a coluna por 2px. */
+  grid-template-columns: 50px 50px minmax(0, 1fr) 64px 52px 34px;
   gap: 8px; align-items: center;
 }
 .conv-faixas-head { padding: 0 2px 6px; }
 .conv-faixas-head span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
 .conv-faixas { display: flex; flex-direction: column; gap: 8px; }
 .conv-faixa input, .conv-faixa select {
-  width: 100%; padding: 8px 8px; text-align: center;
+  width: 100%; min-width: 0; padding: 8px 8px; text-align: center;
   background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
   color: var(--text-primary); font-size: 13px;
 }
@@ -2003,7 +2007,12 @@ button:disabled {
   margin-top: 12px; padding: 10px 12px; font-size: 13px;
   background: var(--error-subtle); border: 1px solid var(--error); border-radius: var(--radius-sm); color: var(--text-primary);
 }
-.conv-faixas-scroll { overflow-x: auto; }
+/* No desktop a grade cabe (minmax acima) — sem barra. Só em tela bem estreita
+   (celular) a grade ganha largura mínima e rola na horizontal, pra não espremer. */
+@media (max-width: 560px) {
+  .conv-faixas-scroll { overflow-x: auto; }
+  .conv-faixas-head, .conv-faixa { min-width: 420px; }
+}
 
 /* Botão "Gerar automaticamente" sob o campo de texto do horário */
 /* Texto de horário é gerado automaticamente da tabela (campo read-only). */
