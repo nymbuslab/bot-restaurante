@@ -3430,8 +3430,9 @@ function linhaAcoesHtml(p) {
   if (p.status === "cancelado") return `<td class="ped-acoes-cel"></td>`;
   let btns = `<button class="ped-acao-btn" data-acao="reimprimir" data-pid="${p.id}" title="Reimprimir comanda" aria-label="Reimprimir comanda">${ICO_PRINTER}</button>`;
   // Mesa NÃO recebe aqui — é pago na aba Mesas (Fechar Conta/Receber Parcial),
-  // que escolhe a forma, aplica taxa de serviço e faz split.
-  if (!p.recebidoEm && p.origem !== "mesa") {
+  // que escolhe a forma, aplica taxa de serviço e faz split. Fiado tampouco: recebe
+  // só na aba Receber (respeita vencimento/parcial/log) → aqui daria erro do servidor.
+  if (!p.recebidoEm && p.origem !== "mesa" && !p.aPrazo) {
     btns += `<button class="ped-acao-btn" data-acao="receber" data-pid="${p.id}" title="Receber pagamento" aria-label="Receber pagamento">${ICO_MONEY}</button>`;
   }
   return `<td class="ped-acoes-cel"><div class="ped-acoes">${btns}</div></td>`;
@@ -4031,8 +4032,9 @@ function montarAcoes(p) {
   }
 
   // Botão de cancelar pedido — disponível se ainda não cancelado. Para pedido PAGO,
-  // o cancelamento deduz no caixa (com registro) — confirmação reforçada.
-  if (p.status !== "cancelado") {
+  // o cancelamento deduz no caixa (com registro) — confirmação reforçada. Fiado NÃO
+  // cancela aqui (o servidor barra): a conta se desfaz/recebe pela aba Receber.
+  if (p.status !== "cancelado" && !p.aPrazo) {
     const pago = !!p.recebidoEm;
     const btnCancelar = document.createElement("button");
     btnCancelar.className = "btn-cancelar-pedido mini";
@@ -7174,7 +7176,9 @@ function renderFiadoModal() {
     if (log.length) {
       logHtml = `<div class="fiado-v-log">` + log.map((b) =>
         `<span>Recebido ${moedaBR(b.valor)} · ${fiadoDataHora(b.criadoEm)}${Number(b.restante) > 0 ? " · falta " + moedaBR(b.restante) : " · quitado"}</span>`
-      ).join("") + `</div>`;
+      ).join("") +
+        `<button type="button" class="fiado-desfazer" data-fdesfazer="${v.id}">Desfazer último recebimento</button>` +
+        `</div>`;
     }
     html += `<div class="fiado-v${marc ? " sel" : ""}" data-vid="${v.id}">
       <div class="fiado-v-topo">
@@ -7218,6 +7222,7 @@ function renderFiadoModal() {
     atualizarFiadoResumoSel();
   }));
   corpo.querySelectorAll("[data-fprint]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); reimprimirVenda(Number(b.dataset.fprint)); }));
+  corpo.querySelectorAll("[data-fdesfazer]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); fiadoDesfazer(b.dataset.fdesfazer); }));
   if (aberto) {
     corpo.querySelectorAll("[data-fforma]").forEach((b) => b.addEventListener("click", () => {
       fiadoFormaSel = b.dataset.fforma;
@@ -7256,6 +7261,29 @@ async function fiadoReceber() {
   } catch (e) {
     toast(e.message || "Não foi possível registrar o recebimento.", "erro");
     if (btn) { btn.disabled = false; btn.textContent = "Receber"; }
+  }
+}
+
+// Desfaz o último recebimento de uma conta a prazo (uma baixa por clique, a mais
+// recente). A conta volta a "a receber" com o saldo atualizado; no Completo deduz do caixa.
+async function fiadoDesfazer(pedidoId) {
+  const ok = await confirmar(
+    "Desfazer último recebimento?",
+    "O último recebimento desta conta será revertido: a conta volta a ficar em aberto com o saldo atualizado" +
+      (planoAtual === "completo" ? " e o valor é deduzido do caixa aberto." : "."),
+    "Desfazer"
+  );
+  if (!ok) return;
+  try {
+    const r = await api("POST", "/api/fiado/desfazer", { pedidoId });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.erro || "Falha ao desfazer.");
+    toast("Recebimento desfeito.", "sucesso");
+    await abrirFiadoModal(fiadoModalCliente.id, fiadoModalCliente.nome, fiadoModalCliente.aberto);
+    carregarContas(fiadoModalCliente.aberto);
+    if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
+  } catch (e) {
+    toast(e.message || "Não foi possível desfazer o recebimento.", "erro");
   }
 }
 

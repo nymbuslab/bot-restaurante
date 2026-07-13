@@ -476,8 +476,77 @@ async function baixar(dir, opts) {
   }
 }
 
+// Desfaz o ÚLTIMO recebimento (baixa) de uma conta a prazo — uma baixa por vez, da
+// mais recente para trás. Reverte a baixa por completo: devolve `valor_recebido`,
+// apaga a linha de `fiado_baixas`, no Completo deduz do caixa (movimento `estorno`) e
+// reabre a conta (`recebido_em = NULL`). Cobre parcial e integral, PDV e mesa — o buraco
+// que o botão "Estornar" do caixa não alcançava. Só toca o caixa AINDA ABERTO: se o
+// recebimento foi num caixa já fechado, barra (não mexe em caixa fechado).
+async function desfazerRecebimento(dir, pedidoId, comCaixa) {
+  const empId = await empresaId(dir);
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const pq = await client.query(
+      "SELECT id, numero, a_prazo, COALESCE(valor_recebido,0) AS valor_recebido, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, pedidoId]
+    );
+    const ped = pq.rows[0];
+    if (!ped) throw new Error("Pedido não encontrado.");
+    if (!ped.a_prazo) throw new Error("Este pedido não é uma conta a prazo.");
+    if (ped.status === "cancelado") throw new Error("Pedido cancelado.");
+
+    // Última baixa desta conta (a mais recente).
+    const bq = await client.query(
+      "SELECT id, valor, caixa_movimento_id FROM fiado_baixas WHERE empresa_id = $1 AND pedido_id = $2 ORDER BY id DESC LIMIT 1 FOR UPDATE",
+      [empId, pedidoId]
+    );
+    const baixa = bq.rows[0];
+    if (!baixa) throw new Error("Não há recebimento para desfazer nesta conta.");
+    const valor = Math.round((Number(baixa.valor) || 0) * 100) / 100;
+
+    // Completo: reverte o dinheiro do caixa, mas só se o recebimento está no caixa AINDA
+    // aberto (igual ao estorno; não mexe em caixa fechado). Essencial (sem movimento) pula.
+    if (comCaixa && baixa.caixa_movimento_id != null) {
+      const mq = await client.query(
+        "SELECT caixa_id, forma_pagamento, valor FROM caixa_movimentos WHERE id = $1 AND empresa_id = $2 AND tipo = 'recebimento'",
+        [baixa.caixa_movimento_id, empId]
+      );
+      const mov = mq.rows[0];
+      if (mov) {
+        const cx = await client.query(
+          "SELECT id FROM caixas WHERE empresa_id = $1 AND status = 'aberto' LIMIT 1",
+          [empId]
+        );
+        if (!cx.rows[0]) throw new Error("Abra o caixa para desfazer o recebimento.");
+        if (String(mov.caixa_id) !== String(cx.rows[0].id)) {
+          throw new Error("Esse recebimento foi num caixa já fechado. Não é possível desfazer aqui.");
+        }
+        await client.query(
+          `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
+           VALUES ($1, $2, 'estorno', $3, $4, $5, $6)`,
+          [cx.rows[0].id, empId, mov.forma_pagamento, Number(mov.valor) || 0, pedidoId, "Desfazer recebimento a prazo #" + ped.numero]
+        );
+      }
+    }
+
+    await client.query("DELETE FROM fiado_baixas WHERE empresa_id = $1 AND id = $2", [empId, baixa.id]);
+    await client.query(
+      "UPDATE pedidos SET valor_recebido = GREATEST(0, COALESCE(valor_recebido,0) - $3), recebido_em = NULL WHERE empresa_id = $1 AND id = $2",
+      [empId, pedidoId, valor]
+    );
+    await client.query("COMMIT");
+    return { ok: true, valor, comCaixa: !!(comCaixa && baixa.caixa_movimento_id != null) };
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   podeVenderAPrazo, resumoDoCliente,
   venderAPrazo, fecharMesaAPrazo, esquecer,
-  listarContas, vendasDoCliente, baixar,
+  listarContas, vendasDoCliente, baixar, desfazerRecebimento,
 };

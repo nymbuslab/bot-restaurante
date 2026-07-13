@@ -1695,8 +1695,14 @@ button:disabled {
   transition: color 0.12s, border-color 0.12s;
 }
 .fiado-print:hover { color: var(--text-primary); border-color: var(--text-secondary); }
-.fiado-v-log { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-subtle); display: flex; flex-direction: column; gap: 3px; }
+.fiado-v-log { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-subtle); display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
 .fiado-v-log span { font-size: 11.5px; color: var(--text-secondary); }
+.fiado-desfazer {
+  margin-top: 4px; padding: 3px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+  font-size: 11.5px; cursor: pointer; transition: color 0.12s, border-color 0.12s;
+}
+.fiado-desfazer:hover { color: var(--error); border-color: var(--error); }
 
 .fiado-baixa { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
 .fiado-baixa-formas .pdv-ops-tit { display: block; margin-bottom: 10px; }

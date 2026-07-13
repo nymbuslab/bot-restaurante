@@ -1918,6 +1918,20 @@ app.post("/api/fiado/baixar", exigeAuth, async (req, res) => {
   }
 });
 
+// Desfaz o último recebimento (baixa) de uma conta a prazo — reabre a conta e, no
+// Completo, deduz do caixa aberto. Uma baixa por chamada (a mais recente).
+app.post("/api/fiado/desfazer", exigeAuth, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    const comCaixa = empresas.temCaixa(emp);
+    const pedidoId = Number((req.body || {}).pedidoId);
+    if (!pedidoId) return res.status(400).json({ erro: "Informe a venda a desfazer." });
+    res.json(await fiado.desfazerRecebimento(req.tenantDir, pedidoId, comCaixa));
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Não foi possível desfazer o recebimento." });
+  }
+});
+
 // Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
 // `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
 // final + mapeia item → grupo pelo cardápio do tenant.
@@ -1950,6 +1964,11 @@ app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
     const id = Number(req.params.id);
     const pedido = await pedidos.lerPorId(req.tenantDir, id);
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+    // Fiado NÃO se cancela por aqui: cancelar sem reconciliar a dívida (valor_recebido +
+    // fiado_baixas) quebraria o caixa e sumiria com a conta. O desfazer é na aba Receber.
+    if (pedido.aPrazo) {
+      return res.status(400).json({ erro: "Conta a prazo não é cancelada aqui. Use a aba Receber para desfazer o recebimento ou receber a conta." });
+    }
     if (pedido.recebidoEm) {
       // Pedido PAGO: cancela mantendo o rastro e deduz no caixa (exige caixa aberto).
       // Caixa é recurso do Plano Completo → gate de servidor.
