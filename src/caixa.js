@@ -109,16 +109,13 @@ async function receberPedido(dir, pedidoId, opts) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT id, recebido_em, total, origem, a_prazo FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, recebido_em, total, origem FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
     // Mesa se recebe na aba Mesas (com taxa de serviço/fechamento). Trava no servidor,
     // não só no front — evita desencontrar a conta da mesa por requisição forjada.
     if (ped.rows[0].origem === "mesa") throw new Error("Pedido de mesa é recebido na aba Mesas.");
-    // Fiado (a prazo) é recebido SÓ na aba Clientes > Receber (respeita vencimento,
-    // distribui parcial, registra a baixa). Trava no servidor, não só no front.
-    if (ped.rows[0].a_prazo) throw new Error("Venda a prazo é recebida na aba Clientes > Receber.");
     if (ped.rows[0].recebido_em) throw new Error("Pedido já recebido.");
     const total = Math.round((Number(ped.rows[0].total) || 0) * 100) / 100;
     if (Math.abs(soma - total) > 0.01) {
@@ -242,7 +239,7 @@ async function estornarRecebimento(dir, pedidoId) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT numero, recebido_em, status, a_prazo FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT numero, recebido_em, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
@@ -269,29 +266,6 @@ async function estornarRecebimento(dir, pedidoId) {
         `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
          VALUES ($1, $2, 'estorno', $3, $4, $5, $6)`,
         [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Estorno recebimento #" + numero]
-      );
-    }
-    // Fiado: estornar o recebimento também DESFAZ a baixa da conta a prazo, senão o
-    // dinheiro sairia do caixa mas a dívida continuaria quitada (sumiria do controle).
-    // Devolve ao pedido o valor das baixas cujo recebimento está NESTE caixa e apaga
-    // esses registros do log → a conta volta a "a receber" com o saldo correto.
-    if (ped.rows[0].a_prazo) {
-      const bx = await client.query(
-        `SELECT COALESCE(SUM(b.valor),0)::float AS soma
-           FROM fiado_baixas b JOIN caixa_movimentos m ON m.id = b.caixa_movimento_id
-          WHERE b.empresa_id = $1 AND b.pedido_id = $2 AND m.caixa_id = $3 AND m.tipo = 'recebimento'`,
-        [empId, pedidoId, caixa.id]
-      );
-      const devolver = Number(bx.rows[0] && bx.rows[0].soma) || 0;
-      await client.query(
-        `DELETE FROM fiado_baixas b USING caixa_movimentos m
-          WHERE b.caixa_movimento_id = m.id AND b.empresa_id = $1 AND b.pedido_id = $2
-            AND m.caixa_id = $3 AND m.tipo = 'recebimento'`,
-        [empId, pedidoId, caixa.id]
-      );
-      await client.query(
-        "UPDATE pedidos SET valor_recebido = GREATEST(0, COALESCE(valor_recebido,0) - $3) WHERE empresa_id = $1 AND id = $2",
-        [empId, pedidoId, devolver]
       );
     }
     await client.query(
@@ -386,12 +360,8 @@ async function registrarMovimento(dir, { tipo, valor, descricao }) {
 }
 
 async function _movimentos(caixaId) {
-  // JOIN com pedidos p/ trazer `a_prazo`: o resumo separa recebimento de fiado (cobrança
-  // de dívida) das vendas do dia. Movimentos sem pedido (sangria/suprimento) → a_prazo NULL.
   const r = await db.query(
-    `SELECT m.*, p.a_prazo
-       FROM caixa_movimentos m LEFT JOIN pedidos p ON p.id = m.pedido_id
-      WHERE m.caixa_id = $1 ORDER BY m.id ASC`,
+    "SELECT * FROM caixa_movimentos WHERE caixa_id = $1 ORDER BY id ASC",
     [caixaId]
   );
   return r.rows;
@@ -408,7 +378,7 @@ async function resumo(dir) {
   // nº/cliente do pedido (recebimentos) — é o que o dono confere ao olhar o caixa.
   const mov = await db.query(
     `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.valor_pago, m.troco, m.descricao, m.criado_em,
-            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em, p.status, p.a_prazo
+            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em, p.status
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
       WHERE m.caixa_id = $1
@@ -432,7 +402,6 @@ async function resumo(dir) {
     resumo: calc.resumoCaixa(caixa, movimentos),
     movimentos: mov.rows.map((r) => ({
       tipo: r.tipo, pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
-      aPrazo: r.a_prazo === true, // recebimento de conta a prazo (fiado) → rótulo próprio no extrato
       forma: r.forma_pagamento, valor: Number(r.valor) || 0, descricao: r.descricao || "",
       valorPago: r.valor_pago == null ? null : Number(r.valor_pago),
       troco: r.troco == null ? null : Number(r.troco),
@@ -514,16 +483,11 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma, eletronicoPorForma),
     recebidoPorForma: resumo.recebidoPorForma || {},
     canceladoPorForma: resumo.canceladoPorForma || {},
-    // Recebimento de conta a prazo (fiado): separado das vendas no relatório (cobrança de
-    // dívida, não venda do dia), mas conta no Total em Caixa.
-    recebidoPrazoPorForma: resumo.recebidoPrazoPorForma || {},
-    canceladoPrazoPorForma: resumo.canceladoPrazoPorForma || {},
     fundoTroco: Number(caixa.fundo_troco) || 0,
     suprimentos: resumo.suprimentos || 0,
     sangrias: resumo.sangrias || 0,
     cancelamentos,
     totalCancelado: resumo.cancelamentos || 0,
-    vendasPrazo: resumo.vendasPrazo || 0,
     contadoDinheiro,
     eletronicoPorForma,
   });

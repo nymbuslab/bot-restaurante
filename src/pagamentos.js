@@ -5,25 +5,16 @@
 // conjunto fechado: o dono só liga/desliga cada uma. `config.pagamentos`
 // segue sendo um array de strings (compatível com todos os leitores atuais:
 // PDV, Mesa, "Receber", checkout web) — mas agora só com valores canônicos.
-//
-// "A Prazo" é o fiado: a venda não entra no caixa na hora; vira conta a
-// receber vinculada a um cliente. Ver src/fiado.js.
 // ============================================================
 
 // Ordem canônica de exibição (toggles em Configurações seguem esta ordem).
-// "A Prazo" é o fiado: vale só no PDV e na Mesa (excluída do checkout web).
-const FORMAS_PAGAMENTO = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito", "A Prazo"];
-
-// É a forma "A Prazo" (fiado)? Usada no PDV/Mesa/caixa para NÃO tratar como
-// dinheiro nem como eletrônico de gaveta (não gera caixa_movimentos na venda).
-function ehAPrazo(forma) { return /a\s*prazo|fiado/i.test(forma || ""); }
+const FORMAS_PAGAMENTO = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
 
 // Mapeia UMA string (canônica ou legada de texto livre) para as formas
 // canônicas correspondentes. "Cartão" genérico (ex.: "Cartão (na entrega)")
-// vira Crédito + Débito. Retorna [] quando não reconhece (ex.: "Outros").
+// vira Crédito + Débito. Retorna [] quando não reconhece (ex.: "Outros", "A Prazo").
 function _mapear(forma) {
   const f = String(forma || "");
-  if (/a\s*prazo|fiado/i.test(f)) return ["A Prazo"];
   if (/pix/i.test(f)) return ["PIX"];
   if (/dinheiro|esp[eé]cie/i.test(f)) return ["Dinheiro"];
   const credito = /cr[eé]dito/i.test(f);
@@ -51,4 +42,4 @@ function normalizarFormasPagamento(lista) {
   return out.length ? out : ["Dinheiro"];
 }
 
-module.exports = { FORMAS_PAGAMENTO, ehAPrazo, normalizarFormasPagamento };
+module.exports = { FORMAS_PAGAMENTO, normalizarFormasPagamento };

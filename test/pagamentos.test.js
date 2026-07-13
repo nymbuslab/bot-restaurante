@@ -1,19 +1,9 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { FORMAS_PAGAMENTO, ehAPrazo, normalizarFormasPagamento } = require("../src/pagamentos");
+const { FORMAS_PAGAMENTO, normalizarFormasPagamento } = require("../src/pagamentos");
 
-test("FORMAS_PAGAMENTO: vocabulário fixo em ordem canônica (inclui A Prazo)", () => {
-  assert.deepEqual(FORMAS_PAGAMENTO, ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito", "A Prazo"]);
-});
-
-test("ehAPrazo: reconhece 'A Prazo' e 'fiado', ignora as demais", () => {
-  assert.equal(ehAPrazo("A Prazo"), true);
-  assert.equal(ehAPrazo("aprazo"), true);
-  assert.equal(ehAPrazo("Fiado"), true);
-  assert.equal(ehAPrazo("Dinheiro"), false);
-  assert.equal(ehAPrazo("PIX"), false);
-  assert.equal(ehAPrazo(""), false);
-  assert.equal(ehAPrazo(null), false);
+test("FORMAS_PAGAMENTO: vocabulário fixo em ordem canônica", () => {
+  assert.deepEqual(FORMAS_PAGAMENTO, ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"]);
 });
 
 test("normalizarFormasPagamento: mapeia strings legadas → canônicas", () => {
@@ -26,13 +16,13 @@ test("normalizarFormasPagamento: mapeia strings legadas → canônicas", () => {
 
 test("normalizarFormasPagamento: mantém a ordem canônica, não a de entrada", () => {
   assert.deepEqual(
-    normalizarFormasPagamento(["A Prazo", "PIX", "Dinheiro"]),
-    ["Dinheiro", "PIX", "A Prazo"]
+    normalizarFormasPagamento(["Cartão de Débito", "PIX", "Dinheiro"]),
+    ["Dinheiro", "PIX", "Cartão de Débito"]
   );
 });
 
-test("normalizarFormasPagamento: reconhece 'A Prazo' e 'fiado' → A Prazo", () => {
-  assert.deepEqual(normalizarFormasPagamento(["Dinheiro", "fiado"]), ["Dinheiro", "A Prazo"]);
+test("normalizarFormasPagamento: descarta 'A Prazo' (não é mais forma canônica)", () => {
+  assert.deepEqual(normalizarFormasPagamento(["Dinheiro", "A Prazo", "fiado"]), ["Dinheiro"]);
 });
 
 test("normalizarFormasPagamento: crédito e débito específicos", () => {
