@@ -2483,14 +2483,18 @@ function renderCaixaAberto(data) {
   const r = data.resumo;
   const fundo = Number(data.caixa.fundoTroco) || 0;
   const totalRecebido = Number(r.totalRecebido) || 0;
-  const recebidoDinheiro = Number(r.recebidoDinheiro) || 0;
-  const totalCartaoPix = totalRecebido - recebidoDinheiro;
   const suprimentos = Number(r.suprimentos) || 0;
   const sangrias = Number(r.sangrias) || 0;
-  const cancelamentos = Number(r.cancelamentos) || 0;
+  const cancelamentos = Number(r.cancelamentos) || 0; // estornos + cancelamentos (reversões)
   const vendasPrazo = Number(r.vendasPrazo) || 0; // fiado: informativo, não conta
+  // Vendas LÍQUIDAS (recebido − estornos/cancelamentos) — a tela ao vivo espelha o
+  // "Total em Caixa" e o relatório de fechamento. Sem isso, um estorno saía do Total em
+  // Caixa mas o "Vendas por forma"/"Total Faturamento" seguiam no bruto (parecia não contar).
+  const canceladoDinheiro = Number(r.canceladoDinheiro) || 0;
+  const recebidoDinheiro = (Number(r.recebidoDinheiro) || 0) - canceladoDinheiro; // dinheiro líquido
+  const totalFaturamento = totalRecebido - cancelamentos; // faturamento líquido
+  const totalCartaoPix = totalFaturamento - recebidoDinheiro;
   const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (esperado geral)
-  const totalFaturamento = totalRecebido;
 
   const dataHoraCurta = (iso) => iso
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -2502,8 +2506,9 @@ function renderCaixaAberto(data) {
   Object.keys(r.recebidoPorForma).forEach((f) => {
     if (!ehFormaDinheiro(f) && !formasElet.includes(f)) formasElet.push(f);
   });
+  const canceladoPorForma = r.canceladoPorForma || {};
   const linhasElet = formasElet
-    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f] || 0)}</span></div>`)
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn((r.recebidoPorForma[f] || 0) - (canceladoPorForma[f] || 0))}</span></div>`)
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
@@ -2561,7 +2566,7 @@ function renderCaixaAberto(data) {
       <div>
         <span class="cx-badge">Caixa aberto</span>
         <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
-        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias</span>
+        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias − Estornos</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
@@ -2595,6 +2600,7 @@ function renderCaixaAberto(data) {
         <div class="caixa-linha"><span>Valor inicial (troco)</span><span>R$ ${fmtBRn(fundo)}</span></div>
         <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(suprimentos)}</span></div>
         <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
+        ${cancelamentos > 0 ? `<div class="caixa-linha"><span>Estornos/cancelamentos</span><span>− R$ ${fmtBRn(cancelamentos)}</span></div>` : ""}
         ${vendasPrazo > 0 ? `<div class="caixa-linha cx-linha-prazo"><span>Vendas a prazo (não conta)</span><span>R$ ${fmtBRn(vendasPrazo)}</span></div>` : ""}
         <div class="cx-box">
           <span class="cx-box-rotulo">Total Faturamento</span>
