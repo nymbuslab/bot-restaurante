@@ -225,7 +225,6 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
-    if (btn.dataset.aba === "clientes") { carregarClientes(); carregarResumoFiado(); }
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
@@ -1975,7 +1974,6 @@ function preencherConfig() {
   atualizarChipStatus(realAberto);
   renderHorarios();
   renderPagamentos();
-  renderConvenios();
   renderImpressoraGate(); // sub-aba Impressora: Completo vê o download; Essencial, o upsell
 }
 
@@ -1996,9 +1994,9 @@ function atualizarChipStatus(real) {
 }
 
 // Formas de pagamento: conjunto FIXO (só liga/desliga por toggle). Espelha a
-// ordem canônica de src/pagamentos.js. "A Prazo" é o fiado (só PDV/Mesa).
-const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito", "A Prazo"];
-const FORMA_SUB = { "A Prazo": "Fiado (só no PDV e nas mesas)" };
+// ordem canônica de src/pagamentos.js.
+const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
+const FORMA_SUB = {};
 // Ícones SVG por forma (design system). Cartão de Crédito/Débito compartilham o cartão.
 const ICO_CARTAO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
 const FORMA_ICONE = {
@@ -2006,7 +2004,6 @@ const FORMA_ICONE = {
   "PIX": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
   "Cartão de Crédito": ICO_CARTAO,
   "Cartão de Débito": ICO_CARTAO,
-  "A Prazo": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>',
 };
 
 function renderPagamentos() {
@@ -2034,135 +2031,6 @@ function renderPagamentos() {
     })
   );
 }
-
-// ============================================================
-// CONVÊNIOS — regras de vencimento do fiado (aba Pagamentos). Editam
-// configAtual.convenios e persistem no mesmo PUT /api/config. O cálculo do
-// vencimento é do servidor (public/convenios.js). Sem gate de plano.
-// ============================================================
-let convEditando = null; // id em edição, ou null (novo)
-const convVal = (x) => (x === null || x === undefined ? "" : String(x));
-function novoConvId() {
-  const r = (window.crypto && crypto.randomUUID) ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10);
-  return "cv_" + r;
-}
-
-function renderConvenios() {
-  const cont = $("convenioLista");
-  if (!cont) return;
-  const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios : [];
-  if (!lista.length) {
-    cont.innerHTML = `<div class="conv-vazio">
-      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <h4>Nenhum convênio ainda</h4>
-      <p>Crie um convênio para definir quando o fiado vence. Depois, escolha o convênio no cadastro do cliente.</p>
-    </div>`;
-    return;
-  }
-  cont.innerHTML = `<div class="conv-lista">` + lista.map((c) =>
-    `<div class="conv-item" data-id="${escapar(c.id)}">
-      <div class="conv-item-info">
-        <div class="conv-item-nome">${escapar(c.nome) || "Sem nome"}</div>
-        <div class="conv-item-resumo">${escapar(Convenios.resumoFaixas(c))}</div>
-      </div>
-      <div class="conv-item-acoes">
-        <button type="button" class="conv-acao" data-edit="${escapar(c.id)}" aria-label="Editar convênio">${ICO_EDIT}</button>
-        <button type="button" class="conv-acao perigo" data-del="${escapar(c.id)}" aria-label="Excluir convênio">${ICO_LIXEIRA}</button>
-      </div>
-    </div>`
-  ).join("") + `</div>`;
-  cont.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => abrirConvenioModal(b.dataset.edit)));
-  cont.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => excluirConvenio(b.dataset.del)));
-}
-
-function addFaixaRow(f) {
-  f = f || { de: "", ate: "", tipo: "fixo", valor: "", meses: 0 };
-  const row = document.createElement("div");
-  row.className = "conv-faixa";
-  const dias = f.tipo === "dias";
-  const inp = (cf, len, val, lbl) => `<input data-cf="${cf}" type="text" inputmode="numeric" maxlength="${len}" value="${escapar(convVal(val))}" aria-label="${lbl}" />`;
-  row.innerHTML =
-    `<div class="conv-dias">${inp("de", 2, f.de, "Dia inicial")}<span>a</span>${inp("ate", 2, f.ate, "Dia final")}</div>` +
-    `<div class="conv-venc"><button type="button" class="conv-tipo-btn${dias ? " dias" : ""}" data-cf="tipo" data-tipo="${dias ? "dias" : "fixo"}" title="Alternar: = dia fixo do mês / + dias após a compra">${dias ? "+" : "="}</button>${inp("valor", 3, f.valor, "Valor")}</div>` +
-    inp("meses", 2, f.meses, "Mês") +
-    `<button type="button" class="conv-faixa-del" aria-label="Remover faixa">${ICO_LIXEIRA}</button>`;
-  $("convFaixas").appendChild(row);
-  const tipoBtn = row.querySelector('[data-cf="tipo"]');
-  const mesesInp = row.querySelector('[data-cf="meses"]');
-  const sync = () => { const d = tipoBtn.dataset.tipo === "dias"; tipoBtn.textContent = d ? "+" : "="; tipoBtn.classList.toggle("dias", d); mesesInp.disabled = d; if (d) mesesInp.value = "0"; };
-  tipoBtn.addEventListener("click", () => { tipoBtn.dataset.tipo = tipoBtn.dataset.tipo === "dias" ? "fixo" : "dias"; sync(); });
-  sync();
-  row.querySelector(".conv-faixa-del").addEventListener("click", () => row.remove());
-  row.querySelectorAll('input[inputmode="numeric"]').forEach((i) =>
-    i.addEventListener("input", () => { i.value = i.value.replace(/\D/g, ""); })
-  );
-}
-
-// Nome específico (NÃO `lerFaixasDoDOM` — já existe uma p/ o frete por raio; funções
-// homônimas no mesmo escopo se sobrescrevem e a última vence).
-function lerFaixasConvenioDoDOM() {
-  return Array.from(document.querySelectorAll("#convFaixas .conv-faixa")).map((row) => {
-    const tipo = row.querySelector('[data-cf="tipo"]').dataset.tipo === "dias" ? "dias" : "fixo";
-    const num = (sel) => parseInt(row.querySelector(sel).value, 10) || 0;
-    return { de: num('[data-cf="de"]'), ate: num('[data-cf="ate"]'), tipo, valor: num('[data-cf="valor"]'), meses: tipo === "dias" ? 0 : num('[data-cf="meses"]') };
-  });
-}
-
-function abrirConvenioModal(id) {
-  convEditando = id || null;
-  const c = convEditando ? (configAtual.convenios || []).find((x) => x.id === convEditando) : null;
-  $("convenio-titulo").textContent = convEditando ? "Editar convênio" : "Novo convênio";
-  $("convErro").hidden = true; $("convErro").textContent = "";
-  $("convNome").value = c ? (c.nome || "") : "";
-  $("convFaixas").innerHTML = "";
-  const faixas = (c && Array.isArray(c.faixas) && c.faixas.length) ? c.faixas : [{ de: 1, ate: 31, tipo: "fixo", valor: "", meses: 1 }];
-  faixas.forEach((f) => addFaixaRow(f));
-  $("convenio-overlay").style.display = "flex";
-  setTimeout(() => $("convNome").focus(), 30);
-}
-
-function fecharConvenioModal() { $("convenio-overlay").style.display = "none"; }
-
-async function salvarConvenio() {
-  const obj = { id: convEditando || novoConvId(), nome: $("convNome").value.trim(), faixas: lerFaixasConvenioDoDOM() };
-  const erro = Convenios.validarConvenio(obj);
-  if (erro) { $("convErro").textContent = erro; $("convErro").hidden = false; return; }
-  const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios.slice() : [];
-  const idx = lista.findIndex((c) => c.id === obj.id);
-  if (idx >= 0) lista[idx] = obj; else lista.push(obj);
-  const btn = $("convSalvar"); btn.disabled = true; btn.textContent = "Salvando...";
-  const bkp = configAtual.convenios;
-  configAtual.convenios = lista;
-  const r = await api("PUT", "/api/config", configAtual);
-  btn.disabled = false; btn.textContent = "Salvar convênio";
-  if (!r || !r.ok) { configAtual.convenios = bkp; $("convErro").textContent = "Não foi possível salvar. Tente de novo."; $("convErro").hidden = false; return; }
-  fecharConvenioModal();
-  renderConvenios();
-  toast("Convênio salvo.", "sucesso");
-}
-
-async function excluirConvenio(id) {
-  const c = (configAtual.convenios || []).find((x) => x.id === id);
-  const ok = await confirmar("Excluir convênio?", `"${(c && c.nome) || "Convênio"}" será removido. Clientes que usam esse convênio ficam sem vencimento nas próximas vendas (contas já lançadas não mudam).`, "Excluir");
-  if (!ok) return;
-  const bkp = configAtual.convenios;
-  configAtual.convenios = (configAtual.convenios || []).filter((x) => x.id !== id);
-  const r = await api("PUT", "/api/config", configAtual);
-  if (!r || !r.ok) { configAtual.convenios = bkp; toast("Não foi possível excluir.", "erro"); return; }
-  renderConvenios();
-  toast("Convênio excluído.", "sucesso");
-}
-
-(function wireConvenios() {
-  if (!$("btnNovoConvenio")) return;
-  $("btnNovoConvenio").addEventListener("click", () => abrirConvenioModal(null));
-  $("btnAddFaixa").addEventListener("click", () => addFaixaRow(null));
-  $("convSalvar").addEventListener("click", salvarConvenio);
-  $("convCancelar").addEventListener("click", fecharConvenioModal);
-  $("convFechar").addEventListener("click", fecharConvenioModal);
-  $("convenio-overlay").addEventListener("click", (e) => { if (e.target === $("convenio-overlay")) fecharConvenioModal(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("convenio-overlay").style.display === "flex") fecharConvenioModal(); });
-})();
 
 // Recalcula AO VIVO o texto de horário (campo read-only) e o badge a partir da
 // tabela de horários + toggle. O texto é gerado automaticamente — sem botão.
@@ -2483,27 +2351,13 @@ function renderCaixaAberto(data) {
   const r = data.resumo;
   const fundo = Number(data.caixa.fundoTroco) || 0;
   const totalRecebido = Number(r.totalRecebido) || 0;
+  const recebidoDinheiro = Number(r.recebidoDinheiro) || 0;
+  const totalCartaoPix = totalRecebido - recebidoDinheiro;
   const suprimentos = Number(r.suprimentos) || 0;
   const sangrias = Number(r.sangrias) || 0;
-  const cancelamentos = Number(r.cancelamentos) || 0; // estornos + cancelamentos (venda + fiado)
-  const vendasPrazo = Number(r.vendasPrazo) || 0; // fiado: informativo, não conta
-  // Recebimento de conta a prazo (fiado) — é COBRANÇA de dívida, não venda de hoje (a venda
-  // já contou quando foi feita). Fica FORA de "Vendas por forma"/"Total Faturamento" e aparece
-  // num bloco próprio; mas entra no "Total em Caixa" (o dinheiro está na gaveta).
-  const totalRecebidoPrazo = Number(r.totalRecebidoPrazo) || 0;
-  const recebidoPrazoDinheiro = Number(r.recebidoPrazoDinheiro) || 0;
-  const canceladoPrazo = Number(r.canceladoPrazo) || 0;
-  const canceladoPrazoDinheiro = Number(r.canceladoPrazoDinheiro) || 0;
-  const canceladoDinheiro = Number(r.canceladoDinheiro) || 0;
-  // VENDAS DO DIA líquidas (exclui o fiado recebido e seus estornos).
-  const vendaDinheiro = (Number(r.recebidoDinheiro) || 0) - recebidoPrazoDinheiro - (canceladoDinheiro - canceladoPrazoDinheiro);
-  const totalFaturamento = (totalRecebido - totalRecebidoPrazo) - (cancelamentos - canceladoPrazo);
-  const totalCartaoPix = totalFaturamento - vendaDinheiro;
-  // RECEBIMENTOS A PRAZO líquidos (fiado recebido no turno).
-  const prazoDinheiro = recebidoPrazoDinheiro - canceladoPrazoDinheiro;
-  const totalRecebPrazo = totalRecebidoPrazo - canceladoPrazo;
-  const prazoCartaoPix = totalRecebPrazo - prazoDinheiro;
-  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (venda + fiado)
+  const cancelamentos = Number(r.cancelamentos) || 0;
+  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (esperado geral)
+  const totalFaturamento = totalRecebido;
 
   const dataHoraCurta = (iso) => iso
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -2515,35 +2369,19 @@ function renderCaixaAberto(data) {
   Object.keys(r.recebidoPorForma).forEach((f) => {
     if (!ehFormaDinheiro(f) && !formasElet.includes(f)) formasElet.push(f);
   });
-  const canceladoPorForma = r.canceladoPorForma || {};
-  const recebidoPrazoPorForma = r.recebidoPrazoPorForma || {};
-  const canceladoPrazoPorForma = r.canceladoPrazoPorForma || {};
-  // Venda líquida por forma = recebido − recebido a prazo − (cancelado − cancelado a prazo).
-  const vendaForma = (f) => (r.recebidoPorForma[f] || 0) - (recebidoPrazoPorForma[f] || 0)
-    - ((canceladoPorForma[f] || 0) - (canceladoPrazoPorForma[f] || 0));
-  const prazoForma = (f) => (recebidoPrazoPorForma[f] || 0) - (canceladoPrazoPorForma[f] || 0);
   const linhasElet = formasElet
-    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(vendaForma(f))}</span></div>`)
-    .join("");
-  // Bloco "Recebimentos a prazo": formas eletrônicas que tiveram fiado recebido (dinheiro à parte).
-  const formasPrazoElet = formasElet.filter((f) => Math.abs(prazoForma(f)) > 0.005);
-  const linhasPrazoElet = formasPrazoElet
-    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(prazoForma(f))}</span></div>`)
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f] || 0)}</span></div>`)
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
-  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento", estorno: "Estorno", venda_prazo: "Venda a prazo" };
+  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento", estorno: "Estorno" };
   const ehNeg = (t) => t === "sangria" || t === "cancelamento" || t === "estorno";
   const linhasMov = (data.movimentos || []).map((m) => {
     const neg = ehNeg(m.tipo);
-    const prazo = m.tipo === "venda_prazo"; // fiado: informativo, não conta na conferência
-    // Recebimento de conta a prazo (baixa de fiado): é dinheiro que entrou de verdade (conta no
-    // caixa), mas com rótulo próprio para diferenciar de uma venda de balcão.
-    const recPrazo = m.tipo === "recebimento" && m.aPrazo;
-    const rowCls = m.tipo === "recebimento" ? "" : ("cx-row-mov" + (neg ? " cx-row-sangria" : "") + (prazo ? " cx-row-prazo" : ""));
-    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno" || prazo;
+    const rowCls = m.tipo === "recebimento" ? "" : ("cx-row-mov" + (neg ? " cx-row-sangria" : ""));
+    const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno";
     const num = (temPedido && m.numero != null) ? "#" + m.numero : "—";
-    const cliente = (m.tipo === "recebimento" || prazo) ? escapar(m.cliente || m.descricao || "—")
+    const cliente = (m.tipo === "recebimento") ? escapar(m.cliente || m.descricao || "—")
       : ((m.tipo === "cancelamento" || m.tipo === "estorno") ? escapar(m.cliente || m.descricao || tipoLabel[m.tipo])
         : (m.descricao ? escapar(m.descricao) : "—"));
     const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
@@ -2556,7 +2394,7 @@ function renderCaixaAberto(data) {
     return `<tr class="${rowCls}">
       <td class="cx-td-hora">${dataHoraCurta(m.quando)}</td>
       <td>${num}</td>
-      <td>${recPrazo ? "Recebimento a prazo" : (tipoLabel[m.tipo] || m.tipo)}</td>
+      <td>${tipoLabel[m.tipo] || m.tipo}</td>
       <td>${cliente}</td>
       <td class="caixa-tab-valor${neg ? " caixa-tab-neg" : ""}">${valorTxt}</td>
       <td class="cx-td-num">${pagoTxt}</td>
@@ -2586,7 +2424,7 @@ function renderCaixaAberto(data) {
       <div>
         <span class="cx-badge">Caixa aberto</span>
         <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
-        <span class="cx-formula">Valor inicial + Suprimentos + Vendas + Recebimentos a prazo − Sangrias − Estornos</span>
+        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
@@ -2613,21 +2451,13 @@ function renderCaixaAberto(data) {
         <h4 class="cx-card-titulo">Vendas por forma</h4>
         ${linhasElet}
         <div class="caixa-linha caixa-total"><span>Total cartão/Pix</span><span>R$ ${fmtBRn(totalCartaoPix)}</span></div>
-        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(vendaDinheiro)}</span></div>
-        ${totalRecebPrazo > 0.005 ? `<div class="cx-subcard">
-          <h4 class="cx-card-titulo">Recebimentos a prazo <span class="cx-sub-nota">(fiado, não é venda de hoje)</span></h4>
-          ${linhasPrazoElet}
-          ${prazoDinheiro > 0.005 ? `<div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(prazoDinheiro)}</span></div>` : ""}
-          <div class="caixa-linha caixa-total"><span>Total recebido a prazo</span><span>R$ ${fmtBRn(totalRecebPrazo)}</span></div>
-        </div>` : ""}
+        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(recebidoDinheiro)}</span></div>
       </div>
       <div class="cx-card">
         <h4 class="cx-card-titulo">Movimentação do caixa</h4>
         <div class="caixa-linha"><span>Valor inicial (troco)</span><span>R$ ${fmtBRn(fundo)}</span></div>
         <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(suprimentos)}</span></div>
         <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
-        ${cancelamentos > 0 ? `<div class="caixa-linha"><span>Estornos/cancelamentos</span><span>− R$ ${fmtBRn(cancelamentos)}</span></div>` : ""}
-        ${vendasPrazo > 0 ? `<div class="caixa-linha cx-linha-prazo"><span>Vendas a prazo (não conta)</span><span>R$ ${fmtBRn(vendasPrazo)}</span></div>` : ""}
         <div class="cx-box">
           <span class="cx-box-rotulo">Total Faturamento</span>
           <span class="cx-box-formula">Total de vendas (todas as formas)</span>
@@ -3417,8 +3247,6 @@ function seloPagamento(p) {
   if (p.status === "cancelado") return '<span class="selo-pag selo-cancelado">Cancelado</span>';
   if (planoAtual !== "completo") return "";
   if (p.recebidoEm) return '<span class="selo-pag selo-pago">Recebido</span>';
-  // Fiado: selo próprio "A Prazo" (recebido só na aba Receber, não aqui).
-  if (p.aPrazo) return '<span class="selo-pag selo-aprazo">A Prazo</span>';
   return '<span class="selo-pag selo-areceber">A receber</span>';
 }
 
@@ -3462,9 +3290,8 @@ function linhaAcoesHtml(p) {
   if (p.status === "cancelado") return `<td class="ped-acoes-cel"></td>`;
   let btns = `<button class="ped-acao-btn" data-acao="reimprimir" data-pid="${p.id}" title="Reimprimir comanda" aria-label="Reimprimir comanda">${ICO_PRINTER}</button>`;
   // Mesa NÃO recebe aqui — é pago na aba Mesas (Fechar Conta/Receber Parcial),
-  // que escolhe a forma, aplica taxa de serviço e faz split. Fiado tampouco: recebe
-  // só na aba Receber (respeita vencimento/parcial/log) → aqui daria erro do servidor.
-  if (!p.recebidoEm && p.origem !== "mesa" && !p.aPrazo) {
+  // que escolhe a forma, aplica taxa de serviço e faz split.
+  if (!p.recebidoEm && p.origem !== "mesa") {
     btns += `<button class="ped-acao-btn" data-acao="receber" data-pid="${p.id}" title="Receber pagamento" aria-label="Receber pagamento">${ICO_MONEY}</button>`;
   }
   return `<td class="ped-acoes-cel"><div class="ped-acoes">${btns}</div></td>`;
@@ -4046,12 +3873,6 @@ function montarAcoes(p) {
       nota.className = "pedido-nota-mesa";
       nota.textContent = "Recebimento pela aba Mesas";
       cont.appendChild(nota);
-    } else if (p.aPrazo) {
-      // Fiado é recebido só na aba Clientes > Receber (respeita vencimento, parcial, log).
-      const nota = document.createElement("span");
-      nota.className = "pedido-nota-mesa";
-      nota.textContent = "Recebimento pela aba Receber";
-      cont.appendChild(nota);
     } else {
       const extra = document.createElement("button");
       extra.className = "secundario";
@@ -4064,9 +3885,8 @@ function montarAcoes(p) {
   }
 
   // Botão de cancelar pedido — disponível se ainda não cancelado. Para pedido PAGO,
-  // o cancelamento deduz no caixa (com registro) — confirmação reforçada. Fiado NÃO
-  // cancela aqui (o servidor barra): a conta se desfaz/recebe pela aba Receber.
-  if (p.status !== "cancelado" && !p.aPrazo) {
+  // o cancelamento deduz no caixa (com registro) — confirmação reforçada.
+  if (p.status !== "cancelado") {
     const pago = !!p.recebidoEm;
     const btnCancelar = document.createElement("button");
     btnCancelar.className = "btn-cancelar-pedido mini";
@@ -4811,11 +4631,8 @@ let pdvFormaSel = null;
 let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
 let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada'
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
-let pdvFiadoCliente = null; // cliente selecionado p/ venda A Prazo (fiado) | null
-let pdvFiadoBuscaTimer;
 
 function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
-function pdvEhAPrazo(f) { return /a\s*prazo|fiado/i.test(f || ""); }
 
 // Fonte ÚNICA da regra de pagamento (PDV, Receber-Pedidos e Mesa). A partir das formas
 // lançadas na tela, desconta o TROCO (só do dinheiro; o troco volta pro cliente, não
@@ -4865,7 +4682,6 @@ function abrirPdvPagar() {
   pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
   pdvTipoEntrega = "Balcão";
   pdvEntrega = null;
-  pdvFiadoCliente = null;
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false;
   focarModalPdv("pdvPagarCaixa");
@@ -4878,7 +4694,6 @@ function renderPdvPagar() {
   // Só Balcão recebe na hora (paga no caixa). Entrega/Retirada vão para Pedidos como
   // "a receber" — sem bloco de pagamento; o recebimento é feito depois.
   const ehBalcao = pdvTipoEntrega === "Balcão";
-  const ehFiado = ehBalcao && pdvEhAPrazo(pdvFormaSel); // A Prazo: vira modo fiado (cliente, sem troco)
   const tiles = pdvFormasPg.map((f) =>
     '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
   ).join("");
@@ -4908,10 +4723,8 @@ function renderPdvPagar() {
         (ehBalcao
           ? '<span class="pdv-ops-tit">Forma de pagamento</span>' +
             '<div class="pdv-formas">' + tiles + "</div>" +
-            (ehFiado
-              ? pdvFiadoUI()
-              : '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
-                '<div class="pdv-pg-lista" id="pdvPgLista"></div>')
+            '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
+            '<div class="pdv-pg-lista" id="pdvPgLista"></div>'
           : '<div class="pdv-areceber-nota"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Sem cobrança agora: o pedido vai para a aba <strong>Pedidos</strong> como <strong>a receber</strong>. O recebimento é feito depois.</span></div>') +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
@@ -4921,10 +4734,7 @@ function renderPdvPagar() {
         '<div class="pdv-resumo-linha pdv-resumo-desc" id="pdvResDescLinha" hidden><span>Desconto</span><span id="pdvResDesc"></span></div>' +
         '<div class="pdv-resumo-linha pdv-resumo-frete" id="pdvResFreteLinha" hidden><span>Frete</span><span class="pdv-frete-val"><span id="pdvResFrete"></span><button type="button" class="pdv-frete-zerar" id="pdvFreteZerar" title="Não cobrar frete (cortesia)" aria-label="Não cobrar frete"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></span></div>' +
         '<div class="pdv-resumo-tot"><span>Total</span><strong id="pdvPgTotal">' + pdvMoney(total) + "</strong></div>" +
-        (ehFiado
-          ? '<div class="pdv-resumo-linha pdv-fiado-linha"><span>A prazo</span><span>' + pdvMoney(total) + "</span></div>" +
-            '<div class="pdv-fiado-aviso">Vai para <strong>Contas a Receber</strong>, sem entrar no caixa agora.</div>'
-          : ehBalcao
+        (ehBalcao
           ? '<div class="pdv-resumo-linha"><span>Pago</span><span id="pdvPgPago">R$ 0,00</span></div>' +
             '<div class="pdv-resumo-linha"><span>Falta</span><span id="pdvPgFalta" class="falta">' + pdvMoney(total) + "</span></div>" +
             '<div class="pdv-resumo-linha"><span>Troco</span><span id="pdvPgTroco" class="troco">R$ 0,00</span></div>' +
@@ -4934,7 +4744,7 @@ function renderPdvPagar() {
     "</div>" +
     '<div class="pdv-pg-acoes">' +
       '<button type="button" class="secundario" id="pdvVoltar">Voltar</button>' +
-      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehFiado ? "Registrar venda a prazo" : ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos") + "</button>" +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos") + "</button>" +
     "</div>";
   $("pdvPagarCaixa").innerHTML = html;
 
@@ -4961,16 +4771,14 @@ function renderPdvPagar() {
   });
 
   $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((b) => b.addEventListener("click", () => {
-    const eraFiado = pdvEhAPrazo(pdvFormaSel);
     pdvFormaSel = b.dataset.forma;
-    if (eraFiado !== pdvEhAPrazo(pdvFormaSel)) { renderPdvPagar(); return; } // troca de modo (fiado ↔ à vista)
     $("pdvPagarCaixa").querySelectorAll("[data-forma]").forEach((x) => x.classList.toggle("ativo", x === b));
     const inp = $("pdvPgValor"); if (inp) inp.focus();
   }));
   // Desconto: botão ao lado do recebimento → abre o modal de desconto.
   if ($("pdvDescBtn")) $("pdvDescBtn").addEventListener("click", abrirPdvDescModal);
 
-  if (ehBalcao && !ehFiado) {
+  if (ehBalcao) {
     const valInp = $("pdvPgValor");
     Dinheiro.mascarar(valInp);
     Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
@@ -4978,13 +4786,11 @@ function renderPdvPagar() {
     valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
     pdvSelecionarAoFocar(valInp);
   }
-  if (ehFiado) pdvFiadoWire();
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
   const xb = $("pdvPagarCaixa").querySelector('[data-pdv-close="pagar"]'); if (xb) xb.addEventListener("click", fecharPdvPagar);
   pdvSyncResumo();
-  if (ehFiado) pdvPagarRecalc();
-  else if (ehBalcao) renderPdvPgLista(); else pdvPagarRecalc(); // recalc liga/desliga o botão Enviar
+  if (ehBalcao) renderPdvPgLista(); else pdvPagarRecalc(); // recalc liga/desliga o botão Enviar
 }
 
 // Atualiza as linhas Subtotal/Desconto/Frete do RESUMO. Subtotal aparece quando há
@@ -5189,10 +4995,7 @@ function pdvPagarRecalc() {
   // Balcão: precisa quitar (falta 0 + ao menos 1 pagamento). Entrega/Retirada: sem
   // pagamento — basta o endereço (Entrega) / sempre ok (Retirada).
   // Total 0 (cortesia/100% de desconto): finaliza sem exigir pagamento.
-  const ehFiado = pdvTipoEntrega === "Balcão" && pdvEhAPrazo(pdvFormaSel);
-  const pode = ehFiado
-    ? !!pdvFiadoCliente // fiado: basta ter cliente selecionado
-    : pdvTipoEntrega === "Balcão"
+  const pode = pdvTipoEntrega === "Balcão"
     ? (total <= 0.001 ? entregaOk : (falta <= 0.001 && pdvPagamentos.length && entregaOk))
     : entregaOk;
   if ($("pdvFinalizar")) $("pdvFinalizar").disabled = !pode;
@@ -5200,15 +5003,11 @@ function pdvPagarRecalc() {
 
 async function finalizarVendaPdv() {
   const ehBalcao = pdvTipoEntrega === "Balcão";
-  const ehFiado = ehBalcao && pdvEhAPrazo(pdvFormaSel);
   const total = pdvTotalCobrar();
   // Só Balcão registra pagamento agora. Entrega/Retirada vão "a receber" (sem pagamento).
   let registrados = [];
   let observacao = "";
-  if (ehFiado) {
-    if (!pdvFiadoCliente) { toast("Selecione o cliente para a venda a prazo.", "erro"); return; }
-    registrados = [{ forma: "A Prazo", valor: total }]; // fiado: forma única, sem troco
-  } else if (ehBalcao) {
+  if (ehBalcao) {
     // Pagamentos REGISTRADOS (somam o total): o troco (dinheiro) é descontado e
     // valor_pago/troco vão anexados por forma — regra única em montarPagamentosRegistrados.
     registrados = montarPagamentosRegistrados(pdvPagamentos, total);
@@ -5225,7 +5024,6 @@ async function finalizarVendaPdv() {
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao,
-    clienteId: ehFiado && pdvFiadoCliente ? pdvFiadoCliente.id : undefined,
     tipoEntrega: pdvTipoEntrega,
     endereco: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.endereco : "",
     enderecoCampos: pdvTipoEntrega === "Entrega" && pdvEntrega ? pdvEntrega.enderecoCampos : null,
@@ -5233,98 +5031,25 @@ async function finalizarVendaPdv() {
     taxaEntrega: pdvFreteValor(),
   };
   const btn = $("pdvFinalizar");
-  const rotulo = ehFiado ? "Registrar venda a prazo" : ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos";
-  btn.disabled = true; btn.textContent = ehFiado ? "Registrando…" : ehBalcao ? "Registrando…" : "Enviando…";
+  const rotulo = ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos";
+  btn.disabled = true; btn.textContent = ehBalcao ? "Registrando…" : "Enviando…";
   const r = await api("POST", "/api/pdv/vender", body);
   btn.textContent = rotulo;
   if (!r) return;
   if (!r.ok) {
     const d = await r.json().catch(() => ({}));
-    // Fiado bloqueado (limite/vencimento): modal com opção de abrir o cadastro do cliente.
-    if (r.status === 403 && d.bloqueio) { btn.disabled = false; pdvFiadoBloqueio(d, pdvFiadoCliente); return; }
     toast(d.erro || "Não foi possível registrar a venda. Confira os itens e tente de novo.", "erro"); btn.disabled = false; return;
   }
   // Sem supressão client-side: o servidor já escopa o alerta de "novo pedido" só ao
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
-  toast(ehFiado ? "Venda a prazo registrada. Fica em Contas a Receber." : ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
+  toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
-  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; pdvFiadoCliente = null; $("pdvCliente").value = "";
+  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
   renderPdvProdutos();
   renderPdvCarrinho();
-}
-
-// ---- Venda A Prazo (fiado): seletor de cliente no PDV ----
-function pdvFiadoUI() {
-  if (pdvFiadoCliente) {
-    const c = pdvFiadoCliente;
-    const rf = c.resumoFiado || {};
-    const temLimite = (c.limiteCredito || 0) > 0;
-    const info = temLimite ? ("Saldo: R$ " + moedaBR(rf.saldo != null ? rf.saldo : c.limiteCredito))
-      : (c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : "Sem limite definido");
-    return '<div class="pdv-fiado"><div class="pdv-fiado-sel">' +
-      '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
-      '<div class="pdv-fiado-info"><strong>' + escapar(c.nome) + "</strong><small>" + info + "</small></div>" +
-      '<button type="button" class="secundario mini" id="pdvFiadoTrocar">Trocar</button></div></div>';
-  }
-  return '<div class="pdv-fiado">' +
-    '<input id="pdvFiadoBusca" class="pdv-fiado-busca" type="search" placeholder="Buscar cliente por nome, CPF ou telefone" autocomplete="off" />' +
-    '<div class="pdv-fiado-result" id="pdvFiadoResult"></div></div>';
-}
-
-function pdvFiadoWire() {
-  const inp = $("pdvFiadoBusca");
-  if (inp) {
-    inp.addEventListener("input", () => { clearTimeout(pdvFiadoBuscaTimer); pdvFiadoBuscaTimer = setTimeout(pdvFiadoBuscar, 220); });
-    setTimeout(() => inp.focus(), 20);
-  }
-  const tr = $("pdvFiadoTrocar");
-  if (tr) tr.addEventListener("click", () => { pdvFiadoCliente = null; renderPdvPagar(); });
-}
-
-async function pdvFiadoBuscar() {
-  const inp = $("pdvFiadoBusca"), box = $("pdvFiadoResult");
-  if (!inp || !box) return;
-  const termo = inp.value.trim();
-  if (termo.length < 2) { box.innerHTML = ""; return; }
-  try {
-    const r = await api("GET", "/api/clientes?busca=" + encodeURIComponent(termo));
-    if (!r || !r.ok) return;
-    const lista = (await r.json()).slice(0, 6);
-    if (!lista.length) { box.innerHTML = '<div class="pdv-fiado-vazio">Nenhum cliente. Cadastre na aba Clientes.</div>'; return; }
-    box.innerHTML = lista.map((c) =>
-      '<button type="button" class="pdv-fiado-op" data-cli="' + escapar(c.id) + '">' +
-      '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
-      '<span class="pdv-fiado-op-txt"><strong>' + (escapar(c.nome) || "Sem nome") + "</strong>" +
-      (c.documento ? "<small>" + escapar(Documento.formatarDocumento(c.documento, c.tipo)) + "</small>" : "") + "</span></button>"
-    ).join("");
-    box.querySelectorAll("[data-cli]").forEach((b) => b.addEventListener("click", () => pdvFiadoSelecionar(b.dataset.cli)));
-  } catch (e) { /* silencioso */ }
-}
-
-async function pdvFiadoSelecionar(id) {
-  try {
-    const r = await api("GET", "/api/clientes/" + id);
-    if (r && r.ok) pdvFiadoCliente = await r.json();
-  } catch (e) { /* usa o básico se falhar */ }
-  renderPdvPagar();
-}
-
-// Bloqueio de venda a prazo (limite/vencimento): oferece abrir o cadastro do cliente.
-async function pdvFiadoBloqueio(d, cliente) {
-  const abrir = await confirmar("Venda a prazo bloqueada", d.erro || "Cliente bloqueado para venda a prazo.", "Abrir cadastro", "Fechar");
-  if (abrir && cliente) { fecharPdvPagar(); irParaClienteCadastro(cliente.id); }
-}
-
-// Vai para a aba Clientes → sub-aba Cadastro e abre o modal do cliente.
-function irParaClienteCadastro(id) {
-  const btn = document.querySelector("nav button[data-aba='clientes']");
-  if (btn) btn.click();
-  const sub = document.querySelector("#aba-clientes .cli-subnav button[data-sub='cadastro']");
-  if (sub) sub.click();
-  if (id) setTimeout(() => abrirClienteModal(id), 120);
 }
 
 // ---- Wiring do PDV ----
@@ -6474,8 +6199,6 @@ async function salvarConfigurarMesas() {
 var mesaPagamentos = [];   // [{forma, valor}] adicionados nesta tela
 var mesaPgFormaSel = null; // forma selecionada
 var mesaPagarAlvo = 0;     // alvo a cobrir (falta a receber), em reais
-var mesaFiadoCliente = null; // cliente da mesa fechada A Prazo (fiado) | null
-var mesaFiadoTimer;
 
 // Formas de pagamento: prioriza a config do tenant (configAtual.pagamentos), com
 // fallback pro que o PDV carregou e, por fim, um padrão.
@@ -6495,12 +6218,10 @@ function abrirMesaPagar(modo, preservar) {
   var falta = d.falta != null ? d.falta : Math.max(0, (resumo.total || 0) - recebido);
   mesaPagarAlvo = Math.round(falta * 100) / 100;
   mesaPagamentos = [];
-  // A Prazo (fiado) só faz sentido ao FECHAR (não em recebimento parcial).
-  var formas = mesaFormasPagamento().filter(function (f) { return mesaPagarModo !== "parcial" || !pdvEhAPrazo(f); });
-  if (!preservar) { mesaPgFormaSel = formas[0] || "Dinheiro"; mesaFiadoCliente = null; }
-  var ehFiado = mesaPagarModo === "fechar" && pdvEhAPrazo(mesaPgFormaSel);
+  var formas = mesaFormasPagamento();
+  if (!preservar) { mesaPgFormaSel = formas[0] || "Dinheiro"; }
   var titulo = mesaPagarModo === "parcial" ? "Receber Parcial" : "Fechar Conta";
-  var btnLabel = ehFiado ? "Fechar a prazo" : mesaPagarModo === "parcial" ? "Registrar" : "Fechar conta";
+  var btnLabel = mesaPagarModo === "parcial" ? "Registrar" : "Fechar conta";
   var X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   var tiles = formas.map(function (f) {
     return '<button type="button" class="pdv-forma' + (f === mesaPgFormaSel ? " ativo" : "") + '" data-mforma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>";
@@ -6519,16 +6240,13 @@ function abrirMesaPagar(modo, preservar) {
       "</div>" +
       '<span class="pdv-ops-tit">Forma de pagamento</span>' +
       '<div class="pdv-formas">' + tiles + "</div>" +
-      (ehFiado
-        ? mesaFiadoUI() +
-          '<div class="pdv-fiado-aviso">A conta vai para <strong>Contas a Receber</strong> no nome do cliente. A mesa é liberada sem entrar no caixa.</div>'
-        : '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="mesaPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="mesaPgAdd">Adicionar</button></div>' +
-          '<div class="pdv-pg-lista" id="mesaPgLista"></div>' +
-          '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
-            '<div class="mesa-pagar-linha"><span>Pago</span><span id="mesaPgPago">R$ 0,00</span></div>' +
-            '<div class="mesa-pagar-linha falta"><span>' + (mesaPagarModo === "parcial" ? "Restante" : "Falta") + '</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
-            '<div class="mesa-pagar-linha"><span>Troco</span><span id="mesaPgTroco">R$ 0,00</span></div>' +
-          "</div>") +
+      '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="mesaPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="mesaPgAdd">Adicionar</button></div>' +
+      '<div class="pdv-pg-lista" id="mesaPgLista"></div>' +
+      '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
+        '<div class="mesa-pagar-linha"><span>Pago</span><span id="mesaPgPago">R$ 0,00</span></div>' +
+        '<div class="mesa-pagar-linha falta"><span>' + (mesaPagarModo === "parcial" ? "Restante" : "Falta") + '</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
+        '<div class="mesa-pagar-linha"><span>Troco</span><span id="mesaPgTroco">R$ 0,00</span></div>' +
+      "</div>" +
     "</div>" +
     '<div class="pdv-modal-rodape">' +
       '<button type="button" class="secundario" id="mesasPagarFechar2">Cancelar</button>' +
@@ -6539,25 +6257,18 @@ function abrirMesaPagar(modo, preservar) {
   $("mesasPagarFechar2").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
   $("mesasPagarCaixa").querySelectorAll("[data-mforma]").forEach(function (b) {
     b.addEventListener("click", function () {
-      var eraFiado = pdvEhAPrazo(mesaPgFormaSel);
       mesaPgFormaSel = b.dataset.mforma;
-      if ((mesaPagarModo === "fechar") && eraFiado !== pdvEhAPrazo(mesaPgFormaSel)) { abrirMesaPagar(mesaPagarModo, true); return; }
       $("mesasPagarCaixa").querySelectorAll("[data-mforma]").forEach(function (x) { x.classList.toggle("ativo", x === b); });
       var inp = $("mesaPgValor"); if (inp) inp.focus();
     });
   });
   $("btnMesaConfirmarPag").addEventListener("click", mesaConfirmarPagamento);
-  if (ehFiado) {
-    mesaFiadoWire();
-    mesaPagRecalc();
-  } else {
-    var valInp = $("mesaPgValor");
-    if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); }
-    $("mesaPgAdd").addEventListener("click", mesaPagAdd);
-    valInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mesaPagAdd(); } });
-    if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
-    renderMesaPgLista();
-  }
+  var valInp = $("mesaPgValor");
+  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); }
+  $("mesaPgAdd").addEventListener("click", mesaPagAdd);
+  valInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mesaPagAdd(); } });
+  if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
+  renderMesaPgLista();
 }
 
 function mesaPagAdd() {
@@ -6590,11 +6301,6 @@ function renderMesaPgLista() {
 }
 
 function mesaPagRecalc() {
-  // Fechamento A Prazo (fiado): basta ter cliente selecionado.
-  if (mesaPagarModo === "fechar" && pdvEhAPrazo(mesaPgFormaSel)) {
-    if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !mesaFiadoCliente;
-    return;
-  }
   var pago = mesaPagoTotal();
   var restante = Math.max(0, Math.round((mesaPagarAlvo - pago) * 100) / 100);
   var troco = Math.max(0, Math.round((pago - mesaPagarAlvo) * 100) / 100);
@@ -6606,75 +6312,9 @@ function mesaPagRecalc() {
   if ($("btnMesaConfirmarPag")) $("btnMesaConfirmarPag").disabled = !pode;
 }
 
-// Seletor de cliente da mesa fechada A Prazo (espelha o do PDV, com estado próprio).
-function mesaFiadoUI() {
-  if (mesaFiadoCliente) {
-    var c = mesaFiadoCliente, rf = c.resumoFiado || {};
-    var temLimite = (c.limiteCredito || 0) > 0;
-    var info = temLimite ? ("Saldo: R$ " + moedaBR(rf.saldo != null ? rf.saldo : c.limiteCredito))
-      : (c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : "Sem limite definido");
-    return '<div class="pdv-fiado"><div class="pdv-fiado-sel">' +
-      '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
-      '<div class="pdv-fiado-info"><strong>' + escapar(c.nome) + "</strong><small>" + info + "</small></div>" +
-      '<button type="button" class="secundario mini" id="mesaFiadoTrocar">Trocar</button></div></div>';
-  }
-  return '<div class="pdv-fiado">' +
-    '<input id="mesaFiadoBusca" class="pdv-fiado-busca" type="search" placeholder="Buscar cliente por nome, CPF ou telefone" autocomplete="off" />' +
-    '<div class="pdv-fiado-result" id="mesaFiadoResult"></div></div>';
-}
-function mesaFiadoWire() {
-  var inp = $("mesaFiadoBusca");
-  if (inp) {
-    inp.addEventListener("input", function () { clearTimeout(mesaFiadoTimer); mesaFiadoTimer = setTimeout(mesaFiadoBuscar, 220); });
-    setTimeout(function () { inp.focus(); }, 20);
-  }
-  var tr = $("mesaFiadoTrocar");
-  if (tr) tr.addEventListener("click", function () { mesaFiadoCliente = null; abrirMesaPagar(mesaPagarModo, true); });
-}
-async function mesaFiadoBuscar() {
-  var inp = $("mesaFiadoBusca"), box = $("mesaFiadoResult");
-  if (!inp || !box) return;
-  var termo = inp.value.trim();
-  if (termo.length < 2) { box.innerHTML = ""; return; }
-  try {
-    var r = await api("GET", "/api/clientes?busca=" + encodeURIComponent(termo));
-    if (!r || !r.ok) return;
-    var lista = (await r.json()).slice(0, 6);
-    if (!lista.length) { box.innerHTML = '<div class="pdv-fiado-vazio">Nenhum cliente. Cadastre na aba Clientes.</div>'; return; }
-    box.innerHTML = lista.map(function (c) {
-      return '<button type="button" class="pdv-fiado-op" data-cli="' + escapar(c.id) + '">' +
-        '<span class="cli-avatar" style="background:' + corAvatar(c.nome) + '">' + escapar(iniciaisCliente(c.nome)) + "</span>" +
-        '<span class="pdv-fiado-op-txt"><strong>' + (escapar(c.nome) || "Sem nome") + "</strong>" +
-        (c.documento ? "<small>" + escapar(Documento.formatarDocumento(c.documento, c.tipo)) + "</small>" : "") + "</span></button>";
-    }).join("");
-    box.querySelectorAll("[data-cli]").forEach(function (b) { b.addEventListener("click", function () { mesaFiadoSelecionar(b.dataset.cli); }); });
-  } catch (e) { /* silencioso */ }
-}
-async function mesaFiadoSelecionar(id) {
-  try { var r = await api("GET", "/api/clientes/" + id); if (r && r.ok) mesaFiadoCliente = await r.json(); } catch (e) {}
-  abrirMesaPagar(mesaPagarModo, true);
-}
-
 async function mesaConfirmarPagamento() {
   var d = mesaState.detalhe;
   if (!d) return;
-  // Fechamento A Prazo (fiado): sem cobrança, vincula ao cliente.
-  if (mesaPagarModo === "fechar" && pdvEhAPrazo(mesaPgFormaSel)) {
-    if (!mesaFiadoCliente) { toast("Selecione o cliente para fechar a prazo.", "erro"); return; }
-    var bf = $("btnMesaConfirmarPag"); bf.disabled = true;
-    var rf = await api("POST", "/api/mesas/" + d.id + "/pagar", { aPrazo: true, clienteId: mesaFiadoCliente.id });
-    if (!rf || !rf.ok) {
-      bf.disabled = false;
-      var ef = (rf && await rf.json().catch(function () { return {}; })) || {};
-      if (rf && rf.status === 403 && ef.bloqueio) { pdvFiadoBloqueio(ef, mesaFiadoCliente); return; }
-      toast(ef.erro || "Não foi possível fechar a mesa a prazo.", "erro"); return;
-    }
-    $("mesasPagarOverlay").hidden = true;
-    toast("Mesa " + d.nome + " fechada a prazo. Fica em Contas a Receber.");
-    fecharMesaPainel();
-    await mesaAtualizarLista();
-    return;
-  }
   if (!mesaPagamentos.length) { toast("Adicione ao menos um pagamento.", "erro"); return; }
   var registrados = montarPagamentosRegistrados(mesaPagamentos, mesaPagarAlvo);
   var pagoAgora = Math.round(registrados.reduce(function (s, p) { return s + p.valor; }, 0) * 100) / 100;
@@ -6749,599 +6389,6 @@ function mesasInitListeners() {
   $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnVerPlanosMesas").addEventListener("click", function () { abrirUpsell("mesas"); });
 }
-
-// ============================================================
-// CLIENTES (cadastro PF/PJ + limite de crédito). Fase 2 do fiado.
-// Sem gate de plano (Essencial e Completo). Contas a Receber vêm na Fase 4.
-// ============================================================
-let cliBuscaTimer;
-let cliEditando = null;      // id em edição, ou null (novo)
-let cliTipoAtual = "PF";     // 'PF' | 'PJ'
-let cliClienteAtual = null;  // objeto carregado (p/ estado de liberação)
-const ICO_EDIT = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-// Avatar: iniciais + cor estável derivada do nome (paleta que combina com o tema escuro).
-const CORES_AVATAR = ["#6344bc", "#4e7cc4", "#3f9e8f", "#b06fb0", "#c48a3f", "#5b8def"];
-function iniciaisCliente(nome) {
-  const partes = String(nome || "").trim().split(/\s+/).filter(Boolean);
-  if (!partes.length) return "?";
-  const a = partes[0][0] || "";
-  const b = partes.length > 1 ? partes[partes.length - 1][0] : "";
-  return (a + b).toUpperCase();
-}
-function corAvatar(nome) {
-  const s = String(nome || "");
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return CORES_AVATAR[h % CORES_AVATAR.length];
-}
-
-async function carregarClientes() {
-  const cont = $("clientesContainer");
-  if (!cont) return;
-  cont.innerHTML = `<p class="sub" style="padding:16px 4px">Carregando...</p>`;
-  try {
-    const termo = ($("cliBusca") && $("cliBusca").value) || "";
-    const r = await api("GET", "/api/clientes?busca=" + encodeURIComponent(termo));
-    if (!r.ok) throw new Error();
-    renderClientes(await r.json());
-  } catch (e) {
-    cont.innerHTML = `<p class="sub" style="padding:16px 4px">Não foi possível carregar os clientes. Tente atualizar.</p>`;
-  }
-}
-
-function renderClientes(lista) {
-  const cont = $("clientesContainer");
-  if (!lista.length) {
-    const termo = ($("cliBusca") && $("cliBusca").value.trim()) || "";
-    cont.innerHTML = `<div class="cli-vazio">
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
-      <h3>${termo ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}</h3>
-      <p>${termo ? "Ajuste a busca ou cadastre um novo cliente." : 'Cadastre seu primeiro cliente no botão "Novo cliente".'}</p>
-    </div>`;
-    return;
-  }
-  const vazio = '<span class="cli-doc-vazio">—</span>';
-  let html = `<div class="tabela-scroll"><table class="cli-tabela"><thead><tr>
-    <th>Nome</th><th>Apelido</th><th>CPF / CNPJ</th><th>Telefone</th><th class="cli-acoes-th">Ações</th></tr></thead><tbody>`;
-  lista.forEach((c) => {
-    const doc = c.documento ? escapar(Documento.formatarDocumento(c.documento, c.tipo)) : vazio;
-    const tel = c.telefone ? escapar(Documento.formatarTelefone(c.telefone)) : vazio;
-    const nome = escapar(c.nome) || "Sem nome";
-    html += `<tr class="cli-linha" data-id="${escapar(c.id)}">
-      <td><div class="cli-nome-cel"><span class="cli-avatar" style="background:${corAvatar(c.nome)}">${escapar(iniciaisCliente(c.nome))}</span><span class="cli-nome-txt">${nome}</span></div></td>
-      <td>${escapar(c.apelido) || vazio}</td>
-      <td>${doc}</td>
-      <td>${tel}</td>
-      <td class="cli-acoes-td"><button type="button" class="cli-edit-btn" data-edit="${escapar(c.id)}" aria-label="Editar cliente">${ICO_EDIT}</button></td>
-    </tr>`;
-  });
-  html += `</tbody></table></div><p class="cli-contador">Exibindo ${lista.length} ${lista.length === 1 ? "cliente" : "clientes"}</p>`;
-  cont.innerHTML = html;
-  cont.querySelectorAll(".cli-linha").forEach((tr) =>
-    tr.addEventListener("click", () => abrirClienteModal(tr.dataset.id))
-  );
-  cont.querySelectorAll(".cli-edit-btn").forEach((b) =>
-    b.addEventListener("click", (e) => { e.stopPropagation(); abrirClienteModal(b.dataset.edit); })
-  );
-}
-
-// Alterna PF/PJ trocando os rótulos e reaplicando a máscara do documento.
-function setClienteTipo(tipo) {
-  cliTipoAtual = tipo === "PJ" ? "PJ" : "PF";
-  document.querySelectorAll(".cli-tipo-btn").forEach((b) => b.classList.toggle("ativo", b.dataset.tipo === cliTipoAtual));
-  const pj = cliTipoAtual === "PJ";
-  $("lblCliNome").textContent = pj ? "Razão social" : "Nome completo";
-  $("lblCliApelido").textContent = pj ? "Nome fantasia" : "Apelido";
-  $("lblCliDoc").textContent = pj ? "CNPJ" : "CPF";
-  $("lblCliIe").textContent = pj ? "Inscrição estadual" : "RG";
-  $("cliNome").placeholder = pj ? "Ex.: Padaria Pão Quente Ltda" : "Ex.: João da Silva";
-  $("cliApelido").placeholder = pj ? "Nome fantasia" : "Como o cliente é chamado";
-  $("cliDoc").placeholder = pj ? "00.000.000/0000-00" : "000.000.000-00";
-  $("cliIe").placeholder = pj ? "Inscrição estadual" : "RG";
-  const doc = $("cliDoc");
-  doc.value = Documento.formatarDocumento(doc.value, cliTipoAtual);
-  validarDocInline();
-}
-
-function validarDocInline() {
-  const hint = $("cliDocHint");
-  const v = $("cliDoc").value;
-  if (!Documento.digitos(v)) { hint.textContent = ""; hint.className = "cli-hint"; return; }
-  if (Documento.valido(cliTipoAtual, v)) { hint.textContent = ""; hint.className = "cli-hint"; }
-  else { hint.textContent = (cliTipoAtual === "PJ" ? "CNPJ" : "CPF") + " inválido."; hint.className = "cli-hint erro"; }
-}
-
-// Mostra o "Liberar próxima venda" só quando editando um cliente com bloqueio ligado.
-function atualizarLiberar() {
-  const bloq = $("cliBloqLimite").checked || $("cliBloqVenc").checked;
-  const liberado = !!(cliClienteAtual && cliClienteAtual.liberacaoPontual);
-  $("cliLiberarWrap").hidden = !(cliEditando && bloq);
-  $("cliLiberadoTag").hidden = !liberado;
-  $("cliLiberarBtn").hidden = liberado;
-}
-
-const fmtCepCli = (v) => { const d = (v || "").replace(/\D/g, ""); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5, 8)}` : d; };
-
-// Popula o <select> de convênio do cadastro a partir de configAtual.convenios e
-// deixa `selecionadoId` marcado (ou "Sem convênio").
-function popularConvenioSelect(selecionadoId) {
-  const sel = $("cliConvenio");
-  if (!sel) return;
-  const lista = Array.isArray(configAtual.convenios) ? configAtual.convenios : [];
-  sel.innerHTML = '<option value="">Sem convênio</option>' + lista.map((c) =>
-    `<option value="${escapar(c.id)}">${escapar(c.nome) || "Sem nome"}</option>`
-  ).join("");
-  sel.value = selecionadoId || "";
-}
-
-function abrirClienteModal(id) {
-  cliEditando = id || null;
-  cliClienteAtual = null;
-  $("cliente-titulo").textContent = id ? "Editar cliente" : "Novo cliente";
-  $("cliErro").hidden = true; $("cliErro").textContent = "";
-  $("cliExcluirBtn").hidden = !id;
-  ["cliNome", "cliApelido", "cliDoc", "cliIe", "cliTel", "cliCep", "cliLogradouro",
-   "cliNumero", "cliBairro", "cliComplemento", "cliCidade", "cliUf"].forEach((f) => { if ($(f)) $(f).value = ""; });
-  popularConvenioSelect("");
-  Dinheiro.setValor("cliLimite", 0);
-  $("cliGasto").value = "R$ 0,00";
-  $("cliSaldo").value = "R$ 0,00";
-  $("cliBloqLimite").checked = false;
-  $("cliBloqVenc").checked = false;
-  $("cliDocHint").textContent = ""; $("cliDocHint").className = "cli-hint";
-  setClienteTipo("PF");
-  atualizarLiberar();
-  $("cliente-overlay").style.display = "flex";
-  if (id) preencherCliente(id);
-  else setTimeout(() => $("cliNome").focus(), 30);
-}
-
-async function preencherCliente(id) {
-  try {
-    const r = await api("GET", "/api/clientes/" + id);
-    if (!r.ok) throw new Error();
-    const c = await r.json();
-    cliClienteAtual = c;
-    setClienteTipo(c.tipo || "PF");
-    $("cliNome").value = c.nome || "";
-    $("cliApelido").value = c.apelido || "";
-    $("cliDoc").value = c.documento ? Documento.formatarDocumento(c.documento, c.tipo) : "";
-    $("cliIe").value = c.ieRg || "";
-    $("cliTel").value = c.telefone ? Documento.formatarTelefone(c.telefone) : "";
-    $("cliCep").value = fmtCepCli(c.cep);
-    $("cliLogradouro").value = c.logradouro || "";
-    $("cliNumero").value = c.numero || "";
-    $("cliBairro").value = c.bairro || "";
-    $("cliComplemento").value = c.complemento || "";
-    $("cliCidade").value = c.cidade || "";
-    $("cliUf").value = c.uf || "";
-    Dinheiro.setValor("cliLimite", c.limiteCredito || 0);
-    popularConvenioSelect(c.convenioId || "");
-    $("cliBloqLimite").checked = !!c.bloquearLimite;
-    $("cliBloqVenc").checked = !!c.bloquearVencimento;
-    const rf = c.resumoFiado || { gasto: 0, saldo: c.limiteCredito || 0 };
-    $("cliGasto").value = "R$ " + moedaBR(rf.gasto || 0);
-    $("cliSaldo").value = "R$ " + moedaBR(rf.saldo || 0);
-    atualizarLiberar();
-    validarDocInline();
-  } catch (e) {
-    toast("Não foi possível carregar o cliente.", "erro");
-  }
-}
-
-function coletarCliente() {
-  return {
-    tipo: cliTipoAtual,
-    nome: $("cliNome").value.trim(),
-    apelido: $("cliApelido").value.trim(),
-    documento: Documento.digitos($("cliDoc").value),
-    ieRg: $("cliIe").value.trim(),
-    telefone: Documento.digitos($("cliTel").value),
-    cep: ($("cliCep").value || "").replace(/\D/g, ""),
-    logradouro: $("cliLogradouro").value.trim(),
-    numero: $("cliNumero").value.trim(),
-    complemento: $("cliComplemento").value.trim(),
-    bairro: $("cliBairro").value.trim(),
-    cidade: $("cliCidade").value.trim(),
-    uf: $("cliUf").value.trim().toUpperCase(),
-    limiteCredito: Dinheiro.valor("cliLimite"),
-    convenioId: $("cliConvenio").value,
-    bloquearLimite: $("cliBloqLimite").checked,
-    bloquearVencimento: $("cliBloqVenc").checked,
-  };
-}
-
-function mostrarErroCli(msg) {
-  const el = $("cliErro");
-  el.textContent = msg;
-  el.hidden = false;
-}
-
-async function salvarCliente() {
-  const dados = coletarCliente();
-  if (!dados.nome) { mostrarErroCli("Informe o nome do cliente."); return; }
-  if (!Documento.valido(dados.tipo, dados.documento)) {
-    mostrarErroCli((dados.tipo === "PJ" ? "CNPJ" : "CPF") + " inválido."); return;
-  }
-  const btn = $("cliSalvarBtn");
-  btn.disabled = true;
-  try {
-    const url = cliEditando ? "/api/clientes/" + cliEditando : "/api/clientes";
-    const r = await api(cliEditando ? "PUT" : "POST", url, dados);
-    const body = await r.json().catch(() => ({}));
-    if (!r.ok) { mostrarErroCli(body.erro || "Não foi possível salvar o cliente."); return; }
-    toast(cliEditando ? "Cliente atualizado." : "Cliente cadastrado.", "sucesso");
-    fecharClienteModal();
-    carregarClientes();
-  } catch (e) {
-    mostrarErroCli("Não foi possível salvar o cliente.");
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function excluirCliente() {
-  if (!cliEditando) return;
-  const nome = $("cliNome").value.trim() || "este cliente";
-  if (!(await confirmar("Excluir cliente", `Excluir ${nome}? Isso apaga o cadastro e os endereços salvos. Não dá para desfazer.`, "Excluir", "Cancelar"))) return;
-  try {
-    const r = await api("DELETE", "/api/clientes/" + cliEditando);
-    if (!r.ok) { const b = await r.json().catch(() => ({})); toast(b.erro || "Não foi possível excluir o cliente.", "erro"); return; }
-    toast("Cliente excluído.", "sucesso");
-    fecharClienteModal();
-    carregarClientes();
-  } catch (e) {
-    toast("Não foi possível excluir o cliente.", "erro");
-  }
-}
-
-async function liberarProximaVenda() {
-  if (!cliEditando) return;
-  try {
-    const r = await api("POST", "/api/clientes/" + cliEditando + "/liberar");
-    if (!r.ok) throw new Error();
-    if (cliClienteAtual) cliClienteAtual.liberacaoPontual = true;
-    atualizarLiberar();
-    toast("Próxima venda liberada.", "sucesso");
-  } catch (e) {
-    toast("Não foi possível liberar.", "erro");
-  }
-}
-
-function fecharClienteModal() {
-  $("cliente-overlay").style.display = "none";
-}
-
-// Wiring (uma vez, no load — app.js roda no fim do <body>).
-(function wireClientes() {
-  if (!$("aba-clientes")) return;
-  document.querySelectorAll("#aba-clientes .cli-subnav button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll("#aba-clientes .cli-subnav button").forEach((b) => b.classList.remove("ativo"));
-      document.querySelectorAll("#aba-clientes .cli-sub").forEach((s) => s.classList.remove("ativa"));
-      btn.classList.add("ativo");
-      $("cli-sub-" + btn.dataset.sub).classList.add("ativa");
-      if (btn.dataset.sub === "receber") carregarContas(true);
-      else if (btn.dataset.sub === "recebidas") carregarContas(false);
-      else carregarClientes();
-    });
-  });
-  if ($("cliBusca")) $("cliBusca").addEventListener("input", () => {
-    clearTimeout(cliBuscaTimer);
-    cliBuscaTimer = setTimeout(carregarClientes, 200);
-  });
-  if ($("btnNovoCliente")) $("btnNovoCliente").addEventListener("click", () => abrirClienteModal(null));
-  document.querySelectorAll(".cli-tipo-btn").forEach((b) => b.addEventListener("click", () => setClienteTipo(b.dataset.tipo)));
-  Dinheiro.mascarar("cliLimite");
-  if ($("cliDoc")) $("cliDoc").addEventListener("input", (e) => { e.target.value = Documento.formatarDocumento(e.target.value, cliTipoAtual); validarDocInline(); });
-  if ($("cliTel")) $("cliTel").addEventListener("input", (e) => { e.target.value = Documento.formatarTelefone(e.target.value); });
-  if (window.EnderecoCep) EnderecoCep.ligarBuscaCep({ cep: "cliCep", logradouro: "cliLogradouro", numero: "cliNumero", bairro: "cliBairro", cidade: "cliCidade", uf: "cliUf" });
-  $("cliBloqLimite").addEventListener("change", atualizarLiberar);
-  $("cliBloqVenc").addEventListener("change", atualizarLiberar);
-  $("cliSalvarBtn").addEventListener("click", salvarCliente);
-  $("cliCancelarBtn").addEventListener("click", fecharClienteModal);
-  $("cliFechar").addEventListener("click", fecharClienteModal);
-  $("cliExcluirBtn").addEventListener("click", excluirCliente);
-  $("cliLiberarBtn").addEventListener("click", liberarProximaVenda);
-  $("cliente-overlay").addEventListener("click", (e) => { if (e.target === $("cliente-overlay")) fecharClienteModal(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("cliente-overlay").style.display === "flex") fecharClienteModal(); });
-})();
-
-// ============================================================
-// CONTAS A RECEBER (fiado) — Fase 4. Lista as contas a prazo por cliente e dá
-// baixa (recebimento). Sem gate de plano; a baixa entra no caixa só no Completo
-// (decidido no servidor). Reusa o design system da aba Clientes (.cli-*).
-// ============================================================
-let fiadoBuscaTimer;
-let fiadoModalCliente = null;  // { id, nome, aberto }
-let fiadoVendas = [];          // vendas carregadas no modal
-let fiadoBaixasLog = [];       // baixas (log) das vendas do modal
-let fiadoSel = new Set();      // ids das vendas marcadas (baixa em lote)
-let fiadoFormaSel = "";        // forma escolhida p/ a baixa
-// (ICO_PRINTER — ícone de impressora — já é declarado no módulo de Pedidos e reusado aqui.)
-
-// Formas válidas p/ a baixa (nunca "A Prazo" — não se paga fiado com fiado).
-function fiadoFormas() {
-  const cfg = (configAtual && Array.isArray(configAtual.pagamentos)) ? configAtual.pagamentos : [];
-  const usaveis = cfg.filter((f) => !/a\s*prazo|fiado/i.test(f));
-  return usaveis.length ? usaveis : ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
-}
-
-// Aceita 'YYYY-MM-DD' (vencimento) ou ISO completo (data da venda) → dd/mm/aaaa.
-function fiadoDataBR(iso) {
-  if (!iso) return "—";
-  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? m[3] + "/" + m[2] + "/" + m[1] : String(iso);
-}
-function fiadoDataHora(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const p = (n) => String(n).padStart(2, "0");
-  return p(d.getDate()) + "/" + p(d.getMonth() + 1) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
-}
-
-function atualizarCardsFiado(resumo) {
-  if (!resumo) return;
-  if ($("cliCardReceber")) $("cliCardReceber").textContent = moedaBR(resumo.aReceber || 0);
-  if ($("cliCardAtraso")) $("cliCardAtraso").textContent = moedaBR(resumo.emAtraso || 0);
-  if ($("cliCardNovos")) $("cliCardNovos").textContent = String(resumo.novosNoMes || 0);
-  if ($("cliCardAtrasoBox")) $("cliCardAtrasoBox").classList.toggle("cli-card-alerta", (resumo.emAtraso || 0) > 0);
-}
-
-// Cards do topo (leve): só o resumo, sem renderizar a lista.
-async function carregarResumoFiado() {
-  try {
-    const r = await api("GET", "/api/fiado/receber");
-    if (r.ok) { const d = await r.json(); atualizarCardsFiado(d.resumo); }
-  } catch (e) { /* cards não são críticos */ }
-}
-
-async function carregarContas(aberto) {
-  const cont = $(aberto ? "fiadoReceberContainer" : "fiadoRecebidasContainer");
-  if (!cont) return;
-  cont.innerHTML = `<p class="sub" style="padding:16px 4px">Carregando...</p>`;
-  const buscaEl = $(aberto ? "fiadoBuscaReceber" : "fiadoBuscaRecebidas");
-  const termo = (buscaEl && buscaEl.value) || "";
-  try {
-    const url = (aberto ? "/api/fiado/receber" : "/api/fiado/recebidas") + "?busca=" + encodeURIComponent(termo);
-    const r = await api("GET", url);
-    if (!r.ok) throw new Error();
-    const d = await r.json();
-    atualizarCardsFiado(d.resumo);
-    renderContas(cont, d.clientes || [], aberto, termo.trim());
-  } catch (e) {
-    cont.innerHTML = `<p class="sub" style="padding:16px 4px">Não foi possível carregar. Tente atualizar.</p>`;
-  }
-}
-
-function renderContas(cont, lista, aberto, termo) {
-  if (!lista.length) {
-    const icone = aberto
-      ? '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'
-      : '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
-    cont.innerHTML = `<div class="cli-vazio">
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icone}</svg>
-      <h3>${termo ? "Nenhum cliente encontrado" : (aberto ? "Nenhuma venda a prazo em aberto" : "Nenhuma conta recebida ainda")}</h3>
-      <p>${aberto ? "Quando você vender no fiado (A Prazo, no PDV ou na mesa), a conta do cliente aparece aqui para receber." : "As contas a prazo já quitadas ficam aqui, para conferência."}</p>
-    </div>`;
-    return;
-  }
-  const colValor = aberto ? "Em aberto" : "Total";
-  const colData = aberto ? "Vencimento" : "Recebido";
-  let html = `<div class="tabela-scroll"><table class="cli-tabela fiado-tabela"><thead><tr>
-    <th>Cliente</th><th class="fiado-col-num">Vendas</th><th class="fiado-col-val">${colValor}</th><th>${colData}</th><th class="cli-acoes-th"></th></tr></thead><tbody>`;
-  lista.forEach((c) => {
-    const nome = escapar(c.nome) || "Sem nome";
-    const doc = c.documento ? `<span class="fiado-cli-doc">${escapar(Documento.formatarDocumento(c.documento, c.tipo))}</span>` : "";
-    const valor = aberto ? c.aberto : c.total;
-    const dataCel = aberto
-      ? (c.vencido ? `<span class="fiado-venc-atraso">${fiadoDataBR(c.vencimento)}</span>` : fiadoDataBR(c.vencimento))
-      : fiadoDataBR(c.ultimoRecebimento);
-    html += `<tr class="cli-linha fiado-linha" data-id="${escapar(c.id)}" data-nome="${escapar(c.nome)}">
-      <td><div class="cli-nome-cel"><span class="cli-avatar" style="background:${corAvatar(c.nome)}">${escapar(iniciaisCliente(c.nome))}</span><span class="cli-nome-txt">${nome}${doc}</span></div></td>
-      <td class="fiado-col-num">${c.vendas}</td>
-      <td class="fiado-col-val fiado-valor">${moedaBR(valor)}</td>
-      <td>${dataCel}</td>
-      <td class="cli-acoes-td"><span class="fiado-abrir">Ver</span></td>
-    </tr>`;
-  });
-  html += `</tbody></table></div>`;
-  cont.innerHTML = html;
-  cont.querySelectorAll(".fiado-linha").forEach((tr) =>
-    tr.addEventListener("click", () => abrirFiadoModal(tr.dataset.id, tr.dataset.nome, aberto))
-  );
-}
-
-async function abrirFiadoModal(clienteId, nome, aberto) {
-  fiadoModalCliente = { id: clienteId, nome: nome || "Cliente", aberto };
-  fiadoSel = new Set();
-  fiadoFormaSel = fiadoFormas()[0] || "";
-  $("fiado-titulo").textContent = nome || "Conta do cliente";
-  $("fiadoCorpo").innerHTML = `<p class="sub" style="padding:24px 20px">Carregando...</p>`;
-  $("fiado-overlay").style.display = "flex";
-  try {
-    const r = await api("GET", "/api/fiado/cliente/" + clienteId + "/vendas?status=" + (aberto ? "aberto" : "recebidas"));
-    if (!r.ok) throw new Error();
-    const d = await r.json();
-    fiadoVendas = d.vendas || [];
-    fiadoBaixasLog = d.baixas || [];
-    if (aberto) fiadoVendas.forEach((v) => fiadoSel.add(v.id)); // pré-marca todas (baixa rápida em lote)
-    renderFiadoModal();
-  } catch (e) {
-    $("fiadoCorpo").innerHTML = `<p class="sub" style="padding:24px 20px">Não foi possível carregar as vendas.</p>`;
-  }
-}
-
-function fiadoBaixasDe(pedidoId) {
-  return fiadoBaixasLog.filter((b) => String(b.pedidoId) === String(pedidoId));
-}
-function fiadoSelecionadas() {
-  return fiadoVendas.filter((v) => fiadoSel.has(v.id));
-}
-function fiadoRestanteSel() {
-  return Math.round(fiadoSelecionadas().reduce((s, v) => s + (Number(v.restante) || 0), 0) * 100) / 100;
-}
-
-function renderFiadoModal() {
-  const aberto = fiadoModalCliente.aberto;
-  const corpo = $("fiadoCorpo");
-  if (!fiadoVendas.length) {
-    corpo.innerHTML = `<div class="cli-vazio" style="padding:30px 12px"><h3>${aberto ? "Sem contas em aberto" : "Sem contas recebidas"}</h3><p>${aberto ? "Este cliente não tem vendas a prazo em aberto." : "Este cliente ainda não teve contas quitadas."}</p></div>`;
-    return;
-  }
-  const podeImprimir = planoAtual === "completo";
-  let html = `<div class="fiado-vendas">`;
-  fiadoVendas.forEach((v) => {
-    const log = fiadoBaixasDe(v.id);
-    const marc = fiadoSel.has(v.id);
-    const check = aberto
-      ? `<label class="fiado-check"><input type="checkbox" data-fsel="${v.id}" ${marc ? "checked" : ""} /></label>`
-      : "";
-    const venc = v.vencimento
-      ? `<span class="fiado-v-venc${v.vencido ? " atraso" : ""}">venc. ${fiadoDataBR(v.vencimento)}</span>`
-      : "";
-    const parcialTag = (aberto && Number(v.valorRecebido) > 0) ? `<span class="fiado-v-parcial">recebido ${moedaBR(v.valorRecebido)}</span>` : "";
-    const valorLinha = `<span class="fiado-v-restante">${moedaBR(aberto ? v.restante : v.total)}</span>`;
-    const printBtn = podeImprimir ? `<button type="button" class="fiado-print" data-fprint="${v.id}" aria-label="Reimprimir">${ICO_PRINTER}</button>` : "";
-    let logHtml = "";
-    if (log.length) {
-      logHtml = `<div class="fiado-v-log">` + log.map((b) =>
-        `<span>Recebido ${moedaBR(b.valor)} · ${fiadoDataHora(b.criadoEm)}${Number(b.restante) > 0 ? " · falta " + moedaBR(b.restante) : " · quitado"}</span>`
-      ).join("") +
-        `<button type="button" class="fiado-desfazer" data-fdesfazer="${v.id}">Desfazer último recebimento</button>` +
-        `</div>`;
-    }
-    html += `<div class="fiado-v${marc ? " sel" : ""}" data-vid="${v.id}">
-      <div class="fiado-v-topo">
-        ${check}
-        <div class="fiado-v-info"><div class="fiado-v-l1"><strong>#${escapar(String(v.numero))}</strong> <span class="fiado-v-data">${fiadoDataBR(v.criadoEm)}</span> ${venc} ${parcialTag}</div></div>
-        ${valorLinha}
-        ${printBtn}
-      </div>
-      ${logHtml}
-    </div>`;
-  });
-  html += `</div>`;
-
-  if (aberto) {
-    const tiles = fiadoFormas().map((f) =>
-      `<button type="button" class="pdv-forma${f === fiadoFormaSel ? " ativo" : ""}" data-fforma="${pdvEsc(f)}">${pdvIconeForma(f)}<span>${pdvEsc(f)}</span></button>`
-    ).join("");
-    html += `<div class="fiado-baixa">
-      <div class="fiado-baixa-formas"><span class="pdv-ops-tit">Forma do recebimento</span><div class="pdv-formas">${tiles}</div></div>
-      <div class="fiado-baixa-total">
-        <span id="fiadoSelInfo">Nenhuma venda selecionada</span>
-        <strong id="fiadoSelTotal">R$ 0,00</strong>
-      </div>
-      <div class="fiado-baixa-linha">
-        <div class="campo-prefixo fiado-valor-campo"><span class="campo-prefixo-moeda">R$</span><input id="fiadoValor" type="text" inputmode="numeric" placeholder="Tudo" /></div>
-        <button type="button" class="primario" id="fiadoReceberBtn">Receber</button>
-      </div>
-      <p class="sub fiado-baixa-hint">Deixe o valor vazio para receber tudo. Para abater só uma parte, digite o valor. Ele é aplicado nas vendas selecionadas, da mais vencida para a mais nova.</p>
-    </div>`;
-  }
-  corpo.innerHTML = html;
-
-  corpo.querySelectorAll("[data-fsel]").forEach((cb) => cb.addEventListener("change", () => {
-    // id do pedido vem do banco como STRING (bigint). fiadoSel guarda strings
-    // (pré-seleção usa v.id), então aqui NÃO converter p/ Number — senão "2" e 2
-    // viram entradas diferentes no Set (desmarcar não remove, marcar duplica).
-    const id = cb.dataset.fsel;
-    if (cb.checked) fiadoSel.add(id); else fiadoSel.delete(id);
-    const card = corpo.querySelector('.fiado-v[data-vid="' + id + '"]');
-    if (card) card.classList.toggle("sel", cb.checked);
-    atualizarFiadoResumoSel();
-  }));
-  corpo.querySelectorAll("[data-fprint]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); reimprimirVenda(Number(b.dataset.fprint)); }));
-  corpo.querySelectorAll("[data-fdesfazer]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); fiadoDesfazer(b.dataset.fdesfazer); }));
-  if (aberto) {
-    corpo.querySelectorAll("[data-fforma]").forEach((b) => b.addEventListener("click", () => {
-      fiadoFormaSel = b.dataset.fforma;
-      corpo.querySelectorAll("[data-fforma]").forEach((x) => x.classList.toggle("ativo", x === b));
-    }));
-    if (window.Dinheiro) Dinheiro.mascarar("fiadoValor");
-    $("fiadoReceberBtn").addEventListener("click", fiadoReceber);
-    atualizarFiadoResumoSel();
-  }
-}
-
-function atualizarFiadoResumoSel() {
-  const n = fiadoSel.size;
-  if ($("fiadoSelInfo")) $("fiadoSelInfo").textContent =
-    n === 0 ? "Nenhuma venda selecionada" : (n === 1 ? "1 venda selecionada" : n + " vendas selecionadas");
-  if ($("fiadoSelTotal")) $("fiadoSelTotal").textContent = moedaBR(fiadoRestanteSel());
-  if ($("fiadoReceberBtn")) $("fiadoReceberBtn").disabled = n === 0;
-}
-
-async function fiadoReceber() {
-  const sel = [...fiadoSel];
-  if (!sel.length) { toast("Selecione ao menos uma venda.", "erro"); return; }
-  if (!fiadoFormaSel) { toast("Escolha a forma do recebimento.", "erro"); return; }
-  const valor = window.Dinheiro ? Dinheiro.valor("fiadoValor") : 0;
-  const parcial = valor > 0;
-  const body = { pedidoIds: sel, forma: fiadoFormaSel };
-  if (parcial) body.valor = valor;
-  const btn = $("fiadoReceberBtn"); if (btn) { btn.disabled = true; btn.textContent = "Recebendo..."; }
-  try {
-    const r = await api("POST", "/api/fiado/baixar", body);
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.erro || "Falha ao receber.");
-    toast(d.comCaixa ? "Recebimento lançado no caixa." : "Pagamento recebido.", "sucesso");
-    await abrirFiadoModal(fiadoModalCliente.id, fiadoModalCliente.nome, fiadoModalCliente.aberto);
-    carregarContas(fiadoModalCliente.aberto);
-  } catch (e) {
-    toast(e.message || "Não foi possível registrar o recebimento.", "erro");
-    if (btn) { btn.disabled = false; btn.textContent = "Receber"; }
-  }
-}
-
-// Desfaz o último recebimento de uma conta a prazo (uma baixa por clique, a mais
-// recente). A conta volta a "a receber" com o saldo atualizado; no Completo deduz do caixa.
-async function fiadoDesfazer(pedidoId) {
-  const ok = await confirmar(
-    "Desfazer último recebimento?",
-    "O último recebimento desta conta será revertido: a conta volta a ficar em aberto com o saldo atualizado" +
-      (planoAtual === "completo" ? " e o valor é deduzido do caixa aberto." : "."),
-    "Desfazer"
-  );
-  if (!ok) return;
-  try {
-    const r = await api("POST", "/api/fiado/desfazer", { pedidoId });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.erro || "Falha ao desfazer.");
-    toast("Recebimento desfeito.", "sucesso");
-    await abrirFiadoModal(fiadoModalCliente.id, fiadoModalCliente.nome, fiadoModalCliente.aberto);
-    carregarContas(fiadoModalCliente.aberto);
-    if (typeof carregarCaixa === "function") carregarCaixa().catch(() => {});
-  } catch (e) {
-    toast(e.message || "Não foi possível desfazer o recebimento.", "erro");
-  }
-}
-
-async function reimprimirVenda(pedidoId) {
-  try {
-    const r = await api("POST", "/api/pedidos/" + pedidoId + "/reimprimir", { via: "cupom" });
-    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.erro || ""); }
-    toast("Enviado para impressão.", "sucesso");
-  } catch (e) {
-    toast(e.message || "Não foi possível reimprimir.", "erro");
-  }
-}
-
-function fecharFiadoModal() {
-  $("fiado-overlay").style.display = "none";
-  fiadoModalCliente = null;
-}
-
-(function wireFiado() {
-  if (!$("aba-clientes")) return;
-  if ($("fiadoBuscaReceber")) $("fiadoBuscaReceber").addEventListener("input", () => { clearTimeout(fiadoBuscaTimer); fiadoBuscaTimer = setTimeout(() => carregarContas(true), 220); });
-  if ($("fiadoBuscaRecebidas")) $("fiadoBuscaRecebidas").addEventListener("input", () => { clearTimeout(fiadoBuscaTimer); fiadoBuscaTimer = setTimeout(() => carregarContas(false), 220); });
-  if ($("fiadoFechar")) $("fiadoFechar").addEventListener("click", fecharFiadoModal);
-  if ($("fiado-overlay")) $("fiado-overlay").addEventListener("click", (e) => { if (e.target === $("fiado-overlay")) fecharFiadoModal(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("fiado-overlay") && $("fiado-overlay").style.display === "flex") fecharFiadoModal(); });
-})();
 
 // Antes do boot: mostra imediatamente a última aba visitada (só a troca VISUAL, sem
 // carregador — a sessão ainda não existe). Evita piscar o Dashboard no refresh; os dados
