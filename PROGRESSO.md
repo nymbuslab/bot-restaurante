@@ -4,37 +4,33 @@
 
 ## 🔄 Em Andamento
 
-_(nada em edição — working tree limpo; Fases 1 a 4 do fiado concluídas, ver ✅ Concluído)_
+**Fiado + cadastro de cliente REMOVIDOS** (decisão do dono 2026-07-13: amadurecer a ideia).
+Branch `chore/remover-fiado-clientes` (a mesclar na main). Removida toda a feature de conta a prazo
+(venda a prazo, Contas a Receber, Convênios, forma "A Prazo") e o cadastro de cliente no painel (aba
+Clientes, CRUD PF/PJ). **Preservados:** `pedido.cliente` (núcleo), o reconhecimento de cliente pelo
+bot (`clientes.buscarCliente`/`registrarDoPedido`) e o export/retenção LGPD; os fluxos à vista de
+PDV/Mesa/Caixa/Pedidos. **Banco intacto** (colunas/tabelas de fiado/clientes NÃO dropadas — decisão:
+dropar depois com backup, num passo separado). Verificado: 211 testes + check + servidor carrega +
+grep sem resíduos. Contexto p/ quando amadurecer: docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md
+(auditoria de regra de negócio + pesquisa de mercado).
 
-**Deploy pendente** (decisão do dono: segurar os commits e pushar tudo junto num deploy só) —
-nada foi pushado. No deploy, na ordem: (1) `npm run normalizar-pagamentos` (migra strings legadas
-de forma de pagamento), (2) `npm run migrar-convenios` (dia de vencimento legado → Convênio),
-(3) `git push` de todos os commits locais (fiado Fases 1–4 + Convênios + melhorias + **fix do agente
-`86b7ac1`**). Migrações de schema já aplicadas no banco via db push (idempotente). O dono ainda vai
-testar antes de subir. **Obs.: a correção do agente já está DISTRIBUÍDA** (release v0.2.6 no GitHub =
-canal real dos clientes); o `git push` do fonte é só controle de versão e segue no lote represado.
-
-**Validação ao vivo pendente:** o fluxo A Prazo (Fase 3 — seletor de cliente/bloqueio no PDV e na
-Mesa) e a baixa (Fase 4) não foram dirigidos no browser logado — exigem tenant Completo com caixa
-aberto. O backend foi validado por **smoke tests contra o banco real** (Essencial e Completo,
-auto-limpos) + visual conferido em harness. Nota de regra: no bloqueio por limite,
-`limite_credito = 0` = "não configurado" (não bloqueia); só bloqueia com limite > 0.
+**Deploy pendente** (decisão do dono: segurar os commits e pushar tudo junto num deploy só) — nada
+foi pushado. No deploy: `git push` dos commits locais (a remoção do fiado zera o efeito das fases
+construídas antes; sobra o **fix do agente `86b7ac1`** e as melhorias não-fiado). **A correção do
+agente já está DISTRIBUÍDA** (release v0.2.6 no GitHub); o `git push` do fonte é só controle de versão.
 
 ## 📋 Próximos Passos
 
 ### Em aberto
 
-#### Fiado (conta a prazo) — auditoria + correções [plano: docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md]
+#### Fiado (conta a prazo) — repensar do zero [contexto: docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md]
 
-> Auditoria de regra de negócio (agente) + pesquisa de mercado (Goomer/Consumer/Cardápio Web/Saipos/Datacaixa):
-> núcleo do fiado **correto e competitivo** (acima do Cardápio Web, nível Saipos/Consumer). Divergências vêm de
-> buracos em **cancelamento** e **estorno**. Decisões do dono (2026-07-13): cancelar em fiado será **bloqueado**
-> pela aba Pedidos (desfazer só na aba Receber); "desfazer recebimento" vira **botão na aba Receber** (parcial+integral).
+> A feature de fiado + cadastro de cliente no painel foi **removida** (ver 🔄 Em Andamento / ✅ Concluído) para
+> amadurecer a ideia. O plano guarda a **auditoria de regra de negócio** (bugs de cancelamento/estorno) e a
+> **pesquisa de mercado** (Goomer/Consumer/Cardápio Web/Saipos/Datacaixa) — base para redesenhar quando o dono
+> quiser retomar. Banco preservado (colunas/tabelas não dropadas). Retomar só sob decisão do dono.
 
-- [ ] **(P0) Fase A — blindar o dinheiro** — (1) bloquear "Cancelar" em pedido a prazo (front+servidor) e barrar `cancelarPedido` de fiado com `valor_recebido>0`; (2) "desfazer último recebimento" na aba Receber (reusa lógica de `estornarRecebimento`: devolve `valor_recebido`, apaga a `fiado_baixas`, deduz do caixa no Completo, reabre a conta) — cobre PDV e parcial, hoje impossíveis (`estornavel` exclui balcão e exige `recebido_em`); (3) esconder botão "Receber" de linha no a prazo. Smoke test contra o banco.
-- [ ] **(P1) Fase B — guardrails** — exigir convênio/vencimento válido ao vender a prazo (venda sem vencimento nunca vence/bloqueia); exigir limite>0 ao ligar "bloquear por limite"; validar/avisar valor parcial que excede a dívida.
-- [ ] **(P2) Fase C — bordas** — exclusão de cliente com fiado **quitado** (mantém histórico); troca de plano (Completo→Essencial) com fiado/caixa aberto.
-- [ ] **(P2, crescimento) Fase D — diferencial** — flag "permitir venda a prazo" por cliente (suspender mau pagador); saldo devedor no cupom da venda a prazo; extrato + lembrete de vencimento pelo WhatsApp.
+- [ ] **(quando retomar) Dropar o schema de fiado/clientes** — colunas `pedidos.a_prazo/cliente_id/vencimento/valor_recebido`, tabelas `fiado_baixas` e o cadastro extra de `clientes` (só se NÃO for reusar). Passo separado, com backup. Hoje ficam intactos (não quebram nada sem uso).
 
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
@@ -293,3 +289,4 @@ auto-limpos) + visual conferido em harness. Nota de regra: no bloqueio por limit
 - [x] **Convênios de vencimento (fiado)** — o "dia de vencimento" simples do cliente virou **Convênios**: regras nomeadas por restaurante (`config.convenios`, jsonb), com faixas por dia da compra e dois tipos (`=` dia fixo do mês com deslocamento de meses; `+` N dias após a compra). Corrige o bug de comprar dentro do mês e vencer no mesmo mês. Cálculo puro `public/convenios.js` (UMD: `calcularVencimentoConvenio`/`validarConvenio` cobre 1–31/`normalizarConvenios`/`resumoFaixas`), aplicado na venda por `src/fiado.js` (o `pedidos.vencimento` é foto). Coluna `clientes.convenio_id` (migração aplicada) + `scripts/migrar-convenios.js` (dia legado → convênio). Front: seção **Convênios** na aba Pagamentos (editor compacto de faixas com botão `=`/`+` que alterna + ajuda em tópicos), seletor de convênio no cadastro, cards de pagamento **redesenhados** (horizontal, corrige bug de especificidade `.campo label` que empilhava os cards), modais de Clientes **padronizados** com o resto do app (sem sobra no topo, rolagem interna). Spec/plano em `docs/superpowers/`. Validado: 247 testes (20 de convênio) + check + smokes; revisão final de branch (subagente) corrigiu 2 bugs (crítico: colisão de `lerFaixasDoDOM` com a do frete). — 2026-07-12
 - [x] **Fiado — recebimento só pela aba Receber, baixa parcial da dívida e venda a prazo no caixa** — (1) o pedido fiado deixou de ser recebível pela tela de Pedidos: selo **"A Prazo"** (sem botão de receber) e `caixa.receberPedido` **rejeita** `a_prazo` (trava no servidor); recebimento exclusivo da aba Receber. (2) A baixa **parcial** deixou de exigir uma venda por vez: abate o valor da dívida das vendas selecionadas, da mais vencida p/ a mais nova (ex.: deve 100, paga 50). (3) A venda a prazo passa a aparecer na **movimentação do caixa** e no **fechamento** (movimento `venda_prazo`, informativo), mas **não conta na conferência** (`caixa-calc` soma em `vendasPrazo`, fora dos totais); o dinheiro entra na baixa. Validado: 247 testes + check + smokes (distribuição parcial, trava do recebimento, venda_prazo informativo). — 2026-07-12
 - [x] **Agente de impressão — nome do restaurante sumia (voltava a "Restaurante") + v0.2.6 publicada** — diagnóstico: o vazamento de impressão entre tenants (comanda da sabor-d-casa saindo na impressora da nymbuslab) **não é bug de código** — a fila e as rotas do agente são isoladas por `empresa_id` e o token resolve o tenant por `user_id` único (confirmado read-only em prod: nenhuma empresa compartilha `user_id`). Causa real: um **agente antigo logado na conta errada** (o `reservado_por='sem-id'` na fila revela build pré-0.2.5 sem id de sessão) → correção é operacional (deslogar/atualizar). **Bug de código de fato corrigido:** o agente só persistia o refresh token, não a identidade; ao reabrir logado, a UI lia a sessão antes de a renovação (assíncrona) repopular a memória, caindo em "Restaurante". Fix: `config.js`/`ipc.js`/`main.js` passam a guardar `nome`/`slug` no config e usá-los como fallback no `auth:status`. 18/18 testes do agente (1 novo em `config.test.js`). **Release v0.2.6 publicada no GitHub** (`latest`, proxy `/downloads` confirmado servindo 0.2.6) — traz o fix do nome + o anti-duplicata por sessão pra quem estiver em build antigo. Commit `86b7ac1` (local, entra no lote represado do deploy). UI Electron não dirigida aqui (só lógica + testes). — 2026-07-13
+- [x] **Remoção do fiado (conta a prazo) + cadastro de cliente no painel** — decisão do dono: **amadurecer a ideia**, então a feature inteira foi removida do código (não só desligada). Branch `chore/remover-fiado-clientes`. **Deletados:** `src/fiado.js`, `public/convenios.js`, `public/documento.js`, `scripts/migrar-convenios.js` + testes (`fiado`/`convenios`/`documento`). **Reduzidos:** `clientes.js` (só bot/checkout/LGPD: `registrarDoPedido`/`buscarCliente`/`exportar`/`removerInativos`), `pagamentos.js` (sem "A Prazo"/`ehAPrazo`), `caixa.js`+`caixa-calc.js`+`pedidos.js`+`relatorio-caixa.js` (sem `venda_prazo`/recebimento a prazo/estorno de fiado/agregados prazo), `servidor.js` (rotas `/api/fiado/*` e `/api/clientes` CRUD, `convenios`, ramos `a_prazo` do PDV/Mesa, guard de cancelar). **Front:** aba Clientes + Contas a Receber, Convênios, forma "A Prazo", PDV/Mesa a prazo, bloco "Recebimentos a prazo" do caixa, modais e CSS (`app.js` −1049, `admin.html` −237, `style.css` −408, `cadastro.js` −5). **Preservados:** `pedido.cliente` (núcleo), reconhecimento de cliente pelo bot, LGPD, e todos os fluxos à vista. **Banco NÃO dropado** (colunas/tabelas de fiado/clientes intactas — dropar depois com backup). Validado: **211 testes + check + servidor carrega + grep sem resíduos**; diff revisado (fluxo de PDV/finalizar venda conferido). Auditoria + pesquisa de mercado guardadas em `docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md` p/ o redesenho. — 2026-07-13
