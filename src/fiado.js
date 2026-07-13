@@ -200,10 +200,13 @@ async function fecharMesaAPrazo(dir, mesaId, clienteId, comCaixa) {
     const convenio = (Array.isArray(cfg.convenios) ? cfg.convenios : []).find((v) => v.id === c.convenio_id) || null;
     const vencimento = convenios.calcularVencimentoConvenio(c.hoje, convenio);
     // Marca os pedidos abertos da mesa como fiado (mantém mesa_id e recebido_em NULL).
+    // Grava o NOME do cliente no pedido (antes ficava o rótulo "Mesa N"): a dívida é do
+    // cliente, então caixa/recibo/Contas a Receber devem mostrar quem deve, não a mesa.
+    const nomeCli = (c.nome || "Cliente").slice(0, 120);
     await client.query(
-      `UPDATE pedidos SET a_prazo = true, cliente_id = $3, vencimento = $4, pagamento = 'A Prazo'
+      `UPDATE pedidos SET a_prazo = true, cliente_id = $3, vencimento = $4, pagamento = 'A Prazo', cliente = $5
          WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL AND status <> 'cancelado'`,
-      [empId, mesaId, clienteId, vencimento]
+      [empId, mesaId, clienteId, vencimento, nomeCli]
     );
     if (c.liberacao_pontual) await client.query("UPDATE clientes SET liberacao_pontual = false WHERE id = $1", [clienteId]);
     const r = await client.query(
