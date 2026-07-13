@@ -5152,6 +5152,9 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .cx-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; align-items: start; }
 .cx-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
 .cx-card-titulo { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); }
+.cx-subcard { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-subtle); }
+.cx-subcard .cx-card-titulo { margin-bottom: 8px; }
+.cx-sub-nota { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-disabled); }
 .cx-box { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 1px; }
 .cx-box-rotulo { font-size: 13px; color: var(--text-secondary); }
 .cx-box-formula { font-size: 11px; color: var(--text-disabled); }

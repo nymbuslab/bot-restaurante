@@ -42,12 +42,16 @@
     d = d || {};
     const recebido = d.recebidoPorForma || {};
     const cancelado = d.canceladoPorForma || {};
+    const recebidoPrazo = d.recebidoPrazoPorForma || {};
+    const canceladoPrazo = d.canceladoPrazoPorForma || {};
     const formas = d.formas || [];
     const formaDin = d.formaDinheiro || "Dinheiro";
-    // Vendas LÍQUIDAS por forma: o recebido menos o que foi cancelado NAQUELA forma.
-    // Assim a linha de cada forma reflete o que de fato entrou (ex.: Pix cancelado
-    // não infla o Pix). O rastro dos cancelamentos fica na seção CANCELAMENTOS.
-    const liquido = (f) => (Number(recebido[f]) || 0) - (Number(cancelado[f]) || 0);
+    // VENDAS DO DIA líquidas por forma: recebido − recebido a prazo (fiado) − cancelados
+    // (líquidos) NAQUELA forma. O fiado recebido é COBRANÇA de dívida, não venda de hoje,
+    // então sai daqui e vai para a seção RECEBIMENTOS A PRAZO (mas conta no Total em Caixa).
+    const liquido = (f) => (Number(recebido[f]) || 0) - (Number(recebidoPrazo[f]) || 0)
+      - ((Number(cancelado[f]) || 0) - (Number(canceladoPrazo[f]) || 0));
+    const liquidoPrazo = (f) => (Number(recebidoPrazo[f]) || 0) - (Number(canceladoPrazo[f]) || 0);
     const L = [];
 
     L.push(centro("*" + String(d.restaurante || "Caixa").toUpperCase() + "*"));
@@ -76,12 +80,28 @@
     L.push(sep("-"));
 
     let totalVendas = 0;
-    for (const k in recebido) totalVendas += liquido(k); // vendas LÍQUIDAS (já sem cancelados)
+    for (const k in recebido) totalVendas += liquido(k); // vendas do dia LÍQUIDAS (sem fiado, sem cancelados)
+    let totalPrazo = 0;
+    for (const k in recebidoPrazo) totalPrazo += liquidoPrazo(k); // fiado recebido no turno
     const totalCaixa = (Number(d.fundoTroco) || 0) + (Number(d.suprimentos) || 0)
-      + totalVendas - (Number(d.sangrias) || 0);
+      + totalVendas + totalPrazo - (Number(d.sangrias) || 0);
     L.push(linhaValor("Total de Vendas", "R$ " + fmtBR(totalVendas)));
     L.push(linhaValor("Total em Caixa", "R$ " + fmtBR(totalCaixa)));
     L.push(sep("="));
+
+    // RECEBIMENTOS A PRAZO (fiado recebido no turno) — cobrança de dívida, não venda de
+    // hoje: separado das VENDAS, mas conta no Total em Caixa (o dinheiro está na gaveta).
+    if (totalPrazo > 0.005) {
+      L.push("RECEBIMENTOS A PRAZO (FIADO)");
+      if (liquidoPrazo(formaDin) > 0.005) L.push(linhaValor(formaDin, "R$ " + fmtBR(liquidoPrazo(formaDin))));
+      const contadasP = new Set([formaDin]);
+      formas.forEach((f) => { contadasP.add(f); if (liquidoPrazo(f) > 0.005) L.push(linhaValor(f, "R$ " + fmtBR(liquidoPrazo(f)))); });
+      let outrosP = 0;
+      for (const k in recebidoPrazo) if (!contadasP.has(k)) outrosP += liquidoPrazo(k);
+      if (outrosP > 0.005) L.push(linhaValor("Outros", "R$ " + fmtBR(outrosP)));
+      L.push(linhaValor("Total recebido a prazo", "R$ " + fmtBR(totalPrazo)));
+      L.push(sep("="));
+    }
 
     // VENDAS A PRAZO (fiado) — informativo: aconteceram no turno mas NÃO entram na
     // conferência (o dinheiro entra na baixa, não agora).

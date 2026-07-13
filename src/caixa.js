@@ -386,8 +386,12 @@ async function registrarMovimento(dir, { tipo, valor, descricao }) {
 }
 
 async function _movimentos(caixaId) {
+  // JOIN com pedidos p/ trazer `a_prazo`: o resumo separa recebimento de fiado (cobrança
+  // de dívida) das vendas do dia. Movimentos sem pedido (sangria/suprimento) → a_prazo NULL.
   const r = await db.query(
-    "SELECT * FROM caixa_movimentos WHERE caixa_id = $1 ORDER BY id ASC",
+    `SELECT m.*, p.a_prazo
+       FROM caixa_movimentos m LEFT JOIN pedidos p ON p.id = m.pedido_id
+      WHERE m.caixa_id = $1 ORDER BY m.id ASC`,
     [caixaId]
   );
   return r.rows;
@@ -510,6 +514,10 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma, eletronicoPorForma),
     recebidoPorForma: resumo.recebidoPorForma || {},
     canceladoPorForma: resumo.canceladoPorForma || {},
+    // Recebimento de conta a prazo (fiado): separado das vendas no relatório (cobrança de
+    // dívida, não venda do dia), mas conta no Total em Caixa.
+    recebidoPrazoPorForma: resumo.recebidoPrazoPorForma || {},
+    canceladoPrazoPorForma: resumo.canceladoPrazoPorForma || {},
     fundoTroco: Number(caixa.fundo_troco) || 0,
     suprimentos: resumo.suprimentos || 0,
     sangrias: resumo.sangrias || 0,

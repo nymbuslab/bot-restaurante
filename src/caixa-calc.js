@@ -5,26 +5,40 @@ function ehDinheiro(forma) {
 }
 
 function resumoCaixa(caixa, movimentos) {
-  // Vendas ficam BRUTAS (recebidoPorForma/totalRecebido) e os cancelamentos são
-  // rastreados à parte (canceladoPorForma/cancelamentos) — transparência anti-fraude:
-  // o relatório/extrato mostra a venda E o cancelamento, e o total deduz o cancelado.
+  // Recebido/cancelado ficam com o TOTAL (venda + fiado) — a conferência da gaveta
+  // usa esses agregados e o dinheiro do fiado também está na gaveta, então não pode
+  // sair daqui. O recebimento de conta a prazo (fiado) é ADICIONALMENTE somado à parte
+  // (…Prazo…) para a tela/relatório distinguir VENDA DO DIA de COBRANÇA DE DÍVIDA
+  // (fiado recebido não é faturamento de hoje; a venda já contou quando foi feita).
   const recebidoPorForma = {}, canceladoPorForma = {};
+  const recebidoPrazoPorForma = {}, canceladoPrazoPorForma = {};
   let totalRecebido = 0, recebidoDinheiro = 0, suprimentos = 0, sangrias = 0;
   let cancelamentos = 0, canceladoDinheiro = 0, vendasPrazo = 0;
+  let totalRecebidoPrazo = 0, recebidoPrazoDinheiro = 0, canceladoPrazo = 0, canceladoPrazoDinheiro = 0;
   for (const m of movimentos || []) {
     const v = Number(m.valor) || 0;
+    const forma = m.forma_pagamento || "Outros";
+    const prazo = m.a_prazo === true; // recebimento/estorno ligado a pedido a_prazo (fiado)
     if (m.tipo === "recebimento") {
-      const forma = m.forma_pagamento || "Outros";
       recebidoPorForma[forma] = (recebidoPorForma[forma] || 0) + v;
       totalRecebido += v;
       if (ehDinheiro(forma)) recebidoDinheiro += v;
+      if (prazo) {
+        recebidoPrazoPorForma[forma] = (recebidoPrazoPorForma[forma] || 0) + v;
+        totalRecebidoPrazo += v;
+        if (ehDinheiro(forma)) recebidoPrazoDinheiro += v;
+      }
     } else if (m.tipo === "cancelamento" || m.tipo === "estorno") {
       // Estorno (correção de recebimento errado) deduz igual ao cancelamento —
       // ambos reversam uma entrada, mantendo o rastro no extrato.
-      const forma = m.forma_pagamento || "Outros";
       canceladoPorForma[forma] = (canceladoPorForma[forma] || 0) + v;
       cancelamentos += v;
       if (ehDinheiro(forma)) canceladoDinheiro += v;
+      if (prazo) {
+        canceladoPrazoPorForma[forma] = (canceladoPrazoPorForma[forma] || 0) + v;
+        canceladoPrazo += v;
+        if (ehDinheiro(forma)) canceladoPrazoDinheiro += v;
+      }
     } else if (m.tipo === "suprimento") {
       suprimentos += v;
     } else if (m.tipo === "sangria") {
@@ -37,11 +51,15 @@ function resumoCaixa(caixa, movimentos) {
   }
   const fundo = Number(caixa && caixa.fundo_troco) || 0;
   // Espécie esperada na gaveta: tira o dinheiro que foi devolvido em cancelamentos.
+  // (recebidoDinheiro/canceladoDinheiro já incluem o fiado — a gaveta tem esse dinheiro.)
   const esperadoEspecie = fundo + recebidoDinheiro + suprimentos - sangrias - canceladoDinheiro;
   return {
     recebidoPorForma, totalRecebido, recebidoDinheiro, suprimentos, sangrias,
     cancelamentos, canceladoPorForma, canceladoDinheiro, esperadoEspecie,
     vendasPrazo,
+    // Recebimento de conta a prazo (fiado) — subconjunto do recebido, para separar na exibição.
+    recebidoPrazoPorForma, totalRecebidoPrazo, recebidoPrazoDinheiro,
+    canceladoPrazoPorForma, canceladoPrazo, canceladoPrazoDinheiro,
   };
 }
 

@@ -112,3 +112,38 @@ test("resumoCaixa: venda a prazo é informativa (não conta na conferência)", (
   assert.equal(r.esperadoEspecie, 40);          // fundo 0 + 40, sem os 100
   assert.equal(totalEmCaixa({ fundo_troco: 0 }, r), 40); // fiado não infla o caixa
 });
+
+test("resumoCaixa: recebimento de fiado (a_prazo) é subconjunto do recebido, separado à parte", () => {
+  const movsRec = [
+    { tipo: "recebimento", forma_pagamento: "Pix", valor: 30 },                    // venda do dia
+    { tipo: "recebimento", forma_pagamento: "Pix", valor: 4, a_prazo: true },      // fiado recebido
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 6, a_prazo: true }, // fiado recebido
+  ];
+  const r = resumoCaixa({ fundo_troco: 0 }, movsRec);
+  // Total continua incluindo o fiado (o dinheiro está na gaveta) — não muda a conferência.
+  assert.equal(r.totalRecebido, 40);
+  assert.equal(r.recebidoDinheiro, 6);
+  assert.equal(r.esperadoEspecie, 6);                 // fundo 0 + 6 dinheiro (inclui o fiado em dinheiro)
+  assert.equal(totalEmCaixa({ fundo_troco: 0 }, r), 40);
+  // Recebimento a prazo isolado p/ separar da venda do dia.
+  assert.equal(r.totalRecebidoPrazo, 10);             // 4 Pix + 6 Dinheiro
+  assert.equal(r.recebidoPrazoDinheiro, 6);
+  assert.equal(r.recebidoPrazoPorForma["Pix"], 4);
+  assert.equal(r.recebidoPrazoPorForma["Dinheiro"], 6);
+  // Vendas do dia = total − a prazo → Pix 30, dinheiro 0.
+  assert.equal(r.totalRecebido - r.totalRecebidoPrazo, 30);
+});
+
+test("resumoCaixa: estorno de fiado entra em cancelado E em cancelado a prazo", () => {
+  const movsEst = [
+    { tipo: "recebimento", forma_pagamento: "Pix", valor: 4, a_prazo: true },  // fiado recebido
+    { tipo: "estorno", forma_pagamento: "Pix", valor: 4, a_prazo: true },       // desfeito
+  ];
+  const r = resumoCaixa({ fundo_troco: 0 }, movsEst);
+  assert.equal(r.cancelamentos, 4);                   // reversão total
+  assert.equal(r.canceladoPrazo, 4);                  // e é reversão de fiado
+  assert.equal(r.canceladoPrazoPorForma["Pix"], 4);
+  // Recebimento a prazo líquido = 4 − 4 = 0; total em caixa volta a 0.
+  assert.equal(r.totalRecebidoPrazo - r.canceladoPrazo, 0);
+  assert.equal(totalEmCaixa({ fundo_troco: 0 }, r), 0);
+});

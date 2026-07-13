@@ -2485,16 +2485,25 @@ function renderCaixaAberto(data) {
   const totalRecebido = Number(r.totalRecebido) || 0;
   const suprimentos = Number(r.suprimentos) || 0;
   const sangrias = Number(r.sangrias) || 0;
-  const cancelamentos = Number(r.cancelamentos) || 0; // estornos + cancelamentos (reversões)
+  const cancelamentos = Number(r.cancelamentos) || 0; // estornos + cancelamentos (venda + fiado)
   const vendasPrazo = Number(r.vendasPrazo) || 0; // fiado: informativo, não conta
-  // Vendas LÍQUIDAS (recebido − estornos/cancelamentos) — a tela ao vivo espelha o
-  // "Total em Caixa" e o relatório de fechamento. Sem isso, um estorno saía do Total em
-  // Caixa mas o "Vendas por forma"/"Total Faturamento" seguiam no bruto (parecia não contar).
+  // Recebimento de conta a prazo (fiado) — é COBRANÇA de dívida, não venda de hoje (a venda
+  // já contou quando foi feita). Fica FORA de "Vendas por forma"/"Total Faturamento" e aparece
+  // num bloco próprio; mas entra no "Total em Caixa" (o dinheiro está na gaveta).
+  const totalRecebidoPrazo = Number(r.totalRecebidoPrazo) || 0;
+  const recebidoPrazoDinheiro = Number(r.recebidoPrazoDinheiro) || 0;
+  const canceladoPrazo = Number(r.canceladoPrazo) || 0;
+  const canceladoPrazoDinheiro = Number(r.canceladoPrazoDinheiro) || 0;
   const canceladoDinheiro = Number(r.canceladoDinheiro) || 0;
-  const recebidoDinheiro = (Number(r.recebidoDinheiro) || 0) - canceladoDinheiro; // dinheiro líquido
-  const totalFaturamento = totalRecebido - cancelamentos; // faturamento líquido
-  const totalCartaoPix = totalFaturamento - recebidoDinheiro;
-  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (esperado geral)
+  // VENDAS DO DIA líquidas (exclui o fiado recebido e seus estornos).
+  const vendaDinheiro = (Number(r.recebidoDinheiro) || 0) - recebidoPrazoDinheiro - (canceladoDinheiro - canceladoPrazoDinheiro);
+  const totalFaturamento = (totalRecebido - totalRecebidoPrazo) - (cancelamentos - canceladoPrazo);
+  const totalCartaoPix = totalFaturamento - vendaDinheiro;
+  // RECEBIMENTOS A PRAZO líquidos (fiado recebido no turno).
+  const prazoDinheiro = recebidoPrazoDinheiro - canceladoPrazoDinheiro;
+  const totalRecebPrazo = totalRecebidoPrazo - canceladoPrazo;
+  const prazoCartaoPix = totalRecebPrazo - prazoDinheiro;
+  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (venda + fiado)
 
   const dataHoraCurta = (iso) => iso
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -2507,8 +2516,19 @@ function renderCaixaAberto(data) {
     if (!ehFormaDinheiro(f) && !formasElet.includes(f)) formasElet.push(f);
   });
   const canceladoPorForma = r.canceladoPorForma || {};
+  const recebidoPrazoPorForma = r.recebidoPrazoPorForma || {};
+  const canceladoPrazoPorForma = r.canceladoPrazoPorForma || {};
+  // Venda líquida por forma = recebido − recebido a prazo − (cancelado − cancelado a prazo).
+  const vendaForma = (f) => (r.recebidoPorForma[f] || 0) - (recebidoPrazoPorForma[f] || 0)
+    - ((canceladoPorForma[f] || 0) - (canceladoPrazoPorForma[f] || 0));
+  const prazoForma = (f) => (recebidoPrazoPorForma[f] || 0) - (canceladoPrazoPorForma[f] || 0);
   const linhasElet = formasElet
-    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn((r.recebidoPorForma[f] || 0) - (canceladoPorForma[f] || 0))}</span></div>`)
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(vendaForma(f))}</span></div>`)
+    .join("");
+  // Bloco "Recebimentos a prazo": formas eletrônicas que tiveram fiado recebido (dinheiro à parte).
+  const formasPrazoElet = formasElet.filter((f) => Math.abs(prazoForma(f)) > 0.005);
+  const linhasPrazoElet = formasPrazoElet
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(prazoForma(f))}</span></div>`)
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
@@ -2566,7 +2586,7 @@ function renderCaixaAberto(data) {
       <div>
         <span class="cx-badge">Caixa aberto</span>
         <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
-        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias − Estornos</span>
+        <span class="cx-formula">Valor inicial + Suprimentos + Vendas + Recebimentos a prazo − Sangrias − Estornos</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
@@ -2593,7 +2613,13 @@ function renderCaixaAberto(data) {
         <h4 class="cx-card-titulo">Vendas por forma</h4>
         ${linhasElet}
         <div class="caixa-linha caixa-total"><span>Total cartão/Pix</span><span>R$ ${fmtBRn(totalCartaoPix)}</span></div>
-        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(recebidoDinheiro)}</span></div>
+        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(vendaDinheiro)}</span></div>
+        ${totalRecebPrazo > 0.005 ? `<div class="cx-subcard">
+          <h4 class="cx-card-titulo">Recebimentos a prazo <span class="cx-sub-nota">(fiado, não é venda de hoje)</span></h4>
+          ${linhasPrazoElet}
+          ${prazoDinheiro > 0.005 ? `<div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(prazoDinheiro)}</span></div>` : ""}
+          <div class="caixa-linha caixa-total"><span>Total recebido a prazo</span><span>R$ ${fmtBRn(totalRecebPrazo)}</span></div>
+        </div>` : ""}
       </div>
       <div class="cx-card">
         <h4 class="cx-card-titulo">Movimentação do caixa</h4>
