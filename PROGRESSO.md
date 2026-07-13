@@ -24,6 +24,18 @@ auto-limpos) + visual conferido em harness. Nota de regra: no bloqueio por limit
 
 ### Em aberto
 
+#### Fiado (conta a prazo) — auditoria + correções [plano: docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md]
+
+> Auditoria de regra de negócio (agente) + pesquisa de mercado (Goomer/Consumer/Cardápio Web/Saipos/Datacaixa):
+> núcleo do fiado **correto e competitivo** (acima do Cardápio Web, nível Saipos/Consumer). Divergências vêm de
+> buracos em **cancelamento** e **estorno**. Decisões do dono (2026-07-13): cancelar em fiado será **bloqueado**
+> pela aba Pedidos (desfazer só na aba Receber); "desfazer recebimento" vira **botão na aba Receber** (parcial+integral).
+
+- [ ] **(P0) Fase A — blindar o dinheiro** — (1) bloquear "Cancelar" em pedido a prazo (front+servidor) e barrar `cancelarPedido` de fiado com `valor_recebido>0`; (2) "desfazer último recebimento" na aba Receber (reusa lógica de `estornarRecebimento`: devolve `valor_recebido`, apaga a `fiado_baixas`, deduz do caixa no Completo, reabre a conta) — cobre PDV e parcial, hoje impossíveis (`estornavel` exclui balcão e exige `recebido_em`); (3) esconder botão "Receber" de linha no a prazo. Smoke test contra o banco.
+- [ ] **(P1) Fase B — guardrails** — exigir convênio/vencimento válido ao vender a prazo (venda sem vencimento nunca vence/bloqueia); exigir limite>0 ao ligar "bloquear por limite"; validar/avisar valor parcial que excede a dívida.
+- [ ] **(P2) Fase C — bordas** — exclusão de cliente com fiado **quitado** (mantém histórico); troca de plano (Completo→Essencial) com fiado/caixa aberto.
+- [ ] **(P2, crescimento) Fase D — diferencial** — flag "permitir venda a prazo" por cliente (suspender mau pagador); saldo devedor no cupom da venda a prazo; extrato + lembrete de vencimento pelo WhatsApp.
+
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
 - [ ] **(P2, não recomendado) Rename das classes de estado** — `.ativo`/`.ativa`/`.selecionado` → 1 nome só. Auditado e **desaconselhado**: ~41 ocorrências no CSS + ~74 toggles em JS + HTML (fora falsos positivos que NÃO podem mudar: `empresas.ativo` de domínio, texto em termos/privacidade). Ganho visual/manutenção ~zero e risco alto (esquecer um toggle quebra aba/filtro/nav em silêncio). Retomar só se houver motivo concreto. O outro item da dupla (escala global de botões) foi **auditado e fechado** — ver ✅ Concluído.
