@@ -15,9 +15,11 @@ grep sem resíduos. Contexto p/ quando amadurecer: docs/superpowers/plans/2026-0
 (auditoria de regra de negócio + pesquisa de mercado).
 
 **Deploy pendente** (decisão do dono: segurar os commits e pushar tudo junto num deploy só) — nada
-foi pushado. No deploy: `git push` dos commits locais (a remoção do fiado zera o efeito das fases
-construídas antes; sobra o **fix do agente `86b7ac1`** e as melhorias não-fiado). **A correção do
-agente já está DISTRIBUÍDA** (release v0.2.6 no GitHub); o `git push` do fonte é só controle de versão.
+foi pushado. No deploy, **nesta ordem**: (1) `git push` + `fly deploy` do código sem fiado; (2) SÓ
+DEPOIS `npx supabase db push` (aplica `20260713120000_drop_fiado.sql` — dropa o schema de fiado).
+**A ordem importa:** dropar antes do deploy quebra o app antigo no ar (que ainda usa `a_prazo` etc.).
+**Fazer snapshot do banco antes do drop** (irreversível; dump local de segurança já feito). A correção
+do agente já está DISTRIBUÍDA (release v0.2.6); o `git push` do fonte é só controle de versão.
 
 ## 📋 Próximos Passos
 
@@ -30,7 +32,7 @@ agente já está DISTRIBUÍDA** (release v0.2.6 no GitHub); o `git push` do font
 > **pesquisa de mercado** (Goomer/Consumer/Cardápio Web/Saipos/Datacaixa) — base para redesenhar quando o dono
 > quiser retomar. Banco preservado (colunas/tabelas não dropadas). Retomar só sob decisão do dono.
 
-- [ ] **(quando retomar) Dropar o schema de fiado/clientes** — colunas `pedidos.a_prazo/cliente_id/vencimento/valor_recebido`, tabelas `fiado_baixas` e o cadastro extra de `clientes` (só se NÃO for reusar). Passo separado, com backup. Hoje ficam intactos (não quebram nada sem uso).
+- [ ] **Aplicar o DROP do schema de fiado** — migração `20260713120000_drop_fiado.sql` **já criada** (dropa `fiado_baixas`, colunas de fiado de `pedidos` e o cadastro admin de `clientes`; PRESERVA `clientes` base + `enderecos` + bot/LGPD). **Rodar `npx supabase db push` SÓ DEPOIS do deploy do código** (snapshot do banco antes). Ver "🔄 Em Andamento".
 
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
