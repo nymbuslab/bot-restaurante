@@ -34,6 +34,9 @@ function criarJanela() {
     // "Sem conexão". Restaura da config salva e renova o token ANTES do 1º poll.
     api.setBase(config.carregar().apiBase);
     await auth.renovar().catch(() => {});
+    // Renovar repopula a identidade em memoria (o servidor devolve nome/slug); regrava no config
+    // para o proximo boot ja ter o nome atualizado caso o dono tenha mudado no painel. Best-effort.
+    try { const d = auth.dados(); if (d.nome || d.slug) config.salvar({ ...config.carregar(), nome: d.nome || "", slug: d.slug || "" }); } catch (_) {}
     poller.iniciar({
       onLog: (m) => janela && janela.webContents.send("log", m),
       onStatus: (s) => janela && janela.webContents.send("status", s),

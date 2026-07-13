@@ -26,3 +26,12 @@ test("normalizarConfig: pelo menos uma via fica ligada (nao deixa imprimir nada)
   const c = normalizarConfig({ vias: { cozinha: false, cupom: false } });
   assert.equal(c.vias.cozinha || c.vias.cupom, true);
 });
+
+test("normalizarConfig: preserva nome/slug (identidade da sessao) e ignora nao-string", () => {
+  const c = normalizarConfig({ nome: "Sabor D' Casa", slug: "sabor-d-casa" });
+  assert.equal(c.nome, "Sabor D' Casa");
+  assert.equal(c.slug, "sabor-d-casa");
+  // ausente/invalido vira string vazia (nunca undefined -> UI cai no "Restaurante" so quando vazio de fato)
+  assert.equal(normalizarConfig({}).nome, "");
+  assert.equal(normalizarConfig({ nome: 123 }).nome, "");
+});

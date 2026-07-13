@@ -4,6 +4,8 @@ const path = require("path");
 const DEFAULTS = {
   apiBase: "https://bot-restaurante.fly.dev",
   email: "",
+  nome: "",                  // nome do restaurante (identidade da sessão, exibido na UI)
+  slug: "",                  // slug do tenant (identidade da sessão)
   conexao: "rede",          // "rede" | "serial" | "usb"
   alvo: "",                  // rede: "IP:porta" | serial: "COM3" | usb: nome da fila
   baud: 9600,
@@ -38,6 +40,8 @@ function normalizarConfig(parcial) {
   return {
     apiBase: apiBaseSegura(p.apiBase),
     email: typeof p.email === "string" ? p.email : "",
+    nome: typeof p.nome === "string" ? p.nome : "",
+    slug: typeof p.slug === "string" ? p.slug : "",
     conexao: umDe(p.conexao, ["rede", "serial", "usb"], DEFAULTS.conexao),
     alvo: typeof p.alvo === "string" ? p.alvo.trim() : "",
     baud: clamp(p.baud, 1200, 921600, DEFAULTS.baud),

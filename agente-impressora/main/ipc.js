@@ -19,12 +19,20 @@ function registrar(janela) {
 
   ipcMain.handle("auth:login", async (_e, { apiBase, email, senha }) => {
     const s = await auth.login(apiBase, email, senha);
-    // persistir apiBase/email e best-effort: erro de disco aqui NAO pode derrubar um login que ja deu certo.
-    try { config.salvar({ ...config.carregar(), apiBase, email }); } catch (_) {}
+    // persistir apiBase/email + identidade do restaurante (nome/slug) e best-effort: erro de disco
+    // aqui NAO pode derrubar um login que ja deu certo. O nome persistido garante que a UI mostre
+    // o restaurante certo ao reabrir logado (antes de a renovacao de sessao repopular a memoria).
+    try { config.salvar({ ...config.carregar(), apiBase, email, nome: s.nome || "", slug: s.slug || "" }); } catch (_) {}
     poller.iniciar(opts);
     return s;
   });
-  ipcMain.handle("auth:status", () => ({ logado: auth.estaLogado(), ...auth.dados(), email: config.carregar().email }));
+  // Fallback do nome para o config persistido: ao reabrir logado, a sessao em memoria ainda esta
+  // vazia (renovar() e assincrono) -> sem isso a UI cairia em "Restaurante" ate a renovacao chegar.
+  ipcMain.handle("auth:status", () => {
+    const cfg = config.carregar();
+    const d = auth.dados();
+    return { logado: auth.estaLogado(), slug: d.slug || cfg.slug, nome: d.nome || cfg.nome, email: cfg.email };
+  });
   ipcMain.handle("auth:sair", () => { poller.parar(); auth.sair(); return true; });
 
   ipcMain.handle("config:carregar", () => config.carregar());
