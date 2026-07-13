@@ -2512,6 +2512,9 @@ function renderCaixaAberto(data) {
   const linhasMov = (data.movimentos || []).map((m) => {
     const neg = ehNeg(m.tipo);
     const prazo = m.tipo === "venda_prazo"; // fiado: informativo, não conta na conferência
+    // Recebimento de conta a prazo (baixa de fiado): é dinheiro que entrou de verdade (conta no
+    // caixa), mas com rótulo próprio para diferenciar de uma venda de balcão.
+    const recPrazo = m.tipo === "recebimento" && m.aPrazo;
     const rowCls = m.tipo === "recebimento" ? "" : ("cx-row-mov" + (neg ? " cx-row-sangria" : "") + (prazo ? " cx-row-prazo" : ""));
     const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno" || prazo;
     const num = (temPedido && m.numero != null) ? "#" + m.numero : "—";
@@ -2528,7 +2531,7 @@ function renderCaixaAberto(data) {
     return `<tr class="${rowCls}">
       <td class="cx-td-hora">${dataHoraCurta(m.quando)}</td>
       <td>${num}</td>
-      <td>${tipoLabel[m.tipo] || m.tipo}</td>
+      <td>${recPrazo ? "Recebimento a prazo" : (tipoLabel[m.tipo] || m.tipo)}</td>
       <td>${cliente}</td>
       <td class="caixa-tab-valor${neg ? " caixa-tab-neg" : ""}">${valorTxt}</td>
       <td class="cx-td-num">${pagoTxt}</td>

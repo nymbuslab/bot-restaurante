@@ -381,7 +381,7 @@ async function resumo(dir) {
   // nº/cliente do pedido (recebimentos) — é o que o dono confere ao olhar o caixa.
   const mov = await db.query(
     `SELECT m.tipo, m.pedido_id, m.forma_pagamento, m.valor, m.valor_pago, m.troco, m.descricao, m.criado_em,
-            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em, p.status
+            p.numero, p.cliente, p.origem, p.tipo_entrega, p.recebido_em, p.status, p.a_prazo
        FROM caixa_movimentos m
        LEFT JOIN pedidos p ON p.id = m.pedido_id
       WHERE m.caixa_id = $1
@@ -405,6 +405,7 @@ async function resumo(dir) {
     resumo: calc.resumoCaixa(caixa, movimentos),
     movimentos: mov.rows.map((r) => ({
       tipo: r.tipo, pedidoId: r.pedido_id, numero: r.numero, cliente: r.cliente,
+      aPrazo: r.a_prazo === true, // recebimento de conta a prazo (fiado) → rótulo próprio no extrato
       forma: r.forma_pagamento, valor: Number(r.valor) || 0, descricao: r.descricao || "",
       valorPago: r.valor_pago == null ? null : Number(r.valor_pago),
       troco: r.troco == null ? null : Number(r.troco),
