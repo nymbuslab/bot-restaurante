@@ -242,7 +242,7 @@ async function estornarRecebimento(dir, pedidoId) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT numero, recebido_em, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT numero, recebido_em, status, a_prazo FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
@@ -269,6 +269,29 @@ async function estornarRecebimento(dir, pedidoId) {
         `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
          VALUES ($1, $2, 'estorno', $3, $4, $5, $6)`,
         [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Estorno recebimento #" + numero]
+      );
+    }
+    // Fiado: estornar o recebimento também DESFAZ a baixa da conta a prazo, senão o
+    // dinheiro sairia do caixa mas a dívida continuaria quitada (sumiria do controle).
+    // Devolve ao pedido o valor das baixas cujo recebimento está NESTE caixa e apaga
+    // esses registros do log → a conta volta a "a receber" com o saldo correto.
+    if (ped.rows[0].a_prazo) {
+      const bx = await client.query(
+        `SELECT COALESCE(SUM(b.valor),0)::float AS soma
+           FROM fiado_baixas b JOIN caixa_movimentos m ON m.id = b.caixa_movimento_id
+          WHERE b.empresa_id = $1 AND b.pedido_id = $2 AND m.caixa_id = $3 AND m.tipo = 'recebimento'`,
+        [empId, pedidoId, caixa.id]
+      );
+      const devolver = Number(bx.rows[0] && bx.rows[0].soma) || 0;
+      await client.query(
+        `DELETE FROM fiado_baixas b USING caixa_movimentos m
+          WHERE b.caixa_movimento_id = m.id AND b.empresa_id = $1 AND b.pedido_id = $2
+            AND m.caixa_id = $3 AND m.tipo = 'recebimento'`,
+        [empId, pedidoId, caixa.id]
+      );
+      await client.query(
+        "UPDATE pedidos SET valor_recebido = GREATEST(0, COALESCE(valor_recebido,0) - $3) WHERE empresa_id = $1 AND id = $2",
+        [empId, pedidoId, devolver]
       );
     }
     await client.query(
