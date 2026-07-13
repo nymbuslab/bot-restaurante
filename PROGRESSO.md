@@ -4,22 +4,7 @@
 
 ## 🔄 Em Andamento
 
-**Fiado + cadastro de cliente REMOVIDOS** (decisão do dono 2026-07-13: amadurecer a ideia).
-Branch `chore/remover-fiado-clientes` (a mesclar na main). Removida toda a feature de conta a prazo
-(venda a prazo, Contas a Receber, Convênios, forma "A Prazo") e o cadastro de cliente no painel (aba
-Clientes, CRUD PF/PJ). **Preservados:** `pedido.cliente` (núcleo), o reconhecimento de cliente pelo
-bot (`clientes.buscarCliente`/`registrarDoPedido`) e o export/retenção LGPD; os fluxos à vista de
-PDV/Mesa/Caixa/Pedidos. **Banco intacto** (colunas/tabelas de fiado/clientes NÃO dropadas — decisão:
-dropar depois com backup, num passo separado). Verificado: 211 testes + check + servidor carrega +
-grep sem resíduos. Contexto p/ quando amadurecer: docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md
-(auditoria de regra de negócio + pesquisa de mercado).
-
-**Deploy pendente** (decisão do dono: segurar os commits e pushar tudo junto num deploy só) — nada
-foi pushado. No deploy, **nesta ordem**: (1) `git push` + `fly deploy` do código sem fiado; (2) SÓ
-DEPOIS `npx supabase db push` (aplica `20260713120000_drop_fiado.sql` — dropa o schema de fiado).
-**A ordem importa:** dropar antes do deploy quebra o app antigo no ar (que ainda usa `a_prazo` etc.).
-**Fazer snapshot do banco antes do drop** (irreversível; dump local de segurança já feito). A correção
-do agente já está DISTRIBUÍDA (release v0.2.6); o `git push` do fonte é só controle de versão.
+_(nada em edição — working tree limpo; deploy do dia 2026-07-13 concluído, ver ✅ Concluído)_
 
 ## 📋 Próximos Passos
 
@@ -30,9 +15,8 @@ do agente já está DISTRIBUÍDA (release v0.2.6); o `git push` do fonte é só 
 > A feature de fiado + cadastro de cliente no painel foi **removida** (ver 🔄 Em Andamento / ✅ Concluído) para
 > amadurecer a ideia. O plano guarda a **auditoria de regra de negócio** (bugs de cancelamento/estorno) e a
 > **pesquisa de mercado** (Goomer/Consumer/Cardápio Web/Saipos/Datacaixa) — base para redesenhar quando o dono
-> quiser retomar. Banco preservado (colunas/tabelas não dropadas). Retomar só sob decisão do dono.
-
-- [ ] **Aplicar o DROP do schema de fiado** — migração `20260713120000_drop_fiado.sql` **já criada** (dropa `fiado_baixas`, colunas de fiado de `pedidos` e o cadastro admin de `clientes`; PRESERVA `clientes` base + `enderecos` + bot/LGPD). **Rodar `npx supabase db push` SÓ DEPOIS do deploy do código** (snapshot do banco antes). Ver "🔄 Em Andamento".
+> quiser retomar. Schema de fiado **já dropado** do banco (2026-07-13, ver ✅ Concluído); a base do cliente
+> (nome/telefone/enderecos) foi preservada. Retomar só sob decisão do dono (recria do zero).
 
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
@@ -292,3 +276,4 @@ do agente já está DISTRIBUÍDA (release v0.2.6); o `git push` do fonte é só 
 - [x] **Fiado — recebimento só pela aba Receber, baixa parcial da dívida e venda a prazo no caixa** — (1) o pedido fiado deixou de ser recebível pela tela de Pedidos: selo **"A Prazo"** (sem botão de receber) e `caixa.receberPedido` **rejeita** `a_prazo` (trava no servidor); recebimento exclusivo da aba Receber. (2) A baixa **parcial** deixou de exigir uma venda por vez: abate o valor da dívida das vendas selecionadas, da mais vencida p/ a mais nova (ex.: deve 100, paga 50). (3) A venda a prazo passa a aparecer na **movimentação do caixa** e no **fechamento** (movimento `venda_prazo`, informativo), mas **não conta na conferência** (`caixa-calc` soma em `vendasPrazo`, fora dos totais); o dinheiro entra na baixa. Validado: 247 testes + check + smokes (distribuição parcial, trava do recebimento, venda_prazo informativo). — 2026-07-12
 - [x] **Agente de impressão — nome do restaurante sumia (voltava a "Restaurante") + v0.2.6 publicada** — diagnóstico: o vazamento de impressão entre tenants (comanda da sabor-d-casa saindo na impressora da nymbuslab) **não é bug de código** — a fila e as rotas do agente são isoladas por `empresa_id` e o token resolve o tenant por `user_id` único (confirmado read-only em prod: nenhuma empresa compartilha `user_id`). Causa real: um **agente antigo logado na conta errada** (o `reservado_por='sem-id'` na fila revela build pré-0.2.5 sem id de sessão) → correção é operacional (deslogar/atualizar). **Bug de código de fato corrigido:** o agente só persistia o refresh token, não a identidade; ao reabrir logado, a UI lia a sessão antes de a renovação (assíncrona) repopular a memória, caindo em "Restaurante". Fix: `config.js`/`ipc.js`/`main.js` passam a guardar `nome`/`slug` no config e usá-los como fallback no `auth:status`. 18/18 testes do agente (1 novo em `config.test.js`). **Release v0.2.6 publicada no GitHub** (`latest`, proxy `/downloads` confirmado servindo 0.2.6) — traz o fix do nome + o anti-duplicata por sessão pra quem estiver em build antigo. Commit `86b7ac1` (local, entra no lote represado do deploy). UI Electron não dirigida aqui (só lógica + testes). — 2026-07-13
 - [x] **Remoção do fiado (conta a prazo) + cadastro de cliente no painel** — decisão do dono: **amadurecer a ideia**, então a feature inteira foi removida do código (não só desligada). Branch `chore/remover-fiado-clientes`. **Deletados:** `src/fiado.js`, `public/convenios.js`, `public/documento.js`, `scripts/migrar-convenios.js` + testes (`fiado`/`convenios`/`documento`). **Reduzidos:** `clientes.js` (só bot/checkout/LGPD: `registrarDoPedido`/`buscarCliente`/`exportar`/`removerInativos`), `pagamentos.js` (sem "A Prazo"/`ehAPrazo`), `caixa.js`+`caixa-calc.js`+`pedidos.js`+`relatorio-caixa.js` (sem `venda_prazo`/recebimento a prazo/estorno de fiado/agregados prazo), `servidor.js` (rotas `/api/fiado/*` e `/api/clientes` CRUD, `convenios`, ramos `a_prazo` do PDV/Mesa, guard de cancelar). **Front:** aba Clientes + Contas a Receber, Convênios, forma "A Prazo", PDV/Mesa a prazo, bloco "Recebimentos a prazo" do caixa, modais e CSS (`app.js` −1049, `admin.html` −237, `style.css` −408, `cadastro.js` −5). **Preservados:** `pedido.cliente` (núcleo), reconhecimento de cliente pelo bot, LGPD, e todos os fluxos à vista. **Banco NÃO dropado** (colunas/tabelas de fiado/clientes intactas — dropar depois com backup). Validado: **211 testes + check + servidor carrega + grep sem resíduos**; diff revisado (fluxo de PDV/finalizar venda conferido). Auditoria + pesquisa de mercado guardadas em `docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md` p/ o redesenho. — 2026-07-13
+- [x] **Deploy do lote represado + DROP do schema de fiado (produção)** — o dono liberou "rodar tudo". **(1)** `git push` dos 49 commits locais → GitHub. **(2)** `fly deploy` do código sem fiado → app v110 no ar (`/health` 200; o alerta de "not listening on 3000" era só a janela de boot, o health passou em seguida). **(3)** SÓ DEPOIS, `npx supabase db push` aplicou `20260713120000_drop_fiado.sql` (dropa `fiado_baixas`, colunas de fiado de `pedidos` e o cadastro admin de `clientes`). **Ordem respeitada** (código no ar antes do drop → sem quebrar o app). **Backup local** dos dados dropados feito antes (dump read-only). **Verificado pós-drop:** `fiado_baixas` some, `pedidos` sem `a_prazo/cliente_id/vencimento`, `clientes` só com base (nome/telefone/chat_id/datas), `enderecos` intacta, índice único de telefone preservado, 2 clientes base preservados, app saudável. — 2026-07-13
