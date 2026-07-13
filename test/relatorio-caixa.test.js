@@ -79,23 +79,6 @@ test("relatório: cancelamento em dinheiro sai da linha da forma e do total (lí
   assert.match(txt, /CONFERIDO/);                         // 130 dinheiro + 80 elet = 210
 });
 
-test("relatório: recebimento a prazo (fiado) sai das VENDAS e vira seção própria, mas conta no caixa", () => {
-  const d = dadosBase();
-  // Dos R$ 30 de Pix e R$ 100 de dinheiro recebidos, parte é fiado recebido (cobrança de dívida).
-  d.recebidoPorForma = { Dinheiro: 100, Cartão: 50, Pix: 34 }; // Pix 30 venda + 4 fiado
-  d.recebidoPrazoPorForma = { Pix: 4, Dinheiro: 6 };           // fiado recebido: 4 Pix + 6 dinheiro
-  const txt = Relatorio.montarRelatorioFechamento(d);
-  // VENDAS mostra só a venda do dia: Pix 30 (34 − 4), Dinheiro 94 (100 − 6).
-  assert.match(txt, /Pix\s+R\$ 30,00/);
-  assert.match(txt, /Dinheiro\s+R\$ 94,00/);
-  assert.match(txt, /Total de Vendas\s+R\$ 174,00/);          // 184 recebido − 10 fiado
-  // Seção separada de recebimentos a prazo.
-  assert.match(txt, /RECEBIMENTOS A PRAZO \(FIADO\)/);
-  assert.match(txt, /Total recebido a prazo\s+R\$ 10,00/);
-  // Total em Caixa continua com tudo (fiado está na gaveta): 50+20+174+10−10 = 244.
-  assert.match(txt, /Total em Caixa\s+R\$ 244,00/);
-});
-
 test("relatório: cancelamento de Pix não infla a linha do Pix (líquido por forma)", () => {
   const d = dadosBase();
   // Recebeu Pix 17 (cancelado) + Pix 30 = 47 bruto; líquido = 30. Reproduz o caso real.

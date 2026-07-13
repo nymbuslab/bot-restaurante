@@ -18,7 +18,6 @@ const store = require("./store");
 const pedidos = require("./pedidos");
 const caixa = require("./caixa");
 const clientes = require("./clientes");
-const fiado = require("./fiado");
 const auditoria = require("./auditoria");
 const cep = require("./cep");
 const frete = require("./frete");
@@ -37,7 +36,6 @@ const estoque = require("../public/estoque"); // dual-mode Node/browser
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarGrupos (dual-mode)
-const convenios = require("../public/convenios");    // normalizarConvenios (dual-mode)
 const pdv = require("./pdv");
 const dashboardCalc = require("./dashboard-calc");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
@@ -646,8 +644,7 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
         return { modo: "fixo", taxaFixa: f.taxaFixa };
       })(),
       taxaEntrega: frete.freteDeConfig(config).taxaFixa, // compat (checkout antigo)
-      // "A Prazo" (fiado) NÃO é oferecida ao cliente no cardápio web — só PDV/Mesa.
-      pagamentos: (Array.isArray(config.pagamentos) ? config.pagamentos : []).filter((f) => !formasPag.ehAPrazo(f)),
+      pagamentos: (Array.isArray(config.pagamentos) ? config.pagamentos : []),
       cardapio: cardapioWeb.projetarCardapio(store.getCardapio(dir)),
     });
   } catch (e) {
@@ -866,9 +863,8 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     if (tipoEntrega === "Entrega" && endereco.length < 4) return res.status(400).json({ erro: "Informe o endereço de entrega." });
 
     const config = store.getConfig(dir);
-    // "A Prazo" (fiado) é excluída: o cliente do cardápio web nunca pode escolher fiado.
-    const pagamentos = (Array.isArray(config.pagamentos) ? config.pagamentos : []).filter((f) => !formasPag.ehAPrazo(f));
-    if (formasPag.ehAPrazo(pagamento) || (pagamentos.length && pagamentos.indexOf(pagamento) === -1)) return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    const pagamentos = (Array.isArray(config.pagamentos) ? config.pagamentos : []);
+    if (pagamentos.length && pagamentos.indexOf(pagamento) === -1) return res.status(400).json({ erro: "Forma de pagamento inválida." });
 
     let recalc;
     try {
@@ -1487,7 +1483,6 @@ app.get("/api/config", exigeAuth, async (req, res) => {
     // rodar a migração (npm run normalizar-pagamentos), os toggles refletem certo.
     res.json(Object.assign({}, cfg, {
       pagamentos: formasPag.normalizarFormasPagamento(cfg.pagamentos),
-      convenios: convenios.normalizarConvenios(cfg.convenios),
     }));
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler a configuração." });
@@ -1504,8 +1499,6 @@ function normalizarConfigServidor(body) {
   // Formas de pagamento: vocabulário FIXO (não confia no cliente). Whitelist +
   // dedupe na ordem canônica; migra strings legadas de texto livre no caminho.
   if ("pagamentos" in body) body.pagamentos = formasPag.normalizarFormasPagamento(body.pagamentos);
-  // Convênios de vencimento (fiado): saneia faixas/tipos e descarta inválidos (não confia no cliente).
-  if ("convenios" in body) body.convenios = convenios.normalizarConvenios(body.convenios);
   if (body.atendimento && typeof body.atendimento === "object" && "taxaEntrega" in body.atendimento) {
     body.atendimento.taxaEntrega = nn(body.atendimento.taxaEntrega);
   }
@@ -1815,122 +1808,6 @@ app.get("/api/pedidos", exigeAuth, async (req, res) => {
   }
 });
 
-// ---- Clientes (cadastro + fiado). Essencial E Completo → só exigeAuth, sem gate. ----
-app.get("/api/clientes", exigeAuth, async (req, res) => {
-  try {
-    res.json(await clientes.listar(req.tenantDir, { busca: req.query.busca }));
-  } catch (e) {
-    console.error("clientes.listar:", e.message);
-    res.status(500).json({ erro: "Não foi possível carregar os clientes." });
-  }
-});
-
-app.get("/api/clientes/:id", exigeAuth, async (req, res) => {
-  try {
-    const cli = await clientes.buscarPorId(req.tenantDir, req.params.id);
-    if (!cli) return res.status(404).json({ erro: "Cliente não encontrado." });
-    res.json(cli);
-  } catch (e) {
-    res.status(500).json({ erro: "Não foi possível carregar o cliente." });
-  }
-});
-
-app.post("/api/clientes", exigeAuth, async (req, res) => {
-  try {
-    res.status(201).json(await clientes.criar(req.tenantDir, req.body || {}));
-  } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível salvar o cliente." });
-  }
-});
-
-app.put("/api/clientes/:id", exigeAuth, async (req, res) => {
-  try {
-    const cli = await clientes.atualizar(req.tenantDir, req.params.id, req.body || {});
-    if (!cli) return res.status(404).json({ erro: "Cliente não encontrado." });
-    res.json(cli);
-  } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível salvar o cliente." });
-  }
-});
-
-app.delete("/api/clientes/:id", exigeAuth, async (req, res) => {
-  try {
-    const ok = await clientes.excluir(req.tenantDir, req.params.id);
-    if (!ok) return res.status(404).json({ erro: "Cliente não encontrado." });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível excluir o cliente." });
-  }
-});
-
-// Libera a PRÓXIMA venda a prazo do cliente mesmo estourado/vencido (consumida na venda).
-app.post("/api/clientes/:id/liberar", exigeAuth, async (req, res) => {
-  try {
-    const ok = await clientes.liberarPontual(req.tenantDir, req.params.id);
-    if (!ok) return res.status(404).json({ erro: "Cliente não encontrado." });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ erro: "Não foi possível liberar o cliente." });
-  }
-});
-
-// ---- Contas a Receber (fiado) — Fase 4 ----
-// Sem gate de plano (Essencial e Completo). A baixa entra no caixa do dia SÓ no
-// Completo (tem caixa); no Essencial ela apenas quita a conta + registra o log.
-app.get("/api/fiado/receber", exigeAuth, async (req, res) => {
-  try {
-    res.json(await fiado.listarContas(req.tenantDir, { busca: req.query.busca, aberto: true }));
-  } catch (e) {
-    console.error("fiado.receber:", e.message);
-    res.status(500).json({ erro: "Não foi possível carregar as contas a receber." });
-  }
-});
-
-app.get("/api/fiado/recebidas", exigeAuth, async (req, res) => {
-  try {
-    res.json(await fiado.listarContas(req.tenantDir, { busca: req.query.busca, aberto: false }));
-  } catch (e) {
-    console.error("fiado.recebidas:", e.message);
-    res.status(500).json({ erro: "Não foi possível carregar as contas recebidas." });
-  }
-});
-
-app.get("/api/fiado/cliente/:id/vendas", exigeAuth, async (req, res) => {
-  try {
-    const aberto = req.query.status !== "recebidas";
-    res.json(await fiado.vendasDoCliente(req.tenantDir, req.params.id, { aberto }));
-  } catch (e) {
-    console.error("fiado.vendas:", e.message);
-    res.status(500).json({ erro: "Não foi possível carregar as vendas do cliente." });
-  }
-});
-
-app.post("/api/fiado/baixar", exigeAuth, async (req, res) => {
-  try {
-    const emp = await empresas.buscarPorSlug(req.slug);
-    const comCaixa = empresas.temCaixa(emp);
-    const b = req.body || {};
-    res.json(await fiado.baixar(req.tenantDir, {
-      pedidoIds: b.pedidoIds, forma: b.forma, valor: b.valor, comCaixa,
-    }));
-  } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível registrar o recebimento." });
-  }
-});
-
-// Desfaz o último recebimento (baixa) de uma conta a prazo — reabre a conta e, no
-// Completo, deduz do caixa aberto. Uma baixa por chamada (a mais recente).
-app.post("/api/fiado/desfazer", exigeAuth, async (req, res) => {
-  try {
-    const emp = await empresas.buscarPorSlug(req.slug);
-    const comCaixa = empresas.temCaixa(emp);
-    const pedidoId = Number((req.body || {}).pedidoId);
-    if (!pedidoId) return res.status(400).json({ erro: "Informe a venda a desfazer." });
-    res.json(await fiado.desfazerRecebimento(req.tenantDir, pedidoId, comCaixa));
-  } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível desfazer o recebimento." });
-  }
-});
 
 // Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
 // `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
@@ -1964,11 +1841,6 @@ app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
     const id = Number(req.params.id);
     const pedido = await pedidos.lerPorId(req.tenantDir, id);
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
-    // Fiado NÃO se cancela por aqui: cancelar sem reconciliar a dívida (valor_recebido +
-    // fiado_baixas) quebraria o caixa e sumiria com a conta. O desfazer é na aba Receber.
-    if (pedido.aPrazo) {
-      return res.status(400).json({ erro: "Conta a prazo não é cancelada aqui. Use a aba Receber para desfazer o recebimento ou receber a conta." });
-    }
     if (pedido.recebidoEm) {
       // Pedido PAGO: cancela mantendo o rastro e deduz no caixa (exige caixa aberto).
       // Caixa é recurso do Plano Completo → gate de servidor.
@@ -2189,31 +2061,13 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       if (formasConfig.length && pagamentosNorm.some((p) => formasConfig.indexOf(p.forma) === -1)) {
         return res.status(400).json({ erro: "Forma de pagamento inválida." });
       }
-      // Venda A Prazo (fiado): forma ÚNICA, exige cliente. Não conta na conferência
-      // do caixa, mas registra um movimento informativo (venda_prazo) — PDV é Completo
-      // com caixa aberto, então comCaixa=true.
-      if (pagamentosNorm.some((p) => formasPag.ehAPrazo(p.forma))) {
-        if (pagamentosNorm.length > 1) return res.status(400).json({ erro: "A venda A Prazo não pode ser dividida com outra forma de pagamento." });
-        try {
-          pedido = await fiado.venderAPrazo(req.tenantDir, {
-            clienteId: b.clienteId, cliente: b.cliente, itens, total, desconto, observacao: obs, origem: "pdv",
-            comCaixa: true,
-          });
-        } catch (e) {
-          if (e.code === "FIADO_BLOQUEADO") return res.status(403).json({ erro: e.message, bloqueio: e.bloqueio });
-          if (e.code === "FIADO_SEM_CLIENTE") return res.status(400).json({ erro: e.message });
-          if (e.code === "ESTOQUE") return res.status(409).json({ erro: e.message });
-          throw e;
-        }
-      } else {
-        pdv.validarPagamentos(total, pagamentosNorm);
-        pedido = await caixa.venderLocal(req.tenantDir, {
-          cliente: b.cliente, itens, total, desconto,
-          pagamentos: pagamentosNorm,
-          pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
-          observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
-        });
-      }
+      pdv.validarPagamentos(total, pagamentosNorm);
+      pedido = await caixa.venderLocal(req.tenantDir, {
+        cliente: b.cliente, itens, total, desconto,
+        pagamentos: pagamentosNorm,
+        pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
+        observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
+      });
     } else {
       const clientTx = await db.pool.connect();
       try {
@@ -2555,20 +2409,6 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
     }
     const peds = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
     if (!peds.filter((p) => p.status !== "cancelado").length) return res.status(400).json({ erro: "A mesa não possui pedidos." });
-    // Fechamento A PRAZO (fiado): não cobra agora, vincula a conta ao cliente e
-    // libera a mesa. Não exige caixa aberto; se houver, registra um movimento
-    // informativo (venda_prazo) que aparece no caixa mas não conta na conferência.
-    if (b.aPrazo) {
-      try {
-        const comCaixaMesa = empresas.temCaixa(await empresas.buscarPorSlug(req.slug));
-        await fiado.fecharMesaAPrazo(req.tenantDir, mesaId, b.clienteId, comCaixaMesa);
-        return res.json({ ok: true, aPrazo: true, mesa: await mesasDb.buscarPorId(req.tenantDir, mesaId) });
-      } catch (e) {
-        if (e.code === "FIADO_BLOQUEADO") return res.status(403).json({ erro: e.message, bloqueio: e.bloqueio });
-        if (e.code === "FIADO_SEM_CLIENTE") return res.status(400).json({ erro: e.message });
-        return res.status(400).json({ erro: e.message || "Não foi possível fechar a mesa a prazo." });
-      }
-    }
     const resumo = mesas.calcularTotalMesa(peds, mesa.taxaServico);
     const total = resumo.total; // mesa não tem desconto — não afrouxa a validação com b.desconto
     const recebidoAntes = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);
