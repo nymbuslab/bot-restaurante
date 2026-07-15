@@ -1,3 +1,13 @@
+---
+doc: progresso
+titulo: Progresso do Projeto
+proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
+secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
+manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
+atualizado: 2026-07-13
+relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
+---
+
 # Progresso do Projeto
 
 > Detalhes de arquitetura e stack ficam em `CLAUDE.md`. Aqui entram apenas etapas: fazendo, próximos passos e concluído.

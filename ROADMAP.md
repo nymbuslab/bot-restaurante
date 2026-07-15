@@ -1,3 +1,13 @@
+---
+doc: roadmap
+titulo: Roadmap
+proposito: Direção futura do produto, por prioridade.
+distincao: Futuro aqui; presente no PROGRESSO.md; entregue no CHANGELOG.md.
+manutencao: Revisar ao fim de uma fase ou antes de etapa grande. Não lista o que já foi entregue.
+atualizado: 2026-07-07
+relacionados: [PROGRESSO.md, CHANGELOG.md]
+---
+
 # Roadmap
 
 Direção do produto. O que está planejado, por prioridade.
