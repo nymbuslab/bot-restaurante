@@ -184,7 +184,7 @@ detalhe_fechamento (jsonb: cédulas contadas, lançamentos eletrônicos,
 **Tabela `caixa_movimentos`**:
 
 ```text
-id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'cancelamento'|'estorno'|'sangria'|'suprimento'|'venda_prazo'),
+id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'cancelamento'|'estorno'|'sangria'|'suprimento'),
 forma_pagamento (só recebimento), valor (numeric; LÍQUIDO que entra na gaveta),
 pedido_id (→pedidos, null), mesa_id (→mesas, null), descricao (motivo de sangria/suprimento),
 valor_pago (numeric, null; quanto o cliente ENTREGOU), troco (numeric, null; troco devolvido),
@@ -213,66 +213,3 @@ criado_em
 - Cálculos puros em `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`.
   Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
   `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).
-
-## Contas a Receber (fiado)
-
-Sem gate de plano (Essencial **e** Completo). Uma **conta a receber = o próprio `pedido`**
-(reuso máximo: já tem número, itens, total, impressão). Colunas em `pedidos` (migration
-`20260710140000_pedido_fiado.sql`):
-
-```text
-cliente_id (→clientes, on delete set null), a_prazo (bool default false),
-vencimento (date; calculado na venda pelo Convênio do cliente — foto), valor_recebido (numeric default 0)
-```
-
-- **Nasce** com `a_prazo=true`, `cliente_id` preenchido, `recebido_em=NULL`. Origem PDV
-  Balcão (`venderAPrazo`) ou Mesa (`fecharMesaAPrazo`). Se há caixa aberto (Completo), lança
-  um `caixa_movimentos` **`venda_prazo`** (INFORMATIVO): aparece na movimentação e no relatório
-  de fechamento, mas **não conta na conferência** (`caixa-calc.resumoCaixa` soma em `vendasPrazo`,
-  fora dos totais) — o dinheiro só entra na baixa. `Valor gasto`/`Saldo` do cliente são
-  **derivados** (soma de `total - valor_recebido` das vendas a prazo em aberto).
-- **Recebimento é EXCLUSIVO da aba Receber** (Clientes). `caixa.receberPedido` **rejeita**
-  `a_prazo`; na tela Pedidos o fiado tem selo "A Prazo" (sem botão de receber). `fiado.baixar`
-  faz o recebimento: **integral** (quita cada venda selecionada) ou **parcial** (abate o valor
-  da dívida das vendas selecionadas, da mais vencida p/ a mais nova, distribuindo entre elas).
-  A baixa entra no caixa do dia como `recebimento` (só no Completo) + grava `fiado_baixas`.
-
-### Convênios de vencimento
-
-O vencimento não é mais um "dia fixo" no cliente; vem de um **Convênio** (regra nomeada,
-por restaurante) que o cliente referencia. Estrutura em `config.convenios` (jsonb) e coluna
-`clientes.convenio_id` (migration `20260711120000_cliente_convenio.sql`). O `dia_vencimento`
-antigo fica como legado (migrado por `scripts/migrar-convenios.js`).
-
-```text
-config.convenios[]: { id, nome, faixas: [ { de, ate, tipo:"fixo"|"dias", valor, meses } ] }
-```
-
-- Faixas por **dia da compra** (cobrem 1–31, validado ao salvar). `tipo "fixo"` (=): vence no
-  dia `valor` do mês, deslocado por `meses` (clamp em mês curto). `tipo "dias"` (+): vence
-  `valor` dias após a compra (`meses` ignorado). Sem convênio / dia sem faixa = **sem
-  vencimento** (null; nunca em atraso).
-- Cálculo puro em `public/convenios.js` (`calcularVencimentoConvenio`), aplicado na venda por
-  `src/fiado.js`. O `pedidos.vencimento` é **foto** — mudar o convênio depois não altera
-  contas já lançadas. Editor na aba Pagamentos → seção Convênios. Ver o design em
-  `docs/superpowers/specs/2026-07-11-convenios-vencimento-fiado-design.md`.
-- **Baixa (recebimento, Fase 4 — `fiado.baixar`):** integral ou parcial, em lote. Acumula em
-  `valor_recebido`; quando cobre o `total`, seta `recebido_em` (vai p/ "Recebidas"). A baixa
-  entra no caixa do dia **só no Completo** (`comCaixa` resolvido no servidor por
-  `empresas.temCaixa`): insere `caixa_movimentos` `recebimento` por venda; no Essencial só quita.
-- **Fiado não trava o fechamento do caixa:** `_contarAReceber` exclui `a_prazo=true` (o fiado é
-  recebido depois, não precisa fechar o dia).
-
-**Tabela `fiado_baixas`** (log de cada baixa, migration `20260710160000_fiado_baixas.sql`):
-
-```text
-id, empresa_id, pedido_id (→pedidos), cliente_id (→clientes, set null),
-valor (numeric), forma_pagamento (canônica, nunca "A Prazo"),
-restante (numeric; quanto faltava DEPOIS desta baixa),
-caixa_movimento_id (→caixa_movimentos, set null; NULL no Essencial), criado_em
-```
-
-Alimenta o histórico do modal ("Baixado R$ 5,00 · dia/hora · restante R$ X"). RLS no padrão
-(revoke anon/authenticated). Rotas: `GET /api/fiado/receber|recebidas`,
-`GET /api/fiado/cliente/:id/vendas`, `POST /api/fiado/baixar`. Front em `public/app.js`
-(sub-abas Receber/Recebidas + modal + cards) reusando o design system `.cli-*`/`.fiado-*`.
