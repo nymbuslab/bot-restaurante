@@ -178,6 +178,11 @@ fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é im
 - Não expor senhas em respostas da API.
 - Todo código novo passa `tenantDir` explicitamente — sem estado global de tenant.
 - Ao adicionar nova rota à API, usar `exigeAuth` e referenciar `req.tenantDir`.
+- **Tabela nova no schema público:** a migração precisa do bloco de hardening — `enable row level
+  security` + `revoke all ... from anon, authenticated` (modelo: `20260716120000_rls_hardening_2.sql`).
+  O Supabase concede os grants por padrão, e sem isso o Advisor acusa "RLS Disabled in Public". RLS
+  ligado **sem policy** é deny-all deliberado: o backend usa a conexão privilegiada do `DATABASE_URL`,
+  que ignora RLS — policy só abriria um caminho que hoje está fechado.
 - **Valores monetários** — padrão **único** `dinheiro.js` (`window.Dinheiro`): inputs `type=text inputmode=numeric` + `Dinheiro.mascarar`/`Dinheiro.valor` (máscara "centavos primeiro"; **nunca** `type=number`/`parseFloat`); exibição via `Dinheiro.formatar`/`comPrefixo` — no `app.js` os atalhos `moedaBR`/`fmtBRn` delegam ao util → sempre `1.234,56` **com separador de milhar**; impressos dual-mode (`comanda.js`/`relatorio-caixa.js`) têm `fmtBR` que **espelha** o formato. Toda tela nova com R$ segue isso. Detalhe e exceções (% e kg) em [docs/design-system.md](docs/design-system.md). **Endereço** via `endereco-cep.js`.
 - **CSP estrita (helmet):** todo JS do front é **externo** — **nunca** adicionar `<script>` inline nem
   handler inline (`onclick=`, `onsubmit=`) no HTML (a CSP bloqueia; usar `addEventListener` em `.js`).
