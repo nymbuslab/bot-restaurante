@@ -4763,6 +4763,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .cx-header-meta { display: flex; flex-direction: column; gap: 4px; text-align: right; font-size: 13px; color: var(--text-secondary); }
 .cx-header-meta b { color: var(--text-primary); font-weight: 600; }
 .cx-aviso-vencido { display: flex; align-items: center; gap: 10px; background: var(--warning-subtle); border: 1px solid var(--warning); color: var(--text-primary); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 12px; font-size: 13.5px; }
+.cx-aviso-vencido[hidden] { display: none; } /* o display:flex acima vence o [hidden] do navegador (autor > UA); reafirma o esconder */
 .cx-aviso-vencido svg { flex: none; color: var(--warning); }
 .cx-aviso-vencido b { font-weight: 700; }
 .cx-acoes { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }

@@ -823,3 +823,9 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   destaques do cardápio.
 - **Escrita mais natural:** revisão geral tirando travessões e jargão dos textos.
 - **Botões Exportar/Atualizar** (Pedidos) com ícones no lugar de símbolos de texto.
+
+## [0.84.1] — Correção: aviso de "caixa de outro dia" na tela de Mesas
+
+- **Aviso de caixa de outro dia deixa de aparecer indevidamente.** Na tela de **Mesas**, o aviso
+  "Há um caixa de outro dia aberto" estava fixo na tela mesmo com o caixa do dia aberto normalmente.
+  Agora ele só aparece quando o caixa é realmente de um dia anterior e precisa ser fechado.
