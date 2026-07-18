@@ -797,6 +797,7 @@ async function aposAcaoTenant() {
 }
 
 async function liberarCortesia(slug) {
+  if (!(await confirmar("Liberar acesso de cortesia?", `O restaurante "${slug}" passa a usar o sistema de graça, sem assinatura, até você revogar.`, "Liberar"))) return;
   try {
     await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/assinatura/cortesia`);
     toast("Acesso de cortesia liberado.");
@@ -889,6 +890,7 @@ async function suspender(slug) {
 }
 
 async function reativar(slug) {
+  if (!(await confirmar("Reativar restaurante?", `Reativar "${slug}"? O acesso volta e, se houver assinatura, a cobrança é retomada no Stripe.`, "Reativar"))) return;
   try {
     const r = await apiAdmin("PATCH", `/api/admin/tenants/${encodeURIComponent(slug)}/reativar`);
     const d = await r.json().catch(() => ({}));

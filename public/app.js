@@ -2477,6 +2477,7 @@ function renderCaixaAberto(data) {
 }
 
 async function estornarCaixa(id) {
+  if (!(await confirmar("Estornar este recebimento?", 'O pagamento volta para "a receber" e sai do caixa. Faça isso só se recebeu por engano.', "Estornar", "Voltar"))) return;
   const r = await api("POST", "/api/caixa/estornar/" + id, {});
   if (r && r.ok) { toast("Estornado."); carregarCaixa(); }
 }
@@ -2664,6 +2665,12 @@ function renderFechamentoCaixa(data) {
   $("fcFechar").addEventListener("click", async () => {
     if (mesasAbertas > 0) { toast("Feche as mesas abertas antes de fechar o caixa."); return; }
     if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
+    // `confirmando` evita que o Esc/Tab do modal do caixa reajam enquanto o diálogo de
+    // confirmação (por cima) está aberto.
+    confirmando = true;
+    const okFechar = await confirmar("Fechar o caixa agora?", "O caixa do dia será encerrado e não dá para reabrir pelo painel. Confira os valores antes de continuar.", "Fechar caixa", "Voltar");
+    confirmando = false;
+    if (!okFechar) return;
     const res = await fecharCaixaFinal(contadoAtual());
     if (!res) return;
     destruirModal();
@@ -6160,6 +6167,7 @@ function renderMesasConfigLista() {
   el.querySelectorAll(".mesa-tag-rm[data-id]").forEach(function (b) {
     b.addEventListener("click", async function () {
       var id = Number(b.dataset.id);
+      if (!(await confirmar("Remover esta mesa?", "A mesa sai da configuração. Você pode criar de novo depois.", "Remover", "Voltar"))) return;
       var ok = await api("DELETE", "/api/mesas/" + id);
       if (!ok.ok) { var e2 = await ok.json().catch(function () { return {}; }); toast(e2.erro || "Não foi possível remover a mesa. Ela pode estar ocupada. Feche ou esvazie antes de remover.", "erro"); return; }
       mesaState.lista = mesaState.lista.filter(function (m) { return m.id !== id; });
