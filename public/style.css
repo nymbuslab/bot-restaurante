@@ -4815,14 +4815,17 @@ html.embed, html.embed body { background: var(--bg-primary); }
   box-shadow: var(--shadow-lg);
   animation: modalIn 0.18s ease both;
 }
+.modal-overlay.saindo .fc-modal { animation: modalOut 0.15s ease both; }
 .fc-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.fc-cab-tit { min-width: 0; }
 .fc-cab h3 { margin: 0 0 4px; }
 .fc-operador {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
   background: var(--accent-subtle); color: var(--accent-fg); border: 1px solid rgba(var(--accent-rgb), 0.4);
 }
-.fc-operador svg { width: 15px; height: 15px; }
+.fc-operador svg { width: 15px; height: 15px; flex-shrink: 0; }
+.fc-op-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fc-conf { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; }
 /* Colunas FIXAS (table-layout:fixed): não refluem ao digitar o valor; as 3 colunas
    numéricas têm a mesma largura, com respiro entre elas via padding das células. */
@@ -4855,6 +4858,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-bloqueio button { flex-shrink: 0; }
 @media (max-width: 560px) {
   .fc-modal { padding: 18px 14px 14px; }
+  .fc-operador { flex-shrink: 1; min-width: 0; max-width: 58%; }
   .fc-conf { padding: 4px 16px; }
   /* No mobile empilha: cada forma vira um bloco (rótulo à esquerda, valor à direita) —
      em vez de espremer 4 colunas numa tela estreita e cortar os valores. */

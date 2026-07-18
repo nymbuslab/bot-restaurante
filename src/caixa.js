@@ -8,6 +8,7 @@ const db = require("./db");
 const calc = require("./caixa-calc");
 const store = require("./store");
 const pdv = require("./pdv"); // normalizarPagamentos (troco só no dinheiro; não confia no cliente)
+const formasPag = require("./pagamentos"); // normalizarFormasPagamento (descarta legado "A Prazo")
 const relatorioCaixa = require("../public/relatorio-caixa"); // dual-mode Node/browser
 
 const slugDe = (dir) => path.basename(dir);
@@ -437,96 +438,125 @@ function _formasEletronicas(pagamentos, recebidoPorForma, contadoPorForma) {
 // O relatório é montado AQUI (servidor), nunca recebido do cliente — fonte única
 // e autoritativa; guardado em detalhe_fechamento.relatorio p/ reimpressão.
 async function fecharCaixa(dir, { contado, contagem, eletronico }) {
-  const caixa = await caixaAberto(dir);
-  if (!caixa) throw new Error("Não há caixa aberto.");
+  const empId = await empresaId(dir);
+  const arred = (n) => Math.round((Number(n) || 0) * 100) / 100; // a centavos (mata ruído de float)
 
-  // Regra de negócio: não fecha com consumo do turno ainda em aberto.
-  const mesasAbertas = await _contarMesasAbertas(caixa.empresa_id);
-  if (mesasAbertas > 0) {
-    throw new Error(`Há ${mesasAbertas} mesa(s) aberta(s). Feche as mesas (na aba Mesas) antes de fechar o caixa.`);
-  }
-  const aReceber = await _contarAReceber(caixa.empresa_id, caixa.aberto_em);
-  if (aReceber > 0) {
-    throw new Error(`Há ${aReceber} pedido(s) com pagamento a receber. Receba todos antes de fechar o caixa.`);
-  }
+  // Tudo numa transação com a linha do caixa travada (FOR UPDATE): fecha a corrida com
+  // uma venda de PDV concorrente. Se ela commitar ANTES, entra no snapshot dos movimentos;
+  // se DEPOIS, o FOR UPDATE dela vê status='fechado' e desfaz a venda. Leitura + UPDATE atômicos.
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const cxRes = await client.query(
+      `SELECT * FROM caixas WHERE empresa_id = $1 AND status = 'aberto' ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+      [empId]
+    );
+    const caixa = cxRes.rows[0];
+    if (!caixa) throw new Error("Não há caixa aberto.");
 
-  const movimentos = await _movimentos(caixa.id);
-  const resumo = calc.resumoCaixa(caixa, movimentos);
-
-  // Recalcula no servidor a partir do detalhamento (não confia no total do cliente).
-  // Fluxo novo: `contado` traz o valor por forma. Fallback legado: cédulas + lançamentos.
-  let contadoDinheiro = 0;
-  const eletronicoPorForma = {};
-  let contadoPorForma = {};
-  if (contado && typeof contado === "object" && !Array.isArray(contado)) {
-    for (const f in contado) {
-      const v = Number(contado[f]) || 0;
-      contadoPorForma[f] = v;
-      if (calc.ehDinheiro(f)) contadoDinheiro += v;
-      else eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + v;
+    // Regra de negócio: não fecha com consumo do turno ainda em aberto.
+    const mesasAbertas = await _contarMesasAbertas(empId);
+    if (mesasAbertas > 0) {
+      throw new Error(`Há ${mesasAbertas} mesa(s) aberta(s). Feche as mesas (na aba Mesas) antes de fechar o caixa.`);
     }
-  } else {
-    contadoDinheiro = calc.totalContagem(contagem || {});
-    for (const l of (Array.isArray(eletronico) ? eletronico : [])) {
-      const f = (l && l.forma) || "Outros";
-      eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + (Number(l && l.valor) || 0);
+    const aReceber = await _contarAReceber(empId, caixa.aberto_em);
+    if (aReceber > 0) {
+      throw new Error(`Há ${aReceber} pedido(s) com pagamento a receber. Receba todos antes de fechar o caixa.`);
     }
+
+    // Movimentos lidos DENTRO da transação (após o lock) — pega venda concorrente.
+    const movimentos = (await client.query(
+      "SELECT * FROM caixa_movimentos WHERE caixa_id = $1 ORDER BY id ASC", [caixa.id]
+    )).rows;
+    const resumo = calc.resumoCaixa(caixa, movimentos);
+
+    // Recalcula no servidor a partir do detalhamento (não confia no total do cliente).
+    // Fluxo novo: `contado` traz o valor por forma. Fallback legado: cédulas + lançamentos.
+    const temContado = contado && typeof contado === "object" && !Array.isArray(contado);
+    let contadoDinheiro = 0;
+    const eletronicoPorForma = {};
+    let contadoPorForma = {};
+    if (temContado) {
+      for (const f in contado) {
+        const v = Math.max(0, Number(contado[f]) || 0); // nunca aceita valor negativo
+        contadoPorForma[f] = v;
+        if (calc.ehDinheiro(f)) contadoDinheiro += v;
+        else eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + v;
+      }
+    } else {
+      contadoDinheiro = calc.totalContagem(contagem || {});
+      for (const l of (Array.isArray(eletronico) ? eletronico : [])) {
+        const f = (l && l.forma) || "Outros";
+        eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + Math.max(0, Number(l && l.valor) || 0);
+      }
+    }
+    for (const f in eletronicoPorForma) eletronicoPorForma[f] = arred(eletronicoPorForma[f]);
+    contadoDinheiro = arred(contadoDinheiro);
+    const contadoEletronico = arred(Object.values(eletronicoPorForma).reduce((s, v) => s + v, 0));
+    const totalCaixa = arred(calc.totalEmCaixa(caixa, resumo));
+    const diferenca = arred((contadoDinheiro + contadoEletronico) - totalCaixa);
+
+    // Monta o relatório 80mm no servidor, com os dados autoritativos.
+    await store.ensure(dir);
+    const cfg = store.getConfig(dir) || {};
+    // Normaliza as formas configuradas (descarta legado "A Prazo"/"Cartão" genérico) —
+    // MESMA regra do GET /api/caixa, p/ o relatório não listar formas fantasma R$ 0,00.
+    const pagsCanon = formasPag.normalizarFormasPagamento(cfg.pagamentos);
+    const formaDinheiro = pagsCanon.find((f) => calc.ehDinheiro(f)) || "Dinheiro";
+    const formasElet = _formasEletronicas(pagsCanon, resumo.recebidoPorForma, eletronicoPorForma);
+    // Cancelamentos do turno (rastro no relatório): cada um com descrição/forma/valor.
+    const cancelamentos = movimentos
+      .filter((m) => m.tipo === "cancelamento")
+      .map((m) => ({ descricao: m.descricao || "Cancelamento", forma: m.forma_pagamento || "Outros", valor: Number(m.valor) || 0 }));
+    const relatorio = relatorioCaixa.montarRelatorioFechamento({
+      restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
+      abertoEm: new Date(caixa.aberto_em).toISOString(),
+      fechadoEm: new Date().toISOString(),
+      operador: caixa.operador || "",
+      formaDinheiro,
+      formas: formasElet,
+      recebidoPorForma: resumo.recebidoPorForma || {},
+      canceladoPorForma: resumo.canceladoPorForma || {},
+      fundoTroco: Number(caixa.fundo_troco) || 0,
+      suprimentos: resumo.suprimentos || 0,
+      sangrias: resumo.sangrias || 0,
+      cancelamentos,
+      totalCancelado: resumo.cancelamentos || 0,
+      contadoDinheiro,
+      eletronicoPorForma,
+    });
+
+    // Fallback legado (sem `contado`): reconstrói o por-forma a partir do total contado.
+    if (!temContado) {
+      contadoPorForma = { [formaDinheiro]: contadoDinheiro, ...eletronicoPorForma };
+    }
+    const espPorForma = calc.esperadoPorForma(resumo, [formaDinheiro, ...formasElet]);
+    for (const f in espPorForma) espPorForma[f] = arred(espPorForma[f]);
+    const detalhe = {
+      contadoPorForma,
+      esperadoPorForma: espPorForma,
+      eletronicoPorForma,
+      esperado: { totalEmCaixa: totalCaixa, especie: arred(resumo.esperadoEspecie), eletronico: arred(calc.esperadoEletronico(resumo)) },
+      contado: { dinheiro: contadoDinheiro, eletronico: contadoEletronico },
+      relatorio,
+    };
+
+    // `AND status='aberto'` + rowCount: em duplo clique / 2 abas, só o 1º fechamento grava.
+    const upd = await client.query(
+      `UPDATE caixas SET status='fechado', fechado_em=now(),
+              contado_dinheiro=$2, contado_eletronico=$3, diferenca=$4, detalhe_fechamento=$5
+         WHERE id=$1 AND status='aberto'`,
+      [caixa.id, contadoDinheiro, contadoEletronico, diferenca, JSON.stringify(detalhe)]
+    );
+    if (!upd.rowCount) throw new Error("O caixa já foi fechado.");
+    await client.query("COMMIT");
+    return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico, relatorio };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
   }
-  const contadoEletronico = Object.values(eletronicoPorForma).reduce((s, v) => s + v, 0);
-  const totalCaixa = calc.totalEmCaixa(caixa, resumo);
-  const diferenca = (contadoDinheiro + contadoEletronico) - totalCaixa;
-
-  // Monta o relatório 80mm no servidor, com os dados autoritativos.
-  await store.ensure(dir);
-  const cfg = store.getConfig(dir) || {};
-  const formaDinheiro = (cfg.pagamentos || []).find((f) => calc.ehDinheiro(f)) || "Dinheiro";
-  const formasElet = _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma, eletronicoPorForma);
-  // Cancelamentos do turno (rastro no relatório): cada um com descrição/forma/valor.
-  const cancelamentos = movimentos
-    .filter((m) => m.tipo === "cancelamento")
-    .map((m) => ({ descricao: m.descricao || "Cancelamento", forma: m.forma_pagamento || "Outros", valor: Number(m.valor) || 0 }));
-  const relatorio = relatorioCaixa.montarRelatorioFechamento({
-    restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
-    abertoEm: new Date(caixa.aberto_em).toISOString(),
-    fechadoEm: new Date().toISOString(),
-    operador: caixa.operador || "",
-    formaDinheiro,
-    formas: formasElet,
-    recebidoPorForma: resumo.recebidoPorForma || {},
-    canceladoPorForma: resumo.canceladoPorForma || {},
-    fundoTroco: Number(caixa.fundo_troco) || 0,
-    suprimentos: resumo.suprimentos || 0,
-    sangrias: resumo.sangrias || 0,
-    cancelamentos,
-    totalCancelado: resumo.cancelamentos || 0,
-    contadoDinheiro,
-    eletronicoPorForma,
-  });
-
-  // Fallback legado: sem `contado`, reconstrói o por-forma a partir do total contado.
-  if (!Object.keys(contadoPorForma).length) {
-    contadoPorForma = { [formaDinheiro]: contadoDinheiro, ...eletronicoPorForma };
-  }
-  const detalhe = {
-    contadoPorForma,
-    esperadoPorForma: calc.esperadoPorForma(resumo, [formaDinheiro, ...formasElet]),
-    eletronicoPorForma,
-    esperado: { totalEmCaixa: totalCaixa, especie: resumo.esperadoEspecie, eletronico: calc.esperadoEletronico(resumo) },
-    contado: { dinheiro: contadoDinheiro, eletronico: contadoEletronico },
-    relatorio,
-  };
-
-  // `AND status='aberto'` + checagem de rowCount: em duplo clique / 2 abas, só o 1º
-  // fechamento grava; o 2º afeta 0 linhas e lança ANTES da rota enfileirar o relatório
-  // (evita 2 impressões e a sobrescrita do detalhe_fechamento).
-  const upd = await db.query(
-    `UPDATE caixas SET status='fechado', fechado_em=now(),
-            contado_dinheiro=$2, contado_eletronico=$3, diferenca=$4, detalhe_fechamento=$5
-       WHERE id=$1 AND status='aberto'`,
-    [caixa.id, contadoDinheiro, contadoEletronico, diferenca, JSON.stringify(detalhe)]
-  );
-  if (!upd.rowCount) throw new Error("O caixa já foi fechado.");
-  return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico, relatorio };
 }
 
 async function listarCaixas(dir) {

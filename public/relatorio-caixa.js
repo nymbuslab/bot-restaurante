@@ -105,12 +105,15 @@
     });
     L.push(sep("-"));
     const totalOperador = (Number(d.contadoDinheiro) || 0) + totalElet;
-    const dif = totalOperador - totalCaixa;
+    // Arredonda a centavos + tolerância: sem isso, ruído de float (0,1+0,2) faria um
+    // caixa que bateu certinho imprimir "SOBROU"/"FALTOU" com Diferença R$ 0,00.
+    const dif = Math.round((totalOperador - totalCaixa) * 100) / 100;
+    const bateu = Math.abs(dif) < 0.005;
     L.push(linhaValor("Total", "R$ " + fmtBR(totalOperador)));
-    const estado = dif === 0 ? "CONFERIDO" : (dif > 0 ? "SOBROU" : "FALTOU");
+    const estado = bateu ? "CONFERIDO" : (dif > 0 ? "SOBROU" : "FALTOU");
     L.push(centro(estado));
-    const sinal = dif > 0 ? "+ R$ " : (dif < 0 ? "- R$ " : "R$ ");
-    L.push(linhaValor("Diferença", sinal + fmtBR(Math.abs(dif))));
+    const sinal = bateu ? "R$ " : (dif > 0 ? "+ R$ " : "- R$ ");
+    L.push(linhaValor("Diferença", sinal + fmtBR(bateu ? 0 : Math.abs(dif))));
     L.push(sep("="));
 
     return L.join("\n");

@@ -2514,6 +2514,10 @@ function irParaPedidosAReceber() {
 // contador de cédulas. O operador digita só o que está em mãos por forma; o servidor
 // recalcula. Abre como .modal-overlay (centralizado + padding mobile) sobre o caixa.
 function renderFechamentoCaixa(data) {
+  // Guarda de reentrância: se o modal já está aberto (ex.: duplo-clique no botão), não
+  // abre um 2º overlay com ids repetidos (quebraria máscara/recalc e vazaria listener).
+  if (document.getElementById("fcOverlay")) return;
+  const gatilho = document.activeElement; // p/ devolver o foco ao fechar (acessibilidade)
   const resumo = data.resumo || {};
   const esperadoEspecie = Number(resumo.esperadoEspecie) || 0;
   const recPorForma = resumo.recebidoPorForma || {};
@@ -2546,6 +2550,9 @@ function renderFechamentoCaixa(data) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.id = "fcOverlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "Fechamento de caixa");
   overlay.innerHTML = `
     <div class="fc-modal">
       <div class="fc-cab">
@@ -2553,7 +2560,7 @@ function renderFechamentoCaixa(data) {
           <h3>Fechamento de Caixa</h3>
           <span class="sub">Confira o que está em caixa por forma de pagamento</span>
         </div>
-        ${operador ? `<span class="fc-operador">${SVG_OPERADOR}${escapar(operador)}</span>` : ""}
+        ${operador ? `<span class="fc-operador">${SVG_OPERADOR}<span class="fc-op-nome">${escapar(operador)}</span></span>` : ""}
       </div>
       ${mesasAbertas > 0 ? `
       <div class="fc-bloqueio">
@@ -2615,19 +2622,44 @@ function renderFechamentoCaixa(data) {
     linhas.forEach((l) => { c[l.forma] = valorDe(l.id); });
     return c;
   }
+  const temContagem = () => linhas.some((l) => valorDe(l.id) > 0);
+  let confirmando = false;
   function destruirModal() {
     document.removeEventListener("keydown", onKey);
     overlay.classList.add("saindo");
     overlay.addEventListener("animationend", () => overlay.remove(), { once: true });
+    if (gatilho && gatilho.focus) gatilho.focus(); // devolve o foco ao botão que abriu
   }
-  function onKey(e) { if (e.key === "Escape") destruirModal(); }
+  // Esc/clique-fora: confirma o descarte se já houver valores digitados (evita perder a
+  // contagem por um toque acidental). "Cancelar" é intenção explícita → fecha direto.
+  async function fecharComGuarda() {
+    if (confirmando) return;
+    if (temContagem()) {
+      confirmando = true;
+      const ok = await confirmar("Descartar a contagem?", "Você digitou valores que não foram salvos. Fechar mesmo assim?", "Descartar", "Continuar contando");
+      confirmando = false;
+      if (!ok) return;
+    }
+    destruirModal();
+  }
+  // Focus-trap: Tab/Shift+Tab circulam só dentro do modal (padrão de diálogo do painel).
+  function onKey(e) {
+    if (confirmando) return; // o diálogo de confirmação está por cima
+    if (e.key === "Escape") { e.preventDefault(); fecharComGuarda(); return; }
+    if (e.key !== "Tab") return;
+    const els = Array.from(overlay.querySelectorAll("input, button")).filter((el) => !el.disabled && el.offsetParent !== null);
+    if (!els.length) return;
+    const primeiro = els[0], ultimo = els[els.length - 1];
+    if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+  }
 
   linhas.forEach((l) => {
     if (window.Dinheiro) Dinheiro.mascarar(l.id);
     $(l.id).addEventListener("input", recalc);
   });
   $("fcCancelar").addEventListener("click", destruirModal);
-  overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) destruirModal(); });
+  overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) fecharComGuarda(); });
   document.addEventListener("keydown", onKey);
   $("fcFechar").addEventListener("click", async () => {
     if (mesasAbertas > 0) { toast("Feche as mesas abertas antes de fechar o caixa."); return; }
@@ -2636,7 +2668,7 @@ function renderFechamentoCaixa(data) {
     if (!res) return;
     destruirModal();
     const dif = res.diferenca;
-    toast(dif === 0 ? "Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
+    toast(Math.abs(dif) < 0.005 ? "Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
     if (res.relatorio) verRelatorio("Relatório de fechamento", res.relatorio);
     carregarCaixa();
   });
