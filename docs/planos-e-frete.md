@@ -325,7 +325,7 @@ mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/p
 
 ### Fora do v1 do caixa/PDV (futuro)
 
-- Mesas / comanda aberta (fiado) e venda presencial **sem** caixa aberto; **item avulso** (fora do cardápio).
+- Mesas / comanda aberta e venda presencial **sem** caixa aberto; **item avulso** (fora do cardápio).
 - **Formas de pagamento detalhadas + taxa** (Crédito/Débito/PIX maquininha/conta; recebimento líquido) — ROADMAP P3.
 - **Conferência cega, justificativa de diferença, limite de gaveta, comprovante de sangria/suprimento,
   tolerância de divergência, múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.

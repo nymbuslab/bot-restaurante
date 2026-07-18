@@ -166,8 +166,7 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 - Não tem app próprio para o cliente. Tudo acontece no WhatsApp e no cardápio web.
 - Não usa a API Oficial do WhatsApp. Usa biblioteca não-oficial.
 - Não faz conta a prazo (fiado) nem cadastro de cliente no painel. Foi construído e removido em
-  2026-07-13 para amadurecer a ideia. A auditoria e a pesquisa de mercado ficaram guardadas em
-  `docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md` para um redesenho futuro.
+  2026-07-13 para amadurecer a ideia.
 
 ## 7. Requisitos não-funcionais
 

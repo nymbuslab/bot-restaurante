@@ -94,5 +94,5 @@ o pedido a partir do cardápio, cobra na hora e a venda **já entra recebida no 
 
 ## Fora de escopo (v1)
 
-- Item avulso (fora do cardápio); mesa/comanda aberta (fiado); venda sem caixa; relatório próprio
+- Item avulso (fora do cardápio); mesa/comanda aberta; venda sem caixa; relatório próprio
   de PDV (as vendas já entram no caixa e em Pedidos).

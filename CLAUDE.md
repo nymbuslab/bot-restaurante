@@ -100,7 +100,7 @@ src/
   servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso + FILA genérica /api/agente/fila·:id/impresso) + reimprimir (POST /api/pedidos/:id/reimprimir) + download do agente (GET /downloads/nymbus-impressora.exe)
   impressao-fila.js   -> fila de impressão GENÉRICA (tabela impressao_fila): o servidor renderiza o TEXTO das vias e enfileira (PDV/Mesas/Caixa/reimpressão); o agente busca, imprime e marca. Delivery NÃO usa (segue pelo polling de `pedidos`)
   empresas.js         -> CRUD de tenants na tabela `empresas` + Supabase Auth (cadastro/login)
-  clientes.js         -> clientes por empresa: cadastro em background (bot/checkout, chave empresa_id+telefone) para o bot reconhecer/saudar o cliente que volta + `exportar`/`removerInativos` (LGPD). Isolado por empresa_id. (O cadastro admin no painel e o fiado foram removidos — ver docs/superpowers/plans/2026-07-13-fiado-auditoria-e-correcoes.md.)
+  clientes.js         -> clientes por empresa: cadastro em background (bot/checkout, chave empresa_id+telefone) para o bot reconhecer/saudar o cliente que volta + `exportar`/`removerInativos` (LGPD). Isolado por empresa_id. (O cadastro admin no painel e o fiado foram removidos.)
   wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> bot: saudação envia o LINK do cardápio web (/c/:slug?p=token); estados MENU/ATENDENTE
