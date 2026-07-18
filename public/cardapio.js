@@ -848,13 +848,13 @@
     bloco.innerHTML =
       '<div class="cd-campo"><span>Endereço de entrega</span>' +
       '<div class="cd-endereco">' +
-        '<input id="cdCep" class="full" inputmode="numeric" maxlength="9" placeholder="CEP" autocomplete="postal-code" />' +
-        '<input id="cdLogradouro" class="full" placeholder="Rua / Avenida" autocomplete="address-line1" />' +
-        '<input id="cdNumero" placeholder="Número" />' +
-        '<input id="cdBairro" placeholder="Bairro" />' +
-        '<input id="cdCidade" placeholder="Cidade" />' +
-        '<input id="cdUf" maxlength="2" placeholder="UF" />' +
-        '<input id="cdCompl" class="full" placeholder="Complemento (opcional)" />' +
+        '<input id="cdCep" class="full" inputmode="numeric" maxlength="9" placeholder="CEP" aria-label="CEP" autocomplete="postal-code" />' +
+        '<input id="cdLogradouro" class="full" placeholder="Rua / Avenida" aria-label="Rua ou avenida" autocomplete="address-line1" />' +
+        '<input id="cdNumero" placeholder="Número" aria-label="Número" />' +
+        '<input id="cdBairro" placeholder="Bairro" aria-label="Bairro" />' +
+        '<input id="cdCidade" placeholder="Cidade" aria-label="Cidade" />' +
+        '<input id="cdUf" maxlength="2" placeholder="UF" aria-label="UF (estado)" />' +
+        '<input id="cdCompl" class="full" placeholder="Complemento (opcional)" aria-label="Complemento (opcional)" />' +
       "</div>" +
       '<p class="cd-hint" id="cdCepHint">Digite o CEP para preencher automaticamente.</p>' +
       ((modoRaio() || modoBairro()) ? '<div class="cd-frete-status" id="cdFreteStatus"></div>' : "") +

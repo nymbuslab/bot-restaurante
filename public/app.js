@@ -1601,7 +1601,7 @@ function renderEditorComposicao() {
 
     div.innerHTML = `
       <div class="comp-subgrupo-cabeca">
-        <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" data-sg="${si}" />
+        <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" aria-label="Nome do subgrupo" data-sg="${si}" />
         <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">${ICO_LIXEIRA}</button>
       </div>
       <div class="comp-sg-regras">
@@ -1611,7 +1611,7 @@ function renderEditorComposicao() {
       </div>
       <div class="comp-chips">${chipsHtml}</div>
       <div class="comp-add-ing">
-        <input class="comp-ing-input" placeholder="Adicionar ingrediente..." data-sg="${si}" />
+        <input class="comp-ing-input" placeholder="Adicionar ingrediente..." aria-label="Adicionar ingrediente" data-sg="${si}" />
         <button type="button" class="secundario mini comp-ing-btn" data-sg="${si}">Adicionar</button>
       </div>
     `;
@@ -1714,7 +1714,7 @@ function renderEditorOpcionais() {
     const div = document.createElement("div");
     div.className = "opc-linha";
     div.innerHTML = `
-      <input class="opc-nome" placeholder="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
+      <input class="opc-nome" placeholder="Nome do opcional" aria-label="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
       <div class="opc-preco-wrap">
         <span class="opc-rs">R$</span>
         <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
@@ -1764,7 +1764,7 @@ function renderEditorVariacoes() {
     const div = document.createElement("div");
     div.className = "var-linha";
     div.innerHTML = `
-      <input class="var-nome" placeholder="Nome (ex.: Coca-Cola)" value="${escapar(v.nome || "")}" data-vi="${vi}" />
+      <input class="var-nome" placeholder="Nome (ex.: Coca-Cola)" aria-label="Nome da variação" value="${escapar(v.nome || "")}" data-vi="${vi}" />
       <div class="opc-preco-wrap"><span class="opc-rs">R$</span>
         <input type="text" inputmode="numeric" class="opc-preco var-preco" placeholder="0,00" value="${v.preco ? Dinheiro.formatar(v.preco) : ""}" data-vi="${vi}" /></div>
       <input class="var-est" inputmode="numeric" placeholder="Ilimitado" title="Estoque desta opção (em branco = ilimitado)" value="${escapar(v.estoque != null ? String(v.estoque) : "")}" data-vi="${vi}" />
@@ -3603,7 +3603,7 @@ function renderListaPedidos(lista) {
   pagina.forEach((p) => {
     const novo = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
     const canc = p.status === "cancelado" ? " cancelado" : "";
-    tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}${canc}" data-id="${p.id}">
+    tabela += `<tr class="pedido-linha${novo ? " pedido-linha-novo" : ""}${canc}" data-id="${p.id}" tabindex="0" aria-label="Ver detalhes do pedido ${p.numero}">
       <td class="ped-num">#${p.numero}${novo}</td>
       <td>${escapar(dataHoraFmt(p.criadoEm))}</td>
       <td><div class="ped-cliente-linha"><span class="ped-cli-nome">${escapar(p.cliente)}</span>${seloPagamento(p)}</div>${previaItens(p.itens) ? `<div class="ped-itens-previa">${escapar(previaItens(p.itens))}</div>` : ""}</td>
@@ -3621,7 +3621,7 @@ function renderListaPedidos(lista) {
     const hora = new Date(p.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const novoC = pedidosNovosDestaque.has(p.numero) ? ' <span class="ped-novo">NOVO</span>' : "";
     const cancC = p.status === "cancelado" ? " cancelado" : "";
-    cards += `<div class="pedido-card${novoC ? " pedido-card-novo" : ""}${cancC}" data-id="${p.id}">
+    cards += `<div class="pedido-card${novoC ? " pedido-card-novo" : ""}${cancC}" data-id="${p.id}" tabindex="0" role="button" aria-label="Ver detalhes do pedido ${p.numero}">
       <div class="pedido-card-topo">
         <span class="pedido-card-num">#${p.numero}${novoC} • ${hora}</span>
         <span class="pedido-card-tags">${canalTag(p)} ${tagTipo(p)}</span>
@@ -3638,15 +3638,21 @@ function renderListaPedidos(lista) {
 
   cont.innerHTML = resumo + tabela + cards + paginacaoHtml(lista.length, totalPaginas, ini, pagina.length);
 
-  // Linha (desktop) ou card (mobile) → abre o detalhe existente.
-  cont.querySelectorAll("[data-id]").forEach((el) =>
-    el.addEventListener("click", () => {
-      const p = pedidosCache.find((x) => String(x.id) === el.dataset.id);
-      if (!p) return;
-      if (pedidosNovosDestaque.delete(p.numero)) renderPedidos(); // visto → remove o "NOVO" na hora
-      abrirModalPedido(p);
-    })
-  );
+  // Linha (desktop) ou card (mobile) → abre o detalhe existente. Mouse E teclado
+  // (Enter/Espaço): `e.target === el` garante que o Enter num botão de ação interno
+  // não dispara a abertura do detalhe (o botão trata o próprio Enter).
+  const abrirDetalheDaLinha = (el) => {
+    const p = pedidosCache.find((x) => String(x.id) === el.dataset.id);
+    if (!p) return;
+    if (pedidosNovosDestaque.delete(p.numero)) renderPedidos(); // visto → remove o "NOVO" na hora
+    abrirModalPedido(p);
+  };
+  cont.querySelectorAll("[data-id]").forEach((el) => {
+    el.addEventListener("click", () => abrirDetalheDaLinha(el));
+    el.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); abrirDetalheDaLinha(el); }
+    });
+  });
 
   // Ações rápidas no hover (desktop, Plano Completo) — não abrem o modal (stopPropagation).
   cont.querySelectorAll(".ped-acao-btn").forEach((b) =>
