@@ -2163,9 +2163,10 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
 // ---- Sub-abas das Configurações (Empresa × Bot) ----
 document.querySelectorAll(".cfg-subnav button").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".cfg-subnav button").forEach((b) => b.classList.remove("ativo"));
+    document.querySelectorAll(".cfg-subnav button").forEach((b) => { b.classList.remove("ativo"); b.setAttribute("aria-selected", "false"); });
     document.querySelectorAll(".cfg-sub").forEach((s) => s.classList.remove("ativa"));
     btn.classList.add("ativo");
+    btn.setAttribute("aria-selected", "true");
     $("cfg-sub-" + btn.dataset.sub).classList.add("ativa");
     if (btn.dataset.sub === "conexao") atualizarStatus();
   });
@@ -4231,6 +4232,8 @@ function renderPdvCategorias() {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "pdv-cat" + ((pdvCatAtiva === val) ? " ativo" : "");
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", (pdvCatAtiva === val) ? "true" : "false");
     b.innerHTML = ico + "<span>" + pdvEsc(rotulo) + "</span>";
     b.addEventListener("click", () => { pdvCatAtiva = val; renderPdvCategorias(); renderPdvProdutos(); });
     nav.appendChild(b);
@@ -5599,9 +5602,27 @@ function abrirMesaPainel() {
   mesaMudarAba(mesaState.modo || "itens");
   renderMesaAcoes();
   renderMesaTotais();
+  // Foco entra no drawer (a11y: não fica preso atrás do overlay) e o Esc fecha,
+  // igual aos demais modais. Sem isso o Esc não fechava e o foco ficava solto.
+  var _painel = $("mesasPainel");
+  _painel.setAttribute("tabindex", "-1");
+  _painel.focus();
+  document.addEventListener("keydown", mesaPainelEsc);
+}
+
+// Esc fecha o drawer da mesa — mas se um modal do PDV (aba Lançar) estiver aberto
+// por cima, deixa o Esc dele fechar primeiro (não fecha o drawer junto).
+function mesaPainelEsc(e) {
+  if (e.key !== "Escape") return;
+  if (!$("mesasPainel").classList.contains("aberto")) return;
+  if (!$("pdvItemOverlay").hidden || !$("pdvPagarOverlay").hidden ||
+      !$("pdvEntregaOverlay").hidden || !$("pdvDescOverlay").hidden) return;
+  e.preventDefault();
+  fecharMesaPainel();
 }
 
 function fecharMesaPainel() {
+  document.removeEventListener("keydown", mesaPainelEsc);
   mesaState.selecionadaId = null;
   $("mesasPainel").classList.remove("aberto");
   $("mesasPainelOverlay").classList.remove("visivel");
