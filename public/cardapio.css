@@ -383,6 +383,9 @@ button.cd-hero { cursor: pointer; }
 .cd-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 18px 12px; }
 .cd-sheet-head h2 { font-size: 19px; font-weight: 800; margin: 0; }
 .cd-x { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--bg-elevated); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; transition: color .15s; }
+/* X do modal de ITEM removido (fecha por Voltar/Adicionar + Esc + clique-fora). O X do
+   carrinho (drawer, só .cd-x) fica. */
+.cd-x.cd-m-x { display: none; }
 .cd-x:hover { color: var(--text-primary); }
 .cd-sheet-itens { flex: 1; overflow-y: auto; padding: 8px 18px; }
 .cd-sheet-vazio { text-align: center; color: var(--text-secondary); padding: 48px 0; }

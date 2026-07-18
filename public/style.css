@@ -5096,6 +5096,17 @@ html.embed, html.embed body { background: var(--bg-primary); }
    escopado pelo #pdvItemCaixa p/ não afetar os outros modais .pdv-modal-caixa ===== */
 #pdvItemCaixa { padding: 0; }
 #pdvItemCaixa .pdv-modal-x { z-index: 3; }
+
+/* X de fechar REMOVIDOS dos modais: adotam o padrão do fechamento de caixa (fecham por
+   botão de ação + Esc + clique-fora). Mantidos só nos drawers (mesa/carrinho) e no hub
+   do master, que não têm botão de ação. `display:none` tira do visual E do tab/leitor. */
+.pdv-modal-x,
+.upsell-x,
+#pedido-fechar,
+#qr-fechar,
+#editor-fechar,
+#cartao-fechar,
+#mesasConfigFechar { display: none; }
 .pdv-m-head { padding: 18px 18px 6px; }
 .pdv-m-nome { font-size: 18px; font-weight: 800; margin: 0 40px 0 0; text-transform: none; }
 .pdv-m-preco { font-size: 15px; font-weight: 700; color: var(--accent-fg); margin-top: 6px; }
