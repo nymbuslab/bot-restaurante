@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa } = require("../src/caixa-calc");
+const { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa, esperadoPorForma } = require("../src/caixa-calc");
 
 const caixa = { fundo_troco: 100 };
 const movs = [
@@ -98,5 +98,28 @@ test("esperadoEletronico: desconta o cancelado eletrônico", () => {
   const r = { totalRecebido: 180, recebidoDinheiro: 100, cancelamentos: 30, canceladoDinheiro: 0 };
   // recebido elet = 80; cancelado elet = 30 → 50
   assert.equal(esperadoEletronico(r), 50);
+});
+
+test("esperadoPorForma: dinheiro = espécie inteira, resto = recebido líquido; soma = totalEmCaixa", () => {
+  const c = { fundo_troco: 100 };
+  const movsF = [
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 50 },
+    { tipo: "recebimento", forma_pagamento: "Pix", valor: 20 },
+    { tipo: "recebimento", forma_pagamento: "Crédito", valor: 40 },
+    { tipo: "cancelamento", forma_pagamento: "Pix", valor: 5 }, // cancela parte do Pix
+    { tipo: "suprimento", valor: 10 },
+    { tipo: "sangria", valor: 25 },
+  ];
+  const r = resumoCaixa(c, movsF);
+  const formas = ["Dinheiro", "Pix", "Crédito", "Débito"]; // Débito configurado sem movimento
+  const esp = esperadoPorForma(r, formas);
+  // Dinheiro = espécie: 100 + 50 + 10 - 25 - 0 = 135
+  assert.equal(esp["Dinheiro"], 135);
+  assert.equal(esp["Pix"], 15);      // 20 - 5
+  assert.equal(esp["Crédito"], 40);
+  assert.equal(esp["Débito"], 0);    // sem movimento → 0,00
+  // soma por forma bate com o total em caixa (invariante)
+  const somaForma = formas.reduce((s, f) => s + esp[f], 0);
+  assert.equal(somaForma, totalEmCaixa(c, r)); // 100 + 110 + 10 - 25 - 5 = 190
 });
 

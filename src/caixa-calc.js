@@ -70,4 +70,21 @@ function totalEmCaixa(caixa, resumo) {
     - (Number(r.sangrias) || 0) - (Number(r.cancelamentos) || 0);
 }
 
-module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa };
+// Esperado POR forma (conferência simplificada do fechamento). Dinheiro carrega a
+// espécie inteira (fundo + suprimento - sangria - cancelado); as demais são só o
+// recebido líquido daquela forma. Soma bate com `totalEmCaixa` (logo a soma das
+// diferenças por forma = diferença global).
+function esperadoPorForma(resumo, formas) {
+  const r = resumo || {};
+  const rec = r.recebidoPorForma || {};
+  const canc = r.canceladoPorForma || {};
+  const out = {};
+  (formas || []).forEach((f) => {
+    out[f] = ehDinheiro(f)
+      ? (Number(r.esperadoEspecie) || 0)
+      : ((Number(rec[f]) || 0) - (Number(canc[f]) || 0));
+  });
+  return out;
+}
+
+module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa, esperadoPorForma };

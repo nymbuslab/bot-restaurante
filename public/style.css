@@ -4804,39 +4804,25 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .chi-dif.chi-falta { color: var(--error); }
 .caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }
 
-/* Fechamento de caixa — contador + lançamentos */
-.fc-wrap { max-width: 920px; }
+/* Fechamento de caixa — conferência por forma (Esperado x Em caixa x Diferença) */
+.fc-wrap { max-width: 720px; }
 .fc-cab { margin-bottom: 16px; }
 .fc-cab h3 { margin: 0 0 4px; }
-.fc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.fc-col { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
-.fc-col h4 { margin: 0 0 8px; }
-/* Dinheiro em 2 colunas: Cédulas (R$200→R$2) e Moedas (R$1→R$0,05) — reduz a
-   altura da contagem pela metade p/ caber em telas baixas. */
-.fc-dinheiro-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.fc-dinheiro-cols .fc-qtd { width: 100%; }
-.fc-sub-titulo { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; }
-@media (max-width: 560px) { .fc-dinheiro-cols { grid-template-columns: 1fr; } }
-.fc-tabela { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.fc-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-bottom: 6px; }
-.fc-tabela th:first-child, .fc-tabela td:first-child { width: 34%; }
-.fc-tabela th:nth-child(2), .fc-tabela td:nth-child(2) { width: 33%; text-align: center; }
-.fc-tabela th:nth-child(3), .fc-tabela .fc-tot { width: 33%; text-align: right; }
-.fc-tabela td { padding: 2px 0; }
-.fc-ced { white-space: nowrap; }
-.fc-qtd { width: 90px; text-align: center; padding: 4px 8px; }
-.fc-tot { white-space: nowrap; color: var(--text-secondary); }
-.fc-add { display: flex; gap: 8px; margin-bottom: 12px; }
-.fc-add select { flex: 0 0 40%; }
-.fc-add input { flex: 1; min-width: 0; }
-.fc-lista { display: flex; flex-direction: column; gap: 6px; min-height: 40px; margin-bottom: 12px; }
-.fc-lanc { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-.fc-lanc span:first-child { flex: 1; }
-.fc-del { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px 6px; width: auto; }
-.fc-del:hover { color: var(--error); }
-.fc-rodape { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.fc-conf { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; }
+.fc-conf-tab { width: 100%; border-collapse: collapse; }
+.fc-conf-tab th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; padding: 10px 0; text-align: right; }
+.fc-conf-tab th.fc-th-forma { text-align: left; }
+.fc-conf-tab td { padding: 8px 0; text-align: right; vertical-align: middle; }
+.fc-conf-tab tbody tr + tr td { border-top: 1px solid var(--border); }
+.fc-conf-tab td.fc-forma { text-align: left; font-weight: 600; }
+.fc-esp { color: var(--text-secondary); white-space: nowrap; }
+.fc-em { width: 150px; }
+.fc-input { width: 140px; text-align: right; padding: 6px 10px; }
+.fc-dif { white-space: nowrap; font-weight: 600; }
 .fc-dif.fc-sobra { color: var(--success); }
 .fc-dif.fc-falta { color: var(--error); }
+.fc-total-linha td { border-top: 2px solid var(--border); font-weight: 700; padding-top: 12px; }
+.fc-total-linha td:first-child { text-align: left; }
 .fc-acoes {
   display: flex; justify-content: space-between; gap: 12px;
   position: sticky; bottom: 0; z-index: 5;
@@ -4848,7 +4834,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-bloqueio-txt strong { color: var(--warning); }
 .fc-bloqueio-txt span { font-size: 13px; color: var(--text-secondary); }
 .fc-bloqueio button { flex-shrink: 0; }
-@media (max-width: 720px) { .fc-cols { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .fc-em, .fc-input { width: 120px; } }
 
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
 .tag svg, .cfg-frete-lock svg, .np-som-pill svg { vertical-align: -2px; }

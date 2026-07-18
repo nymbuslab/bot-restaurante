@@ -829,3 +829,15 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - **Aviso de caixa de outro dia deixa de aparecer indevidamente.** Na tela de **Mesas**, o aviso
   "Há um caixa de outro dia aberto" estava fixo na tela mesmo com o caixa do dia aberto normalmente.
   Agora ele só aparece quando o caixa é realmente de um dia anterior e precisa ser fechado.
+
+---
+
+## [0.85.0] — Fechamento de caixa mais simples
+
+- **Fechar o caixa agora é uma conferência direta por forma de pagamento.** Saiu o contador de
+  cédulas e moedas e a lista de cartão um a um. No lugar, uma tabela única com **Esperado**,
+  **Em caixa** e **Diferença** por forma (Dinheiro, Crédito, Débito, PIX…): você digita só o que
+  está em mãos em cada forma e a diferença aparece na hora, em verde quando sobra e vermelho
+  quando falta. Fecha muito mais rápido.
+- Todas as formas configuradas aparecem sempre; as que não movimentaram ficam com R$ 0,00.
+  O relatório impresso continua igual.

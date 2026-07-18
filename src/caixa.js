@@ -432,10 +432,11 @@ function _formasEletronicas(pagamentos, recebidoPorForma, contadoPorForma) {
   return formas;
 }
 
-// eletronico: [{ forma, valor }] informado pelo operador na conferência.
+// contado: { [forma]: valorReais } — o que o operador contou por forma (conferência
+// simplificada). Fallback legado: { contagem (cédulas), eletronico [{forma,valor}] }.
 // O relatório é montado AQUI (servidor), nunca recebido do cliente — fonte única
 // e autoritativa; guardado em detalhe_fechamento.relatorio p/ reimpressão.
-async function fecharCaixa(dir, { contagem, eletronico }) {
+async function fecharCaixa(dir, { contado, contagem, eletronico }) {
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Não há caixa aberto.");
 
@@ -453,23 +454,33 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
   const resumo = calc.resumoCaixa(caixa, movimentos);
 
   // Recalcula no servidor a partir do detalhamento (não confia no total do cliente).
-  const contadoDinheiro = calc.totalContagem(contagem || {});
-  const lancs = Array.isArray(eletronico) ? eletronico : [];
-  const contadoEletronico = lancs.reduce((s, l) => s + (Number(l && l.valor) || 0), 0);
+  // Fluxo novo: `contado` traz o valor por forma. Fallback legado: cédulas + lançamentos.
+  let contadoDinheiro = 0;
+  const eletronicoPorForma = {};
+  let contadoPorForma = {};
+  if (contado && typeof contado === "object" && !Array.isArray(contado)) {
+    for (const f in contado) {
+      const v = Number(contado[f]) || 0;
+      contadoPorForma[f] = v;
+      if (calc.ehDinheiro(f)) contadoDinheiro += v;
+      else eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + v;
+    }
+  } else {
+    contadoDinheiro = calc.totalContagem(contagem || {});
+    for (const l of (Array.isArray(eletronico) ? eletronico : [])) {
+      const f = (l && l.forma) || "Outros";
+      eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + (Number(l && l.valor) || 0);
+    }
+  }
+  const contadoEletronico = Object.values(eletronicoPorForma).reduce((s, v) => s + v, 0);
   const totalCaixa = calc.totalEmCaixa(caixa, resumo);
   const diferenca = (contadoDinheiro + contadoEletronico) - totalCaixa;
-
-  // Agrega lançamentos por forma p/ o snapshot e o relatório.
-  const eletronicoPorForma = {};
-  for (const l of lancs) {
-    const f = (l && l.forma) || "Outros";
-    eletronicoPorForma[f] = (eletronicoPorForma[f] || 0) + (Number(l.valor) || 0);
-  }
 
   // Monta o relatório 80mm no servidor, com os dados autoritativos.
   await store.ensure(dir);
   const cfg = store.getConfig(dir) || {};
   const formaDinheiro = (cfg.pagamentos || []).find((f) => calc.ehDinheiro(f)) || "Dinheiro";
+  const formasElet = _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma, eletronicoPorForma);
   // Cancelamentos do turno (rastro no relatório): cada um com descrição/forma/valor.
   const cancelamentos = movimentos
     .filter((m) => m.tipo === "cancelamento")
@@ -480,7 +491,7 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     fechadoEm: new Date().toISOString(),
     operador: caixa.operador || "",
     formaDinheiro,
-    formas: _formasEletronicas(cfg.pagamentos, resumo.recebidoPorForma, eletronicoPorForma),
+    formas: formasElet,
     recebidoPorForma: resumo.recebidoPorForma || {},
     canceladoPorForma: resumo.canceladoPorForma || {},
     fundoTroco: Number(caixa.fundo_troco) || 0,
@@ -492,9 +503,13 @@ async function fecharCaixa(dir, { contagem, eletronico }) {
     eletronicoPorForma,
   });
 
+  // Fallback legado: sem `contado`, reconstrói o por-forma a partir do total contado.
+  if (!Object.keys(contadoPorForma).length) {
+    contadoPorForma = { [formaDinheiro]: contadoDinheiro, ...eletronicoPorForma };
+  }
   const detalhe = {
-    cedulas: contagem || {},
-    eletronico: lancs,
+    contadoPorForma,
+    esperadoPorForma: calc.esperadoPorForma(resumo, [formaDinheiro, ...formasElet]),
     eletronicoPorForma,
     esperado: { totalEmCaixa: totalCaixa, especie: resumo.esperadoEspecie, eletronico: calc.esperadoEletronico(resumo) },
     contado: { dinheiro: contadoDinheiro, eletronico: contadoEletronico },

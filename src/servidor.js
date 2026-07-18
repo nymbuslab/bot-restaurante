@@ -1934,7 +1934,7 @@ app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
 app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try {
-    const resultado = await caixa.fecharCaixa(req.tenantDir, { contagem: req.body.contagem, eletronico: req.body.eletronico });
+    const resultado = await caixa.fecharCaixa(req.tenantDir, { contado: req.body.contado, contagem: req.body.contagem, eletronico: req.body.eletronico });
     // Enfileira o relatório de fechamento (texto montado no servidor) p/ o agente imprimir.
     try {
       if (resultado && resultado.relatorio) await impressaoFila.enfileirar(req.tenantDir, "caixa", [resultado.relatorio]);

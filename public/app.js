@@ -2498,9 +2498,6 @@ async function movimentoCaixa(tipo) {
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não deu para registrar a movimentação. Tente de novo."); }
 }
 
-// Denominações BRL em centavos (cédulas + moedas), de R$ 200 a R$ 0,05.
-const DENOMINACOES = [20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 10, 5];
-
 function ehFormaDinheiro(f) { return /dinheiro/i.test(String(f || "")); }
 
 // Leva à aba Pedidos já filtrada em "A receber" (atalho do bloqueio de fechamento).
@@ -2513,48 +2510,43 @@ function irParaPedidosAReceber() {
   if (btn) btn.click();
 }
 
-// Tela de fechamento: contador de cédulas (dinheiro) + lançamentos de cartão/pix.
+// Fechamento: conferência por forma (Esperado x Em caixa x Diferença), sem contador
+// de cédulas. O operador digita só o que está em mãos por forma; o servidor recalcula.
 function renderFechamentoCaixa(data) {
   const cont = $("caixaConteudo");
   const resumo = data.resumo || {};
   const esperadoEspecie = Number(resumo.esperadoEspecie) || 0;
-  // Eletrônico esperado = recebido eletrônico − cancelado eletrônico (espelha o
-  // servidor em caixa-calc.esperadoEletronico). Sem deduzir o cancelado, a tela
-  // mostrava uma diferença fantasma no eletrônico que não existe no fechamento real.
-  const cancElet = (Number(resumo.cancelamentos) || 0) - (Number(resumo.canceladoDinheiro) || 0);
-  const esperadoElet = (Number(resumo.totalRecebido) || 0) - (Number(resumo.recebidoDinheiro) || 0) - cancElet;
-  const formas = data.formasPagamento || [];
-  // Formas eletrônicas = união das configuradas + as que de fato tiveram recebimento
-  // neste caixa (ex.: Pix recebido mas fora da config) — evita "Outros" e oferece a
-  // forma certa no dropdown. (O relatório usa a mesma regra, no servidor.)
-  const eletronicas = formas.filter((f) => !ehFormaDinheiro(f));
-  Object.keys((data.resumo && data.resumo.recebidoPorForma) || {}).forEach((f) => {
-    if (!ehFormaDinheiro(f) && !eletronicas.includes(f)) eletronicas.push(f);
-  });
-  const lancamentos = []; // { forma, valor }
+  const recPorForma = resumo.recebidoPorForma || {};
+  const cancPorForma = resumo.canceladoPorForma || {};
+
+  // Todas as formas configuradas + as que receberam fora da config (raro). Dinheiro 1º.
+  const configuradas = (data.formasPagamento || []).slice();
+  Object.keys(recPorForma).forEach((f) => { if (!configuradas.includes(f)) configuradas.push(f); });
+  const formaDin = configuradas.find(ehFormaDinheiro) || "Dinheiro";
+  const formas = [formaDin, ...configuradas.filter((f) => !ehFormaDinheiro(f))];
+  // Esperado por forma: Dinheiro carrega a espécie inteira; eletrônica = recebido líquido.
+  const esperadoDe = (f) => ehFormaDinheiro(f)
+    ? esperadoEspecie
+    : ((Number(recPorForma[f]) || 0) - (Number(cancPorForma[f]) || 0));
+  const linhas = formas.map((f, i) => ({ forma: f, esperado: esperadoDe(f), id: "fcEm-" + i }));
+
   const pendentes = Number(data.pedidosAReceber) || 0; // pedidos delivery/local a receber
   const mesasAbertas = Number(data.mesasAbertas) || 0; // mesas com consumo em aberto
   const bloqueado = pendentes > 0 || mesasAbertas > 0;
 
-  const linhaCedula = (c) => `
+  const linhaHTML = (l) => `
     <tr>
-      <td class="fc-ced">R$ ${fmtBRn(c / 100)}</td>
-      <td><input class="fc-qtd" inputmode="numeric" data-cent="${c}" value=""></td>
-      <td class="fc-tot" data-cent="${c}">R$ 0,00</td>
+      <td class="fc-forma">${escapar(l.forma)}</td>
+      <td class="fc-esp">R$ ${fmtBRn(l.esperado)}</td>
+      <td class="fc-em"><input id="${l.id}" class="fc-input" inputmode="numeric" value="0,00" aria-label="Em caixa: ${escapar(l.forma)}"></td>
+      <td class="fc-dif" id="${l.id}-dif">R$ 0,00</td>
     </tr>`;
-  // Duas colunas: cédulas (R$ 200 → R$ 2) e moedas (R$ 1 → R$ 0,05).
-  const linhasCedula = DENOMINACOES.filter((c) => c >= 200).map(linhaCedula).join("");
-  const linhasMoeda  = DENOMINACOES.filter((c) => c < 200).map(linhaCedula).join("");
-
-  const opcoesForma = eletronicas.length
-    ? eletronicas.map((f) => `<option value="${escapar(f)}">${escapar(f)}</option>`).join("")
-    : `<option value="Cartão">Cartão</option>`;
 
   cont.innerHTML = `
     <div class="fc-wrap">
       <div class="fc-cab">
         <h3>Fechamento de Caixa</h3>
-        <span class="sub">Confira o dinheiro da gaveta e os recebimentos eletrônicos do dia${data.caixa && data.caixa.operador ? " · Operador: " + escapar(data.caixa.operador) : ""}</span>
+        <span class="sub">Confira o que está em caixa por forma de pagamento${data.caixa && data.caixa.operador ? " · Operador: " + escapar(data.caixa.operador) : ""}</span>
       </div>
       ${mesasAbertas > 0 ? `
       <div class="fc-bloqueio">
@@ -2572,114 +2564,66 @@ function renderFechamentoCaixa(data) {
         </div>
         <button type="button" id="fcVerPedidos" class="secundario">Ver pedido${pendentes > 1 ? "s" : ""} a receber</button>
       </div>` : ""}
-      <div class="fc-cols">
-        <section class="fc-col">
-          <h4>Dinheiro (contagem da gaveta)</h4>
-          <div class="fc-dinheiro-cols">
-            <div>
-              <div class="fc-sub-titulo">Cédulas</div>
-              <table class="fc-tabela"><thead><tr><th>Cédula</th><th>Qtd</th><th>Total</th></tr></thead>
-                <tbody>${linhasCedula}</tbody></table>
-            </div>
-            <div>
-              <div class="fc-sub-titulo">Moedas</div>
-              <table class="fc-tabela"><thead><tr><th>Moeda</th><th>Qtd</th><th>Total</th></tr></thead>
-                <tbody>${linhasMoeda}</tbody></table>
-            </div>
-          </div>
-          <div class="fc-rodape">
-            <div class="caixa-linha"><span>Contado</span><span id="fcContadoDin">R$ 0,00</span></div>
-            <div class="caixa-linha"><span>Esperado</span><span>R$ ${fmtBRn(esperadoEspecie)}</span></div>
-            <div class="caixa-linha caixa-total"><span>Diferença</span><span id="fcDifDin" class="fc-dif">R$ 0,00</span></div>
-          </div>
-        </section>
-        <section class="fc-col">
-          <h4>Cartões / Pix</h4>
-          <div class="fc-add">
-            <select id="fcForma">${opcoesForma}</select>
-            <input id="fcValor" inputmode="numeric" value="0,00">
-            <button type="button" id="fcAdd" class="secundario">+ Adicionar</button>
-          </div>
-          <div id="fcLista" class="fc-lista"></div>
-          <div class="fc-rodape">
-            <div class="caixa-linha"><span>Informado</span><span id="fcInformado">R$ 0,00</span></div>
-            <div class="caixa-linha"><span>Esperado</span><span>R$ ${fmtBRn(esperadoElet)}</span></div>
-            <div class="caixa-linha caixa-total"><span>Diferença</span><span id="fcDifElet" class="fc-dif">R$ 0,00</span></div>
-          </div>
-        </section>
+      <div class="fc-conf">
+        <table class="fc-conf-tab">
+          <thead><tr><th class="fc-th-forma">Forma de pagamento</th><th>Esperado</th><th>Em caixa</th><th>Diferença</th></tr></thead>
+          <tbody>${linhas.map(linhaHTML).join("")}</tbody>
+          <tfoot><tr class="fc-total-linha">
+            <td>Total</td>
+            <td id="fcEspTotal">R$ 0,00</td>
+            <td id="fcEmTotal">R$ 0,00</td>
+            <td class="fc-dif" id="fcDifTotal">R$ 0,00</td>
+          </tr></tfoot>
+        </table>
       </div>
       <div class="fc-acoes">
         <button class="secundario" id="fcCancelar">Cancelar</button>
-        <button id="fcFechar"${bloqueado ? " disabled" : ""}>Fechar caixa e imprimir →</button>
+        <button id="fcFechar"${bloqueado ? " disabled" : ""}>Fechar caixa</button>
       </div>
     </div>`;
 
-  if (window.Dinheiro) Dinheiro.mascarar("fcValor");
-
-  function fmtDif(el, dif) {
+  function fmtDifCell(el, dif) {
+    if (!el) return;
     el.classList.remove("fc-sobra", "fc-falta");
-    if (dif > 0) { el.textContent = "+R$ " + fmtBRn(dif) + " ▲ sobrou"; el.classList.add("fc-sobra"); }
-    else if (dif < 0) { el.textContent = "−R$ " + fmtBRn(-dif) + " ▼ faltou"; el.classList.add("fc-falta"); }
-    else { el.textContent = "R$ 0,00 bateu"; }
+    if (dif > 0.005) { el.textContent = "+ R$ " + fmtBRn(dif); el.classList.add("fc-sobra"); }
+    else if (dif < -0.005) { el.textContent = "− R$ " + fmtBRn(-dif); el.classList.add("fc-falta"); }
+    else { el.textContent = "R$ 0,00"; }
   }
-  function contagemAtual() {
-    const c = {};
-    cont.querySelectorAll(".fc-qtd").forEach((i) => {
-      const q = parseInt(i.value, 10) || 0;
-      if (q > 0) c[i.dataset.cent] = q;
+  const valorDe = (id) => window.Dinheiro
+    ? Dinheiro.valor(id)
+    : (parseFloat(String($(id).value || "0").replace(/\./g, "").replace(",", ".")) || 0);
+  function recalc() {
+    let em = 0, esp = 0;
+    linhas.forEach((l) => {
+      const v = valorDe(l.id); em += v; esp += l.esperado;
+      fmtDifCell($(l.id + "-dif"), v - l.esperado);
     });
+    $("fcEspTotal").textContent = "R$ " + fmtBRn(esp);
+    $("fcEmTotal").textContent = "R$ " + fmtBRn(em);
+    fmtDifCell($("fcDifTotal"), em - esp);
+  }
+  function contadoAtual() {
+    const c = {};
+    linhas.forEach((l) => { c[l.forma] = valorDe(l.id); });
     return c;
   }
-  function recalcDinheiro() {
-    let total = 0;
-    cont.querySelectorAll(".fc-qtd").forEach((i) => {
-      const cent = Number(i.dataset.cent); const q = parseInt(i.value, 10) || 0;
-      const linha = q * cent / 100; total += linha;
-      const td = cont.querySelector(`.fc-tot[data-cent="${cent}"]`);
-      if (td) td.textContent = "R$ " + fmtBRn(linha);
-    });
-    $("fcContadoDin").textContent = "R$ " + fmtBRn(total);
-    fmtDif($("fcDifDin"), total - esperadoEspecie);
-  }
-  function recalcEletronico() {
-    const total = lancamentos.reduce((s, l) => s + l.valor, 0);
-    $("fcInformado").textContent = "R$ " + fmtBRn(total);
-    fmtDif($("fcDifElet"), total - esperadoElet);
-  }
-  function renderLista() {
-    $("fcLista").innerHTML = lancamentos.length
-      ? lancamentos.map((l, i) => `<div class="fc-lanc"><span>${escapar(l.forma)}</span><span>R$ ${fmtBRn(l.valor)}</span><button type="button" class="fc-del" data-i="${i}" aria-label="Remover">${ICO_LIXEIRA}</button></div>`).join("")
-      : "<p class='sub'>Nenhum lançamento ainda. Informe os valores de cartão e Pix para conferir com o esperado.</p>";
-    $("fcLista").querySelectorAll(".fc-del").forEach((b) =>
-      b.addEventListener("click", () => { lancamentos.splice(+b.dataset.i, 1); renderLista(); recalcEletronico(); }));
-  }
 
-  cont.querySelectorAll(".fc-qtd").forEach((i) => i.addEventListener("input", recalcDinheiro));
-  // Lança o valor e mantém o foco no campo: o operador digita valor + Enter,
-  // valor + Enter… sem precisar clicar "Adicionar" nem tirar a mão do teclado.
-  function adicionarLancamento() {
-    const forma = $("fcForma").value;
-    const valor = window.Dinheiro ? Dinheiro.valor("fcValor") : 0;
-    if (valor <= 0) { toast("Informe um valor maior que zero."); return; }
-    lancamentos.push({ forma, valor });
-    if (window.Dinheiro) Dinheiro.setValor("fcValor", 0); else $("fcValor").value = "0,00";
-    renderLista(); recalcEletronico();
-    $("fcValor").focus();
-  }
-  $("fcAdd").addEventListener("click", adicionarLancamento);
-  $("fcValor").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); adicionarLancamento(); } });
+  linhas.forEach((l) => {
+    if (window.Dinheiro) Dinheiro.mascarar(l.id);
+    $(l.id).addEventListener("input", recalc);
+  });
   $("fcCancelar").addEventListener("click", () => carregarCaixa());
   $("fcFechar").addEventListener("click", () => {
     if (mesasAbertas > 0) { toast("Feche as mesas abertas antes de fechar o caixa."); return; }
     if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
-    fecharCaixaFinal(data, contagemAtual(), lancamentos);
+    fecharCaixaFinal(data, contadoAtual());
   });
   if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", irParaPedidosAReceber);
   if (mesasAbertas > 0 && $("fcVerMesas")) $("fcVerMesas").addEventListener("click", () => {
     const btn = document.querySelector("[data-aba='mesas']"); if (btn) btn.click();
   });
 
-  renderLista(); recalcDinheiro(); recalcEletronico();
+  recalc();
 }
 
 // Visualização read-only do relatório de fechamento (a impressão é do agente).
@@ -2694,10 +2638,10 @@ function fecharRelatorio() { const ov = $("relatorio-overlay"); if (ov) ov.style
 if ($("relatorio-fechar")) $("relatorio-fechar").addEventListener("click", fecharRelatorio);
 if ($("relatorio-overlay")) $("relatorio-overlay").addEventListener("click", (e) => { if (e.target === $("relatorio-overlay")) fecharRelatorio(); });
 
-async function fecharCaixaFinal(data, contagem, lancamentos) {
+async function fecharCaixaFinal(data, contado) {
   // O relatório é montado no SERVIDOR (fonte única e autoritativa); o front só
-  // envia a conferência e recebe o texto pronto pra prévia/impressão.
-  const r = await api("POST", "/api/caixa/fechar", { contagem, eletronico: lancamentos });
+  // envia a conferência por forma e recebe o texto pronto pra prévia/impressão.
+  const r = await api("POST", "/api/caixa/fechar", { contado });
   if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível fechar o caixa. Tente de novo."); return; }
   const res = await r.json();
   const dif = res.diferenca;
