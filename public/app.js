@@ -230,11 +230,12 @@ document.querySelectorAll("nav button").forEach((btn) => {
     const saindoDePedidos = $("aba-pedidos").classList.contains("ativa") && btn.dataset.aba !== "pedidos";
     if (saindoDePedidos) pedidosNovosDestaque.clear();
 
-    document.querySelectorAll("nav button").forEach((b) => b.classList.remove("ativo"));
+    document.querySelectorAll("nav button").forEach((b) => { b.classList.remove("ativo"); b.removeAttribute("aria-current"); });
     document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
     const aj = $("btnAjuda");
     if (aj) aj.classList.remove("ativo");
     btn.classList.add("ativo");
+    btn.setAttribute("aria-current", "page");
     $("aba-" + btn.dataset.aba).classList.add("ativa");
     if (btn.dataset.aba === "dashboard") carregarDashboard();
     if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
@@ -248,7 +249,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
 
 // Central de Ajuda (FAQ): botão no rodapé da sidebar + atalho no topo (mobile).
 function abrirAjuda() {
-  document.querySelectorAll("nav button").forEach((b) => b.classList.remove("ativo"));
+  document.querySelectorAll("nav button").forEach((b) => { b.classList.remove("ativo"); b.removeAttribute("aria-current"); });
   document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
   const aj = $("btnAjuda");
   if (aj) aj.classList.add("ativo");
@@ -2750,7 +2751,7 @@ async function verHistoricoCaixa() {
   const html = lista.length
     ? lista.slice(0, 3).map((c) => {
         const d = difTxt(c);
-        return `<div class="caixa-hist-item" data-id="${c.id}">
+        return `<div class="caixa-hist-item" data-id="${c.id}" tabindex="0" role="button" aria-label="Reabrir relatório do caixa de ${dataHora(c.fechadoEm)}">
           <div class="chi-info">
             <span class="chi-data">${dataHora(c.fechadoEm)}</span>
             <span class="chi-op">${c.operador ? escapar(c.operador) : "—"}</span>
@@ -2770,13 +2771,15 @@ async function verHistoricoCaixa() {
   sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Os 3 últimos fechamentos — toque para reabrir o relatório.</p>" : ""}${html}`;
   sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
     const item = lista.find((c) => String(c.id) === el.dataset.id);
-    el.addEventListener("click", () => {
+    const abrir = () => {
       if (item && item.relatorio) {
         verRelatorio("Relatório — " + new Date(item.fechadoEm).toLocaleString("pt-BR"), item.relatorio);
       } else {
         toast("Relatório indisponível para este fechamento.");
       }
-    });
+    };
+    el.addEventListener("click", abrir);
+    el.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); abrir(); } });
   });
   sec.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
@@ -4604,7 +4607,7 @@ function renderPdvCarrinho() {
         ? '<span class="pdv-linha-kg" data-edit="' + l.uid + '">' + window.Estoque.formatarQtd(l.qtd, "kg") + " kg</span>"
         : '<div class="pdv-stepper sm"><button type="button" data-dec="' + l.uid + '">−</button><span>' + l.qtd + '</span><button type="button" data-inc="' + l.uid + '">+</button></div>';
       div.innerHTML =
-        '<div class="pdv-linha-top" data-edit="' + l.uid + '">' +
+        '<div class="pdv-linha-top" data-edit="' + l.uid + '" tabindex="0" role="button" aria-label="Editar ' + pdvEsc(l.nome) + '">' +
           '<span class="pdv-linha-nome">' + pdvEsc(l.nome) + "</span>" +
           '<span class="pdv-linha-preco">' + pdvMoney(pdvPrecoLinha(l)) + "</span>" +
         "</div>" +
@@ -4622,12 +4625,16 @@ function renderPdvCarrinho() {
     cont.querySelectorAll("[data-inc]").forEach((b) => b.addEventListener("click", () => { const l = pdvCart.find((x) => x.uid == b.dataset.inc); if (l) { l.qtd++; renderPdvCarrinho(); } }));
     cont.querySelectorAll("[data-dec]").forEach((b) => b.addEventListener("click", () => { const l = pdvCart.find((x) => x.uid == b.dataset.dec); if (l) { l.qtd = Math.max(1, l.qtd - 1); renderPdvCarrinho(); } }));
     cont.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { pdvCart = pdvCart.filter((x) => x.uid != b.dataset.rm); renderPdvCarrinho(); }));
-    cont.querySelectorAll("[data-edit]").forEach((el) => el.addEventListener("click", () => {
-      const l = pdvCart.find((x) => x.uid == el.dataset.edit);
-      if (!l) return;
-      const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, opcionais: "" };
-      abrirPdvItemModal(item, l.uid);
-    }));
+    cont.querySelectorAll("[data-edit]").forEach((el) => {
+      const editar = () => {
+        const l = pdvCart.find((x) => x.uid == el.dataset.edit);
+        if (!l) return;
+        const item = pdvAcharItem(l.id) || { id: l.id, nome: l.nome, preco: l.preco, unidade: l.unidade, opcionais: "" };
+        abrirPdvItemModal(item, l.uid);
+      };
+      el.addEventListener("click", editar);
+      el.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); editar(); } });
+    });
   }
   // Rodapé: reflete o desconto aplicado no Finalizar venda (Subtotal/Desconto só
   // aparecem quando há desconto; senão mostra só o Total).

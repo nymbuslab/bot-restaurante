@@ -540,14 +540,14 @@
           <li><code>{proximaAbertura}</code> quando o restaurante reabre (ex.: "amanhã às 08:00")</li>
         </ul>
         <div class="cfg-msgs-grid">
-          <div class="card cfg-msg"><label>Mensagem de Boas-vindas <span class="cfg-msg-hint">(1º contato)</span></label><textarea id="cfgBoasVindas"></textarea></div>
-          <div class="card cfg-msg"><label>Boas-vindas — Cliente que retorna <span class="cfg-msg-hint">({cliente})</span></label><textarea id="cfgBoasVindasRetorno" placeholder="Que bom te ver de novo, *{cliente}*!"></textarea></div>
-          <div class="card cfg-msg"><label>Aviso de Estabelecimento Fechado <span class="cfg-msg-hint">({proximaAbertura} ou {horario})</span></label><textarea id="cfgFechado"></textarea></div>
-          <div class="card cfg-msg"><label>Falar com Atendente</label><textarea id="cfgAtendente"></textarea></div>
-          <div class="card cfg-msg"><label>Despedida <span class="cfg-msg-hint">(comando "sair")</span></label><textarea id="cfgDespedida" placeholder="Atendimento encerrado. Quando quiser pedir de novo, é só mandar *oi*!"></textarea></div>
-          <div class="card cfg-msg"><label>Pedido Confirmado</label><textarea id="cfgConfirmado"></textarea></div>
-          <div class="card cfg-msg"><label>Pedido Pronto — Entrega <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoEntrega"></textarea></div>
-          <div class="card cfg-msg"><label>Pedido Pronto — Retirada <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoRetirada"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgBoasVindas">Mensagem de Boas-vindas <span class="cfg-msg-hint">(1º contato)</span></label><textarea id="cfgBoasVindas"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgBoasVindasRetorno">Boas-vindas — Cliente que retorna <span class="cfg-msg-hint">({cliente})</span></label><textarea id="cfgBoasVindasRetorno" placeholder="Que bom te ver de novo, *{cliente}*!"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgFechado">Aviso de Estabelecimento Fechado <span class="cfg-msg-hint">({proximaAbertura} ou {horario})</span></label><textarea id="cfgFechado"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgAtendente">Falar com Atendente</label><textarea id="cfgAtendente"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgDespedida">Despedida <span class="cfg-msg-hint">(comando "sair")</span></label><textarea id="cfgDespedida" placeholder="Atendimento encerrado. Quando quiser pedir de novo, é só mandar *oi*!"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgConfirmado">Pedido Confirmado</label><textarea id="cfgConfirmado"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgMsgProntoEntrega">Pedido Pronto — Entrega <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoEntrega"></textarea></div>
+          <div class="card cfg-msg"><label for="cfgMsgProntoRetirada">Pedido Pronto — Retirada <span class="cfg-msg-hint">({cliente}, {numero})</span></label><textarea id="cfgMsgProntoRetirada"></textarea></div>
         </div>
       </div><!-- /cfg-secao Mensagens -->
       </div><!-- /cfg-sub-bot -->
@@ -1499,6 +1499,7 @@
   <script src="estoque.js"></script>
   <script src="variacoes.js"></script>
   <script src="grupos.js"></script>
+  <script src="a11y.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
