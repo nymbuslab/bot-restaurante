@@ -1,12 +1,21 @@
 // ============================================================
-// Acessibilidade — focus-trap global de modais.
+// Acessibilidade — foco de modais (global).
 //
-// Mantém o Tab dentro do modal/drawer aberto mais acima, para o foco não
-// escapar para a página atrás do overlay (WCAG 2.4.3). É PURAMENTE ADITIVO:
-// só age na tecla Tab, e apenas quando há um overlay conhecido de fato visível
-// na tela. Não abre, fecha nem altera nenhum modal. Os modais que já tratam o
-// próprio Tab (fechamento de caixa, confirmar) seguem funcionando — o resultado
-// é o mesmo (idempotente).
+// Faz DUAS coisas, para todos os overlays conhecidos (lista SEL), sem que cada
+// modal precise tratar foco na mão:
+//
+// 1. FOCO AO ABRIR — quando um overlay fica visível, joga o foco pro 1º elemento
+//    focável VISÍVEL dentro dele (a checagem `visivel` ignora, ex., o botão de
+//    fechar escondido por `display:none`). Resolve o caso do modal que abria mas
+//    deixava o foco na tela de trás (o usuário tinha que clicar pra "ativar").
+//    Só age na ABERTURA e só se o foco ainda não estiver dentro — modais que já
+//    se focam (fechamento de caixa, confirmar, drawer da mesa) não são mexidos.
+// 2. FOCUS-TRAP — mantém o Tab dentro do modal/drawer aberto mais acima, pro foco
+//    não escapar pra página atrás do overlay (WCAG 2.4.3).
+//
+// É PURAMENTE ADITIVO: não abre nem fecha modal, e nunca mexe no foco ao FECHAR
+// (não atrapalha o retorno de foco de quem trata isso). Padrão único: ao abrir
+// um modal NÃO escrever `.focus()` na mão — isto cuida do foco inicial.
 //
 // Carregado em admin.html, admin-master.html e cardapio.html.
 // ============================================================
@@ -58,4 +67,35 @@
     if (e.shiftKey && ativo === primeiro) { e.preventDefault(); ultimo.focus(); }
     else if (!e.shiftKey && ativo === ultimo) { e.preventDefault(); primeiro.focus(); }
   });
+
+  // --- Foco ao abrir ------------------------------------------------------
+  // Observa a abertura dos overlays (hidden/class/style) e joga o foco pra
+  // dentro. Deferido (rAF) p/ rodar depois do render; agenda no máx. 1 vez.
+  var focoPendente = false;
+  function focarModalAoAbrir() {
+    focoPendente = false;
+    var modal = modalTopo();
+    if (!modal) return;
+    var ativo = document.activeElement;
+    if (ativo && ativo !== document.body && modal.contains(ativo)) return; // já focado dentro
+    var foc = Array.prototype.slice.call(modal.querySelectorAll(FOCAVEIS)).filter(visivel);
+    var alvo = foc[0];
+    if (!alvo) { // sem focável: foca o container p/ Tab/Esc/leitor funcionarem
+      if (!modal.hasAttribute("tabindex")) modal.setAttribute("tabindex", "-1");
+      alvo = modal;
+    }
+    try { alvo.focus(); } catch (_) {}
+  }
+  function agendarFocoModal() {
+    if (focoPendente) return;
+    focoPendente = true;
+    (window.requestAnimationFrame || window.setTimeout)(focarModalAoAbrir, 0);
+  }
+  new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var t = muts[i].target;
+      // só reage quando um overlay conhecido ACABA de ficar visível (abertura)
+      if (t.nodeType === 1 && t.matches && t.matches(SEL) && visivel(t)) { agendarFocoModal(); return; }
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ["hidden", "class", "style"], subtree: true });
 })();

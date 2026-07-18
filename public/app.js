@@ -4441,8 +4441,7 @@ function abrirPdvItemModal(item, uid) {
   html += '</div>';
 
   $("pdvItemCaixa").innerHTML = html;
-  $("pdvItemOverlay").hidden = false;
-  focarModalPdv("pdvItemCaixa");
+  $("pdvItemOverlay").hidden = false; // a11y.js foca o modal ao abrir
 
   // wiring
   $("pdvItemCaixa").querySelectorAll("[data-stepper]").forEach((box) => {
@@ -4707,13 +4706,6 @@ function pdvIconeForma(f) {
 }
 
 // A11y: foca o primeiro controle do modal ao abrir (navegação por teclado/leitor).
-function focarModalPdv(caixaId) {
-  const caixa = $(caixaId);
-  if (!caixa) return;
-  const alvo = caixa.querySelector("input:not([type=hidden]), select, textarea, button");
-  if (alvo) { try { alvo.focus(); } catch (_) {} }
-}
-
 function abrirPdvPagar() {
   if (!pdvCart.length) return;
   pdvPagamentos = [];
@@ -4722,8 +4714,7 @@ function abrirPdvPagar() {
   pdvTipoEntrega = "Balcão";
   pdvEntrega = null;
   renderPdvPagar();
-  $("pdvPagarOverlay").hidden = false;
-  focarModalPdv("pdvPagarCaixa");
+  $("pdvPagarOverlay").hidden = false; // a11y.js foca o modal ao abrir
 }
 function fecharPdvPagar() { $("pdvPagarOverlay").hidden = true; }
 function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100; }
@@ -4867,8 +4858,7 @@ function pdvRenderEntregaResumo() {
 function abrirPdvDescModal() {
   pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
   renderPdvDescModal();
-  $("pdvDescOverlay").hidden = false;
-  focarModalPdv("pdvDescCaixa");
+  $("pdvDescOverlay").hidden = false; // a11y.js foca o modal ao abrir
 }
 function fecharPdvDescModal() { $("pdvDescOverlay").hidden = true; }
 
@@ -4959,8 +4949,7 @@ function abrirPdvEntrega() {
   }
   $("pdvEntConfirmar").addEventListener("click", pdvConfirmarEntrega);
   $("pdvEntregaCaixa").querySelectorAll('[data-pdv-close="entrega"]').forEach((b) => b.addEventListener("click", fecharPdvEntrega));
-  $("pdvEntregaOverlay").hidden = false;
-  focarModalPdv("pdvEntregaCaixa");
+  $("pdvEntregaOverlay").hidden = false; // a11y.js foca o modal ao abrir
 }
 function fecharPdvEntrega() { $("pdvEntregaOverlay").hidden = true; }
 
