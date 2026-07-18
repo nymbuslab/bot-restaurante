@@ -4804,11 +4804,26 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .chi-dif.chi-falta { color: var(--error); }
 .caixa-modal-live { margin: 4px 0 0; font-weight: 700; color: var(--secondary); }
 
-/* Fechamento de caixa — conferência por forma (Esperado x Em caixa x Diferença) */
-.fc-wrap { max-width: 720px; }
-.fc-cab { margin-bottom: 16px; }
+/* Fechamento de caixa — modal de conferência por forma (Esperado x Em caixa x Diferença) */
+.fc-modal {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 24px 24px 20px;
+  width: 90%;
+  max-width: 680px;
+  box-shadow: var(--shadow-lg);
+  animation: modalIn 0.18s ease both;
+}
+.fc-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .fc-cab h3 { margin: 0 0 4px; }
-.fc-conf { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; }
+.fc-operador {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  background: var(--accent-subtle); color: var(--accent-fg); border: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+.fc-operador svg { width: 15px; height: 15px; }
+.fc-conf { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; overflow-x: auto; }
 .fc-conf-tab { width: 100%; border-collapse: collapse; }
 .fc-conf-tab th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; padding: 10px 0; text-align: right; }
 .fc-conf-tab th.fc-th-forma { text-align: left; }
@@ -4825,16 +4840,23 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-total-linha td:first-child { text-align: left; }
 .fc-acoes {
   display: flex; justify-content: space-between; gap: 12px;
-  position: sticky; bottom: 0; z-index: 5;
-  margin-top: 18px; padding: 14px 0;
-  background: var(--bg-primary); border-top: 1px solid var(--border);
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
 }
 .fc-bloqueio { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px; background: var(--warning-subtle); border: 1px solid var(--warning); border-radius: var(--radius); }
 .fc-bloqueio-txt { display: flex; flex-direction: column; gap: 2px; }
 .fc-bloqueio-txt strong { color: var(--warning); }
 .fc-bloqueio-txt span { font-size: 13px; color: var(--text-secondary); }
 .fc-bloqueio button { flex-shrink: 0; }
-@media (max-width: 560px) { .fc-em, .fc-input { width: 120px; } }
+@media (max-width: 560px) {
+  .fc-modal { padding: 18px 14px 14px; }
+  .fc-conf { padding: 4px 8px; }
+  .fc-conf-tab th { font-size: 10px; padding: 8px 0; }
+  .fc-conf-tab td { font-size: 13px; }
+  .fc-esp, .fc-dif { font-size: 12px; }
+  .fc-conf-tab td.fc-dif, .fc-conf-tab th:last-child { padding-left: 8px; }
+  .fc-em { width: 74px; }
+  .fc-input { width: 70px; padding: 6px 6px; }
+}
 
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
 .tag svg, .cfg-frete-lock svg, .np-som-pill svg { vertical-align: -2px; }

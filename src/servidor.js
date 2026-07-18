@@ -1901,7 +1901,9 @@ app.get("/api/caixa", exigeAuth, async (req, res) => {
     const data = await caixa.resumo(req.tenantDir);
     await store.ensure(req.tenantDir);
     const cfg = store.getConfig(req.tenantDir) || {};
-    data.formasPagamento = Array.isArray(cfg.pagamentos) ? cfg.pagamentos : [];
+    // Normaliza (descarta formas legadas como "A Prazo" do fiado removido) — mesma
+    // regra do painel, p/ o fechamento só listar formas de pagamento reais.
+    data.formasPagamento = formasPag.normalizarFormasPagamento(cfg.pagamentos);
     data.restaurante = (cfg.restaurante && cfg.restaurante.nome) || "";
     res.json(data);
   } catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }

@@ -2510,10 +2510,10 @@ function irParaPedidosAReceber() {
   if (btn) btn.click();
 }
 
-// Fechamento: conferência por forma (Esperado x Em caixa x Diferença), sem contador
-// de cédulas. O operador digita só o que está em mãos por forma; o servidor recalcula.
+// Fechamento: modal de conferência por forma (Esperado x Em caixa x Diferença), sem
+// contador de cédulas. O operador digita só o que está em mãos por forma; o servidor
+// recalcula. Abre como .modal-overlay (centralizado + padding mobile) sobre o caixa.
 function renderFechamentoCaixa(data) {
-  const cont = $("caixaConteudo");
   const resumo = data.resumo || {};
   const esperadoEspecie = Number(resumo.esperadoEspecie) || 0;
   const recPorForma = resumo.recebidoPorForma || {};
@@ -2533,6 +2533,7 @@ function renderFechamentoCaixa(data) {
   const pendentes = Number(data.pedidosAReceber) || 0; // pedidos delivery/local a receber
   const mesasAbertas = Number(data.mesasAbertas) || 0; // mesas com consumo em aberto
   const bloqueado = pendentes > 0 || mesasAbertas > 0;
+  const operador = (data.caixa && data.caixa.operador) || "";
 
   const linhaHTML = (l) => `
     <tr>
@@ -2542,11 +2543,17 @@ function renderFechamentoCaixa(data) {
       <td class="fc-dif" id="${l.id}-dif">R$ 0,00</td>
     </tr>`;
 
-  cont.innerHTML = `
-    <div class="fc-wrap">
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "fcOverlay";
+  overlay.innerHTML = `
+    <div class="fc-modal">
       <div class="fc-cab">
-        <h3>Fechamento de Caixa</h3>
-        <span class="sub">Confira o que está em caixa por forma de pagamento${data.caixa && data.caixa.operador ? " · Operador: " + escapar(data.caixa.operador) : ""}</span>
+        <div class="fc-cab-tit">
+          <h3>Fechamento de Caixa</h3>
+          <span class="sub">Confira o que está em caixa por forma de pagamento</span>
+        </div>
+        ${operador ? `<span class="fc-operador">${SVG_OPERADOR}${escapar(operador)}</span>` : ""}
       </div>
       ${mesasAbertas > 0 ? `
       <div class="fc-bloqueio">
@@ -2581,6 +2588,7 @@ function renderFechamentoCaixa(data) {
         <button id="fcFechar"${bloqueado ? " disabled" : ""}>Fechar caixa</button>
       </div>
     </div>`;
+  document.body.appendChild(overlay);
 
   function fmtDifCell(el, dif) {
     if (!el) return;
@@ -2607,23 +2615,39 @@ function renderFechamentoCaixa(data) {
     linhas.forEach((l) => { c[l.forma] = valorDe(l.id); });
     return c;
   }
+  function destruirModal() {
+    document.removeEventListener("keydown", onKey);
+    overlay.classList.add("saindo");
+    overlay.addEventListener("animationend", () => overlay.remove(), { once: true });
+  }
+  function onKey(e) { if (e.key === "Escape") destruirModal(); }
 
   linhas.forEach((l) => {
     if (window.Dinheiro) Dinheiro.mascarar(l.id);
     $(l.id).addEventListener("input", recalc);
   });
-  $("fcCancelar").addEventListener("click", () => carregarCaixa());
-  $("fcFechar").addEventListener("click", () => {
+  $("fcCancelar").addEventListener("click", destruirModal);
+  overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) destruirModal(); });
+  document.addEventListener("keydown", onKey);
+  $("fcFechar").addEventListener("click", async () => {
     if (mesasAbertas > 0) { toast("Feche as mesas abertas antes de fechar o caixa."); return; }
     if (pendentes > 0) { toast("Receba todos os pedidos antes de fechar o caixa."); return; }
-    fecharCaixaFinal(data, contadoAtual());
+    const res = await fecharCaixaFinal(contadoAtual());
+    if (!res) return;
+    destruirModal();
+    const dif = res.diferenca;
+    toast(dif === 0 ? "Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
+    if (res.relatorio) verRelatorio("Relatório de fechamento", res.relatorio);
+    carregarCaixa();
   });
-  if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", irParaPedidosAReceber);
+  if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", () => { destruirModal(); irParaPedidosAReceber(); });
   if (mesasAbertas > 0 && $("fcVerMesas")) $("fcVerMesas").addEventListener("click", () => {
+    destruirModal();
     const btn = document.querySelector("[data-aba='mesas']"); if (btn) btn.click();
   });
 
   recalc();
+  const primeiro = linhas[0] && $(linhas[0].id); if (primeiro) primeiro.focus();
 }
 
 // Visualização read-only do relatório de fechamento (a impressão é do agente).
@@ -2638,16 +2662,13 @@ function fecharRelatorio() { const ov = $("relatorio-overlay"); if (ov) ov.style
 if ($("relatorio-fechar")) $("relatorio-fechar").addEventListener("click", fecharRelatorio);
 if ($("relatorio-overlay")) $("relatorio-overlay").addEventListener("click", (e) => { if (e.target === $("relatorio-overlay")) fecharRelatorio(); });
 
-async function fecharCaixaFinal(data, contado) {
-  // O relatório é montado no SERVIDOR (fonte única e autoritativa); o front só
-  // envia a conferência por forma e recebe o texto pronto pra prévia/impressão.
+// Envia a conferência por forma e devolve o resultado (relatório montado no SERVIDOR,
+// fonte única e autoritativa). null em erro (já avisa). A UI/fechamento do modal fica
+// no handler que chama.
+async function fecharCaixaFinal(contado) {
   const r = await api("POST", "/api/caixa/fechar", { contado });
-  if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível fechar o caixa. Tente de novo."); return; }
-  const res = await r.json();
-  const dif = res.diferenca;
-  toast(dif === 0 ? "Caixa fechado, bateu certinho!" : (dif > 0 ? "Caixa fechado. Sobra de R$ " + fmtBRn(dif) : "Caixa fechado. Falta de R$ " + fmtBRn(-dif)));
-  if (res.relatorio) verRelatorio("Relatório de fechamento", res.relatorio);
-  carregarCaixa();
+  if (!r || !r.ok) { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível fechar o caixa. Tente de novo."); return null; }
+  return await r.json();
 }
 
 async function verHistoricoCaixa() {
