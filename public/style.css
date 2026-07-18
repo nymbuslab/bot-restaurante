@@ -753,12 +753,26 @@ input, textarea, select {
 }
 
 input::placeholder, textarea::placeholder {
-  color: var(--text-disabled);
+  color: var(--text-secondary); /* --text-disabled reprovava contraste (~1,9:1) */
 }
 
 input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+/* Anel de foco visível nos controles custom (switch/checkbox/radio): a regra global
+   tira o outline dos inputs e a borda própria desses controles engole o box-shadow,
+   deixando o foco por teclado invisível. Restaura um outline claro só neles. */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent-fg);
+  outline-offset: 2px;
+}
+
+/* iOS Safari amplia a tela ao focar input com fonte < 16px; no mobile subimos p/ 16px. */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px; }
 }
 
 textarea {
