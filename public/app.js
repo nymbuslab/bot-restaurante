@@ -2675,12 +2675,9 @@ function renderFechamentoCaixa(data) {
   }
 
   linhas.forEach((l) => {
-    if (window.Dinheiro) Dinheiro.mascarar(l.id);
+    if (window.Dinheiro) Dinheiro.mascarar(l.id); // mascarar já seleciona ao focar
     const inp = $(l.id);
     inp.addEventListener("input", recalc);
-    // Seleciona o conteúdo ao focar (auto-foco/Tab/clique): o cursor não fica antes do
-    // "0,00", então o 1º dígito digitado entra pela direita (máscara centavos-primeiro).
-    inp.addEventListener("focus", () => inp.select());
   });
   $("fcCancelar").addEventListener("click", destruirModal);
   overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) fecharComGuarda(); });
@@ -3379,8 +3376,7 @@ function abrirPedReceber(p, aoReceber) {
     const inp = $("pedReceberValor"); if (inp) inp.focus();
   }));
   const valInp = $("pedReceberValor");
-  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, pedReceberAlvo); }
-  if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
+  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, pedReceberAlvo); } // mascarar já seleciona ao focar
   $("pedReceberAdd").addEventListener("click", pedReceberAdd);
   valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pedReceberAdd(); } });
   $("pedReceberConfirmar").addEventListener("click", pedReceberConfirmar);
@@ -4165,7 +4161,9 @@ function pdvTotalCobrar() { return Math.round((pdvTotalLiq() + pdvFreteValor()) 
 
 function pdvMoney(v) { return Dinheiro.comPrefixo(Number(v) || 0); }
 // Seleciona todo o conteúdo ao focar (deferido p/ não perder a seleção no clique
-// do mouse) — operador digita o valor recebido substituindo, sem apagar.
+// do mouse) — o usuário digita substituindo, sem apagar. Campos monetários já
+// ganham isso via Dinheiro.mascarar; esta função é só para o campo de desconto no
+// modo % (percentual não passa pela máscara de dinheiro).
 function pdvSelecionarAoFocar(el) {
   if (!el) return;
   el.addEventListener("focus", () => setTimeout(() => { try { el.select(); } catch (_) {} }, 0));
@@ -4825,7 +4823,7 @@ function renderPdvPagar() {
     Dinheiro.setValor(valInp, Math.max(0, Math.round((total - pdvPagoTotal()) * 100) / 100));
     $("pdvPgAdd").addEventListener("click", pdvAddPagamento);
     valInp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pdvAddPagamento(); } });
-    pdvSelecionarAoFocar(valInp);
+    // valInp já é mascarado (Dinheiro.mascarar acima) → seleção ao focar automática.
   }
   $("pdvVoltar").addEventListener("click", fecharPdvPagar);
   $("pdvFinalizar").addEventListener("click", finalizarVendaPdv);
@@ -4898,7 +4896,7 @@ function renderPdvDescModal() {
   } else if (pdvDesconto && pdvDesconto.tipo === "pct") {
     inp.value = String(pdvDesconto.valor).replace(".", ",");
   }
-  pdvSelecionarAoFocar(inp);
+  pdvSelecionarAoFocar(inp); // modo % não é mascarado → precisa do select ao focar aqui
   $("pdvDescCaixa").querySelectorAll("[data-dt]").forEach((b) => b.addEventListener("click", () => {
     if (pdvDescTipoSel === b.dataset.dt) return;
     pdvDescTipoSel = b.dataset.dt;
@@ -6324,10 +6322,9 @@ function abrirMesaPagar(modo, preservar) {
   });
   $("btnMesaConfirmarPag").addEventListener("click", mesaConfirmarPagamento);
   var valInp = $("mesaPgValor");
-  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); }
+  if (window.Dinheiro) { Dinheiro.mascarar(valInp); Dinheiro.setValor(valInp, mesaPagarAlvo); } // mascarar já seleciona ao focar
   $("mesaPgAdd").addEventListener("click", mesaPagAdd);
   valInp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); mesaPagAdd(); } });
-  if (typeof pdvSelecionarAoFocar === "function") pdvSelecionarAoFocar(valInp);
   renderMesaPgLista();
 }
 

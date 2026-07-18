@@ -42,12 +42,18 @@
   }
 
   // Liga a máscara "centavos primeiro" a um campo de texto (idempotente).
+  // Também SELECIONA todo o conteúdo ao focar (clique/Tab/auto-foco): sem isso o
+  // cursor cai antes do "0,00" e o 1º dígito entra pela esquerda (5 → "50,00"). Com
+  // a seleção, o dígito substitui e a máscara preenche pela direita (5 → "0,05").
+  // A seleção é deferida (setTimeout 0) para sobreviver ao mouseup, que reposiciona
+  // o cursor. Padrão único: quem chama mascarar NÃO precisa de handler de foco.
   function mascarar(ref) {
     const e = el(ref);
     if (!e || e.dataset.dinheiro) return;
     e.dataset.dinheiro = "1";
     const aplicar = () => { e.value = formatarCentavos(parseInt(soDigitos(e.value) || "0", 10)); };
     e.addEventListener("input", aplicar);
+    e.addEventListener("focus", () => setTimeout(() => { try { e.select(); } catch (_) {} }, 0));
     if (e.value.trim()) aplicar(); // normaliza um valor inicial (ex.: "18,00")
   }
 
