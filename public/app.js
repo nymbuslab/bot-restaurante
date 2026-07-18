@@ -142,8 +142,10 @@ function confirmar(titulo, mensagem, txtConfirmar = "Confirmar", txtCancelar = "
     // Rótulo do botão de dispensar é sempre reescrito (o #modal-cancelar é
     // compartilhado; o default "Cancelar" reseta o que outra chamada tiver mudado).
     $("modal-cancelar").textContent = txtCancelar;
+    const gatilho = document.activeElement;
     overlay.style.display = "flex";
     overlay.classList.remove("saindo");
+    $("modal-confirmar").focus();
 
     function fechar(resultado) {
       overlay.classList.add("saindo");
@@ -153,14 +155,29 @@ function confirmar(titulo, mensagem, txtConfirmar = "Confirmar", txtCancelar = "
       }, { once: true });
       $("modal-cancelar").removeEventListener("click", onCancelar);
       $("modal-confirmar").removeEventListener("click", onConfirmar);
+      document.removeEventListener("keydown", onKey, true);
+      overlay.removeEventListener("mousedown", onFora);
+      if (gatilho && gatilho.focus) gatilho.focus(); // devolve o foco ao gatilho
       resolve(resultado);
     }
 
     function onCancelar() { fechar(false); }
     function onConfirmar() { fechar(true); }
+    function onFora(e) { if (e.target === overlay) fechar(false); }
+    // Esc fecha (= Cancelar) e Tab circula só entre os 2 botões (focus-trap). Captura +
+    // stopPropagation: Esc fecha só este diálogo (por cima), não um modal por baixo.
+    function onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fechar(false); return; }
+      if (e.key !== "Tab") return;
+      const a = $("modal-cancelar"), b = $("modal-confirmar");
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
+      else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
+    }
 
     $("modal-cancelar").addEventListener("click", onCancelar);
     $("modal-confirmar").addEventListener("click", onConfirmar);
+    document.addEventListener("keydown", onKey, true);
+    overlay.addEventListener("mousedown", onFora);
   });
 }
 

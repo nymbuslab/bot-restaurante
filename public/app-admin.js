@@ -95,8 +95,10 @@ function confirmar(titulo, mensagem, txtConfirmar = "Confirmar") {
     $("modal-titulo").textContent = titulo;
     $("modal-mensagem").textContent = mensagem;
     $("modal-confirmar").textContent = txtConfirmar;
+    const gatilho = document.activeElement;
     overlay.style.display = "flex";
     overlay.classList.remove("saindo");
+    $("modal-confirmar").focus();
 
     function fechar(resultado) {
       overlay.classList.add("saindo");
@@ -106,13 +108,26 @@ function confirmar(titulo, mensagem, txtConfirmar = "Confirmar") {
       }, { once: true });
       $("modal-cancelar").removeEventListener("click", onCancelar);
       $("modal-confirmar").removeEventListener("click", onConfirmar);
+      document.removeEventListener("keydown", onKey, true);
+      overlay.removeEventListener("mousedown", onFora);
+      if (gatilho && gatilho.focus) gatilho.focus();
       resolve(resultado);
     }
     function onCancelar() { fechar(false); }
     function onConfirmar() { fechar(true); }
+    function onFora(e) { if (e.target === overlay) fechar(false); }
+    function onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fechar(false); return; }
+      if (e.key !== "Tab") return;
+      const a = $("modal-cancelar"), b = $("modal-confirmar");
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
+      else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
+    }
 
     $("modal-cancelar").addEventListener("click", onCancelar);
     $("modal-confirmar").addEventListener("click", onConfirmar);
+    document.addEventListener("keydown", onKey, true);
+    overlay.addEventListener("mousedown", onFora);
   });
 }
 
