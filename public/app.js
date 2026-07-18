@@ -2538,9 +2538,9 @@ function renderFechamentoCaixa(data) {
   const linhaHTML = (l) => `
     <tr>
       <td class="fc-forma">${escapar(l.forma)}</td>
-      <td class="fc-esp">R$ ${fmtBRn(l.esperado)}</td>
-      <td class="fc-em"><input id="${l.id}" class="fc-input" inputmode="numeric" value="0,00" aria-label="Em caixa: ${escapar(l.forma)}"></td>
-      <td class="fc-dif" id="${l.id}-dif">R$ 0,00</td>
+      <td class="fc-esp" data-rot="Esperado">R$ ${fmtBRn(l.esperado)}</td>
+      <td class="fc-em" data-rot="Em caixa"><input id="${l.id}" class="fc-input" inputmode="numeric" value="0,00" aria-label="Em caixa: ${escapar(l.forma)}"></td>
+      <td class="fc-dif" data-rot="Diferença" id="${l.id}-dif">R$ 0,00</td>
     </tr>`;
 
   const overlay = document.createElement("div");
@@ -2577,9 +2577,9 @@ function renderFechamentoCaixa(data) {
           <tbody>${linhas.map(linhaHTML).join("")}</tbody>
           <tfoot><tr class="fc-total-linha">
             <td>Total</td>
-            <td id="fcEspTotal">R$ 0,00</td>
-            <td id="fcEmTotal">R$ 0,00</td>
-            <td class="fc-dif" id="fcDifTotal">R$ 0,00</td>
+            <td id="fcEspTotal" data-rot="Esperado">R$ 0,00</td>
+            <td id="fcEmTotal" data-rot="Em caixa">R$ 0,00</td>
+            <td class="fc-dif" data-rot="Diferença" id="fcDifTotal">R$ 0,00</td>
           </tr></tfoot>
         </table>
       </div>

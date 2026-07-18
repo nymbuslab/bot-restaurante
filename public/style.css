@@ -4823,21 +4823,24 @@ html.embed, html.embed body { background: var(--bg-primary); }
   background: var(--accent-subtle); color: var(--accent-fg); border: 1px solid rgba(var(--accent-rgb), 0.4);
 }
 .fc-operador svg { width: 15px; height: 15px; }
-.fc-conf { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; overflow-x: auto; }
-.fc-conf-tab { width: 100%; border-collapse: collapse; }
-.fc-conf-tab th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; padding: 10px 0; text-align: right; }
-.fc-conf-tab th.fc-th-forma { text-align: left; }
-.fc-conf-tab td { padding: 8px 0; text-align: right; vertical-align: middle; }
+.fc-conf { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 16px; }
+/* Colunas FIXAS (table-layout:fixed): não refluem ao digitar o valor; as 3 colunas
+   numéricas têm a mesma largura, com respiro entre elas via padding das células. */
+.fc-conf-tab { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.fc-conf-tab th, .fc-conf-tab td { padding: 9px 8px; text-align: right; vertical-align: middle; }
+.fc-conf-tab th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 700; }
+.fc-conf-tab th:nth-child(1), .fc-conf-tab td:nth-child(1) { width: 25%; text-align: left; padding-left: 0; }
+.fc-conf-tab th:nth-child(2), .fc-conf-tab td:nth-child(2) { width: 25%; }
+.fc-conf-tab th:nth-child(3), .fc-conf-tab td:nth-child(3) { width: 25%; }
+.fc-conf-tab th:nth-child(4), .fc-conf-tab td:nth-child(4) { width: 25%; padding-right: 0; }
 .fc-conf-tab tbody tr + tr td { border-top: 1px solid var(--border); }
-.fc-conf-tab td.fc-forma { text-align: left; font-weight: 600; }
+.fc-forma { font-weight: 600; }
 .fc-esp { color: var(--text-secondary); white-space: nowrap; }
-.fc-em { width: 150px; }
-.fc-input { width: 140px; text-align: right; padding: 6px 10px; }
+.fc-input { width: 100%; text-align: right; padding: 7px 10px; }
 .fc-dif { white-space: nowrap; font-weight: 600; }
 .fc-dif.fc-sobra { color: var(--success); }
 .fc-dif.fc-falta { color: var(--error); }
 .fc-total-linha td { border-top: 2px solid var(--border); font-weight: 700; padding-top: 12px; }
-.fc-total-linha td:first-child { text-align: left; }
 .fc-acoes {
   display: flex; justify-content: space-between; gap: 12px;
   margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
@@ -4849,13 +4852,22 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .fc-bloqueio button { flex-shrink: 0; }
 @media (max-width: 560px) {
   .fc-modal { padding: 18px 14px 14px; }
-  .fc-conf { padding: 4px 8px; }
-  .fc-conf-tab th { font-size: 10px; padding: 8px 0; }
-  .fc-conf-tab td { font-size: 13px; }
-  .fc-esp, .fc-dif { font-size: 12px; }
-  .fc-conf-tab td.fc-dif, .fc-conf-tab th:last-child { padding-left: 8px; }
-  .fc-em { width: 74px; }
-  .fc-input { width: 70px; padding: 6px 6px; }
+  .fc-conf { padding: 4px 16px; }
+  /* No mobile empilha: cada forma vira um bloco (rótulo à esquerda, valor à direita) —
+     em vez de espremer 4 colunas numa tela estreita e cortar os valores. */
+  .fc-conf-tab, .fc-conf-tab tbody, .fc-conf-tab tfoot, .fc-conf-tab tr, .fc-conf-tab td { display: block; width: auto; }
+  .fc-conf-tab td, .fc-conf-tab th { width: auto !important; } /* zera as larguras fixas das colunas do desktop */
+  .fc-conf-tab thead { display: none; }
+  .fc-conf-tab tr { padding: 14px 0; }
+  .fc-conf-tab tbody tr + tr, .fc-conf-tab tfoot tr { border-top: 1px solid var(--border); }
+  .fc-conf-tab td { border: 0; padding: 0; text-align: right; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .fc-conf-tab td + td { margin-top: 8px; }
+  .fc-conf-tab td::before { content: attr(data-rot); white-space: nowrap; color: var(--text-secondary); font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+  .fc-conf-tab td.fc-forma, .fc-total-linha td:first-child {
+    display: block; text-align: left; font-weight: 700; font-size: 15px; margin-bottom: 6px; padding-top: 0;
+  }
+  .fc-conf-tab td.fc-forma::before, .fc-total-linha td:first-child::before { content: none; }
+  .fc-input { width: 150px; padding: 7px 10px; }
 }
 
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
