@@ -2657,7 +2657,11 @@ function renderFechamentoCaixa(data) {
 
   linhas.forEach((l) => {
     if (window.Dinheiro) Dinheiro.mascarar(l.id);
-    $(l.id).addEventListener("input", recalc);
+    const inp = $(l.id);
+    inp.addEventListener("input", recalc);
+    // Seleciona o conteúdo ao focar (auto-foco/Tab/clique): o cursor não fica antes do
+    // "0,00", então o 1º dígito digitado entra pela direita (máscara centavos-primeiro).
+    inp.addEventListener("focus", () => inp.select());
   });
   $("fcCancelar").addEventListener("click", destruirModal);
   overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) fecharComGuarda(); });
