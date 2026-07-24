@@ -298,7 +298,7 @@ function renderIncidentes(lista) {
   if (!lista.length) {
     box.innerHTML = `<div class="mon-vazio">
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      <span>Nenhum incidente registrado — tudo tranquilo.</span>
+      <span>Nenhum incidente registrado. Tudo tranquilo.</span>
     </div>`;
     return;
   }
@@ -710,9 +710,9 @@ function renderTenantModal(d) {
   } else if (st === "cortesia") {
     detalheAssin = "Acesso liberado manualmente (sem cobrança).";
   } else if (st === "past_due") {
-    detalheAssin = "Pagamento pendente — acesso bloqueado.";
+    detalheAssin = "Pagamento pendente. Acesso bloqueado.";
   } else if (st === "canceled") {
-    detalheAssin = "Assinatura cancelada — sem acesso.";
+    detalheAssin = "Assinatura cancelada. Sem acesso.";
   } else {
     detalheAssin = "Nunca iniciou uma assinatura.";
   }

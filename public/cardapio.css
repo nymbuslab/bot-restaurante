@@ -62,7 +62,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .cd-capa {
   height: 220px;
-  background: linear-gradient(135deg, var(--accent) 0%, #4B3399 45%, var(--secondary) 130%);
+  background: var(--accent);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -86,7 +86,7 @@ button { font-family: inherit; cursor: pointer; }
   overflow: hidden;
 }
 .cd-logo:not(.tem-img) {
-  background: linear-gradient(135deg, var(--accent), var(--secondary));
+  background: var(--accent);
 }
 #cdLogoFallback {
   font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -1px; user-select: none;
@@ -175,7 +175,7 @@ button { font-family: inherit; cursor: pointer; }
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 button.cd-card { cursor: pointer; }
-.cd-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 10px 30px rgba(99,68,188,0.30); }
+.cd-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 10px 30px rgba(0,0,0,0.28); }
 .cd-card:active { transform: translateY(-1px); }
 /* entrada em cascata — só fora da busca (na busca os resultados aparecem na hora) */
 .cd-anim .cd-card { animation: cd-card-in .42s ease both; }
@@ -237,7 +237,7 @@ button.cd-card { cursor: pointer; }
   .cd-card-desc { display: none; }
   .cd-card-rodape { flex-direction: row; align-items: center; padding-top: 8px; gap: 8px; }
   .cd-card-rodape .cd-card-preco { justify-content: flex-start; font-size: 14px; }
-  .cd-card-rodape .cd-add { width: auto; justify-content: center; padding: 0 14px; height: 40px; font-size: 13px; }
+  .cd-card-rodape .cd-add { width: auto; justify-content: center; padding: 0 14px; height: 44px; font-size: 13px; }
   .cd-capa { height: 150px; }
   .cd-topo { margin-bottom: 48px; }
   .cd-logo { width: 88px; height: 88px; }
@@ -258,11 +258,11 @@ button.cd-card { cursor: pointer; }
 .cd-card-esgotado { opacity: 0.6; cursor: default; }
 .cd-card-kg { cursor: default; }
 .cd-add {
-  flex: none; height: 34px; padding: 0 14px; border-radius: var(--radius); border: none;
+  flex: none; height: 44px; padding: 0 16px; border-radius: var(--radius); border: none;
   background: var(--accent); color: #fff; font-size: 13px; font-weight: 700;
   display: inline-flex; align-items: center; gap: 4px; transition: background .15s, box-shadow .15s;
 }
-.cd-add:hover { background: var(--accent-hover); box-shadow: 0 4px 14px rgba(99,68,188,0.45); }
+.cd-add:hover { background: var(--accent-hover); box-shadow: 0 4px 14px rgba(0,0,0,0.28); }
 
 @media (prefers-reduced-motion: reduce) {
   .cd-anim .cd-card { animation: none; }
@@ -295,7 +295,7 @@ button.cd-card { cursor: pointer; }
 }
 @media (min-width: 980px) { .cd-hero { min-height: 360px; } }
 button.cd-hero { cursor: pointer; }
-.cd-hero:hover { border-color: var(--accent); box-shadow: 0 12px 36px rgba(99,68,188,0.32); }
+.cd-hero:hover { border-color: var(--accent); box-shadow: 0 12px 36px rgba(0,0,0,0.30); }
 .cd-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
 .cd-hero:hover .cd-hero-img { transform: scale(1.04); }
 .cd-hero-img.vazia { display: flex; align-items: center; justify-content: center; color: var(--text-disabled); }
@@ -366,7 +366,7 @@ button.cd-hero { cursor: pointer; }
 /* ---- Stepper de quantidade ---- */
 .cd-qtd { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elevated); }
 .cd-qtd button {
-  width: 40px; height: 40px; border: none; background: transparent; color: var(--accent-fg);
+  width: 44px; height: 44px; border: none; background: transparent; color: var(--accent-fg);
   font-size: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
 }
 .cd-qtd span { min-width: 28px; text-align: center; font-weight: 700; }
@@ -480,7 +480,7 @@ button.cd-hero { cursor: pointer; }
 
 /* Stepper (adicionais / variações) */
 .cd-m-step { flex: none; display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elevated); }
-.cd-m-step button { width: 32px; height: 32px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
+.cd-m-step button { width: 44px; height: 44px; border: none; background: transparent; color: var(--accent-fg); font-size: 18px; line-height: 1; }
 .cd-m-step span { min-width: 20px; text-align: center; font-weight: 700; font-size: 14px; }
 
 /* Só no local */
@@ -505,7 +505,7 @@ button.cd-hero { cursor: pointer; }
 .cd-modal-rodape.cd-m-bar .cd-qtd { flex: none; }
 @media (min-width: 600px) { .cd-modal-rodape.cd-m-bar { border-radius: 0 0 var(--radius-xl) var(--radius-xl); } }
 .cd-m-add { flex: 1; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-weight: 800; font-size: 15px; }
-.cd-qtd button { height: 42px; }
+.cd-qtd button { height: 44px; }
 
 @media (max-width: 599px) {
   .cd-m-hero-img { height: 200px; }

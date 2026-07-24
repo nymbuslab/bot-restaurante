@@ -47,15 +47,15 @@
         // { logradouro, bairro, cidade, uf } ou { erro: true }.
         const r = await fetch(`/api/cep/${cep}`);
         const d = await r.json();
-        if (d.erro) { setHint("CEP não encontrado — preencha o endereço à mão.", "erro-hint"); return; }
+        if (d.erro) { setHint("CEP não encontrado. Preencha o endereço à mão.", "erro-hint"); return; }
         if (d.logradouro && $(ids.logradouro)) $(ids.logradouro).value = d.logradouro;
         if (d.bairro && $(ids.bairro))         $(ids.bairro).value = d.bairro;
         if (d.cidade && $(ids.cidade))         $(ids.cidade).value = d.cidade;
         if (d.uf && $(ids.uf))                 $(ids.uf).value = d.uf;
-        setHint("Endereço preenchido — confira e informe o número.", "ok-hint");
+        setHint("Endereço preenchido. Confira e informe o número.", "ok-hint");
         if ($(ids.numero)) $(ids.numero).focus();
       } catch (e) {
-        setHint("Não foi possível buscar o CEP — preencha à mão.", "erro-hint");
+        setHint("Não foi possível buscar o CEP. Preencha à mão.", "erro-hint");
       }
     }
   }

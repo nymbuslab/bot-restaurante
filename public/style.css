@@ -1257,7 +1257,7 @@ button:disabled {
 .qr-frame {
   padding: 4px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+  background: var(--accent);
 }
 .qr-img {
   display: block;
@@ -2274,7 +2274,6 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
   color: #fff; background: var(--accent);
-  box-shadow: 0 0 0 6px rgba(99,68,188,0.18);
 }
 .np-titulo { font-size: 20px; font-weight: 700; color: var(--accent-fg); margin: 0 0 4px; }
 .np-sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 12px; }
@@ -2384,13 +2383,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .upsell-x:hover { background: rgba(0,0,0,0.4); }
 .upsell-cabeca {
   height: 116px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 120%);
+  background: var(--accent);
   display: flex; align-items: center; justify-content: center;
   position: relative; overflow: hidden;
-}
-.upsell-cabeca::before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(circle at 28% 18%, rgba(255,255,255,0.30), transparent 55%);
 }
 .upsell-ico {
   position: relative;
@@ -2415,12 +2410,12 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .upsell-cta {
   width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 9px;
   padding: 13px 16px; border: none; border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  background: var(--accent);
   color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 8px 22px rgba(var(--accent-rgb), 0.42);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
-.upsell-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(var(--accent-rgb), 0.55); }
+.upsell-cta:hover { transform: translateY(-1px); background: var(--accent-hover); box-shadow: var(--shadow-lg); }
 .upsell-cta:active { transform: translateY(0); }
 .upsell-caixa .upsell-preco { font-size: 12.5px; color: var(--text-secondary); margin: 11px 0 0; }
 .upsell-caixa .upsell-preco strong { color: var(--text-primary); font-size: 14px; }
@@ -3856,7 +3851,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   background: var(--bg-elevated);
   transition: background 0.25s;
 }
-.wiz-bar.ativa { background: linear-gradient(90deg, var(--accent), var(--secondary)); }
+.wiz-bar.ativa { background: var(--accent); }
 
 .wiz-step h1 { font-size: 20px; margin-bottom: 4px; }
 .wiz-step .sub { margin-bottom: 24px; }
@@ -3896,10 +3891,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .assin-plano-card {
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   flex-wrap: wrap;
-  background:
-    linear-gradient(var(--bg-surface), var(--bg-surface)) padding-box,
-    linear-gradient(135deg, rgba(99,68,188,0.5), rgba(115,210,230,0.35)) border-box;
-  border: 1px solid transparent;
+  background: var(--bg-surface);
+  border: 1px solid var(--accent);
 }
 .assin-plano-cols { display: flex; gap: 48px; flex-wrap: wrap; flex: 1; }
 .assin-plano-col { display: flex; flex-direction: column; gap: 6px; }
@@ -4195,10 +4188,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   padding: 6px 13px; border-radius: 999px; margin-bottom: 20px;
 }
 .lp-hero h1 { font-size: 46px; line-height: 1.08; font-weight: 800; letter-spacing: -1px; margin: 0 0 18px; }
-.lp-grad {
-  background: linear-gradient(120deg, var(--accent-fg), var(--secondary));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
+.lp-grad { color: var(--accent-fg); }
 .lp-hero-sub { font-size: 17px; line-height: 1.6; color: var(--text-secondary); max-width: 520px; margin: 0 0 28px; }
 .lp-hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; }
 .lp-hero-nota { margin-top: 16px; font-size: 13px; color: var(--text-disabled); }
@@ -4209,14 +4199,14 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   width: 320px; max-width: 100%;
   background: var(--bg-surface); border: 1px solid var(--border);
   border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); overflow: hidden;
-  padding: 4px; background-image: linear-gradient(160deg, rgba(99,68,188,0.10), rgba(115,210,230,0.06));
+  padding: 4px;
 }
 .lp-phone-topo {
   display: flex; align-items: center; gap: 9px;
   padding: 13px 16px; border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-elevated); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
-.lp-phone-dot { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--secondary)); display: flex; align-items: center; justify-content: center; }
+.lp-phone-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; }
 .lp-phone-nome { font-weight: 700; font-size: 14px; flex: 1; }
 .lp-phone-online { font-size: 11px; color: var(--success); font-weight: 600; }
 .lp-chat { padding: 16px; display: flex; flex-direction: column; gap: 9px; background: var(--bg-primary); }
@@ -4231,8 +4221,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-stat { text-align: center; }
 .lp-stat-num {
   display: block; font-size: 34px; font-weight: 800; letter-spacing: -1px; line-height: 1;
-  background: linear-gradient(120deg, var(--accent-fg), var(--secondary));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  color: var(--accent-fg);
 }
 .lp-stat-label { display: block; margin-top: 8px; font-size: 13px; color: var(--text-secondary); }
 
@@ -4264,7 +4253,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-passo-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 44px; height: 44px; border-radius: 50%; font-size: 18px; font-weight: 800;
-  color: #fff; background: linear-gradient(135deg, var(--accent), var(--secondary)); margin-bottom: 16px;
+  color: #fff; background: var(--accent); margin-bottom: 16px;
 }
 .lp-passo h3 { font-size: 17px; font-weight: 700; margin: 0 0 8px; text-transform: none; letter-spacing: normal; color: var(--text-primary); padding-bottom: 0; border-bottom: none; }
 .lp-passo p { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin: 0; }
@@ -4278,7 +4267,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 .lp-preco-selo {
   position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(120deg, var(--accent), var(--secondary)); color: #fff;
+  background: var(--accent); color: #fff;
   font-size: 12px; font-weight: 700; padding: 5px 16px; border-radius: 999px;
 }
 .lp-preco-valor { display: flex; align-items: baseline; justify-content: center; gap: 4px; margin: 8px 0 6px; }
@@ -4307,7 +4296,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 /* CTA fixo na base → cards de mesma altura mantêm os botões alinhados (a folga
    do card mais curto fica acima do botão, não como sobra desalinhada embaixo). */
 .lp-planos .lp-preco-card .lp-btn-bloco { margin-top: auto; }
-.lp-preco-destaque { border-color: var(--accent); box-shadow: 0 12px 40px -16px rgba(99,68,188,0.7); }
+.lp-preco-destaque { border-color: var(--accent); box-shadow: var(--shadow-lg); }
 .lp-plano-nome {
   font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--accent-fg);
@@ -4431,7 +4420,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .doc-modal-head h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .doc-modal-fechar {
   background: none; border: 0; color: var(--text-secondary); cursor: pointer;
-  font-size: 24px; line-height: 1; padding: 2px 6px; border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border-radius: var(--radius-sm);
   transition: color .15s ease, background .15s ease;
 }
 .doc-modal-fechar:hover { color: var(--text-primary); background: var(--bg-elevated); }
@@ -4454,8 +4444,8 @@ html.embed, html.embed body { background: var(--bg-primary); }
 
 /* Reveal ao rolar */
 .lp-reveal {
-  opacity: 0; transform: translateY(22px);
-  transition: opacity .6s ease, transform .6s cubic-bezier(.22,.61,.36,1);
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .28s ease, transform .28s cubic-bezier(.22,.61,.36,1);
   will-change: opacity, transform;
 }
 .lp-reveal.visivel { opacity: 1; transform: none; }
@@ -4472,15 +4462,14 @@ html.embed, html.embed body { background: var(--bg-primary); }
   padding: 5px 13px; border-radius: 999px;
 }
 
-/* Brilho suave no botão primário (CTA) */
-.lp-btn-primary { box-shadow: 0 6px 20px -8px rgba(99,68,188,0.65); }
-.lp-btn-primary:hover { box-shadow: 0 10px 26px -8px rgba(99,68,188,0.8); }
+/* Sombra neutra sutil no botão primário (CTA) */
+.lp-btn-primary { box-shadow: var(--shadow-sm); }
+.lp-btn-primary:hover { box-shadow: var(--shadow-md); }
 
-/* Glow no ícone dos cards ao passar o mouse */
-.lp-card-icone { transition: background .15s ease, box-shadow .15s ease, color .15s ease; }
+/* Ícone dos cards ganha cor sólida da marca ao passar o mouse */
+.lp-card-icone { transition: background .15s ease, color .15s ease; }
 .lp-card:hover .lp-card-icone {
-  background: linear-gradient(135deg, var(--accent), var(--secondary)); color: #fff;
-  box-shadow: 0 8px 22px -10px rgba(99,68,188,0.9);
+  background: var(--accent); color: #fff;
 }
 
 /* Separadores sutis na faixa de números */
@@ -4490,13 +4479,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
   width: 1px; height: 38px; background: var(--border-subtle);
 }
 
-/* Moldura com gradiente no card de preço (foco da página) */
+/* Moldura sólida da marca no card de preço (foco da página) */
 .lp-preco-card {
-  border: 2px solid transparent;
-  background:
-    linear-gradient(var(--bg-surface), var(--bg-surface)) padding-box,
-    linear-gradient(135deg, var(--accent), var(--secondary)) border-box;
-  box-shadow: var(--shadow-lg), 0 0 60px -20px rgba(99,68,188,0.5);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Indicador de "digitando…" no chat do mockup */
@@ -4980,7 +4966,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
   border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary);
   position: relative; transition: border-color .15s, transform .08s, box-shadow .15s;
 }
-.pdv-tile:hover { border-color: var(--accent); box-shadow: 0 6px 18px rgba(var(--accent-rgb), .25); }
+.pdv-tile:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
 .pdv-tile:active { transform: translateY(1px); }
 .pdv-tile-img { width: 100%; height: 104px; object-fit: cover; display: block; background: var(--bg-elevated); }
 .pdv-tile-img.vazia { display: flex; align-items: center; justify-content: center; color: var(--text-disabled); }
@@ -5027,13 +5013,13 @@ html.embed, html.embed body { background: var(--bg-primary); }
 
 /* Stepper (qtd / opcionais) */
 .pdv-stepper { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
-.pdv-stepper button { background: var(--bg-elevated); color: var(--text-primary); border: none; width: 32px; height: 32px; padding: 0; font-size: 16px; border-radius: 0; }
+.pdv-stepper button { background: var(--bg-elevated); color: var(--text-primary); border: none; width: 44px; height: 44px; padding: 0; font-size: 16px; border-radius: 0; }
 .pdv-stepper button:hover { background: var(--bg-overlay); }
 .pdv-stepper span { min-width: 30px; text-align: center; font-size: 13.5px; font-weight: 700; }
-.pdv-stepper.sm button { width: 28px; height: 28px; font-size: 15px; }
+.pdv-stepper.sm button { width: 40px; height: 40px; font-size: 15px; }
 .pdv-stepper.sm span { min-width: 26px; font-size: 13px; }
 /* Quantidade digitável: input integrado ao stepper (mesma cara do <span>) */
-.pdv-stepper .pdv-qtd-input { width: 48px; height: 32px; padding: 0; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-primary); background: transparent; border: none; border-radius: 0; box-shadow: none; }
+.pdv-stepper .pdv-qtd-input { width: 48px; height: 44px; padding: 0; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-primary); background: transparent; border: none; border-radius: 0; box-shadow: none; }
 .pdv-stepper .pdv-qtd-input:focus { outline: none; box-shadow: none; background: var(--bg-elevated); }
 
 .pdv-cart-rodape { padding: 12px 16px 16px; border-top: 1px solid var(--border); }
@@ -5185,7 +5171,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-pg-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-elevated); }
 .pdv-pg-item > span { flex: 1; font-size: 13px; font-weight: 600; }
 .pdv-pg-item > strong { font-size: 13.5px; }
-.pdv-pg-item button { background: transparent; color: var(--text-secondary); border: none; width: 26px; height: 26px; padding: 0; font-size: 18px; border-radius: 50%; }
+.pdv-pg-item button { background: transparent; color: var(--text-secondary); border: none; width: 40px; height: 40px; padding: 0; font-size: 18px; border-radius: 50%; }
 .pdv-pg-item button:hover { background: var(--error-subtle); color: var(--error); }
 .pdv-pg-resumo-box { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .pdv-resumo-itens { margin: 6px 0 4px; }
@@ -5199,7 +5185,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-resumo-desc span:last-child { color: var(--success); font-weight: 600; }
 .pdv-resumo-frete > span:last-child { display: inline-flex; align-items: center; }
 .pdv-frete-val { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; }
-.pdv-frete-zerar { background: transparent; border: none; color: var(--text-secondary); width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.pdv-frete-zerar { background: transparent; border: none; color: var(--text-secondary); width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
 .pdv-frete-zerar:hover { background: var(--error-subtle); color: var(--error); }
 
 /* Tipo de venda (Balcão/Entrega/Retirada) + endereço de entrega no PDV */

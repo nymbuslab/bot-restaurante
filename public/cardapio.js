@@ -787,8 +787,8 @@
     v.innerHTML =
       '<button id="cdVoltar" class="cd-voltar" type="button">← Voltar ao cardápio</button>' +
       '<h1 class="cd-title">Finalizar pedido</h1>' +
-      '<p class="cd-sub">Confirme seus dados — o pedido vai pro WhatsApp do restaurante.</p>' +
-      (DADOS.aberto ? "" : '<div class="cd-aviso-fechado" style="margin-bottom:14px">' + IC.alerta + ' <span>O restaurante está <strong>fechado</strong> agora — não é possível enviar o pedido.</span></div>') +
+      '<p class="cd-sub">Confirme seus dados. O pedido vai pro WhatsApp do restaurante.</p>' +
+      (DADOS.aberto ? "" : '<div class="cd-aviso-fechado" style="margin-bottom:14px">' + IC.alerta + ' <span>O restaurante está <strong>fechado</strong> agora. Não é possível enviar o pedido.</span></div>') +
       '<div class="cd-resumo"><h2>Resumo</h2>' + resumo +
         '<div class="cd-resumo-tax" id="cdLinhaTaxa"></div>' +
         '<div class="cd-resumo-tot"><span>Total</span><span id="cdResumoTotal"></span></div>' +
@@ -798,7 +798,7 @@
           '<button type="button" data-tipo="Entrega"' + (soLocal ? ' class="cd-tipo-off" disabled' : (tipoEntrega === "Entrega" ? ' class="ativo"' : "")) + ">Entrega</button>" +
           '<button type="button" data-tipo="Retirada"' + (tipoEntrega === "Retirada" ? ' class="ativo"' : "") + ">Retirada</button>" +
         "</div>" +
-        (soLocal ? '<p class="cd-tipo-nota">Seu carrinho tem itens vendidos só no local — disponível apenas para <strong>Retirada</strong>.</p>' : "") +
+        (soLocal ? '<p class="cd-tipo-nota">Seu carrinho tem itens vendidos só no local. Disponível apenas para <strong>Retirada</strong>.</p>' : "") +
         '<label class="cd-campo"><span>Nome</span><input id="cdNomeCli" type="text" placeholder="Seu nome" autocomplete="name" /><p class="cd-erro-campo" id="cdErrNome" hidden></p></label>' +
         '<label class="cd-campo"><span>Telefone (WhatsApp)</span><input id="cdTel" type="tel" inputmode="tel" placeholder="(11) 99999-9999" autocomplete="tel" /><p class="cd-erro-campo" id="cdErrTel" hidden></p></label>' +
         '<div id="cdBlocoEndereco"></div>' +
@@ -1008,7 +1008,7 @@
       endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(enderecoCampos) : logr + ", " + num;
       // Frete por raio: exige cálculo OK (dentro da área) antes de enviar.
       if (ok && modoRaio() && (!freteRaio || !freteRaio.entrega_disponivel)) {
-        erro("cdErrEnd", "Confirme o CEP e o número para calcular o frete — ou o endereço está fora da área de entrega.");
+        erro("cdErrEnd", "Confirme o CEP e o número para calcular o frete, ou o endereço está fora da área de entrega.");
         ok = false;
       }
       if (ok && modoBairro() && (!freteBairro || !freteBairro.entrega_disponivel)) {

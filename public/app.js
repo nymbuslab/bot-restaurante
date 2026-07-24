@@ -585,7 +585,7 @@ function renderAssinatura(a) {
   } else if (a.status === "active") {
     info.innerHTML = `Assinatura ativa. Próxima cobrança em <strong>${fmtDataAssin(a.proximaCobranca)}</strong> · ${valorTxt}/mês.`;
   } else if (a.status === "cortesia") {
-    info.innerHTML = `Acesso liberado pela equipe <strong>Nymbus Lab</strong> (cortesia). Você usa o sistema <strong>sem cobrança</strong> — não é necessário cadastrar cartão.`;
+    info.innerHTML = `Acesso liberado pela equipe <strong>Nymbus Lab</strong> (cortesia). Você usa o sistema <strong>sem cobrança</strong>. Não é necessário cadastrar cartão.`;
   } else if (a.status === "past_due") {
     info.innerHTML = `Houve um problema com a cobrança. Atualize sua forma de pagamento para manter o bot ativo.`;
   } else if (a.status === "canceled") {
@@ -694,7 +694,7 @@ function aplicarGate(a) {
     acao.onclick = iniciarCheckout;
   } else {
     titulo.textContent = "Ative seu teste grátis";
-    msg.textContent = "Comece com 7 dias grátis. Você só é cobrado a partir do 8º dia — e pode cancelar antes sem custo.";
+    msg.textContent = "Comece com 7 dias grátis. Você só é cobrado a partir do 8º dia. Pode cancelar antes sem custo.";
     acao.textContent = "Iniciar teste grátis de 7 dias";
     acao.onclick = iniciarCheckout;
   }
@@ -2453,7 +2453,7 @@ function renderCaixaAberto(data) {
 
     ${data.caixa.vencido ? `<div class="cx-aviso-vencido">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <div>Este caixa é de <b>${new Date(data.caixa.abertoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</b>. Feche-o para iniciar o novo dia — o <b>PDV fica bloqueado</b> até o fechamento.</div>
+      <div>Este caixa é de <b>${new Date(data.caixa.abertoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</b>. Feche-o para iniciar o novo dia. O <b>PDV fica bloqueado</b> até o fechamento.</div>
     </div>` : ""}
 
     <div class="cx-acoes">
@@ -2766,12 +2766,12 @@ async function verHistoricoCaixa() {
   sec.id = "caixaHistBox";
   sec.className = "caixa-resumo cx-hist";
   box.appendChild(sec);
-  sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Os 3 últimos fechamentos — toque para reabrir o relatório.</p>" : ""}${html}`;
+  sec.innerHTML = `<h4>Caixas anteriores</h4>${lista.length ? "<p class='sub'>Os 3 últimos fechamentos. Toque para reabrir o relatório.</p>" : ""}${html}`;
   sec.querySelectorAll(".caixa-hist-item").forEach((el) => {
     const item = lista.find((c) => String(c.id) === el.dataset.id);
     const abrir = () => {
       if (item && item.relatorio) {
-        verRelatorio("Relatório — " + new Date(item.fechadoEm).toLocaleString("pt-BR"), item.relatorio);
+        verRelatorio("Relatório · " + new Date(item.fechadoEm).toLocaleString("pt-BR"), item.relatorio);
       } else {
         toast("Relatório indisponível para este fechamento.");
       }
@@ -3978,7 +3978,7 @@ async function avisarCliente(p) {
   } else {
     const erro = data.erro || "Erro ao avisar o cliente.";
     if (/não conectado|nao conectado/i.test(erro)) {
-      toast("WhatsApp não conectado — conecte na aba Conexão para avisar.", "erro");
+      toast("WhatsApp não conectado. Conecte na aba Conexão para avisar.", "erro");
     } else {
       toast(erro, "erro");
     }
@@ -4049,10 +4049,10 @@ const UPSELL_FEATURES = {
   impressao: {
     icone: _svgUpsell('<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>'),
     titulo: "Imprima seus pedidos automaticamente",
-    sub: 'A impressão de comandas faz parte do <strong>Plano Completo</strong>. Imprima a via da cozinha e o cupom do cliente direto na impressora térmica — sem digitar nada.',
+    sub: 'A impressão de comandas faz parte do <strong>Plano Completo</strong>. Imprima a via da cozinha e o cupom do cliente direto na impressora térmica, sem digitar nada.',
     beneficios: [
       'Via da <strong>cozinha</strong> + <strong>cupom do cliente</strong> em um clique',
-      'Impressora térmica 80mm — <strong>USB ou serial (COM)</strong>',
+      'Impressora térmica 80mm: <strong>USB ou serial (COM)</strong>',
       'Corte do papel <strong>automático</strong>',
     ],
   },
@@ -5934,7 +5934,7 @@ function mesaTransfAtualizarAviso() {
   var aviso = $("mesaTransfAviso");
   var btn = $("mesaTransfConfirmar");
   if (juntar) {
-    aviso.innerHTML = '<strong>Juntar as contas.</strong> A Mesa ' + pdvEsc(destino.nome) + ' já está ocupada — as duas viram <strong>uma conta só</strong> (um serviço, um pagamento). Para pagar separado, mantenha as mesas abertas (cancele aqui).';
+    aviso.innerHTML = '<strong>Juntar as contas.</strong> A Mesa ' + pdvEsc(destino.nome) + ' já está ocupada. As duas viram <strong>uma conta só</strong> (um serviço, um pagamento). Para pagar separado, mantenha as mesas abertas (cancele aqui).';
     aviso.hidden = false;
     if (btn) btn.textContent = "Juntar contas";
   } else {
