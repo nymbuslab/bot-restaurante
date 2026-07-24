@@ -4187,6 +4187,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   color: var(--accent-fg); background: var(--accent-subtle);
   padding: 6px 13px; border-radius: 999px; margin-bottom: 20px;
 }
+.lp-hero-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.lp-hero-badges .lp-badge { margin-bottom: 0; }
 .lp-hero h1 { font-size: 46px; line-height: 1.08; font-weight: 800; letter-spacing: -1px; margin: 0 0 18px; }
 .lp-grad { color: var(--accent-fg); }
 .lp-hero-sub { font-size: 17px; line-height: 1.6; color: var(--text-secondary); max-width: 520px; margin: 0 0 28px; }
