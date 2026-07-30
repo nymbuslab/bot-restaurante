@@ -1,8 +1,9 @@
 ---
 name: copy-nymbus
 description: >-
-  Voz de marca e método de copywriting de venda da Nymbus Pedidos (SaaS de pedidos no
-  WhatsApp para restaurantes). Use SEMPRE que for escrever, reescrever, revisar ou
+  Voz de marca e método de copywriting de venda da Nymbus Pedidos (sistema de gestão para
+  restaurantes: pedidos, PDV, caixa, mesas e cardápio; o WhatsApp é um canal de pedido, não
+  a promessa central). Use SEMPRE que for escrever, reescrever, revisar ou
   encurtar QUALQUER texto voltado ao usuário do produto: landing, títulos e descrições
   de telas do painel, cards de recurso, planos, botões/CTAs, mensagens do bot no
   WhatsApp, e-mails transacionais, textos de onboarding, estados vazios e mensagens de
@@ -32,15 +33,25 @@ reescreva em termos de dinheiro, tempo ou trabalho poupado.
 
 ## O produto em uma linha
 
-Atendimento automático no WhatsApp + cardápio digital + painel de gestão, **sem comissão
-por pedido**. O cliente pede pelo WhatsApp, o pedido cai no painel, o restaurante confirma
-e (no Plano Completo) imprime a comanda, controla mesas, PDV e caixa.
+**Sistema de gestão completo pro restaurante, sem comissão por pedido:** cardápio digital,
+pedidos, PDV de balcão, mesas e comandas, caixa do dia e impressão de comanda, num lugar só
+(mesas/PDV/caixa/impressão no Plano Completo). Preço fixo por mês.
+
+> **Posicionamento (importante, mudou):** venda pela **gestão completa da operação**, não
+> pelo canal. O **WhatsApp virou um canal de pedido** (o cliente pede, o pedido cai no
+> painel, o restaurante confirma), **não é mais a promessa central nem o funil de venda**.
+> Em headline, tagline e primeira dobra, **não lidere por WhatsApp** ("atendimento no
+> WhatsApp", "do WhatsApp à cozinha"); lidere por "o sistema completo do seu restaurante" +
+> "sem comissão". O WhatsApp entra no miolo, como um dos canais.
 
 Âncoras de venda que sempre valem a pena lembrar:
 - **Sem taxa por pedido / sem comissão:** o diferencial nº 1 contra iFood e afins.
+- **Gestão num lugar só, preço fixo:** tudo incluso no plano, sem somar módulo por módulo
+  (vantagem contra concorrentes que cobram add-on por recurso, ex.: Diggy).
 - **Valor fixo por mês** (Essencial R$ 79, Completo R$ 99), **7 dias grátis, sem cartão** pra criar conta.
-- **Sem app pra baixar:** o cliente já tem o WhatsApp aberto.
+- **Sem fidelidade:** assinatura mensal, cancela quando quiser.
 - **No ar em minutos**, edições valem no próximo pedido.
+- **Sem app pra baixar:** quando o pedido vem pelo WhatsApp, o cliente já tem o app aberto (perk do canal, não a manchete).
 
 ## Os 6 princípios da voz
 
