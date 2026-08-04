@@ -841,3 +841,26 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   quando falta. Fecha muito mais rápido.
 - Todas as formas configuradas aparecem sempre; as que não movimentaram ficam com R$ 0,00.
   O relatório impresso continua igual.
+
+## [0.86.0] — Mais fácil de usar no teclado e no celular
+
+- Ao abrir um formulário (modal), o foco entra sozinho no primeiro campo e o Esc fecha.
+  Dá pra navegar a lista de pedidos, o caixa e o PDV só pelo teclado.
+- Campos de dinheiro: ao tocar, o valor já vem selecionado, então digitar substitui
+  (digita 5 e vira R$ 0,05, não R$ 50,00).
+- Botões de somar/tirar quantidade e "adicionar" maiores no cardápio e no PDV, melhor no toque.
+- Ações que apagam algo agora pedem confirmação antes.
+
+## [0.87.0] — Visual mais limpo e textos mais diretos
+
+- Cores sólidas da marca no lugar dos degradês, sem brilho colorido atrás dos cards.
+- Textos mais curtos e diretos, sem travessão no meio das frases, na landing, no painel
+  e nas telas de acesso.
+- Animações da página inicial mais rápidas.
+
+## [0.88.0] — Novo posicionamento: o sistema completo do seu restaurante
+
+- A página inicial e as telas de login e cadastro passam a apresentar a Nymbus como o
+  sistema de gestão do restaurante (pedidos, PDV, mesas e caixa), não só atendimento no WhatsApp.
+- Selos com fatos reais (sem comissão, preço fixo, sem fidelidade, 7 dias grátis sem cartão)
+  e botão "Quero testar grátis".

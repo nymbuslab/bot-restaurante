@@ -14,7 +14,7 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-_(nada em edição. Pendente: `fly deploy` do acumulado da semana [acessibilidade, caixa simplificado, foco de modal, dinheiro, auditoria de design, reposicionamento de copy], aguardando decisão do dono.)_
+_(nada em edição. Deploy do acumulado da semana feito e no ar [acessibilidade, caixa simplificado, foco de modal, dinheiro, auditoria de design, reposicionamento de copy]; registrado no CHANGELOG 0.86.0/0.87.0/0.88.0.)_
 
 ## 📋 Próximos Passos
 
