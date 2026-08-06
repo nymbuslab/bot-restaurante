@@ -143,8 +143,8 @@ Padrões consolidados no redesign do painel. Reaproveitar nas próximas telas �
 
 ### Breakpoints oficiais
 
-- **1024px** (tablet — cards caem para 2 col) e **640px** (mobile — sidebar vira bottom-nav, grids 1 col, tabelas viram cards por linha com `data-label`).
-- No mobile, a `.sidebar` é `position:fixed; bottom:0; top:auto` (o `top:auto` é obrigatório — sem ele a barra estica pela tela toda).
+- **1024px** (tablet — cards caem para 2 col) e **640px** (mobile — sidebar vira gaveta + barra inferior, grids 1 col, tabelas viram cards por linha com `data-label`).
+- **Navegação mobile (≤640px):** o `.sidebar` vira uma **gaveta off-canvas** (`transform:translateX(-100%)` → `.aberta` = `translateX(0)`, sobre `.drawer-backdrop`) e uma **`.mobile-bar`** fixa embaixo traz 4 atalhos (`data-aba`) + o botão **Menu** (`#btnMenuMobile`) que abre a gaveta. `abrirDrawer`/`fecharDrawer` (em `app.js`) usam `inert` no `.conteudo`/`.mobile-bar` p/ prender o foco; Esc/backdrop/X fecham; navegar fecha. Estado ativo sincronizado entre barra e gaveta (o handler marca todos os `nav button[data-aba="X"]`); badge de Pedidos duplicado (`#badge-pedidos` + `#badge-pedidos-mob`). `.mobile-bar` é um `<nav>` → precisa forçar `flex-direction:row; padding:0` (o `nav` base é coluna). Detalhe: `docs/superpowers/specs/2026-08-06-nav-mobile-gaveta-design.md`.
 
 ### Sidebar aninhado (grupos acordeão)
 

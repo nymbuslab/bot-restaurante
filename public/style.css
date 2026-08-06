@@ -3402,56 +3402,72 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   .catNome { border-color: var(--border-subtle); }
 }
 
+/* Barra inferior e gaveta: só existem no mobile (ocultas no desktop) */
+.mobile-bar, .drawer-backdrop, .drawer-fechar { display: none; }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 640px) {
   main { padding: 16px 14px 84px; }
 
-  /* Shell vira coluna; sidebar vira bottom-nav fixa */
+  /* Shell vira coluna; sidebar vira GAVETA off-canvas (desliza da esquerda) */
   .app-layout { flex-direction: column; }
   .sidebar {
     position: fixed;
-    top: auto;             /* anula o top:0 do desktop — senão top+bottom esticam a barra pra tela toda */
-    bottom: 0; left: 0; right: 0;
-    width: 100%;
-    height: auto;
-    flex-direction: row;
-    border-right: none;
-    border-top: 1px solid var(--border);
-    z-index: 100;
+    top: 0; bottom: 0; left: 0; right: auto;
+    width: 84%;
+    max-width: 320px;
+    height: 100dvh;
+    border-right: 1px solid var(--border);
+    border-top: none;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    z-index: 300;
   }
-  .sidebar-marca, .sidebar-rodape { display: none; }
+  .sidebar.aberta { transform: translateX(0); box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+  .sidebar-marca, .sidebar-rodape { display: flex; }   /* reexibe dentro da gaveta */
 
-  nav {
-    flex-direction: row;
+  /* X de fechar a gaveta (fica na marca, só no mobile) */
+  .drawer-fechar {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    margin-left: auto;
+    width: 36px; height: 36px;
     padding: 0;
-    gap: 0;
-    overflow: visible;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-secondary); border-radius: var(--radius-sm);
   }
-  nav button {
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 4px;
-    padding: 8px 4px;
-    font-size: 11px;
-    border-radius: 0;
-  }
-  nav button.ativo { background: none; color: var(--accent-fg); }
-  /* No bottom-nav o indicador vira uma barra no topo do item */
-  nav button::before {
-    left: 50%; top: 0; transform: translateX(-50%);
-    width: 0; height: 3px; border-radius: 0 0 3px 3px;
-    transition: width 0.18s ease;
-  }
-  nav button.ativo::before { width: 22px; height: 3px; }
+  .drawer-fechar:hover { background: var(--bg-elevated); color: var(--text-primary); }
 
-  /* Acordeão não cabe no bottom-nav: achata os grupos (só os filhos reais entram
-     na fileira) e esconde grupos/itens "Em breve". */
-  .nav-grupo-wrap { display: contents; }
-  .nav-sub, .nav-sub[hidden] { display: contents; }
-  .nav-grupo, .nav-breve { display: none; }
-  .nav-sub button { padding: 8px 4px; font-size: 11px; font-weight: 600; }
+  /* Backdrop da gaveta */
+  .drawer-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+  .drawer-backdrop[hidden] { display: none; }
+
+  /* Barra de navegação inferior (atalhos rápidos + Menu) */
+  .mobile-bar {
+    display: flex;
+    flex-direction: row;              /* anula o column do `nav` base (menu vertical) */
+    padding: 0; gap: 0; overflow: visible; flex: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mobile-bar button {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px;
+    position: relative;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 10.5px; font-weight: 600;
+  }
+  .mobile-bar button svg { opacity: 0.8; }
+  .mobile-bar button::before { display: none; }   /* sem a barrinha vertical do sidebar */
+  .mobile-bar button.ativo { color: var(--accent-fg); }
+  .mobile-bar button.ativo svg { opacity: 1; }
+  .mobile-bar .nav-badge { position: absolute; top: 5px; left: calc(50% + 6px); margin: 0; }
 
   .card { padding: 16px; }
 
