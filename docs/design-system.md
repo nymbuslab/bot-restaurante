@@ -146,6 +146,15 @@ Padrões consolidados no redesign do painel. Reaproveitar nas próximas telas �
 - **1024px** (tablet — cards caem para 2 col) e **640px** (mobile — sidebar vira bottom-nav, grids 1 col, tabelas viram cards por linha com `data-label`).
 - No mobile, a `.sidebar` é `position:fixed; bottom:0; top:auto` (o `top:auto` é obrigatório — sem ele a barra estica pela tela toda).
 
+### Sidebar aninhado (grupos acordeão)
+
+O menu suporta grupos que expandem/recolhem no próprio sidebar (um aberto por vez). Padrão para agrupar telas de gestão (Cadastros, Financeiro, Relatórios).
+
+- **Grupo:** `<div class="nav-grupo-wrap">` com `<button class="nav-grupo" aria-expanded aria-controls="navsub-x">` (ícone + rótulo + `.nav-chevron` que gira via `[aria-expanded="true"]`) seguido de `<div class="nav-sub" id="navsub-x" hidden>` com os filhos (botões `nav button[data-aba]`). Filhos recuados com guia `border-left`.
+- **Comportamento (em `app.js`):** grupos têm handler próprio (`alternarGrupo`); só `nav button[data-aba]` troca de tela. `abrirGrupoDaAba` abre o grupo do item ativo no boot (sem flash).
+- **"Em breve":** telas ainda não construídas usam `<button class="nav-breve" disabled aria-disabled="true">` + selo `.nav-tag` — não navegam nem entram no tab order.
+- **Mobile:** no bottom-nav os grupos são achatados (`display:contents`) e `nav-grupo`/`nav-breve` ficam ocultos; só os filhos reais (com `data-aba`) entram na fileira.
+
 ## Padrões de interação (padronização — auditoria visual)
 
 Regras consolidadas na padronização visual da plataforma. Seguir em toda UI nova.

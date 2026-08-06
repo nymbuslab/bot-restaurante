@@ -664,6 +664,44 @@ nav button.ativo svg { opacity: 1; }
 }
 .nav-badge[hidden] { display: none; }
 
+/* --- Grupos do sidebar (acordeão) ------------------------------------- */
+.nav-grupo-wrap { display: flex; flex-direction: column; }
+.nav-grupo .nav-chevron {
+  margin-left: auto;
+  opacity: 0.55;
+  transition: transform 0.18s ease, opacity 0.15s;
+}
+.nav-grupo[aria-expanded="true"] { color: var(--text-primary); }
+.nav-grupo[aria-expanded="true"] .nav-chevron { transform: rotate(90deg); opacity: 0.85; }
+
+/* Container dos filhos: recuado, com guia vertical à esquerda */
+.nav-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px 15px;
+  padding-left: 9px;
+  border-left: 1px solid var(--border-subtle);
+}
+.nav-sub[hidden] { display: none; }
+.nav-sub button { font-weight: 500; }
+.nav-sub button svg { width: 16px; height: 16px; }
+
+/* Itens "Em breve" (ainda sem tela) */
+.nav-breve { cursor: default; opacity: 0.5; }
+.nav-breve:hover { background: none; color: var(--text-secondary); }
+.nav-tag {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
 /* Toggle de som de novo pedido (header) */
 .btn-som {
   background: none;
@@ -3407,6 +3445,13 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
     transition: width 0.18s ease;
   }
   nav button.ativo::before { width: 22px; height: 3px; }
+
+  /* Acordeão não cabe no bottom-nav: achata os grupos (só os filhos reais entram
+     na fileira) e esconde grupos/itens "Em breve". */
+  .nav-grupo-wrap { display: contents; }
+  .nav-sub, .nav-sub[hidden] { display: contents; }
+  .nav-grupo, .nav-breve { display: none; }
+  .nav-sub button { padding: 8px 4px; font-size: 11px; font-weight: 600; }
 
   .card { padding: 16px; }
 

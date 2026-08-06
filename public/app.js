@@ -224,7 +224,34 @@ function lojaAbertaAgora(config) {
 // ============================================================
 // NAVEGAÇÃO POR ABAS
 // ============================================================
-document.querySelectorAll("nav button").forEach((btn) => {
+// --- Grupos do sidebar (acordeão) ---------------------------------------
+// Um grupo aberto por vez: abrir um recolhe os demais. Grupo não troca de tela.
+function definirGrupoAberto(grupoBtn, aberto) {
+  grupoBtn.setAttribute("aria-expanded", aberto ? "true" : "false");
+  const sub = $(grupoBtn.getAttribute("aria-controls"));
+  if (sub) sub.hidden = !aberto;
+}
+function alternarGrupo(grupoBtn) {
+  const abrindo = grupoBtn.getAttribute("aria-expanded") !== "true";
+  if (abrindo) {
+    document.querySelectorAll(".nav-grupo").forEach((g) => { if (g !== grupoBtn) definirGrupoAberto(g, false); });
+  }
+  definirGrupoAberto(grupoBtn, abrindo);
+}
+document.querySelectorAll(".nav-grupo").forEach((g) => g.addEventListener("click", () => alternarGrupo(g)));
+
+// Ao ativar uma aba dentro de um grupo, garante o grupo aberto (e recolhe os outros).
+function abrirGrupoDaAba(btn) {
+  const sub = btn.closest(".nav-sub");
+  if (!sub) return;                                              // aba de topo: não mexe nos grupos
+  const grupo = document.querySelector('.nav-grupo[aria-controls="' + sub.id + '"]');
+  if (!grupo) return;
+  document.querySelectorAll(".nav-grupo").forEach((g) => { if (g !== grupo) definirGrupoAberto(g, false); });
+  definirGrupoAberto(grupo, true);
+}
+
+// Só os botões de aba (com data-aba) trocam de tela; os de grupo têm handler próprio.
+document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
   btn.addEventListener("click", () => {
     // Saindo da aba Pedidos → some o destaque "NOVO" (cliente já viu os pedidos).
     const saindoDePedidos = $("aba-pedidos").classList.contains("ativa") && btn.dataset.aba !== "pedidos";
@@ -236,6 +263,7 @@ document.querySelectorAll("nav button").forEach((btn) => {
     if (aj) aj.classList.remove("ativo");
     btn.classList.add("ativo");
     btn.setAttribute("aria-current", "page");
+    abrirGrupoDaAba(btn);
     $("aba-" + btn.dataset.aba).classList.add("ativa");
     if (btn.dataset.aba === "dashboard") carregarDashboard();
     if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
@@ -6449,6 +6477,7 @@ try {
       document.querySelectorAll(".aba").forEach(function (x) { x.classList.remove("ativa"); });
       _btnBoot.classList.add("ativo");
       _abaBoot.classList.add("ativa");
+      if (typeof abrirGrupoDaAba === "function") abrirGrupoDaAba(_btnBoot); // grupo do item ativo já aberto (sem flash)
     }
   }
 } catch (_) {}
