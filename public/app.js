@@ -261,9 +261,10 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     document.querySelectorAll(".aba").forEach((a) => a.classList.remove("ativa"));
     const aj = $("btnAjuda");
     if (aj) aj.classList.remove("ativo");
-    btn.classList.add("ativo");
-    btn.setAttribute("aria-current", "page");
+    // Marca ativo em TODOS os botões da mesma tela (sidebar + barra inferior mobile).
+    document.querySelectorAll('nav button[data-aba="' + btn.dataset.aba + '"]').forEach((b) => { b.classList.add("ativo"); b.setAttribute("aria-current", "page"); });
     abrirGrupoDaAba(btn);
+    fecharDrawer();                                                // navegou → fecha a gaveta (no-op se fechada)
     $("aba-" + btn.dataset.aba).classList.add("ativa");
     if (btn.dataset.aba === "dashboard") carregarDashboard();
     if (btn.dataset.aba === "pedidos") { carregarPedidos(); marcarPedidosVistos(); }
@@ -275,6 +276,37 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
   });
 });
 
+// --- Gaveta mobile (drawer) ---------------------------------------------
+// No mobile o sidebar vira gaveta off-canvas; a barra inferior tem o botão Menu.
+const drawerEl = document.querySelector(".sidebar");
+const drawerBackdrop = $("drawerBackdrop");
+const drawerBtnMenu = $("btnMenuMobile");
+const drawerConteudo = document.querySelector(".conteudo");
+const drawerBarra = document.querySelector(".mobile-bar");
+function abrirDrawer() {
+  if (!drawerEl) return;
+  drawerEl.classList.add("aberta");
+  if (drawerBackdrop) drawerBackdrop.hidden = false;
+  if (drawerBtnMenu) drawerBtnMenu.setAttribute("aria-expanded", "true");
+  if (drawerConteudo) drawerConteudo.inert = true;                // prende o foco na gaveta
+  if (drawerBarra) drawerBarra.inert = true;
+  const alvo = $("btnFecharDrawer") || drawerEl.querySelector("nav button");
+  if (alvo) alvo.focus();
+}
+function fecharDrawer() {
+  if (!drawerEl || !drawerEl.classList.contains("aberta")) return;
+  drawerEl.classList.remove("aberta");
+  if (drawerBackdrop) drawerBackdrop.hidden = true;
+  if (drawerConteudo) drawerConteudo.inert = false;
+  if (drawerBarra) drawerBarra.inert = false;
+  if (drawerBtnMenu) { drawerBtnMenu.setAttribute("aria-expanded", "false"); drawerBtnMenu.focus(); }
+}
+if (drawerBtnMenu) drawerBtnMenu.addEventListener("click", abrirDrawer);
+if (drawerBackdrop) drawerBackdrop.addEventListener("click", fecharDrawer);
+const drawerBtnFechar = $("btnFecharDrawer");
+if (drawerBtnFechar) drawerBtnFechar.addEventListener("click", fecharDrawer);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharDrawer(); });
+
 // Central de Ajuda (FAQ): botão no rodapé da sidebar + atalho no topo (mobile).
 function abrirAjuda() {
   document.querySelectorAll("nav button").forEach((b) => { b.classList.remove("ativo"); b.removeAttribute("aria-current"); });
@@ -282,6 +314,7 @@ function abrirAjuda() {
   const aj = $("btnAjuda");
   if (aj) aj.classList.add("ativo");
   $("aba-ajuda").classList.add("ativa");
+  fecharDrawer();                                                // Ajuda fica na gaveta no mobile → fecha ao abrir
   window.scrollTo(0, 0);
 }
 document.querySelectorAll(".abre-ajuda").forEach((b) => b.addEventListener("click", abrirAjuda));
@@ -341,10 +374,12 @@ if ($("btnSomPedido")) {
 
 function atualizarBadgePedidos() {
   const novos = pedidoUltimoNumero == null ? 0 : Math.max(0, pedidoUltimoNumero - pedidoVistoNumero);
-  const badge = $("badge-pedidos");
-  if (!badge) return;
-  badge.textContent = novos > 9 ? "9+" : String(novos);
-  badge.hidden = novos === 0;
+  ["badge-pedidos", "badge-pedidos-mob"].forEach((id) => {   // sidebar + barra inferior mobile
+    const badge = $(id);
+    if (!badge) return;
+    badge.textContent = novos > 9 ? "9+" : String(novos);
+    badge.hidden = novos === 0;
+  });
 }
 
 // Marca tudo como visto (zera o badge da sidebar). Chamado ao abrir a aba Pedidos.
@@ -6475,7 +6510,7 @@ try {
     if (_btnBoot && _abaBoot) {
       document.querySelectorAll("nav button").forEach(function (x) { x.classList.remove("ativo"); });
       document.querySelectorAll(".aba").forEach(function (x) { x.classList.remove("ativa"); });
-      _btnBoot.classList.add("ativo");
+      document.querySelectorAll('nav button[data-aba="' + _ultimaAbaBoot + '"]').forEach(function (x) { x.classList.add("ativo"); }); // sidebar + barra inferior
       _abaBoot.classList.add("ativa");
       if (typeof abrirGrupoDaAba === "function") abrirGrupoDaAba(_btnBoot); // grupo do item ativo já aberto (sem flash)
     }
