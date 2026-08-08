@@ -1274,7 +1274,6 @@ function renderCardapio() {
           <span class="catNome-ro">${escapar(cat.nome)}</span>
           <span class="cat-badge">${badge}</span>
         </div>
-        <button class="perigo mini" data-del-cat="${ci}">Excluir</button>
       </div>
       <div class="itens-tabela" data-itens="${ci}">
         <div class="il-grid itens-tabela-head">
@@ -1356,17 +1355,7 @@ function ligarEventosCardapio() {
       if (!(await salvarCardapioRemoto())) { it.disponivel = antes; renderCardapio(); toast("Não foi possível salvar. Tente de novo.", "erro"); }
     })
   );
-  document.querySelectorAll("[data-del-cat]").forEach((el) =>
-    el.addEventListener("click", async (e) => {
-      const idx = +e.target.dataset.delCat;
-      const ok = await confirmar("Excluir categoria?", "Todos os itens desta categoria serão removidos.", "Excluir");
-      if (!ok) return;
-      const removida = cardapioAtual.categorias.splice(idx, 1)[0];
-      renderCardapio();
-      if (await salvarCardapioRemoto()) toast("Categoria excluída.");
-      else { cardapioAtual.categorias.splice(idx, 0, removida); renderCardapio(); toast("Não foi possível excluir. Tente de novo.", "erro"); }
-    })
-  );
+  // (exclusão de categoria fica só na tela Categorias, com a trava de itens vinculados)
   document.querySelectorAll("[data-del-item]").forEach((el) =>
     el.addEventListener("click", (e) => {
       const [ci, ii] = e.currentTarget.dataset.delItem.split("-").map(Number);
