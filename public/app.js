@@ -1778,7 +1778,7 @@ function renderEditorOpcionais() {
     const div = document.createElement("div");
     div.className = "opc-linha";
     div.innerHTML = `
-      <input class="opc-nome" placeholder="Nome do opcional" aria-label="Nome do opcional" value="${escapar(op.nome)}" data-oi="${oi}" />
+      <input class="opc-nome" placeholder="Nome do complemento" aria-label="Nome do complemento" value="${escapar(op.nome)}" data-oi="${oi}" />
       <div class="opc-preco-wrap">
         <span class="opc-rs">R$</span>
         <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
