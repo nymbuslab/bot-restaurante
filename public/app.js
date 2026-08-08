@@ -240,14 +240,96 @@ function alternarGrupo(grupoBtn) {
 }
 document.querySelectorAll(".nav-grupo").forEach((g) => g.addEventListener("click", () => alternarGrupo(g)));
 
-// Ao ativar uma aba dentro de um grupo, garante o grupo aberto (e recolhe os outros).
+// Sub-toggle (ex.: Produtos dentro de Cadastros): expande só o próprio, sem mexer nos grupos de topo.
+document.querySelectorAll(".nav-subtoggle").forEach((t) => t.addEventListener("click", () => {
+  const abrindo = t.getAttribute("aria-expanded") !== "true";
+  t.setAttribute("aria-expanded", abrindo ? "true" : "false");
+  const sub = $(t.getAttribute("aria-controls"));
+  if (sub) sub.hidden = !abrindo;
+}));
+
+// ============================================================
+// TELA CATEGORIAS (Cadastros → Produtos → Categorias)
+// CRUD + reordenar + contagem sobre cardapioAtual.categorias (mesmo jsonb do cardápio).
+// ============================================================
+function carregarCategorias() { renderCategorias(); }
+function renderCategorias() {
+  const cont = $("categorias-lista");
+  if (!cont) return;
+  const cats = (cardapioAtual && cardapioAtual.categorias) || [];
+  if (!cats.length) {
+    cont.innerHTML = '<p class="dash-vazio">Nenhuma categoria ainda. Crie a primeira em "Nova categoria".</p>';
+    return;
+  }
+  cont.innerHTML = "";
+  cats.forEach((cat, i) => {
+    const n = (cat.itens || []).length;
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    row.innerHTML =
+      '<div class="cat-ord-wrap">' +
+        '<button type="button" class="cat-ord" data-dir="-1" data-i="' + i + '" aria-label="Subir"' + (i === 0 ? " disabled" : "") + '><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>' +
+        '<button type="button" class="cat-ord" data-dir="1" data-i="' + i + '" aria-label="Descer"' + (i === cats.length - 1 ? " disabled" : "") + '><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>' +
+      '</div>' +
+      '<input class="cat-nome" value="' + escapar(cat.nome || "") + '" data-i="' + i + '" aria-label="Nome da categoria" />' +
+      '<span class="cat-count">' + n + (n === 1 ? " item" : " itens") + '</span>' +
+      '<button type="button" class="cat-del perigo mini" data-i="' + i + '" aria-label="Excluir categoria"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+    cont.appendChild(row);
+  });
+  cont.querySelectorAll(".cat-nome").forEach((inp) => {
+    inp.addEventListener("change", async (e) => {
+      const idx = +e.target.dataset.i;
+      const novo = e.target.value.trim();
+      if (!novo) { e.target.value = cardapioAtual.categorias[idx].nome; return; }
+      const antigo = cardapioAtual.categorias[idx].nome;
+      cardapioAtual.categorias[idx].nome = novo;
+      if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias[idx].nome = antigo; renderCategorias(); toast("Não foi possível renomear.", "erro"); }
+    });
+  });
+  cont.querySelectorAll(".cat-ord").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const i = +b.dataset.i, j = i + (+b.dataset.dir), cs = cardapioAtual.categorias;
+      if (j < 0 || j >= cs.length) return;
+      const tmp = cs[i]; cs[i] = cs[j]; cs[j] = tmp;
+      renderCategorias();
+      if (!(await salvarCardapioRemoto())) { const t2 = cs[i]; cs[i] = cs[j]; cs[j] = t2; renderCategorias(); toast("Não foi possível reordenar.", "erro"); }
+    });
+  });
+  cont.querySelectorAll(".cat-del").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const idx = +b.dataset.i, cat = cardapioAtual.categorias[idx], n = (cat.itens || []).length;
+      const ok = await confirmar("Excluir categoria?", n ? "Os " + n + " itens desta categoria também serão removidos." : "Esta categoria será removida.", "Excluir");
+      if (!ok) return;
+      const removida = cardapioAtual.categorias.splice(idx, 1)[0];
+      renderCategorias();
+      if (await salvarCardapioRemoto()) toast("Categoria excluída.");
+      else { cardapioAtual.categorias.splice(idx, 0, removida); renderCategorias(); toast("Não foi possível excluir.", "erro"); }
+    });
+  });
+}
+if ($("btnNovaCategoria")) $("btnNovaCategoria").addEventListener("click", async () => {
+  cardapioAtual.categorias = cardapioAtual.categorias || [];
+  cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
+  renderCategorias();
+  if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias.pop(); renderCategorias(); toast("Não foi possível criar a categoria.", "erro"); return; }
+  const inputs = $("categorias-lista").querySelectorAll(".cat-nome");
+  const last = inputs[inputs.length - 1];
+  if (last) { last.focus(); last.select(); }
+});
+
+// Ao ativar uma aba dentro de um grupo, garante TODOS os níveis abertos (ex.: Cadastros → Produtos).
 function abrirGrupoDaAba(btn) {
-  const sub = btn.closest(".nav-sub");
-  if (!sub) return;                                              // aba de topo: não mexe nos grupos
-  const grupo = document.querySelector('.nav-grupo[aria-controls="' + sub.id + '"]');
-  if (!grupo) return;
-  document.querySelectorAll(".nav-grupo").forEach((g) => { if (g !== grupo) definirGrupoAberto(g, false); });
-  definirGrupoAberto(grupo, true);
+  let sub = btn.closest(".nav-sub");
+  while (sub) {
+    const ctrl = document.querySelector('[aria-controls="' + sub.id + '"]');
+    if (!ctrl) break;
+    if (ctrl.classList.contains("nav-grupo")) {                  // grupo de topo: acordeão (recolhe os outros)
+      document.querySelectorAll(".nav-grupo").forEach((g) => { if (g !== ctrl) definirGrupoAberto(g, false); });
+    }
+    ctrl.setAttribute("aria-expanded", "true");
+    sub.hidden = false;
+    sub = ctrl.closest(".nav-sub");                              // sobe pro nível acima
+  }
 }
 
 // Só os botões de aba (com data-aba) trocam de tela; os de grupo têm handler próprio.
@@ -272,6 +354,7 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "caixa") carregarCaixa();
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
+    if (btn.dataset.aba === "categorias") carregarCategorias();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });

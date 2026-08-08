@@ -153,6 +153,7 @@ O menu suporta grupos que expandem/recolhem no próprio sidebar (um aberto por v
 - **Grupo:** `<div class="nav-grupo-wrap">` com `<button class="nav-grupo" aria-expanded aria-controls="navsub-x">` (ícone + rótulo + `.nav-chevron` que gira via `[aria-expanded="true"]`) seguido de `<div class="nav-sub" id="navsub-x" hidden>` com os filhos (botões `nav button[data-aba]`). Filhos recuados com guia `border-left`.
 - **Comportamento (em `app.js`):** grupos têm handler próprio (`alternarGrupo`); só `nav button[data-aba]` troca de tela. `abrirGrupoDaAba` abre o grupo do item ativo no boot (sem flash).
 - **"Em breve":** telas ainda não construídas usam `<button class="nav-breve" disabled aria-disabled="true">` + selo `.nav-tag` — não navegam nem entram no tab order.
+- **Grupo híbrido (rótulo + chevron):** quando o pai é ao mesmo tempo uma tela E um grupo (ex.: Produtos), usa `.nav-produtos-row` com um `nav button[data-aba]` (navega) + um `.nav-subtoggle` (só expande o próprio sub, sem mexer no acordeão de topo). `abrirGrupoDaAba` sobe por TODOS os `.nav-sub` ancestrais, abrindo cada nível (ex.: Cadastros → Produtos) no boot.
 - **Mobile:** no bottom-nav os grupos são achatados (`display:contents`) e `nav-grupo`/`nav-breve` ficam ocultos; só os filhos reais (com `data-aba`) entram na fileira.
 
 ## Padrões de interação (padronização — auditoria visual)
