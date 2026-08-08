@@ -14,7 +14,7 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-_(nada em edição. Deploy do acumulado da semana feito e no ar [acessibilidade, caixa simplificado, foco de modal, dinheiro, auditoria de design, reposicionamento de copy]; registrado no CHANGELOG 0.86.0/0.87.0/0.88.0.)_
+_(nada em edição. Split de Produtos 1/4 (Categorias) + navegação nova (menu Cadastros, sidebar acordeão, menu mobile sanduíche) e rename Complementos entregues no código; CHANGELOG 0.89.0. Deploy pendente.)_
 
 ## 📋 Próximos Passos
 

@@ -2,6 +2,11 @@
 
 ## Modelo de dados
 
+**Categoria** (no `cardapio.categorias` jsonb): `{ id, nome, itens[], ativo }`. `ativo:false`
+esconde a categoria (e seus itens) do cardápio web e do PDV **sem excluir** (filtro em
+`projetarCardapio`/`recalcularItens` e `pdvCategorias`); `ativo` ausente = ativa. Gerida na tela
+**Cadastros → Produtos → Categorias** (criar/renomear/ativar-desativar; excluir só sem itens).
+
 **Item do cardápio** (dentro do `cardapio` jsonb da `empresas`):
 ```jsonc
 { "id": 10, "nome": "Marmitex P", "preco": 18.0, "desc": "...",

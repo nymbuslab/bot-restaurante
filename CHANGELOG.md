@@ -864,3 +864,12 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   sistema de gestão do restaurante (pedidos, PDV, mesas e caixa), não só atendimento no WhatsApp.
 - Selos com fatos reais (sem comissão, preço fixo, sem fidelidade, 7 dias grátis sem cartão)
   e botão "Quero testar grátis".
+
+## [0.89.0] — Menu reorganizado + cadastro de categorias
+
+- Novo menu **Cadastros** com **Produtos** agrupando os cadastros do cardápio.
+- **Categorias** agora têm tela própria: criar, renomear e **ativar/desativar** (categoria
+  desativada some do cardápio e do PDV, sem apagar). Excluir só quando a categoria estiver sem itens.
+- No celular, o menu vira **botão sanduíche** (gaveta) + barra de atalhos embaixo, mais fácil
+  de usar com o dedo.
+- No cadastro do item, "Opcionais" passou a se chamar **Complementos**.
