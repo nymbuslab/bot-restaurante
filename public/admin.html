@@ -59,10 +59,37 @@
             <svg class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
           <div class="nav-sub" id="navsub-cadastros" role="group" aria-label="Cadastros" hidden>
-            <button data-aba="cardapio">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
-              <span>Produtos</span>
-            </button>
+            <!-- Produtos: linha híbrida (rótulo abre a tela de itens + chevron expande os cadastros) -->
+            <div class="nav-produtos-row">
+              <button data-aba="cardapio" class="nav-produtos-pai">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
+                <span>Produtos</span>
+              </button>
+              <button type="button" class="nav-subtoggle" aria-expanded="false" aria-controls="navsub-produtos" aria-label="Expandir Produtos">
+                <svg class="nav-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            <div class="nav-sub" id="navsub-produtos" role="group" aria-label="Produtos" hidden>
+              <button data-aba="categorias">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                <span>Categorias</span>
+              </button>
+              <button type="button" class="nav-breve" disabled aria-disabled="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/><circle cx="12" cy="12" r="10"/></svg>
+                <span>Complementos</span>
+                <span class="nav-tag">Em breve</span>
+              </button>
+              <button type="button" class="nav-breve" disabled aria-disabled="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                <span>Controle de estoque</span>
+                <span class="nav-tag">Em breve</span>
+              </button>
+              <button type="button" class="nav-breve" disabled aria-disabled="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
+                <span>Insumos</span>
+                <span class="nav-tag">Em breve</span>
+              </button>
+            </div>
             <button type="button" class="nav-breve" disabled aria-disabled="true">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span>Clientes</span>
@@ -1252,6 +1279,24 @@
             <p>Essas opções ficam no próprio aplicativo <strong>Nymbus Impressora</strong> (tipo de conexão, corte parcial/total e "sem acento"). Impressoras <strong>Daruma (DR700/DR800)</strong> usam um comando de corte próprio. O agente já envia o certo, então deixe em <strong>Parcial</strong>.</p>
           </div>
         </details>
+      </div>
+    </section>
+
+    <section class="aba" id="aba-categorias">
+      <div class="cardapio-topo">
+        <div class="cardapio-topo-texto">
+          <h2 class="cardapio-titulo">Categorias</h2>
+          <p class="sub">Organize os grupos do seu cardápio. A ordem daqui vale no cardápio e no PDV.</p>
+        </div>
+        <div class="cardapio-topo-acoes">
+          <button class="secundario" id="btnNovaCategoria">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova categoria
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div id="categorias-lista"></div>
       </div>
     </section>
       </main>
