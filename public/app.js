@@ -281,18 +281,14 @@ function renderCategorias() {
       '<div class="cat-card-count">' + n + (n === 1 ? " item" : " itens") + (ativo ? "" : " · inativa") + '</div>';
     cont.appendChild(card);
   });
-  // Ativar/desativar — bloqueia desativar se houver itens vinculados (modal de aviso)
+  // Ativar/desativar — desativar esconde a categoria (e seus itens) do cardápio e do PDV.
   cont.querySelectorAll(".cat-ativo").forEach((chk) => chk.addEventListener("change", async (e) => {
     const idx = +e.target.dataset.i, cat = cardapioAtual.categorias[idx], n = (cat.itens || []).length;
-    if (!e.target.checked && n > 0) {
-      e.target.checked = true;
-      await confirmar("Não é possível desativar", "Esta categoria tem " + n + (n === 1 ? " item vinculado" : " itens vinculados") + ". Remova ou mova os itens antes de desativar.", "Entendi");
-      return;
-    }
     const antes = cat.ativo;
     cat.ativo = e.target.checked;
-    if (!(await salvarCardapioRemoto())) { cat.ativo = antes; renderCategorias(); toast("Não foi possível salvar.", "erro"); }
-    else renderCategorias();
+    if (!(await salvarCardapioRemoto())) { cat.ativo = antes; renderCategorias(); toast("Não foi possível salvar.", "erro"); return; }
+    renderCategorias();
+    if (!cat.ativo && n > 0) toast("Categoria desativada. Ela e seus " + n + (n === 1 ? " item somem" : " itens somem") + " do cardápio e do PDV.");
   }));
   // Editar nome (inline no card)
   cont.querySelectorAll(".cat-edit").forEach((b) => b.addEventListener("click", () => {
@@ -4382,7 +4378,7 @@ async function carregarPdv() {
   renderPdvCarrinho();
 }
 
-function pdvCategorias() { return (cardapioAtual && cardapioAtual.categorias) || []; }
+function pdvCategorias() { return ((cardapioAtual && cardapioAtual.categorias) || []).filter((c) => c && c.ativo !== false); }
 
 var IC_TAG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
 var IC_GRID = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
