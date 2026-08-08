@@ -715,6 +715,10 @@ nav button.ativo svg { opacity: 1; }
 .nav-subtoggle .nav-chevron { opacity: 0.55; transition: transform 0.18s ease, opacity 0.15s; }
 .nav-subtoggle[aria-expanded="true"] .nav-chevron { transform: rotate(90deg); opacity: 0.85; }
 
+/* Sidebar nunca rola na horizontal; rótulos longos truncam com reticências */
+.sidebar nav { overflow-x: hidden; }
+.sidebar nav button > span:not([class]) { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Tela Categorias (Cadastros → Produtos → Categorias) — cards */
 .cat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .cat-card {

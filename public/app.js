@@ -5545,7 +5545,7 @@ async function inicial() {
   carregarPedidos();   // pré-carrega pedidos em background
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
-  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); }
+  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); } // Categorias tbm, senão some no F5 (carrega após o boot)
   carregarLinkCardapio();   // link público + QR (aba Cardápio)
   await carregarConfig();
   await carregarConta();        // e-mail de acesso (aba Empresa)
