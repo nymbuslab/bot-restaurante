@@ -719,22 +719,23 @@ nav button.ativo svg { opacity: 1; }
 .cat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .cat-card {
   background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 14px;
-  display: flex; flex-direction: column; gap: 8px;
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .cat-card.inativa { opacity: 0.55; }
-.cat-card-topo { display: flex; align-items: center; justify-content: space-between; }
-.cat-card-acoes { display: flex; gap: 6px; }
+.cat-card-linha1 { display: flex; align-items: center; gap: 8px; }
+.cat-card-nome { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-card-nome:focus-within { overflow: visible; }
+.cat-card-nome .cat-nome-edit { width: 100%; font-size: 15px; font-weight: 700; padding: 4px 8px; }
+.cat-card-acoes { display: flex; gap: 4px; flex: 0 0 auto; }
 .cat-ico {
-  width: 32px; height: 32px; padding: 0;
+  width: 30px; height: 30px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: 1px solid var(--border);
   color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer;
 }
 .cat-ico:hover { background: var(--bg-elevated); color: var(--text-primary); }
 .cat-del:hover { color: var(--error); border-color: var(--error); }
-.cat-card-nome { font-size: 15px; font-weight: 700; color: var(--text-primary); word-break: break-word; }
-.cat-card-nome .cat-nome-edit { width: 100%; font-size: 15px; font-weight: 700; padding: 4px 8px; }
 .cat-card-count { font-size: 12px; color: var(--text-secondary); }
 
 /* Toggle de som de novo pedido (header) */
