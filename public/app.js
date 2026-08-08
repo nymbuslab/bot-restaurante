@@ -1255,6 +1255,7 @@ function renderCardapio() {
   const termo = cardapioBusca.trim();
   let totalMostrado = 0;
   cardapioAtual.categorias.forEach((cat, ci) => {
+    if (!cat.itens || cat.itens.length === 0) return; // categoria vazia não aparece aqui (gerida na tela Categorias)
     const ativos = cat.itens.filter((it) => !it.arquivado).length;
     const itensCat = cat.itens
       .map((item, ii) => ({ item, ii }))
@@ -1270,7 +1271,7 @@ function renderCardapio() {
       <div class="categoria-cabeca">
         <div class="cat-cabeca-esq">
           <svg class="cat-icone" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
-          <input value="${escapar(cat.nome)}" data-cat="${ci}" class="catNome" />
+          <span class="catNome-ro">${escapar(cat.nome)}</span>
           <span class="cat-badge">${badge}</span>
         </div>
         <button class="perigo mini" data-del-cat="${ci}">Excluir</button>
@@ -1343,15 +1344,7 @@ function renderCardapio() {
 }
 
 function ligarEventosCardapio() {
-  document.querySelectorAll(".catNome").forEach((el) => {
-    el.addEventListener("input", (e) => { cardapioAtual.categorias[e.target.dataset.cat].nome = e.target.value; });
-    el.addEventListener("blur", async (e) => { // padroniza ao sair do campo + persiste
-      const v = Texto.tituloPt(e.target.value);
-      e.target.value = v;
-      cardapioAtual.categorias[e.target.dataset.cat].nome = v;
-      if (!(await salvarCardapioRemoto())) toast("Não foi possível salvar o nome. Tente de novo.", "erro");
-    });
-  });
+  // (nome da categoria é só leitura aqui; renomear é na tela Categorias)
   document.querySelectorAll(".itDisp").forEach((el) =>
     el.addEventListener("change", async (e) => {
       // Salva NA HORA (é um interruptor — o dono espera efeito imediato). Antes só mexia
@@ -1996,10 +1989,13 @@ $("editor-var-add").addEventListener("click", () => {
   if (inputs.length) inputs[inputs.length - 1].focus();
 });
 
-$("btnAddCategoria").addEventListener("click", async () => {
-  cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
-  renderCardapio();
-  if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias.pop(); renderCardapio(); toast("Não foi possível criar a categoria.", "erro"); }
+$("btnAddCategoria").addEventListener("click", () => {
+  // Categorias são geridas na tela Categorias. Aqui só leva pra lá e já inicia uma nova.
+  // (Categoria só aparece na lista de itens quando um produto for vinculado a ela.)
+  const nav = document.querySelector('nav button[data-aba="categorias"]');
+  if (nav) nav.click();
+  const add = $("btnNovaCategoria");
+  if (add) add.click();
 });
 
 $("btnNovoItem").addEventListener("click", () => {
