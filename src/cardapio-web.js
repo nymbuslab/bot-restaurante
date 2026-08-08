@@ -36,6 +36,7 @@ function parseOpcionais(texto) {
 function projetarCardapio(cardapio) {
   const categorias = [];
   for (const cat of (cardapio && cardapio.categorias) || []) {
+    if (cat && cat.ativo === false) continue;   // categoria desativada: some do cardápio (e seus itens)
     const itens = [];
     for (const item of (cat && cat.itens) || []) {
       if (!item || item.disponivel === false || item.arquivado === true) continue;
@@ -71,6 +72,7 @@ function projetarCardapio(cardapio) {
 function recalcularItens(cardapio, itensPayload) {
   const mapa = {};
   ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+    if (c && c.ativo === false) return;   // categoria desativada: itens não podem ser pedidos
     ((c && c.itens) || []).forEach(function (it) {
       if (it && it.disponivel !== false && it.arquivado !== true && it.unidade !== "kg") mapa[it.id] = it;
     });
