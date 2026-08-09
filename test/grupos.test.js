@@ -271,3 +271,26 @@ test("converterCardapio: item sem composicao e sem opcionais não gera vínculo"
   assert.equal(r.grupos.length, 0);
   assert.equal(r.itens[0].grupos, undefined);
 });
+
+test("converterCardapio: itens dentro das categorias (formato real do cardápio)", () => {
+  const cardapio = { categorias: [
+    { nome: "Marmitas", itens: [
+      { id: 1, nome: "Marmitex P", composicao: [{ nome: "Guarnições", obrigatorio: true, min: 1, max: 1, itens: ["Farofa"] }] },
+      { id: 2, nome: "Marmitex G", opcionais: "Ovo | 2.50" },
+    ] },
+    { nome: "Bebidas", itens: [{ id: 3, nome: "Refri" }] },
+  ] };
+  const r = converterCardapio(cardapio, idFake());
+  assert.equal(r.grupos.length, 2);
+  assert.equal(r.categorias[0].nome, "Marmitas");                      // categoria preservada
+  assert.equal(r.categorias[0].itens[0].grupos[0].id, r.grupos[0].id); // vínculo no item certo
+  assert.equal(r.categorias[0].itens[1].grupos[0].id, r.grupos[1].id);
+  assert.equal(r.categorias[1].itens[0].grupos, undefined);            // item sem opções não ganha vínculo
+  assert.equal(r.itens.length, 3);                                     // lista plana com todos
+});
+
+test("converterCardapio: sem categorias devolve categorias null", () => {
+  const r = converterCardapio({ itens: [{ id: 1, nome: "A", opcionais: "Bacon | 3.00" }] }, idFake());
+  assert.equal(r.categorias, null);
+  assert.equal(r.itens.length, 1);
+});

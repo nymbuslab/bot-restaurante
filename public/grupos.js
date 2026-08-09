@@ -215,8 +215,12 @@
   // Converte o cardápio inteiro de um tenant. `novoId(prefixo)` gera os ids
   // (injetado pra ficar determinístico no teste). NÃO apaga composicao nem
   // opcionais: a conversão é reversível.
+  // Aceita os dois formatos: o real (itens dentro de cardapio.categorias[])
+  // e a lista plana cardapio.itens. Devolve `categorias` reconstruídas quando
+  // a entrada era aninhada (null quando plana) e `itens` sempre plano.
   function converterCardapio(cardapio, novoId) {
-    const itens = cardapio && Array.isArray(cardapio.itens) ? cardapio.itens : [];
+    const raiz = cardapio && typeof cardapio === "object" ? cardapio : {};
+    const categorias = Array.isArray(raiz.categorias) ? raiz.categorias : null;
     const grupos = [];
     const porChave = {};
     const nomesUsados = {};
@@ -241,7 +245,7 @@
       return g;
     }
 
-    const saida = itens.map(function (item) {
+    function converterItem(item) {
       if (!item || typeof item !== "object") return item;
       if (Array.isArray(item.grupos)) return item; // já convertido, não remexe
       const vinculos = [];
@@ -261,9 +265,33 @@
       Object.keys(item).forEach(function (k) { novo[k] = item[k]; }); // legado preservado
       novo.grupos = vinculos;
       return novo;
-    });
+    }
 
-    return { grupos: grupos, itens: saida, criados: criados, reusados: reusados, sufixados: sufixados };
+    let catsSaida = null;
+    const itensSaida = [];
+    if (categorias) {
+      catsSaida = categorias.map(function (cat) {
+        if (!cat || typeof cat !== "object" || !Array.isArray(cat.itens)) return cat;
+        const nova = {};
+        Object.keys(cat).forEach(function (k) { nova[k] = cat[k]; });
+        nova.itens = cat.itens.map(converterItem);
+        nova.itens.forEach(function (i) { itensSaida.push(i); });
+        return nova;
+      });
+    } else {
+      (Array.isArray(raiz.itens) ? raiz.itens : []).forEach(function (i) {
+        itensSaida.push(converterItem(i));
+      });
+    }
+
+    return {
+      grupos: grupos,
+      categorias: catsSaida,
+      itens: itensSaida,
+      criados: criados,
+      reusados: reusados,
+      sufixados: sufixados,
+    };
   }
 
   return {

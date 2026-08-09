@@ -13,6 +13,7 @@
     "check": "node scripts/check-syntax.js",
     "setup-storage": "node scripts/setup-storage.js",
     "normalizar-pagamentos": "node scripts/normalizar-pagamentos.js",
+    "converter-complementos": "node scripts/converter-complementos.js",
     "migrar-convenios": "node scripts/migrar-convenios.js"
   },
   "dependencies": {
