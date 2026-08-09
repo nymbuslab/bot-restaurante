@@ -141,3 +141,38 @@ test("recalcularVenda: soma variações e grava selecoes", () => {
 test("recalcularVenda: item de variações sem escolha lança erro", () => {
   assert.throws(() => recalcularVenda(cardVarPdv, [{ id: "refr", qtd: 1 }]), /ao menos 1|opção/i);
 });
+
+// ---- Biblioteca de grupos (cardapio.grupos) no PDV ----
+const cardapioBiblioteca = {
+  grupos: [
+    { id: "g1", nome: "Adicionais", padrao: { obrigatorio: false, min: 0, max: 0 },
+      opcoes: [{ id: "o1", nome: "Bacon", preco: 3.5 }] },
+    { id: "g2", nome: "Proteínas", padrao: { obrigatorio: true, min: 1, max: 1 },
+      opcoes: [{ id: "o2", nome: "Frango", preco: 0 }, { id: "o3", nome: "Carne", preco: 0 }] },
+  ],
+  categorias: [{ nome: "Pratos", itens: [
+    { id: "b1", nome: "Espeto", preco: 8, unidade: "un", grupos: [{ id: "g1" }] },
+    { id: "b2", nome: "Marmitex", preco: 18, unidade: "un", grupos: [{ id: "g2" }, { id: "g1" }] },
+  ] }],
+};
+
+test("recalcularVenda: soma a opção paga vinda da biblioteca", () => {
+  const r = recalcularVenda(cardapioBiblioteca, [{ id: "b1", qtd: 2, grupos: [{ grupo: "g1", opcoes: ["o1"] }] }]);
+  assert.equal(r.subtotal, 23); // (8 + 3,50) x 2
+  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3.5, qtd: 1 }]);
+});
+
+test("recalcularVenda: opção sem custo vai para composicao sem mexer no total", () => {
+  const r = recalcularVenda(cardapioBiblioteca, [{ id: "b2", qtd: 1, grupos: [{ grupo: "g2", opcoes: ["o3"] }] }]);
+  assert.equal(r.subtotal, 18);
+  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Proteínas", itens: ["Carne"] }]);
+});
+
+test("recalcularVenda: grupo obrigatório sem escolha barra a venda", () => {
+  assert.throws(() => recalcularVenda(cardapioBiblioteca, [{ id: "b2", qtd: 1, grupos: [] }]), /Proteínas/);
+});
+
+test("recalcularVenda: item sem grupos segue pelo caminho legado", () => {
+  const r = recalcularVenda(cardapio, [{ id: "a1", qtd: 1, opcionais: [{ nome: "Bacon", qtd: 1 }] }]);
+  assert.equal(r.subtotal, 11.5);
+});
