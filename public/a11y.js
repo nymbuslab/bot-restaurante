@@ -22,7 +22,7 @@
 (function () {
   // Wrappers de modal/overlay/drawer usados nas 3 telas (união).
   var SEL = [
-    ".modal-overlay", ".pdv-modal", ".cd-modal", ".cd-sheet", ".mesa-painel",
+    ".modal-overlay", ".pdv-modal", ".cd-modal", ".cd-sheet", ".mesa-painel", ".gaveta",
     "#fcOverlay", "#editor-overlay", "#cartao-overlay", "#pedido-overlay",
     "#qr-overlay", "#upsell-overlay", "#novo-pedido-overlay", "#item-del-overlay",
     "#tenant-overlay", "#del-overlay", "#criar-overlay"

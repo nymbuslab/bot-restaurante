@@ -337,6 +337,271 @@ if ($("btnNovaCategoria")) $("btnNovaCategoria").addEventListener("click", async
   if (last) { last.focus(); last.select(); }
 });
 
+// ============================================================
+// TELA COMPLEMENTOS (Cadastros → Produtos → Complementos)
+// Biblioteca de grupos reutilizáveis, guardada em cardapio.grupos:
+//   { id, nome, padrao: { obrigatorio, min, max }, opcoes: [{ id, nome, preco }] }
+// O produto guarda só o VÍNCULO (item.grupos), então editar aqui vale em todos os
+// produtos que usam o grupo. O id é ESTÁVEL: renomear não gera id novo.
+// ============================================================
+let grpFiltro = "todos";       // todos | uso | semuso
+let grpTermoBusca = "";
+let grpEditandoId = null;      // null = criando um grupo novo
+let grpEditOpcoes = [];        // rascunho das opções abertas na gaveta
+let grpFocoVolta = null;       // quem abriu a gaveta (devolve o foco ao fechar)
+
+// Id estável de grupo/opção. randomUUID quando existir; senão tempo + aleatório.
+function grpNovoId(prefixo) {
+  const rnd = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(16).slice(2, 10);
+  return prefixo + Date.now().toString(36) + rnd;
+}
+
+// Quantos produtos usam cada grupo (chave = id do grupo).
+function grpContarUso() {
+  const uso = {};
+  ((cardapioAtual && cardapioAtual.categorias) || []).forEach((c) => {
+    ((c && c.itens) || []).forEach((it) => {
+      ((it && it.grupos) || []).forEach((v) => {
+        const id = v && v.id;
+        if (id) uso[id] = (uso[id] || 0) + 1;
+      });
+    });
+  });
+  return uso;
+}
+
+// Regra em português, do jeito que o dono lê no card e na gaveta.
+function grpTextoRegra(r) {
+  const min = Math.max(0, parseInt(r && r.min, 10) || 0);
+  const max = Math.max(0, parseInt(r && r.max, 10) || 0);
+  if (r && r.obrigatorio) {
+    const piso = Math.max(1, min);
+    if (max === piso) return "Obrigatório, escolha " + piso;
+    if (max > piso) return "Obrigatório, de " + piso + " a " + max;
+    return "Obrigatório, pelo menos " + piso;
+  }
+  if (max > 0) return "Opcional, até " + max;
+  return "Opcional, sem limite";
+}
+
+function carregarComplementos() { renderComplementos(); }
+
+function renderComplementos() {
+  const cont = $("grupos-lista");
+  if (!cont) return;
+  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []);
+  const uso = grpContarUso();
+  const busca = grpTermoBusca.trim().toLowerCase();
+  const lista = bib.filter((g) => {
+    const n = uso[g.id] || 0;
+    if (grpFiltro === "uso" && !n) return false;
+    if (grpFiltro === "semuso" && n) return false;
+    if (!busca) return true;
+    return (g.nome || "").toLowerCase().indexOf(busca) >= 0
+      || g.opcoes.some((o) => o.nome.toLowerCase().indexOf(busca) >= 0);
+  });
+  if (!lista.length) {
+    cont.className = "";
+    cont.innerHTML = bib.length
+      ? '<p class="dash-vazio">Nenhum grupo com esse filtro. Limpe a busca ou volte para "Todos".</p>'
+      : '<p class="dash-vazio">Nenhum grupo ainda. Crie o primeiro em "Novo grupo" e reaproveite ele em quantos produtos quiser.</p>';
+    return;
+  }
+  cont.className = "grp-cards";
+  cont.innerHTML = "";
+  lista.forEach((g) => {
+    const n = uso[g.id] || 0;
+    const chips = g.opcoes.slice(0, 4).map((o) =>
+      '<span class="grp-op">' + escapar(o.nome) +
+      (o.preco > 0 ? '<span class="grp-op-preco">+' + moedaBR(o.preco) + '</span>' : "") + '</span>'
+    ).join("");
+    const resto = g.opcoes.length - 4;
+    const card = document.createElement("div");
+    card.className = "grp-card";
+    card.innerHTML =
+      '<div class="grp-card-topo">' +
+        '<span class="grp-card-nome">' + escapar(g.nome || "Sem nome") + '</span>' +
+        '<div class="cat-card-acoes">' +
+          '<button type="button" class="cat-ico grp-edit" data-id="' + escapar(g.id) + '" aria-label="Editar grupo" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' +
+          '<button type="button" class="cat-ico cat-del grp-del" data-id="' + escapar(g.id) + '" aria-label="Excluir grupo" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="grp-card-regra">' + escapar(grpTextoRegra(g.padrao)) + '</div>' +
+      '<div class="grp-ops">' + chips + (resto > 0 ? '<span class="grp-op-mais">+' + resto + '</span>' : "") + '</div>' +
+      '<div class="grp-card-uso">' + (n ? "Usado em " + n + (n === 1 ? " produto" : " produtos") : "Nenhum produto usa este grupo") + '</div>';
+    cont.appendChild(card);
+  });
+  cont.querySelectorAll(".grp-edit").forEach((b) =>
+    b.addEventListener("click", () => grpAbrirGaveta(b.dataset.id, b)));
+  cont.querySelectorAll(".grp-del").forEach((b) =>
+    b.addEventListener("click", () => grpExcluir(b.dataset.id, uso[b.dataset.id] || 0)));
+}
+
+// Excluir só solta grupo sem vínculo — senão o produto ficaria sem as opções dele.
+async function grpExcluir(id, emUso) {
+  if (emUso > 0) {
+    await confirmar("Não é possível excluir",
+      "Este grupo está ligado a " + emUso + (emUso === 1 ? " produto" : " produtos") + ". Desvincule nos produtos antes de excluir.", "Entendi");
+    return;
+  }
+  const ok = await confirmar("Excluir grupo?", "O grupo sai da biblioteca. Os pedidos já feitos não mudam.", "Excluir");
+  if (!ok) return;
+  const antes = Array.isArray(cardapioAtual.grupos) ? cardapioAtual.grupos.slice() : [];
+  cardapioAtual.grupos = antes.filter((g) => g && String(g.id) !== String(id));
+  renderComplementos();
+  if (await salvarCardapioRemoto()) toast("Grupo excluído.");
+  else { cardapioAtual.grupos = antes; renderComplementos(); toast("Não foi possível excluir.", "erro"); }
+}
+
+// ---- Gaveta do grupo ----
+function grpObrigatorioSelecionado() {
+  const ativo = $("grpSeg").querySelector(".filtro-chip.ativo");
+  return !!(ativo && ativo.dataset.grpObrig === "1");
+}
+
+function grpMarcarObrigatorio(valor) {
+  $("grpSeg").querySelectorAll(".filtro-chip").forEach((b) =>
+    b.classList.toggle("ativo", (b.dataset.grpObrig === "1") === !!valor));
+}
+
+// Espelha a regra em texto enquanto o dono mexe nos campos (o número sozinho engana).
+function grpAtualizarDicaRegra() {
+  $("grpDicaRegra").textContent = grpTextoRegra({
+    obrigatorio: grpObrigatorioSelecionado(),
+    min: $("grpMin").value,
+    max: $("grpMax").value,
+  });
+}
+
+function grpRenderOpcoes() {
+  const cont = $("grpOpcoes");
+  cont.innerHTML = "";
+  grpEditOpcoes.forEach((o, i) => {
+    const div = document.createElement("div");
+    div.className = "opc-linha";
+    div.innerHTML =
+      '<input class="opc-nome grp-op-nome" placeholder="Nome da opção" aria-label="Nome da opção" value="' + escapar(o.nome || "") + '" data-oi="' + i + '" />' +
+      '<div class="opc-preco-wrap"><span class="opc-rs">R$</span>' +
+      '<input type="text" inputmode="numeric" class="opc-preco grp-op-valor" placeholder="0,00" aria-label="Preço da opção" value="' + (o.preco ? Dinheiro.formatar(o.preco) : "") + '" data-oi="' + i + '" /></div>' +
+      '<button type="button" class="perigo mini grp-op-del" data-oi="' + i + '" aria-label="Remover opção">' + ICO_LIXEIRA + '</button>';
+    cont.appendChild(div);
+  });
+  cont.querySelectorAll(".grp-op-nome").forEach((el) => {
+    el.addEventListener("input", (e) => { grpEditOpcoes[+e.target.dataset.oi].nome = e.target.value; });
+    el.addEventListener("blur", (e) => {                     // padroniza ao sair (assistivo)
+      const v = Texto.tituloPt(e.target.value);
+      e.target.value = v;
+      grpEditOpcoes[+e.target.dataset.oi].nome = v;
+    });
+  });
+  cont.querySelectorAll(".grp-op-valor").forEach((el) => {
+    Dinheiro.mascarar(el);
+    el.addEventListener("input", (e) => { grpEditOpcoes[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
+  });
+  cont.querySelectorAll(".grp-op-del").forEach((el) =>
+    el.addEventListener("click", (e) => { grpEditOpcoes.splice(+e.currentTarget.dataset.oi, 1); grpRenderOpcoes(); }));
+}
+
+function grpAbrirGaveta(id, origem) {
+  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []);
+  const g = id ? bib.filter((x) => x.id === String(id))[0] : null;
+  grpEditandoId = g ? g.id : null;
+  grpFocoVolta = origem || null;
+  // Cópia rasa: mexer na gaveta não altera o cardápio antes de salvar.
+  grpEditOpcoes = g ? g.opcoes.map((o) => ({ id: o.id, nome: o.nome, preco: o.preco }))
+                    : [{ id: "", nome: "", preco: 0 }];
+  const padrao = g ? g.padrao : { obrigatorio: false, min: 0, max: 0 };
+  $("grpGavetaTitulo").textContent = g ? "Editar grupo" : "Novo grupo";
+  $("grpNome").value = g ? g.nome : "";
+  $("grpMin").value = padrao.min;
+  $("grpMax").value = padrao.max;
+  grpMarcarObrigatorio(padrao.obrigatorio);
+  grpAtualizarDicaRegra();
+  grpRenderOpcoes();
+  $("grpGavetaOverlay").classList.add("visivel");
+  $("grpGaveta").classList.add("aberto");
+  document.addEventListener("keydown", grpGavetaEsc);
+  // Foco inicial e focus-trap ficam com a11y.js (padrão único do painel).
+}
+
+function grpGavetaEsc(e) {
+  if (e.key !== "Escape") return;
+  if (!$("grpGaveta").classList.contains("aberto")) return;
+  e.preventDefault();
+  grpFecharGaveta();
+}
+
+function grpFecharGaveta() {
+  document.removeEventListener("keydown", grpGavetaEsc);
+  $("grpGaveta").classList.remove("aberto");
+  $("grpGavetaOverlay").classList.remove("visivel");
+  const volta = grpFocoVolta;
+  grpFocoVolta = null;
+  grpEditandoId = null;
+  // Devolve o foco ao card de origem; se ele sumiu no re-render, volta pro botão da tela.
+  const alvo = (volta && document.contains(volta)) ? volta : $("btnNovoGrupo");
+  if (alvo) { try { alvo.focus(); } catch (_) {} }
+}
+
+async function grpSalvarGaveta() {
+  const nome = Texto.tituloPt(($("grpNome").value || "").trim());
+  if (!nome) { toast("Dê um nome ao grupo.", "erro"); $("grpNome").focus(); return; }
+  const opcoes = grpEditOpcoes
+    .map((o) => ({ id: String(o.id || ""), nome: Texto.tituloPt(String(o.nome || "").trim()), preco: Math.max(0, Number(o.preco) || 0) }))
+    .filter((o) => o.nome);
+  if (!opcoes.length) { toast("Adicione pelo menos uma opção.", "erro"); return; }
+  opcoes.forEach((o) => { if (!o.id) o.id = grpNovoId("op_"); });  // id novo SÓ para opção nova
+  const obrigatorio = grpObrigatorioSelecionado();
+  let min = Math.max(0, parseInt($("grpMin").value, 10) || 0);
+  let max = Math.max(0, parseInt($("grpMax").value, 10) || 0);
+  if (obrigatorio && min < 1) min = 1;
+  if (min > opcoes.length) min = opcoes.length;   // mínimo maior que a lista é impossível de atender
+  if (max > 0 && max < min) max = min;
+  const grupo = { id: grpEditandoId || grpNovoId("grp_"), nome, padrao: { obrigatorio, min, max }, opcoes };
+  const antes = Array.isArray(cardapioAtual.grupos) ? cardapioAtual.grupos.slice() : [];
+  const lista = antes.slice();
+  const i = lista.findIndex((x) => x && String(x.id) === grupo.id);
+  if (i >= 0) lista[i] = grupo; else lista.push(grupo);
+  cardapioAtual.grupos = lista;
+  if (!(await salvarCardapioRemoto())) {
+    cardapioAtual.grupos = antes;
+    toast("Não foi possível salvar o grupo.", "erro");
+    return;
+  }
+  renderComplementos();
+  grpFecharGaveta();
+  toast(i >= 0 ? "Grupo salvo." : "Grupo criado.");
+}
+
+if ($("btnNovoGrupo")) {
+  $("btnNovoGrupo").addEventListener("click", (e) => grpAbrirGaveta(null, e.currentTarget));
+  $("grpGavetaFechar").addEventListener("click", grpFecharGaveta);
+  $("grpCancelar").addEventListener("click", grpFecharGaveta);
+  $("grpGavetaOverlay").addEventListener("click", grpFecharGaveta);
+  $("grpSalvar").addEventListener("click", grpSalvarGaveta);
+  $("grpAddOpcao").addEventListener("click", () => {
+    grpEditOpcoes.push({ id: "", nome: "", preco: 0 });
+    grpRenderOpcoes();
+    const inputs = $("grpOpcoes").querySelectorAll(".grp-op-nome");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+  $("grpSeg").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+    const obrig = b.dataset.grpObrig === "1";
+    grpMarcarObrigatorio(obrig);
+    if (obrig && (parseInt($("grpMin").value, 10) || 0) < 1) $("grpMin").value = 1;  // obrigatório pede ao menos 1
+    grpAtualizarDicaRegra();
+  }));
+  ["grpMin", "grpMax"].forEach((id) => $(id).addEventListener("input", grpAtualizarDicaRegra));
+  $("grpBusca").addEventListener("input", (e) => { grpTermoBusca = e.target.value; renderComplementos(); });
+  $("grpFiltros").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+    grpFiltro = b.dataset.grpFiltro;
+    $("grpFiltros").querySelectorAll(".filtro-chip").forEach((x) => x.classList.toggle("ativo", x === b));
+    renderComplementos();
+  }));
+}
+
 // Ao ativar uma aba dentro de um grupo, garante TODOS os níveis abertos (ex.: Cadastros → Produtos).
 function abrirGrupoDaAba(btn) {
   let sub = btn.closest(".nav-sub");
@@ -375,6 +640,7 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
     if (btn.dataset.aba === "categorias") carregarCategorias();
+    if (btn.dataset.aba === "complementos") carregarComplementos();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
@@ -5534,7 +5800,7 @@ async function inicial() {
   carregarPedidos();   // pré-carrega pedidos em background
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
-  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); } // Categorias tbm, senão some no F5 (carrega após o boot)
+  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); renderComplementos(); } // Categorias e Complementos tbm, senão somem no F5 (carregam após o boot)
   carregarLinkCardapio();   // link público + QR (aba Cardápio)
   await carregarConfig();
   await carregarConta();        // e-mail de acesso (aba Empresa)
