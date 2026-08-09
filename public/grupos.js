@@ -178,11 +178,101 @@
     };
   }
 
+  // ---- Conversão do formato legado para a biblioteca ----
+  function normalizarChave(s) {
+    return String(s == null ? "" : s).trim().toLowerCase();
+  }
+
+  // Identidade de um grupo: nome + regra + opções (nome|preço) na ordem.
+  // Dois itens com a MESMA lista viram um grupo só; qualquer divergência
+  // (preço, ordem, regra) gera grupo separado, pra conversão não misturar nada.
+  function chaveGrupo(nome, padrao, opcoes) {
+    const r = normalizarRegra(padrao);
+    return [
+      normalizarChave(nome),
+      r.obrigatorio ? "1" : "0", r.min, r.max,
+      opcoes.map(function (o) { return normalizarChave(o.nome) + "|" + (Number(o.preco) || 0).toFixed(2); }).join(","),
+    ].join("::");
+  }
+
+  // Lê o texto legado de opcionais ("Nome | 3.00\n..."), espelhando o
+  // parseOpcionais de src/cardapio-web.js.
+  function lerOpcionaisLegado(texto) {
+    if (!texto || !String(texto).trim()) return [];
+    const lista = [];
+    String(texto).split("\n").forEach(function (linha) {
+      const l = linha.trim().replace(/^[*\-•]\s*/, "");
+      if (!l) return;
+      const partes = l.split("|");
+      const nome = partes[0].trim();
+      let preco = 0;
+      if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+      if (nome) lista.push({ nome: nome, preco: preco });
+    });
+    return lista;
+  }
+
+  // Converte o cardápio inteiro de um tenant. `novoId(prefixo)` gera os ids
+  // (injetado pra ficar determinístico no teste). NÃO apaga composicao nem
+  // opcionais: a conversão é reversível.
+  function converterCardapio(cardapio, novoId) {
+    const itens = cardapio && Array.isArray(cardapio.itens) ? cardapio.itens : [];
+    const grupos = [];
+    const porChave = {};
+    const nomesUsados = {};
+    let criados = 0, reusados = 0, sufixados = 0;
+
+    function obterGrupo(nome, padrao, opcoes) {
+      const chave = chaveGrupo(nome, padrao, opcoes);
+      if (porChave[chave]) { reusados++; return porChave[chave]; }
+      let nomeFinal = String(nome == null ? "" : nome).trim() || "Grupo";
+      const base = normalizarChave(nomeFinal);
+      if (nomesUsados[base]) { nomesUsados[base]++; nomeFinal = nomeFinal + " " + nomesUsados[base]; sufixados++; }
+      else nomesUsados[base] = 1;
+      const g = {
+        id: novoId("g_"),
+        nome: nomeFinal,
+        padrao: normalizarRegra(padrao),
+        opcoes: opcoes.map(function (o) { return { id: novoId("o_"), nome: o.nome, preco: Number(o.preco) || 0 }; }),
+      };
+      grupos.push(g);
+      porChave[chave] = g;
+      criados++;
+      return g;
+    }
+
+    const saida = itens.map(function (item) {
+      if (!item || typeof item !== "object") return item;
+      if (Array.isArray(item.grupos)) return item; // já convertido, não remexe
+      const vinculos = [];
+      normalizarGrupos(item.composicao).forEach(function (c) {
+        const opcoes = c.itens.map(function (n) { return { nome: n, preco: 0 }; });
+        const padrao = { obrigatorio: c.obrigatorio, min: c.min, max: c.max };
+        const g = obterGrupo(c.nome, padrao, opcoes);
+        vinculos.push({ id: g.id, obrigatorio: g.padrao.obrigatorio, min: g.padrao.min, max: g.padrao.max });
+      });
+      const ops = lerOpcionaisLegado(item.opcionais);
+      if (ops.length) {
+        const g = obterGrupo("Complementos", { obrigatorio: false, min: 0, max: 0 }, ops);
+        vinculos.push({ id: g.id, obrigatorio: false, min: 0, max: 0 });
+      }
+      if (!vinculos.length) return item;
+      const novo = {};
+      Object.keys(item).forEach(function (k) { novo[k] = item[k]; }); // legado preservado
+      novo.grupos = vinculos;
+      return novo;
+    });
+
+    return { grupos: grupos, itens: saida, criados: criados, reusados: reusados, sufixados: sufixados };
+  }
+
   return {
     normalizarGrupos: normalizarGrupos,
     avaliarComposicao: avaliarComposicao,
     normalizarBiblioteca: normalizarBiblioteca,
     resolverGrupos: resolverGrupos,
     avaliarEscolhas: avaliarEscolhas,
+    chaveGrupo: chaveGrupo,
+    converterCardapio: converterCardapio,
   };
 });

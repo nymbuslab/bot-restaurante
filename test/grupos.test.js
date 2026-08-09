@@ -215,3 +215,59 @@ test("avaliarEscolhas: grupo opcional sem escolha não entra na saída", () => {
   assert.equal(r.valido, true);
   assert.deepEqual(r.opcionais, []);
 });
+
+// ---- Conversão do formato legado (composicao/opcionais) para a biblioteca ----
+const { converterCardapio } = require("../public/grupos");
+
+const idFake = () => { let n = 0; return (p) => p + (++n); };
+
+test("converterCardapio: junta o idêntico e separa o divergente com sufixo", () => {
+  const cardapio = { itens: [
+    { id: 1, nome: "X-Salada", opcionais: "Bacon | 3.00" },
+    { id: 2, nome: "X-Bacon",  opcionais: "Bacon | 3.00" },
+    { id: 3, nome: "X-Especial", opcionais: "Bacon | 4.00" },
+  ] };
+  const r = converterCardapio(cardapio, idFake());
+  assert.equal(r.grupos.length, 2);
+  assert.equal(r.criados, 2);
+  assert.equal(r.reusados, 1);
+  assert.equal(r.grupos[0].nome, "Complementos");
+  assert.equal(r.grupos[1].nome, "Complementos 2");   // sufixo por divergência
+  assert.equal(r.grupos[0].opcoes[0].preco, 3);
+  assert.equal(r.grupos[1].opcoes[0].preco, 4);       // nenhum preço foi alterado
+  assert.equal(r.itens[0].grupos[0].id, r.itens[1].grupos[0].id);
+  assert.notEqual(r.itens[0].grupos[0].id, r.itens[2].grupos[0].id);
+});
+
+test("converterCardapio: composicao vira grupo com preço 0 e regra preservada", () => {
+  const cardapio = { itens: [
+    { id: 1, nome: "Marmitex", composicao: [
+      { nome: "Guarnições", obrigatorio: true, min: 2, max: 2, itens: ["Farofa", "Vinagrete"] },
+    ], opcionais: "Ovo | 3.00" },
+  ] };
+  const r = converterCardapio(cardapio, idFake());
+  assert.equal(r.grupos.length, 2);
+  assert.equal(r.grupos[0].nome, "Guarnições");
+  assert.equal(r.grupos[0].opcoes[0].preco, 0);
+  assert.deepEqual(r.grupos[0].padrao, { obrigatorio: true, min: 2, max: 2 });
+  // ordem: composições antes dos complementos, como aparece hoje no cardápio
+  assert.deepEqual(r.itens[0].grupos.map((g) => g.id), [r.grupos[0].id, r.grupos[1].id]);
+  assert.deepEqual(r.itens[0].grupos[0], { id: r.grupos[0].id, obrigatorio: true, min: 2, max: 2 });
+});
+
+test("converterCardapio: preserva os campos legados e ignora item já convertido", () => {
+  const cardapio = { itens: [
+    { id: 1, nome: "A", opcionais: "Bacon | 3.00" },
+    { id: 2, nome: "B", opcionais: "Queijo | 1.00", grupos: [{ id: "ja-existe" }] },
+  ] };
+  const r = converterCardapio(cardapio, idFake());
+  assert.equal(r.itens[0].opcionais, "Bacon | 3.00");        // legado intacto
+  assert.deepEqual(r.itens[1].grupos, [{ id: "ja-existe" }]); // não remexe
+  assert.equal(r.grupos.length, 1);
+});
+
+test("converterCardapio: item sem composicao e sem opcionais não gera vínculo", () => {
+  const r = converterCardapio({ itens: [{ id: 1, nome: "Refri" }] }, idFake());
+  assert.equal(r.grupos.length, 0);
+  assert.equal(r.itens[0].grupos, undefined);
+});
