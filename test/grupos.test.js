@@ -99,3 +99,62 @@ test("avaliarComposicao: grupo acima do máx não entra em selecoes", () => {
   assert.equal(r.valido, false);
   assert.equal(r.selecoes.find((s) => s.grupo === "Proteínas"), undefined);
 });
+
+// ---- Biblioteca de grupos (cardapio.grupos) + vínculo do item (item.grupos) ----
+const { normalizarBiblioteca, resolverGrupos } = require("../public/grupos");
+
+const biblio = [
+  { id: "g1", nome: "Guarnições", padrao: { obrigatorio: true, min: 1, max: 1 },
+    opcoes: [{ id: "o1", nome: "Farofa", preco: 0 }, { id: "o2", nome: "Vinagrete", preco: 0 }] },
+  { id: "g2", nome: "Adicionais", padrao: { obrigatorio: false, min: 0, max: 0 },
+    opcoes: [{ id: "o3", nome: "Bacon", preco: 3 }] },
+];
+
+test("normalizarBiblioteca: coage tipos e descarta grupo sem id, sem opções ou não-objeto", () => {
+  const b = normalizarBiblioteca([
+    { id: "g1", nome: " X ", padrao: { obrigatorio: 1, min: "2", max: "4" },
+      opcoes: [{ id: "o1", nome: " a ", preco: "3.5" }, { id: "", nome: "sem id", preco: 1 }, { id: "o2", nome: "", preco: 1 }] },
+    { id: "g2", nome: "Vazio", opcoes: [] },
+    { nome: "Sem id", opcoes: [{ id: "o9", nome: "x", preco: 0 }] },
+    "lixo",
+  ]);
+  assert.equal(b.length, 1);
+  assert.deepEqual(b[0], {
+    id: "g1", nome: "X",
+    padrao: { obrigatorio: true, min: 2, max: 4 },
+    opcoes: [{ id: "o1", nome: "a", preco: 3.5 }],
+  });
+});
+
+test("normalizarBiblioteca: não-array vira []", () => {
+  assert.deepEqual(normalizarBiblioteca(undefined), []);
+  assert.deepEqual(normalizarBiblioteca("x"), []);
+});
+
+test("normalizarBiblioteca: max < min sobe para o mínimo", () => {
+  const b = normalizarBiblioteca([{ id: "g", nome: "G", padrao: { min: 3, max: 1 }, opcoes: [{ id: "o", nome: "a", preco: 0 }] }]);
+  assert.equal(b[0].padrao.min, 3);
+  assert.equal(b[0].padrao.max, 3);
+});
+
+test("resolverGrupos: aplica a regra do item por cima do padrão do grupo, na ordem do item", () => {
+  const item = { grupos: [{ id: "g2" }, { id: "g1", obrigatorio: true, min: 3, max: 3 }] };
+  const r = resolverGrupos(item, biblio);
+  assert.equal(r.length, 2);
+  assert.equal(r[0].id, "g2");
+  assert.equal(r[0].min, 0);
+  assert.equal(r[1].id, "g1");
+  assert.deepEqual([r[1].obrigatorio, r[1].min, r[1].max], [true, 3, 3]);
+  assert.equal(r[1].opcoes.length, 2);
+});
+
+test("resolverGrupos: vínculo órfão é ignorado sem quebrar", () => {
+  const r = resolverGrupos({ grupos: [{ id: "nao-existe" }, { id: "g1" }] }, biblio);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].id, "g1");
+});
+
+test("resolverGrupos: item sem grupos vira []", () => {
+  assert.deepEqual(resolverGrupos({}, biblio), []);
+  assert.deepEqual(resolverGrupos({ grupos: "x" }, biblio), []);
+});
