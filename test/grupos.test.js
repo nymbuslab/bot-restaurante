@@ -158,3 +158,60 @@ test("resolverGrupos: item sem grupos vira []", () => {
   assert.deepEqual(resolverGrupos({}, biblio), []);
   assert.deepEqual(resolverGrupos({ grupos: "x" }, biblio), []);
 });
+
+// ---- Escolhas do cliente contra os grupos resolvidos (saída nos campos legados) ----
+const { avaliarEscolhas } = require("../public/grupos");
+
+const resolvidos = [
+  { id: "g1", nome: "Guarnições", obrigatorio: true, min: 2, max: 2,
+    opcoes: [{ id: "o1", nome: "Farofa", preco: 0 }, { id: "o2", nome: "Vinagrete", preco: 0 }, { id: "o3", nome: "Purê", preco: 0 }] },
+  { id: "g2", nome: "Adicionais", obrigatorio: false, min: 0, max: 0,
+    opcoes: [{ id: "o4", nome: "Bacon", preco: 3 }, { id: "o5", nome: "Ovo", preco: 2 }] },
+];
+
+test("avaliarEscolhas: separa sem custo em composicao e pago em opcionais", () => {
+  const r = avaliarEscolhas(resolvidos, [
+    { grupo: "g1", opcoes: ["o1", "o2"] },
+    { grupo: "g2", opcoes: ["o4"] },
+  ]);
+  assert.equal(r.valido, true);
+  assert.equal(r.addUnit, 3);
+  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"] }]);
+  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+});
+
+test("avaliarEscolhas: abaixo do mínimo gera pendência e invalida", () => {
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g1", opcoes: ["o1"] }]);
+  assert.equal(r.valido, false);
+  assert.match(r.pendencias[0], /Guarnições/);
+});
+
+test("avaliarEscolhas: acima do máximo invalida", () => {
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g1", opcoes: ["o1", "o2", "o3"] }]);
+  assert.equal(r.valido, false);
+  assert.match(r.pendencias[0], /no máximo 2/);
+});
+
+test("avaliarEscolhas: max 0 significa sem limite", () => {
+  const r = avaliarEscolhas(resolvidos, [
+    { grupo: "g1", opcoes: ["o1", "o2"] },
+    { grupo: "g2", opcoes: ["o4", "o5"] },
+  ]);
+  assert.equal(r.valido, true);
+  assert.equal(r.addUnit, 5);
+});
+
+test("avaliarEscolhas: opção de outro grupo, id inexistente e duplicata são descartados", () => {
+  const r = avaliarEscolhas(resolvidos, [
+    { grupo: "g1", opcoes: ["o1", "o1", "o4", "xx", "o2"] },
+  ]);
+  assert.equal(r.valido, true);
+  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"] }]);
+  assert.equal(r.addUnit, 0);
+});
+
+test("avaliarEscolhas: grupo opcional sem escolha não entra na saída", () => {
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g1", opcoes: ["o1", "o2"] }]);
+  assert.equal(r.valido, true);
+  assert.deepEqual(r.opcionais, []);
+});

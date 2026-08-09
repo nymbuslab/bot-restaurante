@@ -125,10 +125,64 @@
     return out;
   }
 
+  // Avalia as escolhas do cliente contra os grupos JÁ RESOLVIDOS.
+  // `escolhas` = [{ grupo: <grupoId>, opcoes: [<opcaoId>] }].
+  // A saída sai no formato LEGADO do pedido de propósito: opção sem custo vira
+  // composicao, opção paga vira opcional. Assim comanda, relatórios e
+  // itens_venda seguem inalterados.
+  function avaliarEscolhas(resolvidos, escolhas) {
+    const grupos = Array.isArray(resolvidos) ? resolvidos : [];
+    const porGrupo = {};
+    (Array.isArray(escolhas) ? escolhas : []).forEach(function (e) {
+      if (e && e.grupo != null) porGrupo[String(e.grupo)] = Array.isArray(e.opcoes) ? e.opcoes : [];
+    });
+    const composicao = [];
+    const opcionais = [];
+    const pendencias = [];
+    let addUnit = 0;
+    grupos.forEach(function (g) {
+      const porOpcao = {};
+      g.opcoes.forEach(function (o) { porOpcao[o.id] = o; });
+      const escolhidas = porGrupo[g.id] || [];
+      const validas = [];
+      const vistos = {};
+      escolhidas.forEach(function (oid) {
+        const k = String(oid == null ? "" : oid).trim();
+        if (!porOpcao[k] || vistos[k]) return; // id de outro grupo, inexistente ou repetido
+        vistos[k] = true;
+        validas.push(porOpcao[k]);
+      });
+      const min = g.obrigatorio ? Math.max(1, g.min) : g.min;
+      const max = g.max > 0 ? g.max : g.opcoes.length;
+      if (validas.length < min) {
+        pendencias.push(g.nome + ": escolha " + (min === 1 ? "1 opção" : "ao menos " + min + " opções"));
+        return;
+      }
+      if (validas.length > max) {
+        pendencias.push(g.nome + ": escolha no máximo " + max);
+        return;
+      }
+      const semCusto = [];
+      validas.forEach(function (o) {
+        if (o.preco > 0) { opcionais.push({ nome: o.nome, preco: o.preco, qtd: 1 }); addUnit += o.preco; }
+        else semCusto.push(o.nome);
+      });
+      if (semCusto.length) composicao.push({ grupo: g.nome, itens: semCusto });
+    });
+    return {
+      valido: pendencias.length === 0,
+      pendencias: pendencias,
+      addUnit: addUnit,
+      composicao: composicao,
+      opcionais: opcionais,
+    };
+  }
+
   return {
     normalizarGrupos: normalizarGrupos,
     avaliarComposicao: avaliarComposicao,
     normalizarBiblioteca: normalizarBiblioteca,
     resolverGrupos: resolverGrupos,
+    avaliarEscolhas: avaliarEscolhas,
   };
 });
