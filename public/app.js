@@ -414,7 +414,7 @@ function renderComplementos() {
     const n = uso[g.id] || 0;
     const chips = g.opcoes.slice(0, 4).map((o) =>
       '<span class="grp-op">' + escapar(o.nome) +
-      (o.preco > 0 ? '<span class="grp-op-preco">+' + moedaBR(o.preco) + '</span>' : "") + '</span>'
+      (o.preco > 0 ? '<span class="grp-op-preco">+' + Dinheiro.comPrefixo(o.preco) + '</span>' : "") + '</span>'
     ).join("");
     const resto = g.opcoes.length - 4;
     const card = document.createElement("div");
@@ -2176,6 +2176,9 @@ function egPainelRegra(i, v, g) {
 function egRenderLegado() {
   const box = $("editorLegado");
   if (!box) return;
+  // Produto JÁ convertido não mostra o bloco: os campos antigos continuam gravados
+  // (reversibilidade), mas repetir aqui o que os grupos acima já exibem só confunde.
+  if (editorGrupos.length) { box.hidden = true; return; }
   const it = editorIi === -1 ? null : cardapioAtual.categorias[editorCi].itens[editorIi];
   const comp = it ? Grupos.normalizarGrupos(it.composicao) : [];
   const ops = it ? parsearOpcionais(it.opcionais || "") : [];
@@ -2186,7 +2189,7 @@ function egRenderLegado() {
   );
   if (ops.length) {
     linhas.push('<div class="eg-legado-linha"><span class="eg-nome">Complementos com preço</span>' +
-      '<span class="eg-resumo">' + escapar(ops.map((o) => o.nome + (o.preco > 0 ? " +" + moedaBR(o.preco) : "")).join(", ")) + '</span></div>');
+      '<span class="eg-resumo">' + escapar(ops.map((o) => o.nome + (o.preco > 0 ? " +" + Dinheiro.comPrefixo(o.preco) : "")).join(", ")) + '</span></div>');
   }
   $("editorLegadoLista").innerHTML = linhas.join("");
   box.hidden = false;

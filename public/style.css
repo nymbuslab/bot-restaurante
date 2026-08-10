@@ -5895,6 +5895,14 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 .gaveta-overlay { z-index: 1100; }
 .gaveta { z-index: 1101; }
 #vincularOverlay { z-index: 1100; }
+/* Gaveta FECHADA precisa sair da conta do a11y.js: ele escolhe o overlay de maior
+   z-index para dar o foco, e a gaveta só é deslocada por `transform`, seguindo
+   "visível" para quem olha o CSS. Com z 1101 ela venceria TODOS os modais do painel
+   e o foco-ao-abrir iria para o lugar errado. `visibility: hidden` resolve e ainda
+   tira os botões dela do alcance do Tab. A troca de visibilidade é adiada para o
+   fim do deslize, senão a gaveta sumiria de uma vez ao fechar, sem animação. */
+.gaveta { visibility: hidden; transition: transform .25s cubic-bezier(.4, 0, .2, 1), visibility 0s linear .25s; }
+.gaveta.aberto { visibility: visible; transition: transform .25s cubic-bezier(.4, 0, .2, 1), visibility 0s; }
 .mesa-rodape-totais { margin-bottom: 10px; }
 .mesa-tot-linha {
   display: flex;
