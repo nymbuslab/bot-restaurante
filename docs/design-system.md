@@ -140,6 +140,17 @@ Padrões consolidados no redesign do painel. Reaproveitar nas próximas telas �
 
 - Entre seções: **22–26px** de `margin-bottom`. Gap de grid: **16px**. Padding de card: **16–24px**. Gap interno de form: o do `.campo`.
 - Barra de salvar sticky: `.barra-salvar` (pode levar "Descartar" + "Salvar" e um aviso, ver `.cfg-barra`).
+- **Nada de valor avulso em UI nova:** usar os tokens `--space-1..8` (4/8/12/16/20/24/32). Se você digitou `margin-top: 10px`, faltou token.
+- **Botão "+ Adicionar ..." nunca cola no que vem antes.** A folga vem por **adjacência**, não por id: `table + .secundario.mini`, `.opc-builder + …`, `.var-builder + …`, `.eg-lista + …`, `.lista-dicas + …` recebem `margin-top: var(--space-3)`. Ao criar uma lista nova com botão de adicionar, **acrescente o seletor do container a essa regra** em vez de escrever margem no botão. Assim o padrão vale para o que vier depois, sem depender de auditoria visual.
+
+### Texto de ajuda
+
+Explicação de campo **não é parágrafo**. Três formas, nesta ordem de preferência:
+
+- **`.campo-nota`** — nota curta presa ao campo, para a dúvida pontual (ex.: `0 = sem limite` sob o Máximo, `Em branco = ilimitado` sob o Estoque). Fica dentro do `.campo`, logo depois do input.
+- **`.lista-dicas`** — quando há **mais de uma regra**, viram tópicos curtos, um por regra. Usado em Variações, Complementos do produto, item por kg e no aviso de exclusão de conta.
+- **`.editor-dica`** — só para **uma** frase de contexto (ex.: um exemplo). Duas ou mais regras numa frase corrida é o sinal de que deveria ser `.lista-dicas`.
+- Em ação destrutiva, listar o que será perdido é mais honesto que descrever em frase corrida.
 
 ### Breakpoints oficiais
 

@@ -3318,8 +3318,6 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .eg-selo.proprio { border-color: var(--accent); color: var(--text-primary); }
 .eg-botoes { display: flex; gap: 4px; flex: 0 0 auto; }
 .eg-acoes { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
-/* Botões "+ Adicionar ..." nunca colam na lista acima (mesma folga do #grpAddOpcao) */
-#editor-var-add { margin-top: var(--space-3); }
 /* Painel da regra efetiva, aberto embaixo da linha do grupo */
 .eg-regra {
   background: var(--bg-elevated); border: 1px solid var(--border);
@@ -5892,6 +5890,15 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
    Sem isto o "+ Adicionar opção" cola na última opção e o rótulo OPÇÕES encosta no
    texto de ajuda logo acima. */
 #grpDicaRegra { margin: var(--space-3) 0 var(--space-1); }
+/* PADRÃO: botão "+ Adicionar ..." nunca cola no que vem antes. Regra por adjacência
+   em vez de por id, para valer também no que for criado depois. Cobre os quatro do
+   painel hoje: faixas e bairros do frete (depois de <table>), opções do grupo e
+   variações do item (depois do respectivo builder). */
+table + .secundario.mini,
+.opc-builder + .secundario.mini,
+.var-builder + .secundario.mini,
+.eg-lista + .secundario.mini,
+.lista-dicas + .secundario.mini { margin-top: var(--space-3); }
 /* Nota curta presa ao campo (ex.: "0 = sem limite" embaixo do Máximo) e explicação
    em tópicos. Genéricas: a regra é preferir isto a parágrafo de ajuda. */
 .campo-nota { margin: var(--space-1) 0 0; font-size: 11px; color: var(--text-secondary); }
