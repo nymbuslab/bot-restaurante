@@ -1324,8 +1324,13 @@
       <div class="card">
         <div id="grupos-lista"></div>
       </div>
+    </section>
+      </main>
+    </div>
+  </div>
 
-      <!-- Grupo: overlay + gaveta lateral (mesmo componente do painel da Mesa) -->
+  <!-- Gaveta do grupo (biblioteca de Complementos). Fica FORA da aba: ela também
+       abre a partir do editor do produto, e seção .aba inativa é display:none. -->
       <div class="gaveta-overlay" id="grpGavetaOverlay"></div>
       <aside class="gaveta" id="grpGaveta" role="dialog" aria-modal="true" aria-labelledby="grpGavetaTitulo">
         <div class="gaveta-topo">
@@ -1366,8 +1371,18 @@
           </div>
         </div>
       </aside>
-    </section>
-      </main>
+
+  <!-- Vincular grupo da biblioteca ao produto -->
+  <div id="vincularOverlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="vincularTitulo">
+    <div class="modal-caixa">
+      <h3 id="vincularTitulo">Usar grupo da biblioteca</h3>
+      <p class="sub">Marque os grupos que este produto usa. As opções continuam vindo da biblioteca.</p>
+      <input type="search" id="vincularBusca" placeholder="Buscar por grupo ou opção" aria-label="Buscar por grupo ou opção" />
+      <div id="vincularLista" class="vinc-lista"></div>
+      <div class="modal-acoes">
+        <button class="secundario" id="vincularCancelar">Cancelar</button>
+        <button id="vincularConfirmar">Vincular</button>
+      </div>
     </div>
   </div>
 
@@ -1557,7 +1572,6 @@
       <!-- NAV DE ABAS -->
       <div class="editor-tabs" id="editor-tabs-nav">
         <button type="button" class="editor-tab ativo" data-tab="principal">Principal</button>
-        <button type="button" class="editor-tab" data-tab="composicoes">Composições</button>
         <button type="button" class="editor-tab" data-tab="opcionais">Complementos</button>
         <button type="button" class="editor-tab" data-tab="variacoes">Variações</button>
       </div>
@@ -1621,25 +1635,23 @@
         </div>
       </div>
 
-      <!-- PAINEL COMPOSIÇÕES -->
-      <div class="editor-panel" id="panel-composicoes">
-        <div class="editor-panel-scroll">
-          <div class="campo">
-            <label>Composição</label>
-            <div id="editor-composicao-builder" class="comp-builder"></div>
-            <button type="button" class="secundario mini" id="editor-comp-add-subgrupo">+ Adicionar subgrupo</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAINEL OPCIONAIS -->
+      <!-- PAINEL COMPLEMENTOS — grupos da biblioteca vinculados a este produto -->
       <div class="editor-panel" id="panel-opcionais">
         <div class="editor-panel-scroll">
           <div class="campo">
-            <label>Complementos (com preço extra)</label>
-            <p class="editor-dica">Itens que o cliente pode adicionar por um valor extra. Ex.: "Adicionar queijo R$ 3,00", "Adicionar bacon R$ 2,50".</p>
-            <div id="editor-opcionais-builder" class="opc-builder"></div>
-            <button type="button" class="secundario mini" id="editor-opc-add">+ Adicionar complemento</button>
+            <label>Complementos deste produto</label>
+            <p class="editor-dica">As opções vêm da biblioteca (Cadastros → Produtos → Complementos). Aqui você escolhe quais grupos este produto usa, em que ordem, e quantas opções o cliente escolhe.</p>
+            <div id="editorGruposLista" class="eg-lista"></div>
+            <div class="eg-acoes">
+              <button type="button" class="secundario mini" id="btnVincularGrupo">Usar grupo da biblioteca</button>
+              <button type="button" class="secundario mini" id="btnCriarGrupoNoItem">Criar grupo novo</button>
+            </div>
+          </div>
+          <!-- Complementos do formato antigo: só leitura, até a conversão para a biblioteca -->
+          <div class="eg-legado" id="editorLegado" hidden>
+            <p class="eg-legado-tit">Complementos do formato antigo</p>
+            <p class="editor-dica">Continuam valendo no cardápio e serão convertidos para a biblioteca. Enquanto isso, eles não são editados por aqui.</p>
+            <div id="editorLegadoLista"></div>
           </div>
         </div>
       </div>

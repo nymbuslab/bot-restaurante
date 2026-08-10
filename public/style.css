@@ -3291,6 +3291,60 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .editor-panel.ativo { display: block; height: 400px; overflow-y: auto; }
 .editor-panel-scroll { padding: 20px 24px; }
 
+/* ---------- Complementos do produto: grupos vinculados à biblioteca ---------- */
+.eg-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.eg-vazio { margin: 6px 0 0; }
+.eg-linha {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.eg-linha.eg-orfa { border-color: var(--warning); }
+.eg-pos {
+  flex: 0 0 auto; width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); border-radius: var(--radius-sm);
+  font-size: 12px; font-weight: 700; color: var(--text-secondary);
+}
+.eg-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.eg-nome { font-size: 14px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eg-resumo { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eg-selo {
+  flex: 0 0 auto; background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  padding: 5px 10px; border-radius: var(--radius-sm); cursor: pointer;
+}
+.eg-selo:hover { color: var(--text-primary); }
+.eg-selo.proprio { border-color: var(--accent); color: var(--text-primary); }
+.eg-botoes { display: flex; gap: 4px; flex: 0 0 auto; }
+.eg-acoes { display: flex; gap: 8px; margin-top: 10px; }
+/* Painel da regra efetiva, aberto embaixo da linha do grupo */
+.eg-regra {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px; margin-top: -2px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.eg-regra-dica { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.eg-regra-num { display: flex; gap: 12px; flex-wrap: wrap; }
+.eg-regra-num label { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+.eg-regra-num input { width: 72px; }
+.eg-regra-acoes { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+/* Complementos do formato antigo (leitura), até a conversão para a biblioteca */
+.eg-legado { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+.eg-legado-tit { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.eg-legado-linha { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--border-subtle); }
+.eg-legado-linha:last-child { border-bottom: none; }
+.eg-legado-linha .eg-resumo { white-space: normal; }
+/* Modal: escolher grupos da biblioteca */
+.vinc-lista { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; margin: 12px 0; }
+.vinc-item {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.vinc-item:hover { border-color: var(--accent); }
+.vinc-item input { width: auto; flex: 0 0 auto; margin: 0; }
+
 /* ---------- Construtor de Composição ---------- */
 .comp-builder {
   display: flex;
@@ -5953,6 +6007,10 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   flex-shrink: 0;
 }
 .gaveta-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+/* A gaveta do grupo também abre POR CIMA do editor do produto (modal em z 1000),
+   e ainda assim abaixo dos diálogos de confirmação (z 1200). */
+.gaveta-overlay { z-index: 1100; }
+.gaveta { z-index: 1101; }
 .mesa-rodape-totais { margin-bottom: 10px; }
 .mesa-tot-linha {
   display: flex;
