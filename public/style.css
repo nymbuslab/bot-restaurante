@@ -5885,7 +5885,14 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
-.gaveta-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+.gaveta-acoes { display: flex; gap: var(--space-2); justify-content: flex-end; }
+/* Ritmo vertical da gaveta do grupo, na escala de espaçamento do painel (--space-*).
+   Sem isto o "+ Adicionar opção" cola na última opção e o rótulo OPÇÕES encosta no
+   texto de ajuda logo acima. */
+#grpDicaRegra { margin: var(--space-3) 0 var(--space-1); }
+.grp-secao-opcoes { margin-top: var(--space-5); }
+#grpOpcoes { margin-top: var(--space-2); }
+#grpAddOpcao { margin-top: var(--space-3); }
 /* A gaveta do grupo também abre POR CIMA do editor do produto (modal em z 1000),
    e ainda assim abaixo dos diálogos de confirmação (z 1200). Mesmo caso do modal
    "Usar grupo da biblioteca": os dois são abertos DE DENTRO do editor e, sem
