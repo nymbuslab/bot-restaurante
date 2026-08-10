@@ -5887,9 +5887,14 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 }
 .gaveta-acoes { display: flex; gap: 8px; justify-content: flex-end; }
 /* A gaveta do grupo também abre POR CIMA do editor do produto (modal em z 1000),
-   e ainda assim abaixo dos diálogos de confirmação (z 1200). */
+   e ainda assim abaixo dos diálogos de confirmação (z 1200). Mesmo caso do modal
+   "Usar grupo da biblioteca": os dois são abertos DE DENTRO do editor e, sem
+   z-index próprio, ficariam atrás dele (empate em 1000 → vence quem vem depois no
+   DOM, e o #editor-overlay vem depois). A gaveta fica 1 acima do modal de vincular
+   porque "Criar grupo novo" pode abrir por cima dele. */
 .gaveta-overlay { z-index: 1100; }
 .gaveta { z-index: 1101; }
+#vincularOverlay { z-index: 1100; }
 .mesa-rodape-totais { margin-bottom: 10px; }
 .mesa-tot-linha {
   display: flex;

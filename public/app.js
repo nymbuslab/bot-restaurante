@@ -1891,7 +1891,12 @@ $("editor-overlay").addEventListener("click", (e) => {
   if (e.target === $("editor-overlay")) fecharEditorItem();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && $("editor-overlay").style.display !== "none") fecharEditorItem();
+  if (e.key !== "Escape" || $("editor-overlay").style.display === "none") return;
+  // Gaveta do grupo ou modal de vincular abertos POR CIMA: o Esc é deles, senão o
+  // editor fecharia junto e levaria as alterações não salvas (mesma regra do drawer da Mesa).
+  if ($("grpGaveta").classList.contains("aberto")) return;
+  if ($("vincularOverlay").style.display === "flex") return;
+  fecharEditorItem();
 });
 // Navegação entre abas do editor
 $("editor-tabs-nav").addEventListener("click", (e) => {
@@ -2238,6 +2243,9 @@ $("btnVincularGrupo").addEventListener("click", egAbrirVincular);
 $("vincularCancelar").addEventListener("click", egFecharVincular);
 $("vincularConfirmar").addEventListener("click", egConfirmarVincular);
 $("vincularOverlay").addEventListener("click", (e) => { if (e.target === $("vincularOverlay")) egFecharVincular(); });
+document.addEventListener("keydown", (e) => {   // Esc fecha só o modal; o editor atrás fica
+  if (e.key === "Escape" && $("vincularOverlay").style.display === "flex") { e.preventDefault(); egFecharVincular(); }
+});
 $("vincularBusca").addEventListener("input", renderVincularLista);
 $("btnCriarGrupoNoItem").addEventListener("click", (e) => {
   egVincularAoSalvar = true;               // ao salvar a gaveta, já entra neste produto
