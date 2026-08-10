@@ -4850,11 +4850,12 @@ function pdvAtualizarBadges() {
 }
 
 function pdvTileClick(item) {
-  const ops = pdvParseOpcionais(item.opcionais);
-  const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  const bib = pdvGruposDoItem(item);
+  const ops = bib.length ? [] : pdvParseOpcionais(item.opcionais);
+  const grps = bib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []);
   const ehKg = item.unidade === "kg";
-  if (ops.length || grps.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (bib.length || ops.length || grps.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs/composição) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao && !(l.composicao && l.composicao.length));
   if (ex) ex.qtd += 1;
@@ -4864,21 +4865,32 @@ function pdvTileClick(item) {
   renderPdvCarrinho();
 }
 
+// Grupos da biblioteca já resolvidos para o item (vazio = item ainda não convertido,
+// que segue pelo caminho legado). Mesma regra do servidor em src/pdv.js.
+function pdvGruposDoItem(item) {
+  return window.Grupos ? window.Grupos.resolverGrupos(item, cardapioAtual && cardapioAtual.grupos) : [];
+}
+
 // ---- Modal de item (opcionais / peso / observação) ----
-let pdvItemCtx = null; // { item, ops, uid|null }
+let pdvItemCtx = null; // { item, ops, grps, bib, vars, uid|null, ehKg }
 let pdvGrupoCompleto = {}; // grupo → já rolou p/ o próximo (evita re-rolar ao trocar opção)
 
 function abrirPdvItemModal(item, uid) {
-  const ops = pdvParseOpcionais(item.opcionais);
-  const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  // Item convertido manda: as opções vêm da biblioteca (com id e preço próprios) e
+  // o caminho legado (composicao + opcionais em texto) não é renderizado.
+  const bib = pdvGruposDoItem(item);
+  const ops = bib.length ? [] : pdvParseOpcionais(item.opcionais);
+  const grps = bib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []).map((v) => ({
     id: v.id, nome: v.nome, preco: v.preco,
     esgotado: window.Estoque ? window.Estoque.statusEstoque(v).esgotado : false,
   }));
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
-  pdvItemCtx = { item, ops, grps, vars, uid: uid != null ? uid : null, ehKg };
+  pdvItemCtx = { item, ops, grps, bib, vars, uid: uid != null ? uid : null, ehKg };
   pdvGrupoCompleto = {};
+  const bibIni = {};   // reabrir a linha: remarca as opções já escolhidas
+  (linha && Array.isArray(linha.grupos) ? linha.grupos : []).forEach((e) => { bibIni[e.grupo] = e.opcoes || []; });
   const opsQtd = ops.map((o) => {
     const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
     return found ? found.qtd : 0;
@@ -4917,6 +4929,32 @@ function abrirPdvItemModal(item, uid) {
       html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + id + '">' +
         '<span class="pdv-m-opt-nome">' + pdvEsc(nome) + '</span>' +
         '<input type="' + tipo + '" name="pgrp_' + pdvEsc(g.nome) + '" value="' + pdvEsc(nome) + '" data-grupo="' + pdvEsc(g.nome) + '" data-max="' + g.max + '"' + marcado + ' id="' + id + '" class="pdv-m-input" />' +
+        '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
+      '</label>';
+    });
+    html += '</div>';
+  });
+  // Grupos da biblioteca: rádio quando é escolha única, caixa de seleção nos demais.
+  bib.forEach((g) => {
+    const unico = g.max === 1;
+    const minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
+    const sub = unico ? "Escolha 1 opção"
+      : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                       : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+    html += '<div class="pdv-grp-bib pdv-m-grp" data-bib="' + pdvEsc(g.id) + '" data-grupo-wrap="' + pdvEsc(g.id) + '">' +
+      '<div class="pdv-m-grp-cab">' +
+        '<div class="pdv-m-grp-tit">' + pdvEsc(g.nome) + '<div class="pdv-m-grp-sub" data-sub="' + pdvEsc(g.id) + '">' + pdvEsc(sub) + '</div></div>' +
+        '<span class="pdv-m-grp-selo' + (g.obrigatorio ? ' obrig' : '') + '" data-selo="' + pdvEsc(g.id) + '">' + (g.obrigatorio ? 'Obrigatório' : 'Opcional') + '</span>' +
+        '<span class="pdv-m-check" data-check="' + pdvEsc(g.id) + '" hidden>' + PDV_CHECK + '</span>' +
+      '</div>';
+    g.opcoes.forEach((o, idx) => {
+      const marcado = (bibIni[g.id] || []).indexOf(o.id) !== -1 ? " checked" : "";
+      const tipo = unico ? "radio" : "checkbox";
+      const domId = "pbib_" + String(g.id).replace(/\W/g, "") + "_" + idx;
+      html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + domId + '">' +
+        '<span class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span>' +
+          (o.preco > 0 ? '<span class="pdv-m-opt-preco">+ ' + pdvMoney(o.preco) + '</span>' : '') + '</span>' +
+        '<input type="' + tipo + '" name="pbib_' + pdvEsc(g.id) + '" value="' + pdvEsc(o.id) + '" data-bib="' + pdvEsc(g.id) + '" data-max="' + g.max + '"' + marcado + ' id="' + domId + '" class="pdv-m-input" />' +
         '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
       '</label>';
     });
@@ -5004,6 +5042,25 @@ function abrirPdvItemModal(item, uid) {
       } else { pdvGrupoCompleto[grupo] = false; }
     }
   }));
+  $("pdvItemCaixa").querySelectorAll(".pdv-grp-bib input").forEach((inp) => inp.addEventListener("change", () => {
+    const gid = inp.dataset.bib;
+    const escG = (window.CSS && CSS.escape) ? CSS.escape(gid) : gid.replace(/"/g, '\\"');
+    if (inp.type === "checkbox") {
+      const max = parseInt(inp.dataset.max, 10) || 0;
+      const marc = $("pdvItemCaixa").querySelectorAll('.pdv-grp-bib input[data-bib="' + escG + '"]:checked');
+      if (max > 1 && marc.length > max) inp.checked = false;
+    }
+    pdvItemRecalc();
+    pdvAtualizarGrupos();
+    const gm = (pdvItemCtx.bib || []).filter((x) => String(x.id) === String(gid))[0];
+    if (gm) {
+      const sel = $("pdvItemCaixa").querySelectorAll('.pdv-grp-bib[data-bib="' + escG + '"] input:checked').length;
+      const effMax = gm.max > 0 ? gm.max : gm.opcoes.length;
+      if (sel >= effMax) {
+        if (!pdvGrupoCompleto[gid]) { pdvGrupoCompleto[gid] = true; pdvScrollProximaSecao(gid); }
+      } else { pdvGrupoCompleto[gid] = false; }
+    }
+  }));
   const obs = $("pdvMobs"), obsC = $("pdvMobsCount");
   if (obs && obsC) { obsC.textContent = obs.value.length + "/200"; obs.addEventListener("input", () => { obsC.textContent = obs.value.length + "/200"; }); }
   const peso = $("pdvMpeso"); if (peso) peso.addEventListener("input", pdvItemRecalc);
@@ -5019,6 +5076,21 @@ function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = 
 // conforme as escolhas — só apresentação (a validação segue em avaliarComposicao).
 function pdvAtualizarGrupos() {
   const cx = $("pdvItemCaixa");
+  ((pdvItemCtx && pdvItemCtx.bib) || []).forEach((g) => {
+    const escG = (window.CSS && CSS.escape) ? CSS.escape(g.id) : String(g.id).replace(/"/g, '\\"');
+    const sel = cx.querySelectorAll('.pdv-grp-bib[data-bib="' + escG + '"] input:checked').length;
+    const min = g.obrigatorio ? Math.max(1, g.min) : 0;
+    const max = g.max > 0 ? g.max : g.opcoes.length;
+    const ok = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
+    const check = cx.querySelector('.pdv-m-check[data-check="' + escG + '"]');
+    const selo = cx.querySelector('.pdv-m-grp-selo[data-selo="' + escG + '"]');
+    if (check) check.hidden = !ok;
+    if (selo) selo.hidden = ok;
+    if (!g.obrigatorio && g.max > 1) {
+      const sub = cx.querySelector('.pdv-m-grp-sub[data-sub="' + escG + '"]');
+      if (sub) sub.textContent = "Escolha até " + g.max + " opções · " + sel + "/" + g.max;
+    }
+  });
   ((pdvItemCtx && pdvItemCtx.grps) || []).forEach((g) => {
     const escG = (window.CSS && CSS.escape) ? CSS.escape(g.nome) : g.nome.replace(/"/g, '\\"');
     const sel = cx.querySelectorAll('.pdv-grp[data-grupo="' + escG + '"] input:checked').length;
@@ -5070,6 +5142,13 @@ function _pdvLerModalItem() {
     const itens = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
     if (itens.length) composicao.push({ grupo, itens });
   });
+  // Escolhas nos grupos da biblioteca (ids), no formato de `avaliarEscolhas`.
+  const grupos = [];
+  ($("pdvItemCaixa").querySelectorAll(".pdv-grp-bib")).forEach((box) => {
+    const gid = box.getAttribute("data-bib");
+    const opcoes = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
+    grupos.push({ grupo: gid, opcoes });
+  });
   const variacoes = [];
   $("pdvItemCaixa").querySelectorAll('[data-stepper="var"]').forEach((box) => {
     const i = Number(box.dataset.vari);
@@ -5077,23 +5156,40 @@ function _pdvLerModalItem() {
     if (q > 0 && vars[i]) variacoes.push({ id: vars[i].id, nome: vars[i].nome, preco: vars[i].preco, qtd: q });
   });
   const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
-  return { item, qtd, composicao, opcionais, variacoes, observacao, ehKg };
+  return { item, qtd, composicao, opcionais, grupos, variacoes, observacao, ehKg };
 }
 function pdvItemRecalc() {
-  const { item, qtd, opcionais, variacoes } = _pdvLerModalItem();
-  const add = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
+  const { item, qtd, opcionais, grupos, variacoes } = _pdvLerModalItem();
+  const bib = (pdvItemCtx && pdvItemCtx.bib) || [];
+  const add = bib.length
+    ? window.Grupos.avaliarEscolhas(bib, grupos).addUnit
+    : opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
   const addV = (variacoes || []).reduce((s, v) => s + v.preco * v.qtd, 0);
   const tot = ((Number(item.preco) || 0) + add + addV) * (Number(qtd) || 0);
   const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
 }
 function pdvConfirmarItem() {
-  const { item, qtd, composicao, opcionais, variacoes, observacao, ehKg } = _pdvLerModalItem();
+  const { item, qtd, composicao, opcionais, grupos, variacoes, observacao, ehKg } = _pdvLerModalItem();
   if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
-  const aval = window.Grupos ? window.Grupos.avaliarComposicao(item, composicao) : { valido: true };
-  if (!aval.valido) { toast(aval.pendencias[0] || "Complete a composição.", "erro"); return; }
+  const bib = (pdvItemCtx && pdvItemCtx.bib) || [];
+  let compLinha, opsLinha, gruposLinha = null;
+  if (bib.length) {
+    // avaliarEscolhas valida E devolve composição/adicionais no formato antigo: o
+    // carrinho, a comanda e o pedido seguem iguais, sem nada saber de id.
+    const av = window.Grupos.avaliarEscolhas(bib, grupos);
+    if (!av.valido) { toast(av.pendencias[0] || "Complete as escolhas.", "erro"); return; }
+    compLinha = av.composicao;
+    opsLinha = av.opcionais;
+    gruposLinha = grupos.filter((e) => e.opcoes && e.opcoes.length);
+  } else {
+    const aval = window.Grupos ? window.Grupos.avaliarComposicao(item, composicao) : { valido: true, selecoes: composicao };
+    if (!aval.valido) { toast(aval.pendencias[0] || "Complete a composição.", "erro"); return; }
+    compLinha = aval.selecoes;
+    opsLinha = opcionais;
+  }
   // item COM variações exige ≥1 escolha (senão o total seria só o preço base)
   if ((pdvItemCtx.vars || []).length && !(variacoes || []).length) { toast("Escolha ao menos 1 opção.", "erro"); return; }
-  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: aval.selecoes, opcionais, variacoes, observacao };
+  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: compLinha, opcionais: opsLinha, grupos: gruposLinha, variacoes, observacao };
   const idx = pdvItemCtx.uid != null ? pdvCart.findIndex((l) => l.uid === pdvItemCtx.uid) : -1;
   if (idx >= 0) pdvCart[idx] = linha; else pdvCart.push(linha);
   fecharPdvItemModal();
@@ -5560,7 +5656,7 @@ async function finalizarVendaPdv() {
     : (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
-    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
+    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), grupos: (l.grupos || []), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao,
@@ -6540,6 +6636,7 @@ async function mesaLancarDoPdv() {
         id: l.id, qtd: l.qtd,
         composicao: l.composicao || [],
         opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd }; }),
+        grupos: l.grupos || [],
         variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd }; }),
         observacao: l.observacao || ""
       };

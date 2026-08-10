@@ -366,7 +366,7 @@
   // completar; senão adiciona o sabor direto ao carrinho (1 clique, como no PDV).
   function onFlavorClick(parent, v) {
     if (v.esgotado) return;
-    if ((parent.composicao || []).length || (parent.opcionais || []).length) { abrirModal(parent); return; }
+    if ((parent.grupos || []).length || (parent.composicao || []).length || (parent.opcionais || []).length) { abrirModal(parent); return; }
     addLinha({
       id: parent.id, nome: parent.nome, preco: Number(parent.preco) || 0,
       composicao: [], opcionais: [],
@@ -410,6 +410,10 @@
 
   // ---------- Modal de item ----------
   var modalItem = null, modalQtd = 1, modalOps = [], modalEscolhas = {}, modalVars = [], modalGrupos = [], modalGrupoCompleto = {}; // modalGrupoCompleto[grupo] = já rolou p/ o próximo (evita re-rolar ao trocar opção)
+  // Biblioteca de grupos (item convertido): opção tem id e preço próprios e a regra
+  // vem resolvida do servidor. Com `modalBib` preenchido, o caminho legado
+  // (composicao + opcionais) não é renderizado.
+  var modalBib = [], modalSel = {};   // modalSel[grupoId] = [opcaoId]
 
   function abrirModal(it) {
     var soVer = !!it.apenasLocal; // item "Só no local": modal só de visualização (não pede)
@@ -428,14 +432,23 @@
       '</div>';
     modalEscolhas = {};
     modalGrupoCompleto = {};
-    var grps = (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
+    modalBib = (it.grupos || []);
+    modalSel = {};
+    var grps = modalBib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
     modalGrupos = grps;
+    if (modalBib.length) ops = [];   // item convertido: os adicionais vêm dos grupos
     if (soVer) {
       // Modo visualização: mostra o que vem (composição) e os adicionais como informação,
       // sem seletores nem botão de adicionar — item é vendido só no local.
       grps.forEach(function (g) {
         html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">' + esc(g.nome) + '</div></div>' +
           '<div class="cd-m-grp-info">' + esc(g.itens.join(", ")) + '</div>';
+      });
+      modalBib.forEach(function (g) {   // item convertido: grupos da biblioteca como informação
+        html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">' + esc(g.nome) + '</div></div>' +
+          '<div class="cd-m-grp-info">' + esc(g.opcoes.map(function (o) {
+            return o.nome + (o.preco > 0 ? " (+ " + money(o.preco) + ")" : "");
+          }).join(", ")) + '</div>';
       });
       if (ops.length) {
         html += '<div class="cd-m-grp-cab"><div class="cd-m-grp-tit">Adicionais</div></div>';
@@ -472,6 +485,35 @@
         html += '<label class="cd-m-opt cd-m-opt-sel" for="' + id + '">' +
           '<span class="cd-m-opt-nome">' + esc(nome) + '</span>' +
           '<input type="' + tipo + '" name="' + esc(g.nome) + '" value="' + esc(nome) + '" data-grupo="' + esc(g.nome) + '" data-max="' + g.max + '" id="' + id + '" class="cd-m-input" />' +
+          '<span class="cd-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
+        '</label>';
+      });
+      html += '</div>';
+    });
+    // Grupos da biblioteca: uma seção por grupo, rádio quando é escolha única e
+    // caixa de seleção nos demais. O preço da opção aparece à direita do nome.
+    modalBib.forEach(function (g) {
+      var unico = g.max === 1;
+      var minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
+      var sub = unico
+        ? "Escolha 1 opção"
+        : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                         : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+      html += '<div class="cd-m-grp" data-grupo-wrap="' + esc(g.id) + '">' +
+        '<div class="cd-m-grp-cab">' +
+          '<div class="cd-m-grp-tit">' + esc(g.nome) +
+            '<div class="cd-m-grp-sub" data-sub="' + esc(g.id) + '">' + esc(sub) + '</div>' +
+          '</div>' +
+          '<span class="cd-m-grp-selo' + (g.obrigatorio ? ' obrig' : '') + '" data-selo="' + esc(g.id) + '">' + (g.obrigatorio ? 'Obrigatório' : 'Opcional') + '</span>' +
+          '<span class="cd-m-check" data-check="' + esc(g.id) + '" hidden>' + IC.check + '</span>' +
+        '</div>';
+      g.opcoes.forEach(function (o, i) {
+        var tipo = unico ? "radio" : "checkbox";
+        var domId = "bib_" + String(g.id).replace(/\W/g, "") + "_" + i;
+        html += '<label class="cd-m-opt cd-m-opt-sel" for="' + domId + '">' +
+          '<span class="cd-m-opt-txt"><span class="cd-m-opt-nome">' + esc(o.nome) + '</span>' +
+            (o.preco > 0 ? '<span class="cd-m-opt-preco">+ ' + money(o.preco) + '</span>' : '') + '</span>' +
+          '<input type="' + tipo + '" name="bib_' + esc(g.id) + '" value="' + esc(o.id) + '" data-bib="' + esc(g.id) + '" data-max="' + g.max + '" id="' + domId + '" class="cd-m-input" />' +
           '<span class="cd-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
         '</label>';
       });
@@ -525,7 +567,9 @@
     caixa.innerHTML = html;
     caixa.scrollTop = 0;
     caixa.querySelectorAll(".cd-m-input").forEach(function (inp) {
-      inp.addEventListener("change", function () { onEscolhaGrupo(inp); });
+      inp.addEventListener("change", function () {
+        if (inp.getAttribute("data-bib")) onEscolhaBib(inp); else onEscolhaGrupo(inp);
+      });
     });
     caixa.querySelectorAll("[data-opinc]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opinc"), 1); }); });
     caixa.querySelectorAll("[data-opdec]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opdec"), -1); }); });
@@ -550,6 +594,20 @@
   // as escolhas — só apresentação; a validação de verdade segue em avaliarComposicao.
   function atualizarGrupos() {
     var caixa = $("cdModalCaixa");
+    (modalBib || []).forEach(function (g) {
+      var sel = (modalSel[g.id] || []).length;
+      var min = g.obrigatorio ? Math.max(1, g.min) : 0;
+      var max = g.max > 0 ? g.max : g.opcoes.length;
+      var okReq = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
+      var check = caixa.querySelector('.cd-m-check[data-check="' + cssEsc(g.id) + '"]');
+      var selo = caixa.querySelector('.cd-m-grp-selo[data-selo="' + cssEsc(g.id) + '"]');
+      if (check) check.hidden = !okReq;
+      if (selo) selo.hidden = okReq;
+      if (!g.obrigatorio && g.max > 1) {
+        var subEl = caixa.querySelector('.cd-m-grp-sub[data-sub="' + cssEsc(g.id) + '"]');
+        if (subEl) subEl.textContent = "Escolha até " + g.max + " opções · " + sel + "/" + g.max;
+      }
+    });
     (modalGrupos || []).forEach(function (g) {
       var sel = (modalEscolhas[g.nome] || []).length;
       var min = g.obrigatorio ? Math.max(1, g.min) : 0;
@@ -567,6 +625,36 @@
   }
 
   function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(String(s)) : String(s).replace(/"/g, '\\"'); }
+
+  // Escolha num grupo da biblioteca (valores são ids de opção).
+  function onEscolhaBib(inp) {
+    var gid = inp.getAttribute("data-bib");
+    var max = parseInt(inp.getAttribute("data-max"), 10) || 0;
+    var caixa = $("cdModalCaixa");
+    var marcados = Array.prototype.slice.call(caixa.querySelectorAll('input[data-bib="' + cssEsc(gid) + '"]:checked'));
+    if (inp.type === "checkbox" && max > 1 && marcados.length > max) {   // trava no máximo
+      inp.checked = false;
+      marcados = marcados.filter(function (m) { return m !== inp; });
+    }
+    modalSel[gid] = marcados.map(function (m) { return m.value; });
+    atualizarPrecoModal();
+    atualizarGrupos();
+    var gm = modalBib.filter(function (x) { return String(x.id) === String(gid); })[0];
+    if (gm) {
+      var count = (modalSel[gid] || []).length;
+      var effMax = gm.max > 0 ? gm.max : gm.opcoes.length;
+      if (count >= effMax) {
+        if (!modalGrupoCompleto[gid]) { modalGrupoCompleto[gid] = true; scrollProximaSecao(gid); }
+      } else {
+        modalGrupoCompleto[gid] = false;
+      }
+    }
+  }
+
+  // Escolhas no formato que `avaliarEscolhas` espera: [{ grupo: id, opcoes: [id] }].
+  function escolhasBib() {
+    return Object.keys(modalSel).map(function (gid) { return { grupo: gid, opcoes: modalSel[gid] }; });
+  }
   function onEscolhaGrupo(inp) {
     var grupo = inp.getAttribute("data-grupo");
     var max = parseInt(inp.getAttribute("data-max"), 10) || 0;
@@ -627,14 +715,20 @@
 
   function atualizarPrecoModal() {
     if (!modalItem) return;
+    var usaBib = modalBib.length > 0;
+    var avalBib = usaBib && window.Grupos ? window.Grupos.avaliarEscolhas(modalBib, escolhasBib()) : null;
     var ops = modalItem.opcionais || [];
-    var add = ops.reduce(function (s, o, i) { return s + (Number(o.preco) || 0) * (modalOps[i] || 0); }, 0);
+    var add = usaBib
+      ? (avalBib ? avalBib.addUnit : 0)
+      : ops.reduce(function (s, o, i) { return s + (Number(o.preco) || 0) * (modalOps[i] || 0); }, 0);
     var vars = modalItem.variacoes || [];
     var addV = vars.reduce(function (s, v, i) { return s + (Number(v.preco) || 0) * (modalVars[i] || 0); }, 0);
     var btn = $("cdModalAdd");
     btn.innerHTML = '<span>Adicionar</span><span>' + money(((Number(modalItem.preco) || 0) + add + addV) * modalQtd) + '</span>';
     var esc2 = Object.keys(modalEscolhas).map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; });
-    var aval = window.Grupos ? window.Grupos.avaliarComposicao(modalItem, esc2) : { valido: true };
+    var aval = usaBib
+      ? (avalBib || { valido: true, pendencias: [] })
+      : (window.Grupos ? window.Grupos.avaliarComposicao(modalItem, esc2) : { valido: true });
     // item COM variações exige ≥1 escolha (senão o total seria só o preço base, geralmente 0)
     var totalVar = vars.reduce(function (s, v, i) { return s + (modalVars[i] || 0); }, 0);
     var faltaVar = vars.length > 0 && totalVar === 0;
@@ -643,6 +737,7 @@
   }
 
   function confirmarModal() {
+    var usaBib = modalBib.length > 0;
     var ops = modalItem.opcionais || [];
     var escolhidos = [];
     ops.forEach(function (o, i) {
@@ -656,12 +751,22 @@
     var comp = Object.keys(modalEscolhas)
       .map(function (g) { return { grupo: g, itens: modalEscolhas[g] }; })
       .filter(function (c) { return c.itens && c.itens.length; });
+    var escBib = null;
+    if (usaBib) {
+      // `avaliarEscolhas` já devolve a composição (grátis) e os adicionais (com preço)
+      // no formato antigo: o carrinho e o resumo seguem iguais, sem nada saber de id.
+      var av = window.Grupos.avaliarEscolhas(modalBib, escolhasBib());
+      comp = av.composicao;
+      escolhidos = av.opcionais;
+      escBib = escolhasBib().filter(function (e) { return e.opcoes && e.opcoes.length; });
+    }
     addLinha({
       id: modalItem.id,
       nome: modalItem.nome,
       preco: Number(modalItem.preco) || 0,
       composicao: comp,
       opcionais: escolhidos,
+      grupos: escBib,   // null no item legado; o servidor recalcula por aqui quando vem
       variacoes: varsEsc,
       observacao: ($("cdModalObs").value || "").trim(),
       qtd: modalQtd,
@@ -1036,7 +1141,7 @@
       troco: troco,
       observacao: ($("cdObsPedido").value || "").trim(),
       itens: carrinho.map(function (l) {
-        return { id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd || 1 }; }), variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd || 1 }; }), observacao: l.observacao || "" };
+        return { id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd || 1 }; }), grupos: (l.grupos || []), variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd || 1 }; }), observacao: l.observacao || "" };
       }),
     };
 
