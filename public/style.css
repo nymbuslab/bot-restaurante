@@ -741,6 +741,31 @@ nav button.ativo svg { opacity: 1; }
 .cat-ico:hover { background: var(--bg-elevated); color: var(--text-primary); }
 .cat-del:hover { color: var(--error); border-color: var(--error); }
 .cat-card-count { font-size: 12px; color: var(--text-secondary); }
+
+/* Tela Complementos (Cadastros → Produtos → Complementos) — biblioteca de grupos.
+   Irmã de Categorias: mesmo card, mesmos ícones de ação (.cat-ico/.cat-del). */
+.grp-busca { flex: 1 1 220px; min-width: 0; }
+.grp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.grp-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.grp-card-topo { display: flex; align-items: center; gap: 8px; }
+.grp-card-nome { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grp-card-regra { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.grp-ops { display: flex; flex-wrap: wrap; gap: 4px; }
+.grp-op {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); padding: 3px 8px;
+  font-size: 12px; color: var(--text-primary);
+}
+.grp-op-preco { font-weight: 700; }
+.grp-op-mais { align-self: center; font-size: 12px; color: var(--text-secondary); }
+.grp-card-uso { font-size: 12px; color: var(--text-secondary); }
+/* Gaveta do grupo: regra efetiva em texto, atualizada enquanto o dono digita */
+.grp-dica-regra { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px; }
 /* Nome da categoria na Gestão de Itens: só leitura (renomear é na tela Categorias) */
 .catNome-ro { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 
@@ -3266,131 +3291,64 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .editor-panel.ativo { display: block; height: 400px; overflow-y: auto; }
 .editor-panel-scroll { padding: 20px 24px; }
 
-/* ---------- Construtor de Composição ---------- */
-.comp-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
+/* ---------- Complementos do produto: grupos vinculados à biblioteca ---------- */
+.eg-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.eg-vazio { margin: 6px 0 0; }
+.eg-linha {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
 }
+.eg-linha.eg-orfa { border-color: var(--warning); }
+.eg-pos {
+  flex: 0 0 auto; width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); border-radius: var(--radius-sm);
+  font-size: 12px; font-weight: 700; color: var(--text-secondary);
+}
+.eg-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.eg-nome { font-size: 14px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eg-resumo { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eg-selo {
+  flex: 0 0 auto; background: var(--bg-elevated); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  padding: 5px 10px; border-radius: var(--radius-sm); cursor: pointer;
+}
+.eg-selo:hover { color: var(--text-primary); }
+.eg-selo.proprio { border-color: var(--accent); color: var(--text-primary); }
+.eg-botoes { display: flex; gap: 4px; flex: 0 0 auto; }
+.eg-acoes { display: flex; gap: 8px; margin-top: 10px; }
+/* Painel da regra efetiva, aberto embaixo da linha do grupo */
+.eg-regra {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px; margin-top: -2px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.eg-regra-dica { margin: 0; font-size: 12px; color: var(--text-secondary); }
+.eg-regra-num { display: flex; gap: 12px; flex-wrap: wrap; }
+.eg-regra-num label { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
+.eg-regra-num input { width: 72px; }
+.eg-regra-acoes { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+/* Complementos do formato antigo (leitura), até a conversão para a biblioteca */
+.eg-legado { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
+.eg-legado-tit { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.eg-legado-linha { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--border-subtle); }
+.eg-legado-linha:last-child { border-bottom: none; }
+.eg-legado-linha .eg-resumo { white-space: normal; }
+/* Modal: escolher grupos da biblioteca */
+.vinc-lista { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; margin: 12px 0; }
+.vinc-item {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.vinc-item:hover { border-color: var(--accent); }
+.vinc-item input { width: auto; flex: 0 0 auto; margin: 0; }
 
-.comp-subgrupo {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  background: var(--bg-elevated);
-}
+/* O construtor de Composição (classes .comp-*) saiu junto com a aba Composições do
+   editor do produto: os complementos agora vêm da biblioteca (classes .eg-* acima). */
 
-.comp-subgrupo-cabeca {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.comp-sg-regras {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-/* display:inline-flex no proprio seletor `.comp-sg-regras label` (mesma especificidade
-   do `.campo label` global, vence por ordem) — sem isso os rotulos viram block e o
-   layout quebra/sobrepoe; tambem anula uppercase/letter-spacing/margem que alargavam. */
-.comp-sg-regras label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 0;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-.comp-sg-obrig-lbl { cursor: pointer; }
-/* number com setinhas nativas comia o espaco do digito num campo estreito — escondemos
-   as setas (cross-browser) e centralizamos; assim o valor cabe inteiro em telas menores. */
-.comp-sg-num input {
-  width: 52px;
-  flex: none;
-  text-align: center;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.comp-sg-num input::-webkit-outer-spin-button,
-.comp-sg-num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-.comp-sg-nome {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 3px 6px;
-  color: var(--text-primary);
-  min-width: 0;
-}
-.comp-sg-nome:hover,
-.comp-sg-nome:focus { border-color: var(--border); background: var(--bg-overlay); outline: none; }
-
-.comp-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-  min-height: 20px;
-}
-
-.comp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--bg-overlay);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 6px 3px 10px;
-  font-size: 12px;
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
-.comp-chip-del {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
-  box-shadow: none;
-}
-.comp-chip-del:hover { color: var(--error); background: var(--error-subtle); }
-
-.comp-add-ing {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.comp-ing-input {
-  flex: 1;
-  font-size: 13px;
-  padding: 5px 9px;
-  min-width: 0;
-}
-
-/* ---------- Construtor de Opcionais ---------- */
+/* ---------- Linhas de opção (gaveta do grupo) ---------- */
 .opc-builder {
   display: flex;
   flex-direction: column;
@@ -5780,15 +5738,21 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .mesas-slider-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
 input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cursor: pointer; }
 /* Drawer */
-.mesa-painel-overlay {
+/* Gaveta lateral. Nasceu no painel da Mesa e virou o componente único de gaveta
+   do painel: `.gaveta*` é o nome genérico (tela Complementos usa), `.mesa-painel*`
+   segue valendo para as Mesas. Mesmas regras, dois nomes — nada duplicado. */
+.mesa-painel-overlay,
+.gaveta-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   z-index: 200;
   display: none;
 }
-.mesa-painel-overlay.visivel { display: block; }
-.mesa-painel {
+.mesa-painel-overlay.visivel,
+.gaveta-overlay.visivel { display: block; }
+.mesa-painel,
+.gaveta {
   position: fixed;
   top: 0;
   right: 0;
@@ -5803,8 +5767,10 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   transform: translateX(100%);
   transition: transform .25s cubic-bezier(.4, 0, .2, 1);
 }
-.mesa-painel.aberto { transform: translateX(0); }
-.mesa-painel-topo {
+.mesa-painel.aberto,
+.gaveta.aberto { transform: translateX(0); }
+.mesa-painel-topo,
+.gaveta-topo {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -5812,7 +5778,8 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
-.mesa-painel-fechar {
+.mesa-painel-fechar,
+.gaveta-fechar {
   background: none;
   border: none;
   cursor: pointer;
@@ -5824,10 +5791,14 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   align-items: center;
   justify-content: center;
 }
-.mesa-painel-fechar:hover { background: var(--bg-elevated); color: var(--text-primary); }
-.mesa-painel-titulo { flex: 1; min-width: 0; }
-.mesa-painel-titulo h2 { font-size: 17px; font-weight: 700; margin: 0 0 2px; }
-.mesa-painel-sub { font-size: 12px; color: var(--text-secondary); margin: 0; }
+.mesa-painel-fechar:hover,
+.gaveta-fechar:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.mesa-painel-titulo,
+.gaveta-titulo { flex: 1; min-width: 0; }
+.mesa-painel-titulo h2,
+.gaveta-titulo h2 { font-size: 17px; font-weight: 700; margin: 0 0 2px; }
+.mesa-painel-sub,
+.gaveta-sub { font-size: 12px; color: var(--text-secondary); margin: 0; }
 .mesa-status-badge {
   font-size: 10px;
   font-weight: 700;
@@ -5863,7 +5834,8 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 }
 .mesa-aba-btn:hover { color: var(--text-primary); }
 .mesa-aba-btn.ativo { color: var(--accent-fg); border-bottom-color: var(--accent); }
-.mesa-painel-conteudo { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.mesa-painel-conteudo,
+.gaveta-conteudo { flex: 1; overflow-y: auto; padding: 16px 20px; }
 .mesa-rodada { margin-bottom: 18px; }
 .mesa-rodada-cab {
   font-size: 11px;
@@ -5906,12 +5878,18 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   align-items: center;
 }
 .mesa-acoes-row button { flex: 1; font-size: 13px; padding: 8px 6px; }
-.mesa-painel-rodape {
+.mesa-painel-rodape,
+.gaveta-rodape {
   padding: 12px 20px 16px;
   background: var(--bg-elevated);
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
+.gaveta-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+/* A gaveta do grupo também abre POR CIMA do editor do produto (modal em z 1000),
+   e ainda assim abaixo dos diálogos de confirmação (z 1200). */
+.gaveta-overlay { z-index: 1100; }
+.gaveta { z-index: 1101; }
 .mesa-rodape-totais { margin-bottom: 10px; }
 .mesa-tot-linha {
   display: flex;
@@ -6122,10 +6100,10 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
    Estes botões antes traziam um glifo "×"/"✕"; agora recebem o ICO_LIXEIRA (14px).
    Regra única: centraliza e fixa o tamanho do SVG em todos eles. Cor/hover ficam
    nas regras próprias de cada classe (já em token --error). */
-.comp-chip-del, .comp-sg-del, .opc-del, .var-del, .fc-del,
+.opc-del, .grp-op-del, .var-del, .fc-del,
 .ff-remover, .mesa-cart-rm, .mesa-tag-rm, .pdv-pg-item button {
   display: inline-flex; align-items: center; justify-content: center; line-height: 1;
 }
-.comp-chip-del svg, .comp-sg-del svg, .opc-del svg, .var-del svg,
+.opc-del svg, .grp-op-del svg, .var-del svg,
 .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
 .mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }

@@ -34,7 +34,7 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   assert.equal(it.length, 1); // item indisponível some
   assert.deepEqual(it[0], {
     id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: [],
-    opcionais: [{ nome: "Bacon", preco: 3 }], variacoes: [], precoAPartir: null,
+    opcionais: [{ nome: "Bacon", preco: 3 }], grupos: [], variacoes: [], precoAPartir: null,
     apenasLocal: false, esgotado: false, unidade: "un", destaque: false,
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
@@ -263,4 +263,59 @@ test("recalcularItens: soma o preço das variações escolhidas (base 0)", () =>
 
 test("recalcularItens: item de variações sem nenhuma escolha lança erro", () => {
   assert.throws(() => cw.recalcularItens(cardVar, [{ id: "refr", qtd: 1 }]), /ao menos 1|opção/i);
+});
+
+// ---- Biblioteca de grupos (cardapio.grupos) no cardápio web ----
+const cardapioComBiblioteca = {
+  grupos: [
+    { id: "g1", nome: "Adicionais", padrao: { obrigatorio: false, min: 0, max: 0 },
+      opcoes: [{ id: "o1", nome: "Bacon", preco: 3 }] },
+    { id: "g2", nome: "Ponto da carne", padrao: { obrigatorio: true, min: 1, max: 1 },
+      opcoes: [{ id: "o2", nome: "Ao ponto", preco: 0 }, { id: "o3", nome: "Bem passada", preco: 0 }] },
+  ],
+  categorias: [{ nome: "Lanches", itens: [
+    { id: 1, nome: "X", preco: 10, disponivel: true, grupos: [{ id: "g1" }] },
+    { id: 2, nome: "Burger", preco: 20, disponivel: true, grupos: [{ id: "g2" }] },
+  ] }],
+};
+
+test("projetarCardapio: item com biblioteca expõe os grupos resolvidos", () => {
+  const p = cw.projetarCardapio(cardapioComBiblioteca);
+  const item = p.categorias[0].itens[0];
+  assert.equal(item.grupos.length, 1);
+  assert.equal(item.grupos[0].opcoes[0].nome, "Bacon");
+  assert.equal(item.grupos[0].opcoes[0].preco, 3);
+});
+
+test("recalcularItens: soma o preço da opção escolhida pela biblioteca", () => {
+  const r = cw.recalcularItens(cardapioComBiblioteca, [
+    { id: 1, qtd: 1, grupos: [{ grupo: "g1", opcoes: ["o1"] }] },
+  ]);
+  assert.equal(r.subtotal, 13);
+  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+});
+
+test("recalcularItens: opção sem custo entra em composicao e não muda o total", () => {
+  const r = cw.recalcularItens(cardapioComBiblioteca, [
+    { id: 2, qtd: 1, grupos: [{ grupo: "g2", opcoes: ["o3"] }] },
+  ]);
+  assert.equal(r.subtotal, 20);
+  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Ponto da carne", itens: ["Bem passada"] }]);
+  assert.deepEqual(r.itens[0].opcionais, []);
+});
+
+test("recalcularItens: grupo obrigatório sem escolha barra o pedido", () => {
+  assert.throws(
+    () => cw.recalcularItens(cardapioComBiblioteca, [{ id: 2, qtd: 1, grupos: [] }]),
+    /Ponto da carne/
+  );
+});
+
+test("recalcularItens: item sem grupos segue pelo caminho legado", () => {
+  const legado = { categorias: [{ nome: "L", itens: [
+    { id: 1, nome: "X", preco: 10, disponivel: true, opcionais: "Bacon | 3.00" },
+  ] }] };
+  const r = cw.recalcularItens(legado, [{ id: 1, qtd: 1, opcionais: [{ nome: "Bacon", qtd: 1 }] }]);
+  assert.equal(r.subtotal, 13);
+  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
 });

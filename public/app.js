@@ -92,8 +92,7 @@ let configAtual = {};
 let editorCi = -1;
 let editorIi = -1;
 let editorFotoUrl = "";
-let editorComposicao = [];
-let editorOpcionais = [];
+let editorGrupos = [];   // vínculos do produto com a biblioteca: [{ id, obrigatorio?, min?, max? }]
 let editorVariacoes = [];
 
 // Identidade visual do cardápio (capa + logo) — estado das prévias
@@ -337,6 +336,277 @@ if ($("btnNovaCategoria")) $("btnNovaCategoria").addEventListener("click", async
   if (last) { last.focus(); last.select(); }
 });
 
+// ============================================================
+// TELA COMPLEMENTOS (Cadastros → Produtos → Complementos)
+// Biblioteca de grupos reutilizáveis, guardada em cardapio.grupos:
+//   { id, nome, padrao: { obrigatorio, min, max }, opcoes: [{ id, nome, preco }] }
+// O produto guarda só o VÍNCULO (item.grupos), então editar aqui vale em todos os
+// produtos que usam o grupo. O id é ESTÁVEL: renomear não gera id novo.
+// ============================================================
+let grpFiltro = "todos";       // todos | uso | semuso
+let grpTermoBusca = "";
+let grpEditandoId = null;      // null = criando um grupo novo
+let grpEditOpcoes = [];        // rascunho das opções abertas na gaveta
+let grpFocoVolta = null;       // quem abriu a gaveta (devolve o foco ao fechar)
+
+// Id estável de grupo/opção. randomUUID quando existir; senão tempo + aleatório.
+function grpNovoId(prefixo) {
+  const rnd = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID().slice(0, 8)
+    : Math.random().toString(16).slice(2, 10);
+  return prefixo + Date.now().toString(36) + rnd;
+}
+
+// Quantos produtos usam cada grupo (chave = id do grupo).
+function grpContarUso() {
+  const uso = {};
+  ((cardapioAtual && cardapioAtual.categorias) || []).forEach((c) => {
+    ((c && c.itens) || []).forEach((it) => {
+      ((it && it.grupos) || []).forEach((v) => {
+        const id = v && v.id;
+        if (id) uso[id] = (uso[id] || 0) + 1;
+      });
+    });
+  });
+  return uso;
+}
+
+// Regra em português, do jeito que o dono lê no card e na gaveta.
+function grpTextoRegra(r) {
+  const min = Math.max(0, parseInt(r && r.min, 10) || 0);
+  const max = Math.max(0, parseInt(r && r.max, 10) || 0);
+  if (r && r.obrigatorio) {
+    const piso = Math.max(1, min);
+    if (max === piso) return "Obrigatório, escolha " + piso;
+    if (max > piso) return "Obrigatório, de " + piso + " a " + max;
+    return "Obrigatório, pelo menos " + piso;
+  }
+  if (max > 0) return "Opcional, até " + max;
+  return "Opcional, sem limite";
+}
+
+function carregarComplementos() { renderComplementos(); }
+
+function renderComplementos() {
+  const cont = $("grupos-lista");
+  if (!cont) return;
+  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []);
+  const uso = grpContarUso();
+  const busca = grpTermoBusca.trim().toLowerCase();
+  const lista = bib.filter((g) => {
+    const n = uso[g.id] || 0;
+    if (grpFiltro === "uso" && !n) return false;
+    if (grpFiltro === "semuso" && n) return false;
+    if (!busca) return true;
+    return (g.nome || "").toLowerCase().indexOf(busca) >= 0
+      || g.opcoes.some((o) => o.nome.toLowerCase().indexOf(busca) >= 0);
+  });
+  if (!lista.length) {
+    cont.className = "";
+    cont.innerHTML = bib.length
+      ? '<p class="dash-vazio">Nenhum grupo com esse filtro. Limpe a busca ou volte para "Todos".</p>'
+      : '<p class="dash-vazio">Nenhum grupo ainda. Crie o primeiro em "Novo grupo" e reaproveite ele em quantos produtos quiser.</p>';
+    return;
+  }
+  cont.className = "grp-cards";
+  cont.innerHTML = "";
+  lista.forEach((g) => {
+    const n = uso[g.id] || 0;
+    const chips = g.opcoes.slice(0, 4).map((o) =>
+      '<span class="grp-op">' + escapar(o.nome) +
+      (o.preco > 0 ? '<span class="grp-op-preco">+' + moedaBR(o.preco) + '</span>' : "") + '</span>'
+    ).join("");
+    const resto = g.opcoes.length - 4;
+    const card = document.createElement("div");
+    card.className = "grp-card";
+    card.innerHTML =
+      '<div class="grp-card-topo">' +
+        '<span class="grp-card-nome">' + escapar(g.nome || "Sem nome") + '</span>' +
+        '<div class="cat-card-acoes">' +
+          '<button type="button" class="cat-ico grp-edit" data-id="' + escapar(g.id) + '" aria-label="Editar grupo" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' +
+          '<button type="button" class="cat-ico cat-del grp-del" data-id="' + escapar(g.id) + '" aria-label="Excluir grupo" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="grp-card-regra">' + escapar(grpTextoRegra(g.padrao)) + '</div>' +
+      '<div class="grp-ops">' + chips + (resto > 0 ? '<span class="grp-op-mais">+' + resto + '</span>' : "") + '</div>' +
+      '<div class="grp-card-uso">' + (n ? "Usado em " + n + (n === 1 ? " produto" : " produtos") : "Nenhum produto usa este grupo") + '</div>';
+    cont.appendChild(card);
+  });
+  cont.querySelectorAll(".grp-edit").forEach((b) =>
+    b.addEventListener("click", () => grpAbrirGaveta(b.dataset.id, b)));
+  cont.querySelectorAll(".grp-del").forEach((b) =>
+    b.addEventListener("click", () => grpExcluir(b.dataset.id, uso[b.dataset.id] || 0)));
+}
+
+// Excluir só solta grupo sem vínculo — senão o produto ficaria sem as opções dele.
+async function grpExcluir(id, emUso) {
+  if (emUso > 0) {
+    await confirmar("Não é possível excluir",
+      "Este grupo está ligado a " + emUso + (emUso === 1 ? " produto" : " produtos") + ". Desvincule nos produtos antes de excluir.", "Entendi");
+    return;
+  }
+  const ok = await confirmar("Excluir grupo?", "O grupo sai da biblioteca. Os pedidos já feitos não mudam.", "Excluir");
+  if (!ok) return;
+  const antes = Array.isArray(cardapioAtual.grupos) ? cardapioAtual.grupos.slice() : [];
+  cardapioAtual.grupos = antes.filter((g) => g && String(g.id) !== String(id));
+  renderComplementos();
+  if (await salvarCardapioRemoto()) toast("Grupo excluído.");
+  else { cardapioAtual.grupos = antes; renderComplementos(); toast("Não foi possível excluir.", "erro"); }
+}
+
+// ---- Gaveta do grupo ----
+function grpObrigatorioSelecionado() {
+  const ativo = $("grpSeg").querySelector(".filtro-chip.ativo");
+  return !!(ativo && ativo.dataset.grpObrig === "1");
+}
+
+function grpMarcarObrigatorio(valor) {
+  $("grpSeg").querySelectorAll(".filtro-chip").forEach((b) =>
+    b.classList.toggle("ativo", (b.dataset.grpObrig === "1") === !!valor));
+}
+
+// Espelha a regra em texto enquanto o dono mexe nos campos (o número sozinho engana).
+function grpAtualizarDicaRegra() {
+  $("grpDicaRegra").textContent = grpTextoRegra({
+    obrigatorio: grpObrigatorioSelecionado(),
+    min: $("grpMin").value,
+    max: $("grpMax").value,
+  });
+}
+
+function grpRenderOpcoes() {
+  const cont = $("grpOpcoes");
+  cont.innerHTML = "";
+  grpEditOpcoes.forEach((o, i) => {
+    const div = document.createElement("div");
+    div.className = "opc-linha";
+    div.innerHTML =
+      '<input class="opc-nome grp-op-nome" placeholder="Nome da opção" aria-label="Nome da opção" value="' + escapar(o.nome || "") + '" data-oi="' + i + '" />' +
+      '<div class="opc-preco-wrap"><span class="opc-rs">R$</span>' +
+      '<input type="text" inputmode="numeric" class="opc-preco grp-op-valor" placeholder="0,00" aria-label="Preço da opção" value="' + (o.preco ? Dinheiro.formatar(o.preco) : "") + '" data-oi="' + i + '" /></div>' +
+      '<button type="button" class="perigo mini grp-op-del" data-oi="' + i + '" aria-label="Remover opção">' + ICO_LIXEIRA + '</button>';
+    cont.appendChild(div);
+  });
+  cont.querySelectorAll(".grp-op-nome").forEach((el) => {
+    el.addEventListener("input", (e) => { grpEditOpcoes[+e.target.dataset.oi].nome = e.target.value; });
+    el.addEventListener("blur", (e) => {                     // padroniza ao sair (assistivo)
+      const v = Texto.tituloPt(e.target.value);
+      e.target.value = v;
+      grpEditOpcoes[+e.target.dataset.oi].nome = v;
+    });
+  });
+  cont.querySelectorAll(".grp-op-valor").forEach((el) => {
+    Dinheiro.mascarar(el);
+    el.addEventListener("input", (e) => { grpEditOpcoes[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
+  });
+  cont.querySelectorAll(".grp-op-del").forEach((el) =>
+    el.addEventListener("click", (e) => { grpEditOpcoes.splice(+e.currentTarget.dataset.oi, 1); grpRenderOpcoes(); }));
+}
+
+function grpAbrirGaveta(id, origem) {
+  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []);
+  const g = id ? bib.filter((x) => x.id === String(id))[0] : null;
+  grpEditandoId = g ? g.id : null;
+  grpFocoVolta = origem || null;
+  // Cópia rasa: mexer na gaveta não altera o cardápio antes de salvar.
+  grpEditOpcoes = g ? g.opcoes.map((o) => ({ id: o.id, nome: o.nome, preco: o.preco }))
+                    : [{ id: "", nome: "", preco: 0 }];
+  const padrao = g ? g.padrao : { obrigatorio: false, min: 0, max: 0 };
+  $("grpGavetaTitulo").textContent = g ? "Editar grupo" : "Novo grupo";
+  $("grpNome").value = g ? g.nome : "";
+  $("grpMin").value = padrao.min;
+  $("grpMax").value = padrao.max;
+  grpMarcarObrigatorio(padrao.obrigatorio);
+  grpAtualizarDicaRegra();
+  grpRenderOpcoes();
+  $("grpGavetaOverlay").classList.add("visivel");
+  $("grpGaveta").classList.add("aberto");
+  document.addEventListener("keydown", grpGavetaEsc);
+  // Foco inicial e focus-trap ficam com a11y.js (padrão único do painel).
+}
+
+function grpGavetaEsc(e) {
+  if (e.key !== "Escape") return;
+  if (!$("grpGaveta").classList.contains("aberto")) return;
+  e.preventDefault();
+  grpFecharGaveta();
+}
+
+function grpFecharGaveta() {
+  document.removeEventListener("keydown", grpGavetaEsc);
+  $("grpGaveta").classList.remove("aberto");
+  $("grpGavetaOverlay").classList.remove("visivel");
+  const volta = grpFocoVolta;
+  grpFocoVolta = null;
+  grpEditandoId = null;
+  egVincularAoSalvar = false;   // cancelou a criação a partir do produto: não vincula nada
+  // Devolve o foco ao card de origem; se ele sumiu no re-render, volta pro botão da tela.
+  const alvo = (volta && document.contains(volta)) ? volta : $("btnNovoGrupo");
+  if (alvo) { try { alvo.focus(); } catch (_) {} }
+}
+
+async function grpSalvarGaveta() {
+  const nome = Texto.tituloPt(($("grpNome").value || "").trim());
+  if (!nome) { toast("Dê um nome ao grupo.", "erro"); $("grpNome").focus(); return; }
+  const opcoes = grpEditOpcoes
+    .map((o) => ({ id: String(o.id || ""), nome: Texto.tituloPt(String(o.nome || "").trim()), preco: Math.max(0, Number(o.preco) || 0) }))
+    .filter((o) => o.nome);
+  if (!opcoes.length) { toast("Adicione pelo menos uma opção.", "erro"); return; }
+  opcoes.forEach((o) => { if (!o.id) o.id = grpNovoId("op_"); });  // id novo SÓ para opção nova
+  const obrigatorio = grpObrigatorioSelecionado();
+  let min = Math.max(0, parseInt($("grpMin").value, 10) || 0);
+  let max = Math.max(0, parseInt($("grpMax").value, 10) || 0);
+  if (obrigatorio && min < 1) min = 1;
+  if (min > opcoes.length) min = opcoes.length;   // mínimo maior que a lista é impossível de atender
+  if (max > 0 && max < min) max = min;
+  const grupo = { id: grpEditandoId || grpNovoId("grp_"), nome, padrao: { obrigatorio, min, max }, opcoes };
+  const antes = Array.isArray(cardapioAtual.grupos) ? cardapioAtual.grupos.slice() : [];
+  const lista = antes.slice();
+  const i = lista.findIndex((x) => x && String(x.id) === grupo.id);
+  if (i >= 0) lista[i] = grupo; else lista.push(grupo);
+  cardapioAtual.grupos = lista;
+  if (!(await salvarCardapioRemoto())) {
+    cardapioAtual.grupos = antes;
+    toast("Não foi possível salvar o grupo.", "erro");
+    return;
+  }
+  // Gaveta aberta pelo editor do produto ("Criar grupo novo"): já vincula ali.
+  if (egVincularAoSalvar && !editorGrupos.some((v) => String(v.id) === grupo.id)) {
+    editorGrupos.push({ id: grupo.id });
+  }
+  renderComplementos();
+  grpFecharGaveta();
+  if ($("editor-overlay").style.display === "flex") renderEditorGrupos();  // editor aberto atrás: reflete na hora
+  toast(i >= 0 ? "Grupo salvo." : "Grupo criado.");
+}
+
+if ($("btnNovoGrupo")) {
+  $("btnNovoGrupo").addEventListener("click", (e) => grpAbrirGaveta(null, e.currentTarget));
+  $("grpGavetaFechar").addEventListener("click", grpFecharGaveta);
+  $("grpCancelar").addEventListener("click", grpFecharGaveta);
+  $("grpGavetaOverlay").addEventListener("click", grpFecharGaveta);
+  $("grpSalvar").addEventListener("click", grpSalvarGaveta);
+  $("grpAddOpcao").addEventListener("click", () => {
+    grpEditOpcoes.push({ id: "", nome: "", preco: 0 });
+    grpRenderOpcoes();
+    const inputs = $("grpOpcoes").querySelectorAll(".grp-op-nome");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+  $("grpSeg").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+    const obrig = b.dataset.grpObrig === "1";
+    grpMarcarObrigatorio(obrig);
+    if (obrig && (parseInt($("grpMin").value, 10) || 0) < 1) $("grpMin").value = 1;  // obrigatório pede ao menos 1
+    grpAtualizarDicaRegra();
+  }));
+  ["grpMin", "grpMax"].forEach((id) => $(id).addEventListener("input", grpAtualizarDicaRegra));
+  $("grpBusca").addEventListener("input", (e) => { grpTermoBusca = e.target.value; renderComplementos(); });
+  $("grpFiltros").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+    grpFiltro = b.dataset.grpFiltro;
+    $("grpFiltros").querySelectorAll(".filtro-chip").forEach((x) => x.classList.toggle("ativo", x === b));
+    renderComplementos();
+  }));
+}
+
 // Ao ativar uma aba dentro de um grupo, garante TODOS os níveis abertos (ex.: Cadastros → Produtos).
 function abrirGrupoDaAba(btn) {
   let sub = btn.closest(".nav-sub");
@@ -375,6 +645,7 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "pdv") carregarPdv();
     if (btn.dataset.aba === "mesas") carregarMesas();
     if (btn.dataset.aba === "categorias") carregarCategorias();
+    if (btn.dataset.aba === "complementos") carregarComplementos();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
@@ -1433,8 +1704,7 @@ function abrirEditorItem(ci, ii) {
     $("editor-destaque").checked = false;
     $("editor-cozinha").checked = false;
     editorFotoUrl = "";
-    editorComposicao = [];
-    editorOpcionais = [];
+    editorGrupos = [];
     editorVariacoes = [];
   } else {
     const it = cardapioAtual.categorias[ci].itens[ii];
@@ -1450,8 +1720,10 @@ function abrirEditorItem(ci, ii) {
     $("editor-destaque").checked = it.destaque === true;
     $("editor-cozinha").checked = it.cozinha === true;
     editorFotoUrl = it.imagem || "";
-    editorComposicao = (typeof Grupos !== "undefined" ? Grupos.normalizarGrupos(it.composicao) : (Array.isArray(it.composicao) ? it.composicao : []));
-    editorOpcionais = parsearOpcionais(it.opcionais || "");
+    // Cópia rasa dos vínculos: mexer no editor não altera o cardápio antes de salvar.
+    editorGrupos = (Array.isArray(it.grupos) ? it.grupos : [])
+      .filter((v) => v && v.id)
+      .map((v) => Object.assign({}, v));
     editorVariacoes = (typeof Variacoes !== "undefined" ? Variacoes.normalizarVariacoes(it.variacoes) : []);
   }
   // Abre na aba Principal
@@ -1460,8 +1732,8 @@ function abrirEditorItem(ci, ii) {
   document.querySelectorAll(".editor-panel").forEach((p) => p.classList.remove("ativo"));
   document.getElementById("panel-principal").classList.add("ativo");
 
-  renderEditorComposicao();
-  renderEditorOpcionais();
+  egRegraAberta = -1;
+  renderEditorGrupos();
   renderEditorVariacoes();
   aplicarUnidadeEditor();
 
@@ -1532,17 +1804,24 @@ async function salvarEditorItem() {
 
   const precoCusto = Dinheiro.valor("editor-preco-custo");
 
+  const orig = editorIi === -1 ? null : cardapioAtual.categorias[editorCi].itens[editorIi];
+
   const novoItem = {
-    id:          editorIi === -1 ? novoId() : cardapioAtual.categorias[editorCi].itens[editorIi].id,
+    id:          orig ? orig.id : novoId(),
     nome,
     preco,
     desc:        $("editor-desc").value,
     disponivel:  $("editor-disponivel").checked,
     apenasLocal: !$("editor-entrega").checked,
-    composicao:  (typeof Grupos !== "undefined" ? Grupos.normalizarGrupos(editorComposicao) : editorComposicao),
-    opcionais:   serializarOpcionais(editorOpcionais),
     imagem:      editorFotoUrl,
   };
+  // Complementos vêm da biblioteca; o produto guarda só o vínculo.
+  const gruposLimpos = editorGrupos.filter((v) => v && v.id);
+  if (gruposLimpos.length) novoItem.grupos = gruposLimpos;
+  // Legado (composição/opcionais do formato antigo) copiado EXATAMENTE como veio:
+  // a edição agora é pela biblioteca, mas nada é apagado — a conversão é reversível.
+  if (orig && orig.composicao !== undefined) novoItem.composicao = orig.composicao;
+  if (orig && orig.opcionais !== undefined) novoItem.opcionais = orig.opcionais;
   if (precoCusto > 0) novoItem.precoCusto = precoCusto;
 
   const unidade = $("editor-unidade").value === "kg" ? "kg" : "un";
@@ -1668,11 +1947,6 @@ $("editor-foto-input").addEventListener("change", async () => {
   }
 });
 
-$("editor-comp-add-subgrupo").addEventListener("click", () => {
-  editorComposicao.push({ nome: "", obrigatorio: false, min: 0, max: 0, itens: [] });
-  renderEditorComposicao();
-});
-
 // ============================================================
 // IDENTIDADE VISUAL DO CARDÁPIO (capa + logo)
 // Reusa POST /api/imagem (Storage). As URLs ficam na config (restaurante.capa/logo).
@@ -1734,104 +2008,245 @@ $("identLogoInput").addEventListener("change", async () => {
 $("identLogoRemover").addEventListener("click", () => { identLogoUrl = ""; atualizarPreviewIdentidade(); });
 
 // ============================================================
-// CONSTRUTOR DE COMPOSIÇÃO
+// COMPLEMENTOS DO PRODUTO — vínculos com a biblioteca (cardapio.grupos)
+// O produto guarda só [{ id, obrigatorio?, min?, max? }]: as OPÇÕES moram na
+// biblioteca e a REGRA pode ser sobrescrita aqui (Marmitex P/M/G usam a mesma
+// lista escolhendo 1, 2 e 3). Composição e opcionais do formato antigo seguem
+// no item, exibidos só para leitura até a conversão para a biblioteca.
 // ============================================================
-function renderEditorComposicao() {
-  const container = $("editor-composicao-builder");
-  container.innerHTML = "";
+const ICO_SUBIR = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>';
+const ICO_DESCER = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+const ICO_LAPIS = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 
-  editorComposicao.forEach((sg, si) => {
-    const div = document.createElement("div");
-    div.className = "comp-subgrupo";
+let egRegraAberta = -1;         // índice do vínculo com o painel de regra aberto
+let egVincularAoSalvar = false; // gaveta aberta pelo editor: vincula o grupo novo ao produto
+let vincMarcados = [];          // ids marcados no modal "Usar grupo da biblioteca"
 
-    const chipsHtml = sg.itens.map((it, ii) =>
-      `<span class="comp-chip">${escapar(it)}<button type="button" class="comp-chip-del" data-sg="${si}" data-ii="${ii}" aria-label="Remover">${ICO_LIXEIRA}</button></span>`
-    ).join("");
-
-    div.innerHTML = `
-      <div class="comp-subgrupo-cabeca">
-        <input class="comp-sg-nome" value="${escapar(sg.nome)}" placeholder="Nome do subgrupo" aria-label="Nome do subgrupo" data-sg="${si}" />
-        <button type="button" class="perigo mini comp-sg-del" data-sg="${si}" aria-label="Remover subgrupo">${ICO_LIXEIRA}</button>
-      </div>
-      <div class="comp-sg-regras">
-        <label class="comp-sg-obrig-lbl"><input type="checkbox" class="comp-sg-obrig" data-sg="${si}" ${sg.obrigatorio ? "checked" : ""} /> Obrigatório</label>
-        <label class="comp-sg-num">mín <input type="number" min="0" class="comp-sg-min" data-sg="${si}" value="${Number(sg.min) || 0}" /></label>
-        <label class="comp-sg-num">máx <input type="number" min="0" class="comp-sg-max" data-sg="${si}" value="${Number(sg.max) || 0}" /></label>
-      </div>
-      <div class="comp-chips">${chipsHtml}</div>
-      <div class="comp-add-ing">
-        <input class="comp-ing-input" placeholder="Adicionar ingrediente..." aria-label="Adicionar ingrediente" data-sg="${si}" />
-        <button type="button" class="secundario mini comp-ing-btn" data-sg="${si}">Adicionar</button>
-      </div>
-    `;
-    container.appendChild(div);
-  });
-
-  // Listeners — re-ligados a cada render; sem vazamento pois o innerHTML é substituído
-  container.querySelectorAll(".comp-sg-nome").forEach((el) =>
-    el.addEventListener("input", (e) => {
-      editorComposicao[+e.target.dataset.sg].nome = e.target.value;
-    })
-  );
-
-  container.querySelectorAll(".comp-sg-obrig").forEach((el) =>
-    el.addEventListener("change", (e) => {
-      editorComposicao[+e.target.dataset.sg].obrigatorio = e.target.checked;
-    })
-  );
-  container.querySelectorAll(".comp-sg-min").forEach((el) =>
-    el.addEventListener("input", (e) => {
-      editorComposicao[+e.target.dataset.sg].min = Math.max(0, parseInt(e.target.value, 10) || 0);
-    })
-  );
-  container.querySelectorAll(".comp-sg-max").forEach((el) =>
-    el.addEventListener("input", (e) => {
-      editorComposicao[+e.target.dataset.sg].max = Math.max(0, parseInt(e.target.value, 10) || 0);
-    })
-  );
-
-  container.querySelectorAll(".comp-sg-del").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      editorComposicao.splice(+e.currentTarget.dataset.sg, 1);
-      renderEditorComposicao();
-    })
-  );
-
-  container.querySelectorAll(".comp-chip-del").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      const si = +e.currentTarget.dataset.sg, ii = +e.currentTarget.dataset.ii;
-      editorComposicao[si].itens.splice(ii, 1);
-      renderEditorComposicao();
-    })
-  );
-
-  container.querySelectorAll(".comp-ing-btn").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      const si = +e.target.dataset.sg;
-      const input = container.querySelector(`.comp-ing-input[data-sg="${si}"]`);
-      const val = input.value.trim();
-      if (!val) return;
-      editorComposicao[si].itens.push(val);
-      input.value = "";
-      renderEditorComposicao();
-      // Re-foca o input do mesmo subgrupo após re-render
-      const novo = $("editor-composicao-builder").querySelector(`.comp-ing-input[data-sg="${si}"]`);
-      if (novo) novo.focus();
-    })
-  );
-
-  container.querySelectorAll(".comp-ing-input").forEach((el) =>
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        container.querySelector(`.comp-ing-btn[data-sg="${e.target.dataset.sg}"]`).click();
-      }
-    })
-  );
+// Regra que vale NESTE produto: a do vínculo quando ele define alguma, senão o
+// padrão do grupo. `doItem` distingue as duas no selo.
+function egRegraEfetiva(v, padrao) {
+  const p = padrao || { obrigatorio: false, min: 0, max: 0 };
+  const temRegra = v && (v.min != null || v.max != null || v.obrigatorio != null);
+  if (!temRegra) return { obrigatorio: !!p.obrigatorio, min: p.min, max: p.max, doItem: false };
+  const min = Math.max(0, parseInt(v.min, 10) || 0);
+  let max = Math.max(0, parseInt(v.max, 10) || 0);
+  if (max > 0 && max < min) max = min;
+  return { obrigatorio: !!v.obrigatorio, min: min, max: max, doItem: true };
 }
 
+function egResumoGrupo(g) {
+  const n = g.opcoes.length;
+  const pagas = g.opcoes.filter((o) => o.preco > 0).length;
+  const base = n + (n === 1 ? " opção" : " opções");
+  if (!pagas) return base + ", sem custo";
+  if (pagas === n) return base + ", todas com preço";
+  return base + ", " + pagas + " com preço";
+}
+
+function egBiblioteca() {
+  const mapa = {};
+  Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []).forEach((g) => { mapa[g.id] = g; });
+  return mapa;
+}
+
+function renderEditorGrupos() {
+  const cont = $("editorGruposLista");
+  if (!cont) return;
+  const bib = egBiblioteca();
+  cont.innerHTML = "";
+  if (!editorGrupos.length) {
+    cont.innerHTML = '<p class="editor-dica eg-vazio">Nenhum grupo neste produto. Use "Usar grupo da biblioteca" para aproveitar um que já existe, ou "Criar grupo novo".</p>';
+    egRenderLegado();
+    return;
+  }
+  editorGrupos.forEach((v, i) => {
+    const g = bib[String(v.id)];
+    const linha = document.createElement("div");
+    linha.className = "eg-linha" + (g ? "" : " eg-orfa");
+    if (!g) {   // vínculo apontando para grupo que não existe mais na biblioteca
+      linha.innerHTML =
+        '<span class="eg-pos">' + (i + 1) + '</span>' +
+        '<div class="eg-info"><span class="eg-nome">Grupo fora da biblioteca</span>' +
+        '<span class="eg-resumo">Recrie o grupo em Complementos ou remova este vínculo.</span></div>' +
+        '<div class="eg-botoes"><button type="button" class="cat-ico cat-del eg-del" data-i="' + i + '" aria-label="Remover do produto" title="Remover do produto">' + ICO_LIXEIRA + '</button></div>';
+      cont.appendChild(linha);
+      return;
+    }
+    const regra = egRegraEfetiva(v, g.padrao);
+    const aberto = egRegraAberta === i;
+    linha.innerHTML =
+      '<span class="eg-pos">' + (i + 1) + '</span>' +
+      '<div class="eg-info">' +
+        '<span class="eg-nome">' + escapar(g.nome) + '</span>' +
+        '<span class="eg-resumo">' + escapar(egResumoGrupo(g)) + '</span>' +
+      '</div>' +
+      '<button type="button" class="eg-selo' + (regra.doItem ? " proprio" : "") + '" data-i="' + i + '" aria-expanded="' + (aberto ? "true" : "false") + '" title="Mudar a regra só neste produto">' + escapar(grpTextoRegra(regra)) + '</button>' +
+      '<div class="eg-botoes">' +
+        '<button type="button" class="cat-ico eg-sobe" data-i="' + i + '" aria-label="Subir" title="Subir"' + (i === 0 ? " disabled" : "") + '>' + ICO_SUBIR + '</button>' +
+        '<button type="button" class="cat-ico eg-desce" data-i="' + i + '" aria-label="Descer" title="Descer"' + (i === editorGrupos.length - 1 ? " disabled" : "") + '>' + ICO_DESCER + '</button>' +
+        '<button type="button" class="cat-ico eg-lib" data-id="' + escapar(g.id) + '" aria-label="Editar na biblioteca" title="Editar na biblioteca">' + ICO_LAPIS + '</button>' +
+        '<button type="button" class="cat-ico cat-del eg-del" data-i="' + i + '" aria-label="Remover do produto" title="Remover do produto">' + ICO_LIXEIRA + '</button>' +
+      '</div>';
+    cont.appendChild(linha);
+    if (aberto) cont.appendChild(egPainelRegra(i, v, g));
+  });
+  cont.querySelectorAll(".eg-sobe").forEach((b) => b.addEventListener("click", () => egMover(+b.dataset.i, -1)));
+  cont.querySelectorAll(".eg-desce").forEach((b) => b.addEventListener("click", () => egMover(+b.dataset.i, 1)));
+  cont.querySelectorAll(".eg-del").forEach((b) => b.addEventListener("click", () => {
+    editorGrupos.splice(+b.dataset.i, 1);
+    egRegraAberta = -1;
+    renderEditorGrupos();
+  }));
+  cont.querySelectorAll(".eg-selo").forEach((b) => b.addEventListener("click", () => {
+    const i = +b.dataset.i;
+    egRegraAberta = (egRegraAberta === i) ? -1 : i;
+    renderEditorGrupos();
+  }));
+  // Editar na biblioteca abre a gaveta por cima do editor: o dono não perde o produto de vista.
+  cont.querySelectorAll(".eg-lib").forEach((b) => b.addEventListener("click", () => grpAbrirGaveta(b.dataset.id, b)));
+  egRenderLegado();
+}
+
+function egMover(i, dir) {
+  const alvo = i + dir;
+  if (alvo < 0 || alvo >= editorGrupos.length) return;
+  const t = editorGrupos[i];
+  editorGrupos[i] = editorGrupos[alvo];
+  editorGrupos[alvo] = t;
+  egRegraAberta = -1;
+  renderEditorGrupos();
+}
+
+// Painel da regra efetiva, aberto embaixo da linha. Grava SÓ no vínculo do item;
+// só re-renderiza ao concluir, pra não perder o foco a cada tecla.
+function egPainelRegra(i, v, g) {
+  const r = egRegraEfetiva(v, g.padrao);
+  const box = document.createElement("div");
+  box.className = "eg-regra";
+  box.innerHTML =
+    '<p class="eg-regra-dica">Vale só neste produto. As opções vêm da biblioteca.</p>' +
+    '<div class="filtro-chips eg-regra-seg" role="group" aria-label="Tipo de escolha">' +
+      '<button type="button" class="filtro-chip' + (r.obrigatorio ? "" : " ativo") + '" data-eg-obrig="0">Opcional</button>' +
+      '<button type="button" class="filtro-chip' + (r.obrigatorio ? " ativo" : "") + '" data-eg-obrig="1">Obrigatório</button>' +
+    '</div>' +
+    '<div class="eg-regra-num">' +
+      '<label>Mínimo <input type="number" min="0" max="30" class="eg-min" value="' + r.min + '" /></label>' +
+      '<label>Máximo <input type="number" min="0" max="30" class="eg-max" value="' + r.max + '" /></label>' +
+    '</div>' +
+    '<div class="eg-regra-acoes">' +
+      '<button type="button" class="secundario mini eg-regra-padrao">Voltar ao padrão do grupo</button>' +
+      '<button type="button" class="secundario mini eg-regra-ok">Pronto</button>' +
+    '</div>';
+  const seg = box.querySelectorAll(".filtro-chip");
+  seg.forEach((b) => b.addEventListener("click", () => {
+    seg.forEach((x) => x.classList.toggle("ativo", x === b));
+    if (b.dataset.egObrig === "1" && (parseInt(box.querySelector(".eg-min").value, 10) || 0) < 1) {
+      box.querySelector(".eg-min").value = 1;   // obrigatório pede ao menos 1
+    }
+  }));
+  box.querySelector(".eg-regra-padrao").addEventListener("click", () => {
+    delete editorGrupos[i].obrigatorio;
+    delete editorGrupos[i].min;
+    delete editorGrupos[i].max;
+    egRegraAberta = -1;
+    renderEditorGrupos();
+  });
+  box.querySelector(".eg-regra-ok").addEventListener("click", () => {
+    const obrigatorio = box.querySelector('.filtro-chip[data-eg-obrig="1"]').classList.contains("ativo");
+    let min = Math.max(0, parseInt(box.querySelector(".eg-min").value, 10) || 0);
+    let max = Math.max(0, parseInt(box.querySelector(".eg-max").value, 10) || 0);
+    if (obrigatorio && min < 1) min = 1;
+    if (min > g.opcoes.length) min = g.opcoes.length;
+    if (max > 0 && max < min) max = min;
+    editorGrupos[i].obrigatorio = obrigatorio;
+    editorGrupos[i].min = min;
+    editorGrupos[i].max = max;
+    egRegraAberta = -1;
+    renderEditorGrupos();
+  });
+  return box;
+}
+
+// Complementos do formato antigo do item: leitura apenas, até a conversão rodar.
+function egRenderLegado() {
+  const box = $("editorLegado");
+  if (!box) return;
+  const it = editorIi === -1 ? null : cardapioAtual.categorias[editorCi].itens[editorIi];
+  const comp = it ? Grupos.normalizarGrupos(it.composicao) : [];
+  const ops = it ? parsearOpcionais(it.opcionais || "") : [];
+  if (!comp.length && !ops.length) { box.hidden = true; return; }
+  const linhas = comp.map((g) =>
+    '<div class="eg-legado-linha"><span class="eg-nome">' + escapar(g.nome) + '</span>' +
+    '<span class="eg-resumo">' + escapar(g.itens.join(", ")) + '</span></div>'
+  );
+  if (ops.length) {
+    linhas.push('<div class="eg-legado-linha"><span class="eg-nome">Complementos com preço</span>' +
+      '<span class="eg-resumo">' + escapar(ops.map((o) => o.nome + (o.preco > 0 ? " +" + moedaBR(o.preco) : "")).join(", ")) + '</span></div>');
+  }
+  $("editorLegadoLista").innerHTML = linhas.join("");
+  box.hidden = false;
+}
+
+// ---- Modal "Usar grupo da biblioteca" ----
+function egAbrirVincular() {
+  vincMarcados = editorGrupos.map((v) => String(v.id));
+  $("vincularBusca").value = "";
+  renderVincularLista();
+  $("vincularOverlay").style.display = "flex";
+}
+
+function egFecharVincular() { $("vincularOverlay").style.display = "none"; }
+
+function renderVincularLista() {
+  const cont = $("vincularLista");
+  const busca = ($("vincularBusca").value || "").trim().toLowerCase();
+  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []);
+  const lista = bib.filter((g) => !busca
+    || (g.nome || "").toLowerCase().indexOf(busca) >= 0
+    || g.opcoes.some((o) => o.nome.toLowerCase().indexOf(busca) >= 0));
+  if (!lista.length) {
+    cont.innerHTML = bib.length
+      ? '<p class="editor-dica">Nenhum grupo encontrado com essa busca.</p>'
+      : '<p class="editor-dica">A biblioteca ainda está vazia. Feche aqui e use "Criar grupo novo".</p>';
+    return;
+  }
+  cont.innerHTML = lista.map((g) =>
+    '<label class="vinc-item"><input type="checkbox" class="vinc-chk" value="' + escapar(g.id) + '"' +
+    (vincMarcados.indexOf(g.id) >= 0 ? " checked" : "") + ' />' +
+    '<span class="eg-info"><span class="eg-nome">' + escapar(g.nome) + '</span>' +
+    '<span class="eg-resumo">' + escapar(grpTextoRegra(g.padrao) + " · " + egResumoGrupo(g)) + '</span></span></label>'
+  ).join("");
+  cont.querySelectorAll(".vinc-chk").forEach((c) => c.addEventListener("change", () => {
+    const i = vincMarcados.indexOf(c.value);
+    if (c.checked && i < 0) vincMarcados.push(c.value);
+    if (!c.checked && i >= 0) vincMarcados.splice(i, 1);
+  }));
+}
+
+// Confirma mantendo a ORDEM já definida no produto; grupo novo entra no fim.
+function egConfirmarVincular() {
+  const mantidos = editorGrupos.filter((v) => vincMarcados.indexOf(String(v.id)) >= 0);
+  const jaTem = mantidos.map((v) => String(v.id));
+  vincMarcados.forEach((id) => { if (jaTem.indexOf(id) < 0) mantidos.push({ id: id }); });
+  editorGrupos = mantidos;
+  egRegraAberta = -1;
+  egFecharVincular();
+  renderEditorGrupos();
+}
+
+$("btnVincularGrupo").addEventListener("click", egAbrirVincular);
+$("vincularCancelar").addEventListener("click", egFecharVincular);
+$("vincularConfirmar").addEventListener("click", egConfirmarVincular);
+$("vincularOverlay").addEventListener("click", (e) => { if (e.target === $("vincularOverlay")) egFecharVincular(); });
+$("vincularBusca").addEventListener("input", renderVincularLista);
+$("btnCriarGrupoNoItem").addEventListener("click", (e) => {
+  egVincularAoSalvar = true;               // ao salvar a gaveta, já entra neste produto
+  grpAbrirGaveta(null, e.currentTarget);
+});
+
 // ============================================================
-// CONSTRUTOR DE OPCIONAIS
+// OPCIONAIS DO FORMATO ANTIGO (leitura)
+// Texto "Nome | preco" por linha, como o item guardava antes da biblioteca.
 // ============================================================
 function parsearOpcionais(texto) {
   if (!texto || !texto.trim()) return [];
@@ -1848,62 +2263,8 @@ function parsearOpcionais(texto) {
   return lista;
 }
 
-function serializarOpcionais(lista) {
-  return lista
-    .filter((o) => o.nome.trim())
-    .map((o) => o.nome.trim() + " | " + Number(o.preco || 0).toFixed(2))
-    .join("\n");
-}
-
-function renderEditorOpcionais() {
-  const container = $("editor-opcionais-builder");
-  container.innerHTML = "";
-
-  editorOpcionais.forEach((op, oi) => {
-    const div = document.createElement("div");
-    div.className = "opc-linha";
-    div.innerHTML = `
-      <input class="opc-nome" placeholder="Nome do complemento" aria-label="Nome do complemento" value="${escapar(op.nome)}" data-oi="${oi}" />
-      <div class="opc-preco-wrap">
-        <span class="opc-rs">R$</span>
-        <input type="text" inputmode="numeric" class="opc-preco" placeholder="0,00" value="${op.preco ? Dinheiro.formatar(op.preco) : ""}" data-oi="${oi}" />
-      </div>
-      <button type="button" class="perigo mini opc-del" data-oi="${oi}" aria-label="Remover">${ICO_LIXEIRA}</button>
-    `;
-    container.appendChild(div);
-  });
-
-  container.querySelectorAll(".opc-nome").forEach((el) => {
-    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].nome = e.target.value; });
-    el.addEventListener("blur", (e) => { // padroniza ao sair do campo (assistivo)
-      const v = Texto.tituloPt(e.target.value);
-      e.target.value = v;
-      editorOpcionais[+e.target.dataset.oi].nome = v;
-    });
-  });
-
-  container.querySelectorAll(".opc-preco").forEach((el) => {
-    Dinheiro.mascarar(el);
-    el.addEventListener("input", (e) => { editorOpcionais[+e.target.dataset.oi].preco = Dinheiro.valor(e.target); });
-  });
-
-  container.querySelectorAll(".opc-del").forEach((el) =>
-    el.addEventListener("click", (e) => {
-      editorOpcionais.splice(+e.currentTarget.dataset.oi, 1);
-      renderEditorOpcionais();
-    })
-  );
-}
-
 // Padroniza o nome do produto ao sair do campo (Title Case PT-BR; assistivo — o save lê este valor).
 $("editor-nome").addEventListener("blur", (e) => { e.target.value = Texto.tituloPt(e.target.value); });
-
-$("editor-opc-add").addEventListener("click", () => {
-  editorOpcionais.push({ nome: "", preco: 0 });
-  renderEditorOpcionais();
-  const inputs = $("editor-opcionais-builder").querySelectorAll(".opc-nome");
-  if (inputs.length) inputs[inputs.length - 1].focus();
-});
 
 // ---- Variações: opções com preço E estoque próprios (ex.: sabores de refrigerante) ----
 function renderEditorVariacoes() {
@@ -4489,11 +4850,12 @@ function pdvAtualizarBadges() {
 }
 
 function pdvTileClick(item) {
-  const ops = pdvParseOpcionais(item.opcionais);
-  const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  const bib = pdvGruposDoItem(item);
+  const ops = bib.length ? [] : pdvParseOpcionais(item.opcionais);
+  const grps = bib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []);
   const ehKg = item.unidade === "kg";
-  if (ops.length || grps.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (bib.length || ops.length || grps.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs/composição) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao && !(l.composicao && l.composicao.length));
   if (ex) ex.qtd += 1;
@@ -4503,21 +4865,32 @@ function pdvTileClick(item) {
   renderPdvCarrinho();
 }
 
+// Grupos da biblioteca já resolvidos para o item (vazio = item ainda não convertido,
+// que segue pelo caminho legado). Mesma regra do servidor em src/pdv.js.
+function pdvGruposDoItem(item) {
+  return window.Grupos ? window.Grupos.resolverGrupos(item, cardapioAtual && cardapioAtual.grupos) : [];
+}
+
 // ---- Modal de item (opcionais / peso / observação) ----
-let pdvItemCtx = null; // { item, ops, uid|null }
+let pdvItemCtx = null; // { item, ops, grps, bib, vars, uid|null, ehKg }
 let pdvGrupoCompleto = {}; // grupo → já rolou p/ o próximo (evita re-rolar ao trocar opção)
 
 function abrirPdvItemModal(item, uid) {
-  const ops = pdvParseOpcionais(item.opcionais);
-  const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
+  // Item convertido manda: as opções vêm da biblioteca (com id e preço próprios) e
+  // o caminho legado (composicao + opcionais em texto) não é renderizado.
+  const bib = pdvGruposDoItem(item);
+  const ops = bib.length ? [] : pdvParseOpcionais(item.opcionais);
+  const grps = bib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []).map((v) => ({
     id: v.id, nome: v.nome, preco: v.preco,
     esgotado: window.Estoque ? window.Estoque.statusEstoque(v).esgotado : false,
   }));
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
-  pdvItemCtx = { item, ops, grps, vars, uid: uid != null ? uid : null, ehKg };
+  pdvItemCtx = { item, ops, grps, bib, vars, uid: uid != null ? uid : null, ehKg };
   pdvGrupoCompleto = {};
+  const bibIni = {};   // reabrir a linha: remarca as opções já escolhidas
+  (linha && Array.isArray(linha.grupos) ? linha.grupos : []).forEach((e) => { bibIni[e.grupo] = e.opcoes || []; });
   const opsQtd = ops.map((o) => {
     const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
     return found ? found.qtd : 0;
@@ -4556,6 +4929,32 @@ function abrirPdvItemModal(item, uid) {
       html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + id + '">' +
         '<span class="pdv-m-opt-nome">' + pdvEsc(nome) + '</span>' +
         '<input type="' + tipo + '" name="pgrp_' + pdvEsc(g.nome) + '" value="' + pdvEsc(nome) + '" data-grupo="' + pdvEsc(g.nome) + '" data-max="' + g.max + '"' + marcado + ' id="' + id + '" class="pdv-m-input" />' +
+        '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
+      '</label>';
+    });
+    html += '</div>';
+  });
+  // Grupos da biblioteca: rádio quando é escolha única, caixa de seleção nos demais.
+  bib.forEach((g) => {
+    const unico = g.max === 1;
+    const minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
+    const sub = unico ? "Escolha 1 opção"
+      : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                       : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+    html += '<div class="pdv-grp-bib pdv-m-grp" data-bib="' + pdvEsc(g.id) + '" data-grupo-wrap="' + pdvEsc(g.id) + '">' +
+      '<div class="pdv-m-grp-cab">' +
+        '<div class="pdv-m-grp-tit">' + pdvEsc(g.nome) + '<div class="pdv-m-grp-sub" data-sub="' + pdvEsc(g.id) + '">' + pdvEsc(sub) + '</div></div>' +
+        '<span class="pdv-m-grp-selo' + (g.obrigatorio ? ' obrig' : '') + '" data-selo="' + pdvEsc(g.id) + '">' + (g.obrigatorio ? 'Obrigatório' : 'Opcional') + '</span>' +
+        '<span class="pdv-m-check" data-check="' + pdvEsc(g.id) + '" hidden>' + PDV_CHECK + '</span>' +
+      '</div>';
+    g.opcoes.forEach((o, idx) => {
+      const marcado = (bibIni[g.id] || []).indexOf(o.id) !== -1 ? " checked" : "";
+      const tipo = unico ? "radio" : "checkbox";
+      const domId = "pbib_" + String(g.id).replace(/\W/g, "") + "_" + idx;
+      html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + domId + '">' +
+        '<span class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span>' +
+          (o.preco > 0 ? '<span class="pdv-m-opt-preco">+ ' + pdvMoney(o.preco) + '</span>' : '') + '</span>' +
+        '<input type="' + tipo + '" name="pbib_' + pdvEsc(g.id) + '" value="' + pdvEsc(o.id) + '" data-bib="' + pdvEsc(g.id) + '" data-max="' + g.max + '"' + marcado + ' id="' + domId + '" class="pdv-m-input" />' +
         '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
       '</label>';
     });
@@ -4643,6 +5042,25 @@ function abrirPdvItemModal(item, uid) {
       } else { pdvGrupoCompleto[grupo] = false; }
     }
   }));
+  $("pdvItemCaixa").querySelectorAll(".pdv-grp-bib input").forEach((inp) => inp.addEventListener("change", () => {
+    const gid = inp.dataset.bib;
+    const escG = (window.CSS && CSS.escape) ? CSS.escape(gid) : gid.replace(/"/g, '\\"');
+    if (inp.type === "checkbox") {
+      const max = parseInt(inp.dataset.max, 10) || 0;
+      const marc = $("pdvItemCaixa").querySelectorAll('.pdv-grp-bib input[data-bib="' + escG + '"]:checked');
+      if (max > 1 && marc.length > max) inp.checked = false;
+    }
+    pdvItemRecalc();
+    pdvAtualizarGrupos();
+    const gm = (pdvItemCtx.bib || []).filter((x) => String(x.id) === String(gid))[0];
+    if (gm) {
+      const sel = $("pdvItemCaixa").querySelectorAll('.pdv-grp-bib[data-bib="' + escG + '"] input:checked').length;
+      const effMax = gm.max > 0 ? gm.max : gm.opcoes.length;
+      if (sel >= effMax) {
+        if (!pdvGrupoCompleto[gid]) { pdvGrupoCompleto[gid] = true; pdvScrollProximaSecao(gid); }
+      } else { pdvGrupoCompleto[gid] = false; }
+    }
+  }));
   const obs = $("pdvMobs"), obsC = $("pdvMobsCount");
   if (obs && obsC) { obsC.textContent = obs.value.length + "/200"; obs.addEventListener("input", () => { obsC.textContent = obs.value.length + "/200"; }); }
   const peso = $("pdvMpeso"); if (peso) peso.addEventListener("input", pdvItemRecalc);
@@ -4658,6 +5076,21 @@ function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = 
 // conforme as escolhas — só apresentação (a validação segue em avaliarComposicao).
 function pdvAtualizarGrupos() {
   const cx = $("pdvItemCaixa");
+  ((pdvItemCtx && pdvItemCtx.bib) || []).forEach((g) => {
+    const escG = (window.CSS && CSS.escape) ? CSS.escape(g.id) : String(g.id).replace(/"/g, '\\"');
+    const sel = cx.querySelectorAll('.pdv-grp-bib[data-bib="' + escG + '"] input:checked').length;
+    const min = g.obrigatorio ? Math.max(1, g.min) : 0;
+    const max = g.max > 0 ? g.max : g.opcoes.length;
+    const ok = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
+    const check = cx.querySelector('.pdv-m-check[data-check="' + escG + '"]');
+    const selo = cx.querySelector('.pdv-m-grp-selo[data-selo="' + escG + '"]');
+    if (check) check.hidden = !ok;
+    if (selo) selo.hidden = ok;
+    if (!g.obrigatorio && g.max > 1) {
+      const sub = cx.querySelector('.pdv-m-grp-sub[data-sub="' + escG + '"]');
+      if (sub) sub.textContent = "Escolha até " + g.max + " opções · " + sel + "/" + g.max;
+    }
+  });
   ((pdvItemCtx && pdvItemCtx.grps) || []).forEach((g) => {
     const escG = (window.CSS && CSS.escape) ? CSS.escape(g.nome) : g.nome.replace(/"/g, '\\"');
     const sel = cx.querySelectorAll('.pdv-grp[data-grupo="' + escG + '"] input:checked').length;
@@ -4709,6 +5142,13 @@ function _pdvLerModalItem() {
     const itens = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
     if (itens.length) composicao.push({ grupo, itens });
   });
+  // Escolhas nos grupos da biblioteca (ids), no formato de `avaliarEscolhas`.
+  const grupos = [];
+  ($("pdvItemCaixa").querySelectorAll(".pdv-grp-bib")).forEach((box) => {
+    const gid = box.getAttribute("data-bib");
+    const opcoes = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
+    grupos.push({ grupo: gid, opcoes });
+  });
   const variacoes = [];
   $("pdvItemCaixa").querySelectorAll('[data-stepper="var"]').forEach((box) => {
     const i = Number(box.dataset.vari);
@@ -4716,23 +5156,40 @@ function _pdvLerModalItem() {
     if (q > 0 && vars[i]) variacoes.push({ id: vars[i].id, nome: vars[i].nome, preco: vars[i].preco, qtd: q });
   });
   const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
-  return { item, qtd, composicao, opcionais, variacoes, observacao, ehKg };
+  return { item, qtd, composicao, opcionais, grupos, variacoes, observacao, ehKg };
 }
 function pdvItemRecalc() {
-  const { item, qtd, opcionais, variacoes } = _pdvLerModalItem();
-  const add = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
+  const { item, qtd, opcionais, grupos, variacoes } = _pdvLerModalItem();
+  const bib = (pdvItemCtx && pdvItemCtx.bib) || [];
+  const add = bib.length
+    ? window.Grupos.avaliarEscolhas(bib, grupos).addUnit
+    : opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
   const addV = (variacoes || []).reduce((s, v) => s + v.preco * v.qtd, 0);
   const tot = ((Number(item.preco) || 0) + add + addV) * (Number(qtd) || 0);
   const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
 }
 function pdvConfirmarItem() {
-  const { item, qtd, composicao, opcionais, variacoes, observacao, ehKg } = _pdvLerModalItem();
+  const { item, qtd, composicao, opcionais, grupos, variacoes, observacao, ehKg } = _pdvLerModalItem();
   if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
-  const aval = window.Grupos ? window.Grupos.avaliarComposicao(item, composicao) : { valido: true };
-  if (!aval.valido) { toast(aval.pendencias[0] || "Complete a composição.", "erro"); return; }
+  const bib = (pdvItemCtx && pdvItemCtx.bib) || [];
+  let compLinha, opsLinha, gruposLinha = null;
+  if (bib.length) {
+    // avaliarEscolhas valida E devolve composição/adicionais no formato antigo: o
+    // carrinho, a comanda e o pedido seguem iguais, sem nada saber de id.
+    const av = window.Grupos.avaliarEscolhas(bib, grupos);
+    if (!av.valido) { toast(av.pendencias[0] || "Complete as escolhas.", "erro"); return; }
+    compLinha = av.composicao;
+    opsLinha = av.opcionais;
+    gruposLinha = grupos.filter((e) => e.opcoes && e.opcoes.length);
+  } else {
+    const aval = window.Grupos ? window.Grupos.avaliarComposicao(item, composicao) : { valido: true, selecoes: composicao };
+    if (!aval.valido) { toast(aval.pendencias[0] || "Complete a composição.", "erro"); return; }
+    compLinha = aval.selecoes;
+    opsLinha = opcionais;
+  }
   // item COM variações exige ≥1 escolha (senão o total seria só o preço base)
   if ((pdvItemCtx.vars || []).length && !(variacoes || []).length) { toast("Escolha ao menos 1 opção.", "erro"); return; }
-  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: aval.selecoes, opcionais, variacoes, observacao };
+  const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: compLinha, opcionais: opsLinha, grupos: gruposLinha, variacoes, observacao };
   const idx = pdvItemCtx.uid != null ? pdvCart.findIndex((l) => l.uid === pdvItemCtx.uid) : -1;
   if (idx >= 0) pdvCart[idx] = linha; else pdvCart.push(linha);
   fecharPdvItemModal();
@@ -5199,7 +5656,7 @@ async function finalizarVendaPdv() {
     : (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
     cliente: ($("pdvCliente").value || "").trim(),
-    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
+    itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), grupos: (l.grupos || []), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
     observacao,
@@ -5534,7 +5991,7 @@ async function inicial() {
   carregarPedidos();   // pré-carrega pedidos em background
   atualizarStatus();   // mantém status/badge atualizados
   const rc = await api("GET", "/api/cardapio");
-  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); } // Categorias tbm, senão some no F5 (carrega após o boot)
+  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); renderComplementos(); } // Categorias e Complementos tbm, senão somem no F5 (carregam após o boot)
   carregarLinkCardapio();   // link público + QR (aba Cardápio)
   await carregarConfig();
   await carregarConta();        // e-mail de acesso (aba Empresa)
@@ -6179,6 +6636,7 @@ async function mesaLancarDoPdv() {
         id: l.id, qtd: l.qtd,
         composicao: l.composicao || [],
         opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd }; }),
+        grupos: l.grupos || [],
         variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd }; }),
         observacao: l.observacao || ""
       };

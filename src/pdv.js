@@ -44,26 +44,39 @@ function recalcularVenda(cardapio, itensPayload) {
     } else {
       qtd = Math.max(1, Math.min(99, parseInt(p && p.qtd, 10) || 1));
     }
-    const opsMap = {};
-    cardapioWeb.parseOpcionais(base.opcionais).forEach((o) => { opsMap[o.nome] = o.preco; });
-    const opcionais = [];
-    ((p && p.opcionais) || []).forEach((o) => {
-      const nome = o && o.nome;
-      if (nome == null || !(nome in opsMap)) return; // ignora opcional desconhecido
-      const oq = Math.max(1, Math.min(20, parseInt(o.qtd, 10) || 1));
-      opcionais.push({ nome, preco: opsMap[nome], qtd: oq });
-    });
-    const aval = grupos.avaliarComposicao(base, p && p.composicao);
-    if (!aval.valido) throw new Error(aval.pendencias[0] || ("Composição inválida em " + base.nome + "."));
+    // Item convertido (vinculado à biblioteca) manda; senão, caminho legado
+    // inalterado. A saída é a mesma nos dois: composicao + opcionais.
+    const resolvidos = grupos.resolverGrupos(base, cardapio && cardapio.grupos);
+    let composicaoSel, opcionais, addUnit;
+    if (resolvidos.length) {
+      const av = grupos.avaliarEscolhas(resolvidos, p && p.grupos);
+      if (!av.valido) throw new Error(av.pendencias[0] || ("Escolha inválida em " + base.nome + "."));
+      composicaoSel = av.composicao;
+      opcionais = av.opcionais;
+      addUnit = av.addUnit;
+    } else {
+      const opsMap = {};
+      cardapioWeb.parseOpcionais(base.opcionais).forEach((o) => { opsMap[o.nome] = o.preco; });
+      opcionais = [];
+      ((p && p.opcionais) || []).forEach((o) => {
+        const nome = o && o.nome;
+        if (nome == null || !(nome in opsMap)) return; // ignora opcional desconhecido
+        const oq = Math.max(1, Math.min(20, parseInt(o.qtd, 10) || 1));
+        opcionais.push({ nome, preco: opsMap[nome], qtd: oq });
+      });
+      const aval = grupos.avaliarComposicao(base, p && p.composicao);
+      if (!aval.valido) throw new Error(aval.pendencias[0] || ("Composição inválida em " + base.nome + "."));
+      composicaoSel = aval.selecoes;
+      addUnit = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
+    }
     const avalVar = variacoes.avaliarVariacoes(base, p && p.variacoes);
     if (!avalVar.valido) throw new Error(avalVar.pendencias[0] || ("Escolha uma opção em " + base.nome + "."));
     const precoBase = Number(base.preco) || 0;
-    const addUnit = opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
     subtotal += (precoBase + addUnit + avalVar.addUnit) * qtd; // composição grátis; variações somam
     itens.push({
       id: base.id, nome: base.nome, preco: precoBase, qtd,
       unidade: ehKg ? "kg" : "un",
-      composicao: aval.selecoes,
+      composicao: composicaoSel,
       opcionais,
       variacoes: avalVar.selecoes, // [{id,nome,preco,qtd}]
       observacao: String((p && p.observacao) || "").slice(0, 200),

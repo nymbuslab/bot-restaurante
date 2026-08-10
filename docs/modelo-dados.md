@@ -35,6 +35,42 @@ que o cliente seleciona ao montar o pedido. Regras:
 acréscimos **pagos** (steppers) e é o que soma no preço da linha. **Sem migração de schema**: ambos
 moram no mesmo `cardapio` jsonb.
 
+### Biblioteca de complementos (`cardapio.grupos` + `item.grupos`)
+
+Formato **atual**: as opções são cadastradas **uma vez por empresa** e reaproveitadas em vários
+produtos. A biblioteca mora em `cardapio.grupos`; o produto guarda só o **vínculo**.
+
+```jsonc
+// cardapio.grupos — biblioteca do tenant
+[{ "id": "grp_m1a2", "nome": "Guarnição",
+   "padrao": { "obrigatorio": true, "min": 2, "max": 2 },
+   "opcoes": [ { "id": "op_a1", "nome": "Arroz", "preco": 0 },
+               { "id": "op_b2", "nome": "Bacon", "preco": 3.5 } ] }]
+
+// item.grupos — vínculo do produto (regra opcional, sobrescreve o padrão do grupo)
+[{ "id": "grp_m1a2", "obrigatorio": true, "min": 1, "max": 1 }]
+```
+
+- **As opções moram no grupo; a regra efetiva mora no vínculo.** Sem regra no vínculo vale o
+  `padrao` do grupo. É isso que deixa Marmitex P/M/G usarem a mesma lista escolhendo 1, 2 e 3.
+- **`id` de grupo e de opção é estável**: renomear não gera id novo. É a âncora da futura ficha
+  técnica de Insumos, e por isso o painel preserva ids ao salvar (só opção nova ganha um).
+- **Regra de leitura:** item com ao menos um vínculo resolvido usa a biblioteca e **ignora**
+  `composicao`/`opcionais`; item sem vínculo segue pelo caminho legado, inalterado.
+- **A saída do pedido não mudou.** Opção com preço 0 vira `composicao: [{ grupo, itens:[nome] }]`;
+  opção com preço vira `opcionais: [{ nome, preco, qtd }]`. Comanda, `itens_venda`, relatórios e
+  pedidos antigos não sabem que a biblioteca existe.
+- **O cliente envia ids**, não nomes: `grupos: [{ grupo: "grp_m1a2", opcoes: ["op_a1"] }]` no pedido
+  do cardápio web, na venda do PDV e no lançamento para mesa. O servidor recalcula por eles.
+- Helpers puros em `public/grupos.js`: `normalizarBiblioteca`, `resolverGrupos` (expande o vínculo
+  aplicando a regra efetiva), `avaliarEscolhas` (valida e devolve `composicao`/`opcionais`/`addUnit`)
+  e `converterCardapio` (usado pela migração).
+- **Conversão reversível:** `npm run converter-complementos` simula e `-- --aplicar` grava. Monta a
+  biblioteca a partir de `composicao`/`opcionais` de cada item, deduplicando grupos iguais, e **nunca
+  apaga** os campos antigos. Tenant que já tem biblioteca é pulado (idempotente).
+- Telas: **Cadastros → Produtos → Complementos** (biblioteca) e a aba **Complementos** do editor do
+  produto (vínculos, ordem e regra por produto).
+
 `variacoes` (opcional) é um **array** `[{ id, nome, preco, estoque?, estoqueMinimo? }]` — opções com
 **preço e estoque próprios** (ex.: "Refrigerantes 350ml" com vários sabores). O cliente escolhe
 **várias com quantidade** (somam no preço; o card mostra **"a partir de R$ X"** = menor preço entre as

@@ -873,3 +873,16 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - No celular, o menu vira **botão sanduíche** (gaveta) + barra de atalhos embaixo, mais fácil
   de usar com o dedo.
 - No cadastro do item, "Opcionais" passou a se chamar **Complementos**.
+
+## [0.90.0] — Complementos que você cadastra uma vez e usa em vários produtos
+
+- Nova tela **Complementos** (Cadastros → Produtos): monte grupos de opções, como Guarnição
+  ou Ponto da carne, com preço quando houver, e reaproveite em quantos produtos quiser.
+  Mudou o preço de um adicional? Muda num lugar só e vale em todos os produtos.
+- No cadastro do produto, a aba **Complementos** passa a listar os grupos que ele usa. Dá para
+  ordenar, e **cada produto define quantas opções o cliente escolhe** sem alterar a lista:
+  o Marmitex P leva 1 guarnição, o G leva 3, usando o mesmo grupo.
+- Grupo em uso não é excluído sem querer: o sistema avisa em quantos produtos ele está ligado.
+- No cardápio e no PDV, as opções aparecem separadas por grupo, com escolha única ou múltipla
+  conforme a regra, e o preço do adicional fica ao lado da opção.
+- Nada muda na comanda, nos relatórios nem nos pedidos já feitos.
