@@ -3345,131 +3345,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .vinc-item:hover { border-color: var(--accent); }
 .vinc-item input { width: auto; flex: 0 0 auto; margin: 0; }
 
-/* ---------- Construtor de Composição ---------- */
-.comp-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-}
+/* O construtor de Composição (classes .comp-*) saiu junto com a aba Composições do
+   editor do produto: os complementos agora vêm da biblioteca (classes .eg-* acima). */
 
-.comp-subgrupo {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  background: var(--bg-elevated);
-}
-
-.comp-subgrupo-cabeca {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.comp-sg-regras {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-/* display:inline-flex no proprio seletor `.comp-sg-regras label` (mesma especificidade
-   do `.campo label` global, vence por ordem) — sem isso os rotulos viram block e o
-   layout quebra/sobrepoe; tambem anula uppercase/letter-spacing/margem que alargavam. */
-.comp-sg-regras label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 0;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-.comp-sg-obrig-lbl { cursor: pointer; }
-/* number com setinhas nativas comia o espaco do digito num campo estreito — escondemos
-   as setas (cross-browser) e centralizamos; assim o valor cabe inteiro em telas menores. */
-.comp-sg-num input {
-  width: 52px;
-  flex: none;
-  text-align: center;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.comp-sg-num input::-webkit-outer-spin-button,
-.comp-sg-num input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-.comp-sg-nome {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 3px 6px;
-  color: var(--text-primary);
-  min-width: 0;
-}
-.comp-sg-nome:hover,
-.comp-sg-nome:focus { border-color: var(--border); background: var(--bg-overlay); outline: none; }
-
-.comp-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-  min-height: 20px;
-}
-
-.comp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--bg-overlay);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 6px 3px 10px;
-  font-size: 12px;
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
-.comp-chip-del {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  background: none;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
-  box-shadow: none;
-}
-.comp-chip-del:hover { color: var(--error); background: var(--error-subtle); }
-
-.comp-add-ing {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.comp-ing-input {
-  flex: 1;
-  font-size: 13px;
-  padding: 5px 9px;
-  min-width: 0;
-}
-
-/* ---------- Construtor de Opcionais ---------- */
+/* ---------- Linhas de opção (gaveta do grupo) ---------- */
 .opc-builder {
   display: flex;
   flex-direction: column;
@@ -6221,10 +6100,10 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
    Estes botões antes traziam um glifo "×"/"✕"; agora recebem o ICO_LIXEIRA (14px).
    Regra única: centraliza e fixa o tamanho do SVG em todos eles. Cor/hover ficam
    nas regras próprias de cada classe (já em token --error). */
-.comp-chip-del, .comp-sg-del, .opc-del, .var-del, .fc-del,
+.opc-del, .grp-op-del, .var-del, .fc-del,
 .ff-remover, .mesa-cart-rm, .mesa-tag-rm, .pdv-pg-item button {
   display: inline-flex; align-items: center; justify-content: center; line-height: 1;
 }
-.comp-chip-del svg, .comp-sg-del svg, .opc-del svg, .var-del svg,
+.opc-del svg, .grp-op-del svg, .var-del svg,
 .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
 .mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }
