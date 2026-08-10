@@ -455,7 +455,13 @@
             <div class="cfg-conta-linha">
               <div class="cfg-conta-info">
                 <span class="cfg-conta-rotulo cfg-perigo-titulo">Excluir minha conta</span>
-                <span class="sub">Apaga permanentemente a empresa, o cardápio, os pedidos e a conexão do WhatsApp. Esta ação não pode ser desfeita.</span>
+                <span class="sub">Apaga de vez, sem como desfazer:</span>
+                <ul class="lista-dicas">
+                  <li>A empresa e o acesso ao painel.</li>
+                  <li>O cardápio inteiro.</li>
+                  <li>Todos os pedidos e o histórico.</li>
+                  <li>A conexão do WhatsApp.</li>
+                </ul>
               </div>
               <button type="button" class="perigo mini" id="btnAbrirExcluir">Excluir conta</button>
             </div>
@@ -1353,13 +1359,15 @@
           </div>
           <div class="linha">
             <div class="campo"><label for="grpMin">Mínimo</label><input type="number" min="0" max="30" id="grpMin" value="0" /></div>
-            <div class="campo"><label for="grpMax">Máximo</label><input type="number" min="0" max="30" id="grpMax" value="0" /></div>
+            <div class="campo"><label for="grpMax">Máximo</label><input type="number" min="0" max="30" id="grpMax" value="0" /><p class="campo-nota">0 = sem limite</p></div>
           </div>
           <p class="grp-dica-regra" id="grpDicaRegra"></p>
-          <p class="editor-dica">Máximo em 0 quer dizer sem limite: o cliente pode marcar quantas opções quiser.</p>
           <div class="campo grp-secao-opcoes">
             <label>Opções</label>
-            <p class="editor-dica">Opção com preço R$ 0,00 entra na composição do produto. Com preço, entra como adicional e soma no pedido.</p>
+            <ul class="lista-dicas">
+              <li>Sem preço: faz parte do produto, não soma nada.</li>
+              <li>Com preço: vira adicional e soma no pedido.</li>
+            </ul>
             <div id="grpOpcoes" class="opc-builder"></div>
             <button type="button" class="secundario mini" id="grpAddOpcao">+ Adicionar opção</button>
           </div>
@@ -1599,7 +1607,7 @@
               <div class="campo"><label for="editor-preco-custo">Preço custo (R$)</label><input type="text" inputmode="numeric" id="editor-preco-custo" placeholder="0,00" /></div>
               <div class="campo"><label for="editor-preco">Preço venda (R$)</label><input type="text" inputmode="numeric" id="editor-preco" placeholder="0,00" /></div>
             </div>
-            <p class="editor-dica" style="margin:-4px 0 8px">Se usar variações, deixe os preços acima como R$ 0,00. O valor vem da variação escolhida.</p>
+            <p class="editor-dica" style="margin:-4px 0 8px">Com variações, deixe os preços em R$ 0,00: o valor vem da opção escolhida.</p>
             <div class="campo"><label for="editor-categoria">Categoria</label><select id="editor-categoria"></select></div>
             <div class="campo"><label for="editor-desc">Descrição</label><textarea id="editor-desc" rows="2" placeholder="Descrição curta do item (opcional)"></textarea></div>
           </div>
@@ -1623,15 +1631,19 @@
               <label for="editor-cozinha">Imprime na cozinha</label>
             </div>
           </div>
-          <p class="editor-dica" id="editor-entrega-dica">Desligado: o item aparece no cardápio com o aviso "Só no local" e não pode ser pedido para entrega.</p>
+          <p class="editor-dica" id="editor-entrega-dica">Desligado: aparece como "Só no local" e não pode ser pedido para entrega.</p>
           <div class="linha">
             <div class="campo"><label for="editor-unidade">Unidade</label><select id="editor-unidade"><option value="un">Unidade (un)</option><option value="kg">Peso (kg)</option></select></div>
-            <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /></div>
+            <div class="campo"><label for="editor-estoque">Estoque</label><input type="text" inputmode="decimal" id="editor-estoque" placeholder="ilimitado" /><p class="campo-nota">Em branco = ilimitado</p></div>
             <div class="campo"><label for="editor-estoque-min">Estoque mínimo</label><input type="text" inputmode="decimal" id="editor-estoque-min" placeholder="0" /></div>
           </div>
-          <p class="editor-dica" id="editor-kg-dica" hidden>Item por kg: aparece no cardápio com o preço por kg e é vendido só no local, pesado no balcão. Não entra em pedido online.</p>
-          <p class="editor-dica" id="editor-estoque-ilim-dica">Deixe o estoque em branco para <strong>vender sem limite</strong> (ilimitado). Preencha com um número para controlar o estoque. Ao chegar a zero, o item fica "Esgotado" e sai de venda.</p>
-          <p class="editor-dica" id="editor-estoque-var-nota" hidden>Este item tem <strong>variações</strong>: o estoque é controlado <strong>por opção</strong>, na aba Variações. O campo acima não afeta os sabores.</p>
+          <ul class="lista-dicas" id="editor-kg-dica" hidden>
+            <li>Preço mostrado por kg no cardápio.</li>
+            <li>Vendido só no local, pesado no balcão.</li>
+            <li>Não entra em pedido online.</li>
+          </ul>
+          <p class="editor-dica" id="editor-estoque-ilim-dica">Ao chegar a zero, o item fica "Esgotado" e sai de venda.</p>
+          <p class="editor-dica" id="editor-estoque-var-nota" hidden>Este item tem <strong>variações</strong>: o estoque é por opção, na aba Variações.</p>
         </div>
       </div>
 
@@ -1640,7 +1652,11 @@
         <div class="editor-panel-scroll">
           <div class="campo">
             <label>Complementos deste produto</label>
-            <p class="editor-dica">As opções vêm da biblioteca (Cadastros → Produtos → Complementos). Aqui você escolhe quais grupos este produto usa, em que ordem, e quantas opções o cliente escolhe.</p>
+            <ul class="lista-dicas">
+              <li>As opções vêm da biblioteca, em Cadastros, Produtos, Complementos.</li>
+              <li>Aqui você escolhe quais grupos o produto usa e em que ordem.</li>
+              <li>No selo de cada grupo, define quantas opções o cliente escolhe.</li>
+            </ul>
             <div id="editorGruposLista" class="eg-lista"></div>
             <div class="eg-acoes">
               <button type="button" class="secundario mini" id="btnVincularGrupo">Usar grupo da biblioteca</button>
@@ -1650,7 +1666,7 @@
           <!-- Complementos do formato antigo: só leitura, até a conversão para a biblioteca -->
           <div class="eg-legado" id="editorLegado" hidden>
             <p class="eg-legado-tit">Complementos do formato antigo</p>
-            <p class="editor-dica">Continuam valendo no cardápio e serão convertidos para a biblioteca. Enquanto isso, eles não são editados por aqui.</p>
+            <p class="editor-dica">Continuam valendo no cardápio. Serão convertidos para a biblioteca.</p>
             <div id="editorLegadoLista"></div>
           </div>
         </div>
@@ -1661,8 +1677,13 @@
         <div class="editor-panel-scroll">
           <div class="campo">
             <label>Variações</label>
-            <p class="editor-dica">Cadastre vários itens parecidos dentro de um só. Ex.: crie "Refrigerantes 350ml" e coloque dentro Coca, Coca Zero, Fanta... Cada um com seu preço e estoque. No cardápio aparece um item só, e o cliente escolhe o sabor.</p>
-            <p class="editor-dica"><strong>Cada opção controla o próprio estoque</strong> (em branco = ilimitado). O produto só fica "Esgotado" quando <strong>todas</strong> as opções zerarem.</p>
+            <p class="editor-dica">Vários itens parecidos dentro de um só. Ex.: "Refrigerantes 350ml" com Coca, Coca Zero e Fanta.</p>
+            <ul class="lista-dicas">
+              <li>Cada opção tem preço e estoque próprios.</li>
+              <li>Estoque em branco = ilimitado.</li>
+              <li>No cardápio aparece um item só, e o cliente escolhe o sabor.</li>
+              <li>O produto só fica "Esgotado" quando todas as opções zerarem.</li>
+            </ul>
             <div id="editor-variacoes-builder" class="var-builder"></div>
             <button type="button" class="secundario mini" id="editor-var-add">+ Adicionar variação</button>
           </div>

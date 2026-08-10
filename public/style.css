@@ -3317,7 +3317,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .eg-selo:hover { color: var(--text-primary); }
 .eg-selo.proprio { border-color: var(--accent); color: var(--text-primary); }
 .eg-botoes { display: flex; gap: 4px; flex: 0 0 auto; }
-.eg-acoes { display: flex; gap: 8px; margin-top: 10px; }
+.eg-acoes { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+/* Botões "+ Adicionar ..." nunca colam na lista acima (mesma folga do #grpAddOpcao) */
+#editor-var-add { margin-top: var(--space-3); }
 /* Painel da regra efetiva, aberto embaixo da linha do grupo */
 .eg-regra {
   background: var(--bg-elevated); border: 1px solid var(--border);
@@ -5890,6 +5892,12 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
    Sem isto o "+ Adicionar opção" cola na última opção e o rótulo OPÇÕES encosta no
    texto de ajuda logo acima. */
 #grpDicaRegra { margin: var(--space-3) 0 var(--space-1); }
+/* Nota curta presa ao campo (ex.: "0 = sem limite" embaixo do Máximo) e explicação
+   em tópicos. Genéricas: a regra é preferir isto a parágrafo de ajuda. */
+.campo-nota { margin: var(--space-1) 0 0; font-size: 11px; color: var(--text-secondary); }
+.lista-dicas { margin: var(--space-1) 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.lista-dicas li { margin-bottom: var(--space-1); }
+.lista-dicas li:last-child { margin-bottom: 0; }
 .grp-secao-opcoes { margin-top: var(--space-5); }
 #grpOpcoes { margin-top: var(--space-2); }
 #grpAddOpcao { margin-top: var(--space-3); }
