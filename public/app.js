@@ -429,14 +429,16 @@ function renderComplementos() {
     card.className = "grp-card";
     card.innerHTML =
       '<div class="grp-card-topo">' +
-        '<span class="grp-card-nome">' + escapar(g.nome || "Sem nome") + '</span>' +
-        '<span class="grp-tipo' + (g.tipo === "complemento" ? " compl" : "") + '">' + (g.tipo === "complemento" ? "Complemento" : "Composição") + '</span>' +
+        '<span class="grp-card-nome" title="' + escapar(g.nome || "") + '">' + escapar(g.nome || "Sem nome") + '</span>' +
         '<div class="cat-card-acoes">' +
           '<button type="button" class="cat-ico grp-edit" data-id="' + escapar(g.id) + '" aria-label="Editar grupo" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' +
           '<button type="button" class="cat-ico cat-del grp-del" data-id="' + escapar(g.id) + '" aria-label="Excluir grupo" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
         '</div>' +
       '</div>' +
-      '<div class="grp-card-regra">' + escapar(grpTextoRegra(g.padrao, g.tipo)) + '</div>' +
+      '<div class="grp-card-meta">' +
+        '<span class="grp-tipo' + (g.tipo === "complemento" ? " compl" : "") + '">' + (g.tipo === "complemento" ? "Complemento" : "Composição") + '</span>' +
+        '<span class="grp-card-regra">' + escapar(grpTextoRegra(g.padrao, g.tipo)) + '</span>' +
+      '</div>' +
       '<div class="grp-ops">' + chips + (resto > 0 ? '<span class="grp-op-mais">+' + resto + '</span>' : "") + '</div>' +
       '<div class="grp-card-uso">' + (n ? "Usado em " + n + (n === 1 ? " produto" : " produtos") : "Nenhum produto usa este grupo") + '</div>';
     cont.appendChild(card);
