@@ -754,6 +754,15 @@ nav button.ativo svg { opacity: 1; }
 .grp-card-topo { display: flex; align-items: center; gap: 8px; }
 .grp-card-nome { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .grp-card-regra { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+/* Selo de tipo do grupo: composição (neutro) x complemento (acento, porque tem preço) */
+.grp-tipo {
+  flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px;
+  background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary);
+}
+.grp-tipo.compl { border-color: var(--accent); color: var(--accent-fg); }
+/* Sub-abas Composição x Complementos dentro do editor do produto */
+.eg-subabas { margin-bottom: var(--space-4); }
 .grp-ops { display: flex; flex-wrap: wrap; gap: 4px; }
 .grp-op {
   display: inline-flex; align-items: center; gap: 4px;

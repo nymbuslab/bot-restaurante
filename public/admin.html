@@ -1321,7 +1321,12 @@
       </div>
       <div class="pedidos-filtros">
         <input type="search" id="grpBusca" class="grp-busca" placeholder="Buscar por grupo ou opção" aria-label="Buscar por grupo ou opção" />
-        <div class="filtro-chips" id="grpFiltros" role="group" aria-label="Filtrar grupos">
+        <div class="filtro-chips" id="grpFiltroTipo" role="group" aria-label="Filtrar por tipo">
+          <button type="button" class="filtro-chip ativo" data-grp-tipo-filtro="todos">Todos</button>
+          <button type="button" class="filtro-chip" data-grp-tipo-filtro="composicao">Composição</button>
+          <button type="button" class="filtro-chip" data-grp-tipo-filtro="complemento">Complementos</button>
+        </div>
+        <div class="filtro-chips" id="grpFiltros" role="group" aria-label="Filtrar por uso">
           <button type="button" class="filtro-chip ativo" data-grp-filtro="todos">Todos</button>
           <button type="button" class="filtro-chip" data-grp-filtro="uso">Em uso</button>
           <button type="button" class="filtro-chip" data-grp-filtro="semuso">Sem uso</button>
@@ -1349,8 +1354,19 @@
           </div>
         </div>
         <div class="gaveta-conteudo">
-          <div class="campo"><label for="grpNome">Nome do grupo</label><input id="grpNome" placeholder="Ex.: Guarnição" /></div>
           <div class="campo">
+            <label id="grpTipoLabel">Tipo do grupo</label>
+            <div class="filtro-chips" id="grpTipo" role="group" aria-labelledby="grpTipoLabel">
+              <button type="button" class="filtro-chip ativo" data-grp-tipo="composicao">Composição</button>
+              <button type="button" class="filtro-chip" data-grp-tipo="complemento">Complemento</button>
+            </div>
+            <ul class="lista-dicas">
+              <li><strong>Composição:</strong> o que vai dentro do prato. O cliente escolhe entre as opções.</li>
+              <li><strong>Complemento:</strong> extra que ele acrescenta, com preço e quantidade.</li>
+            </ul>
+          </div>
+          <div class="campo"><label for="grpNome">Nome do grupo</label><input id="grpNome" placeholder="Ex.: Guarnição" /></div>
+          <div class="campo" id="grpCampoObrig">
             <label id="grpSegLabel">Escolha do cliente</label>
             <div class="filtro-chips" id="grpSeg" role="group" aria-labelledby="grpSegLabel">
               <button type="button" class="filtro-chip ativo" data-grp-obrig="0">Opcional</button>
@@ -1358,16 +1374,12 @@
             </div>
           </div>
           <div class="linha">
-            <div class="campo"><label for="grpMin">Mínimo</label><input type="number" min="0" max="30" id="grpMin" value="0" /></div>
-            <div class="campo"><label for="grpMax">Máximo</label><input type="number" min="0" max="30" id="grpMax" value="0" /><p class="campo-nota">0 = sem limite</p></div>
+            <div class="campo" id="grpCampoMin"><label for="grpMin">Mínimo</label><input type="number" min="0" max="30" id="grpMin" value="0" /></div>
+            <div class="campo"><label for="grpMax" id="grpMaxLabel">Máximo</label><input type="number" min="0" max="30" id="grpMax" value="0" /><p class="campo-nota">0 = sem limite</p></div>
           </div>
           <p class="grp-dica-regra" id="grpDicaRegra"></p>
           <div class="campo grp-secao-opcoes">
             <label>Opções</label>
-            <ul class="lista-dicas">
-              <li>Sem preço: faz parte do produto, não soma nada.</li>
-              <li>Com preço: vira adicional e soma no pedido.</li>
-            </ul>
             <div id="grpOpcoes" class="opc-builder"></div>
             <button type="button" class="secundario mini" id="grpAddOpcao">+ Adicionar opção</button>
           </div>
@@ -1650,13 +1662,12 @@
       <!-- PAINEL COMPLEMENTOS — grupos da biblioteca vinculados a este produto -->
       <div class="editor-panel" id="panel-opcionais">
         <div class="editor-panel-scroll">
+          <div class="filtro-chips eg-subabas" id="egSubTabs" role="group" aria-label="Tipo de grupo">
+            <button type="button" class="filtro-chip ativo" data-eg-tipo="composicao">Composição</button>
+            <button type="button" class="filtro-chip" data-eg-tipo="complemento">Complementos</button>
+          </div>
           <div class="campo">
-            <label>Complementos deste produto</label>
-            <ul class="lista-dicas">
-              <li>As opções vêm da biblioteca, em Cadastros, Produtos, Complementos.</li>
-              <li>Aqui você escolhe quais grupos o produto usa e em que ordem.</li>
-              <li>No selo de cada grupo, define quantas opções o cliente escolhe.</li>
-            </ul>
+            <ul class="lista-dicas" id="egSubDica"></ul>
             <div id="editorGruposLista" class="eg-lista"></div>
             <div class="eg-acoes">
               <button type="button" class="secundario mini" id="btnVincularGrupo">Usar grupo da biblioteca</button>

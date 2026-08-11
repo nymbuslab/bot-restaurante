@@ -344,10 +344,12 @@ if ($("btnNovaCategoria")) $("btnNovaCategoria").addEventListener("click", async
 // produtos que usam o grupo. O id é ESTÁVEL: renomear não gera id novo.
 // ============================================================
 let grpFiltro = "todos";       // todos | uso | semuso
+let grpFiltroTipo = "todos";   // todos | composicao | complemento
 let grpTermoBusca = "";
 let grpEditandoId = null;      // null = criando um grupo novo
 let grpEditOpcoes = [];        // rascunho das opções abertas na gaveta
 let grpFocoVolta = null;       // quem abriu a gaveta (devolve o foco ao fechar)
+let grpTipoNovo = "composicao"; // tipo com que um grupo NOVO nasce (segue a aba de origem)
 
 // Id estável de grupo/opção. randomUUID quando existir; senão tempo + aleatório.
 function grpNovoId(prefixo) {
@@ -371,10 +373,14 @@ function grpContarUso() {
   return uso;
 }
 
-// Regra em português, do jeito que o dono lê no card e na gaveta.
-function grpTextoRegra(r) {
+// Regra em português, do jeito que o dono lê no card e na gaveta. Complemento conta
+// UNIDADES (o cliente repete a mesma opção); composição conta escolhas.
+function grpTextoRegra(r, tipo) {
   const min = Math.max(0, parseInt(r && r.min, 10) || 0);
   const max = Math.max(0, parseInt(r && r.max, 10) || 0);
+  if (tipo === "complemento") {
+    return max > 0 ? "Até " + max + (max === 1 ? " unidade" : " unidades") : "Quantidade livre";
+  }
   if (r && r.obrigatorio) {
     const piso = Math.max(1, min);
     if (max === piso) return "Obrigatório, escolha " + piso;
@@ -395,6 +401,7 @@ function renderComplementos() {
   const busca = grpTermoBusca.trim().toLowerCase();
   const lista = bib.filter((g) => {
     const n = uso[g.id] || 0;
+    if (grpFiltroTipo !== "todos" && g.tipo !== grpFiltroTipo) return false;
     if (grpFiltro === "uso" && !n) return false;
     if (grpFiltro === "semuso" && n) return false;
     if (!busca) return true;
@@ -422,12 +429,13 @@ function renderComplementos() {
     card.innerHTML =
       '<div class="grp-card-topo">' +
         '<span class="grp-card-nome">' + escapar(g.nome || "Sem nome") + '</span>' +
+        '<span class="grp-tipo' + (g.tipo === "complemento" ? " compl" : "") + '">' + (g.tipo === "complemento" ? "Complemento" : "Composição") + '</span>' +
         '<div class="cat-card-acoes">' +
           '<button type="button" class="cat-ico grp-edit" data-id="' + escapar(g.id) + '" aria-label="Editar grupo" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>' +
           '<button type="button" class="cat-ico cat-del grp-del" data-id="' + escapar(g.id) + '" aria-label="Excluir grupo" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
         '</div>' +
       '</div>' +
-      '<div class="grp-card-regra">' + escapar(grpTextoRegra(g.padrao)) + '</div>' +
+      '<div class="grp-card-regra">' + escapar(grpTextoRegra(g.padrao, g.tipo)) + '</div>' +
       '<div class="grp-ops">' + chips + (resto > 0 ? '<span class="grp-op-mais">+' + resto + '</span>' : "") + '</div>' +
       '<div class="grp-card-uso">' + (n ? "Usado em " + n + (n === 1 ? " produto" : " produtos") : "Nenhum produto usa este grupo") + '</div>';
     cont.appendChild(card);
@@ -455,6 +463,28 @@ async function grpExcluir(id, emUso) {
 }
 
 // ---- Gaveta do grupo ----
+function grpTipoSelecionado() {
+  const ativo = $("grpTipo").querySelector(".filtro-chip.ativo");
+  return (ativo && ativo.dataset.grpTipo) === "complemento" ? "complemento" : "composicao";
+}
+
+function grpMarcarTipo(tipo) {
+  $("grpTipo").querySelectorAll(".filtro-chip").forEach((b) =>
+    b.classList.toggle("ativo", b.dataset.grpTipo === tipo));
+}
+
+// A gaveta muda de cara conforme o tipo: composição pergunta obrigatoriedade e
+// mínimo de escolhas; complemento só limita unidades e é o único com preço.
+function grpAplicarTipo() {
+  const compl = grpTipoSelecionado() === "complemento";
+  $("grpCampoObrig").hidden = compl;
+  $("grpCampoMin").hidden = compl;
+  $("grpMaxLabel").textContent = compl ? "Máximo de unidades" : "Máximo";
+  $("grpNome").placeholder = compl ? "Ex.: Adicionais" : "Ex.: Guarnição";
+  grpRenderOpcoes();
+  grpAtualizarDicaRegra();
+}
+
 function grpObrigatorioSelecionado() {
   const ativo = $("grpSeg").querySelector(".filtro-chip.ativo");
   return !!(ativo && ativo.dataset.grpObrig === "1");
@@ -471,19 +501,23 @@ function grpAtualizarDicaRegra() {
     obrigatorio: grpObrigatorioSelecionado(),
     min: $("grpMin").value,
     max: $("grpMax").value,
-  });
+  }, grpTipoSelecionado());
 }
 
 function grpRenderOpcoes() {
   const cont = $("grpOpcoes");
+  const compl = grpTipoSelecionado() === "complemento";
   cont.innerHTML = "";
   grpEditOpcoes.forEach((o, i) => {
     const div = document.createElement("div");
     div.className = "opc-linha";
     div.innerHTML =
       '<input class="opc-nome grp-op-nome" placeholder="Nome da opção" aria-label="Nome da opção" value="' + escapar(o.nome || "") + '" data-oi="' + i + '" />' +
-      '<div class="opc-preco-wrap"><span class="opc-rs">R$</span>' +
-      '<input type="text" inputmode="numeric" class="opc-preco grp-op-valor" placeholder="0,00" aria-label="Preço da opção" value="' + (o.preco ? Dinheiro.formatar(o.preco) : "") + '" data-oi="' + i + '" /></div>' +
+      // Só complemento tem preço: composição é escolha do que vem no prato.
+      (compl
+        ? '<div class="opc-preco-wrap"><span class="opc-rs">R$</span>' +
+          '<input type="text" inputmode="numeric" class="opc-preco grp-op-valor" placeholder="0,00" aria-label="Preço da opção" value="' + (o.preco ? Dinheiro.formatar(o.preco) : "") + '" data-oi="' + i + '" /></div>'
+        : "") +
       '<button type="button" class="perigo mini grp-op-del" data-oi="' + i + '" aria-label="Remover opção">' + ICO_LIXEIRA + '</button>';
     cont.appendChild(div);
   });
@@ -517,8 +551,9 @@ function grpAbrirGaveta(id, origem) {
   $("grpMin").value = padrao.min;
   $("grpMax").value = padrao.max;
   grpMarcarObrigatorio(padrao.obrigatorio);
-  grpAtualizarDicaRegra();
-  grpRenderOpcoes();
+  // Grupo novo nasce do tipo da aba/filtro em que o dono estava (grpTipoNovo).
+  grpMarcarTipo(g ? g.tipo : grpTipoNovo);
+  grpAplicarTipo();   // já chama grpRenderOpcoes + grpAtualizarDicaRegra
   $("grpGavetaOverlay").classList.add("visivel");
   $("grpGaveta").classList.add("aberto");
   document.addEventListener("keydown", grpGavetaEsc);
@@ -546,20 +581,23 @@ function grpFecharGaveta() {
 }
 
 async function grpSalvarGaveta() {
+  const tipo = grpTipoSelecionado();
+  const compl = tipo === "complemento";
   const nome = Texto.tituloPt(($("grpNome").value || "").trim());
   if (!nome) { toast("Dê um nome ao grupo.", "erro"); $("grpNome").focus(); return; }
   const opcoes = grpEditOpcoes
-    .map((o) => ({ id: String(o.id || ""), nome: Texto.tituloPt(String(o.nome || "").trim()), preco: Math.max(0, Number(o.preco) || 0) }))
+    .map((o) => ({ id: String(o.id || ""), nome: Texto.tituloPt(String(o.nome || "").trim()), preco: compl ? Math.max(0, Number(o.preco) || 0) : 0 }))
     .filter((o) => o.nome);
   if (!opcoes.length) { toast("Adicione pelo menos uma opção.", "erro"); return; }
   opcoes.forEach((o) => { if (!o.id) o.id = grpNovoId("op_"); });  // id novo SÓ para opção nova
-  const obrigatorio = grpObrigatorioSelecionado();
-  let min = Math.max(0, parseInt($("grpMin").value, 10) || 0);
+  // Complemento não pergunta obrigatoriedade nem mínimo: é acréscimo, o máximo limita unidades.
+  const obrigatorio = compl ? false : grpObrigatorioSelecionado();
+  let min = compl ? 0 : Math.max(0, parseInt($("grpMin").value, 10) || 0);
   let max = Math.max(0, parseInt($("grpMax").value, 10) || 0);
   if (obrigatorio && min < 1) min = 1;
-  if (min > opcoes.length) min = opcoes.length;   // mínimo maior que a lista é impossível de atender
+  if (!compl && min > opcoes.length) min = opcoes.length;   // mínimo maior que a lista é impossível
   if (max > 0 && max < min) max = min;
-  const grupo = { id: grpEditandoId || grpNovoId("grp_"), nome, padrao: { obrigatorio, min, max }, opcoes };
+  const grupo = { id: grpEditandoId || grpNovoId("grp_"), nome, tipo, padrao: { obrigatorio, min, max }, opcoes };
   const antes = Array.isArray(cardapioAtual.grupos) ? cardapioAtual.grupos.slice() : [];
   const lista = antes.slice();
   const i = lista.findIndex((x) => x && String(x.id) === grupo.id);
@@ -581,7 +619,10 @@ async function grpSalvarGaveta() {
 }
 
 if ($("btnNovoGrupo")) {
-  $("btnNovoGrupo").addEventListener("click", (e) => grpAbrirGaveta(null, e.currentTarget));
+  $("btnNovoGrupo").addEventListener("click", (e) => {
+    grpTipoNovo = grpFiltroTipo === "complemento" ? "complemento" : "composicao"; // segue o filtro da tela
+    grpAbrirGaveta(null, e.currentTarget);
+  });
   $("grpGavetaFechar").addEventListener("click", grpFecharGaveta);
   $("grpCancelar").addEventListener("click", grpFecharGaveta);
   $("grpGavetaOverlay").addEventListener("click", grpFecharGaveta);
@@ -592,11 +633,20 @@ if ($("btnNovoGrupo")) {
     const inputs = $("grpOpcoes").querySelectorAll(".grp-op-nome");
     if (inputs.length) inputs[inputs.length - 1].focus();
   });
+  $("grpTipo").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+    grpMarcarTipo(b.dataset.grpTipo);
+    grpAplicarTipo();
+  }));
   $("grpSeg").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
     const obrig = b.dataset.grpObrig === "1";
     grpMarcarObrigatorio(obrig);
     if (obrig && (parseInt($("grpMin").value, 10) || 0) < 1) $("grpMin").value = 1;  // obrigatório pede ao menos 1
     grpAtualizarDicaRegra();
+  }));
+  $("grpFiltroTipo").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+    grpFiltroTipo = b.dataset.grpTipoFiltro;
+    $("grpFiltroTipo").querySelectorAll(".filtro-chip").forEach((x) => x.classList.toggle("ativo", x === b));
+    renderComplementos();
   }));
   ["grpMin", "grpMax"].forEach((id) => $(id).addEventListener("input", grpAtualizarDicaRegra));
   $("grpBusca").addEventListener("input", (e) => { grpTermoBusca = e.target.value; renderComplementos(); });
@@ -1733,6 +1783,8 @@ function abrirEditorItem(ci, ii) {
   document.getElementById("panel-principal").classList.add("ativo");
 
   egRegraAberta = -1;
+  egSubTipo = "composicao";   // abre sempre na Composição
+  $("egSubTabs").querySelectorAll(".filtro-chip").forEach((x) => x.classList.toggle("ativo", x.dataset.egTipo === "composicao"));
   renderEditorGrupos();
   renderEditorVariacoes();
   aplicarUnidadeEditor();
@@ -2023,6 +2075,7 @@ const ICO_SUBIR = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16
 const ICO_DESCER = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
 const ICO_LAPIS = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 
+let egSubTipo = "composicao";   // sub-aba ativa no editor: composicao | complemento
 let egRegraAberta = -1;         // índice do vínculo com o painel de regra aberto
 let egVincularAoSalvar = false; // gaveta aberta pelo editor: vincula o grupo novo ao produto
 let vincMarcados = [];          // ids marcados no modal "Usar grupo da biblioteca"
@@ -2059,18 +2112,28 @@ function renderEditorGrupos() {
   if (!cont) return;
   const bib = egBiblioteca();
   cont.innerHTML = "";
-  if (!editorGrupos.length) {
-    cont.innerHTML = '<p class="editor-dica eg-vazio">Nenhum grupo neste produto. Use "Usar grupo da biblioteca" para aproveitar um que já existe, ou "Criar grupo novo".</p>';
+  const compl = egSubTipo === "complemento";
+  $("egSubDica").innerHTML = compl
+    ? "<li>Extras que o cliente acrescenta, com preço.</li><li>Ele escolhe a quantidade de cada um.</li>"
+    : "<li>O que vai dentro do prato: o cliente escolhe entre as opções.</li><li>No selo, você define quantas escolhas valem neste produto.</li>";
+  // Vínculo órfão (grupo saiu da biblioteca) aparece nas duas abas, pra sempre dar pra remover.
+  const visiveis = editorGrupos
+    .map((v, i) => ({ v: v, i: i, g: bib[String(v.id)] }))
+    .filter((x) => !x.g || x.g.tipo === egSubTipo);
+  if (!visiveis.length) {
+    cont.innerHTML = compl
+      ? '<p class="editor-dica eg-vazio">Nenhum complemento neste produto. Use "Usar grupo da biblioteca" ou "Criar grupo novo".</p>'
+      : '<p class="editor-dica eg-vazio">Nenhuma composição neste produto. Use "Usar grupo da biblioteca" ou "Criar grupo novo".</p>';
     egRenderLegado();
     return;
   }
-  editorGrupos.forEach((v, i) => {
-    const g = bib[String(v.id)];
+  visiveis.forEach((x, pos) => {
+    const v = x.v, i = x.i, g = x.g;
     const linha = document.createElement("div");
     linha.className = "eg-linha" + (g ? "" : " eg-orfa");
     if (!g) {   // vínculo apontando para grupo que não existe mais na biblioteca
       linha.innerHTML =
-        '<span class="eg-pos">' + (i + 1) + '</span>' +
+        '<span class="eg-pos">' + (pos + 1) + '</span>' +
         '<div class="eg-info"><span class="eg-nome">Grupo fora da biblioteca</span>' +
         '<span class="eg-resumo">Recrie o grupo em Complementos ou remova este vínculo.</span></div>' +
         '<div class="eg-botoes"><button type="button" class="cat-ico cat-del eg-del" data-i="' + i + '" aria-label="Remover do produto" title="Remover do produto">' + ICO_LIXEIRA + '</button></div>';
@@ -2080,15 +2143,15 @@ function renderEditorGrupos() {
     const regra = egRegraEfetiva(v, g.padrao);
     const aberto = egRegraAberta === i;
     linha.innerHTML =
-      '<span class="eg-pos">' + (i + 1) + '</span>' +
+      '<span class="eg-pos">' + (pos + 1) + '</span>' +
       '<div class="eg-info">' +
         '<span class="eg-nome">' + escapar(g.nome) + '</span>' +
         '<span class="eg-resumo">' + escapar(egResumoGrupo(g)) + '</span>' +
       '</div>' +
-      '<button type="button" class="eg-selo' + (regra.doItem ? " proprio" : "") + '" data-i="' + i + '" aria-expanded="' + (aberto ? "true" : "false") + '" title="Mudar a regra só neste produto">' + escapar(grpTextoRegra(regra)) + '</button>' +
+      '<button type="button" class="eg-selo' + (regra.doItem ? " proprio" : "") + '" data-i="' + i + '" aria-expanded="' + (aberto ? "true" : "false") + '" title="Mudar a regra só neste produto">' + escapar(grpTextoRegra(regra, g.tipo)) + '</button>' +
       '<div class="eg-botoes">' +
-        '<button type="button" class="cat-ico eg-sobe" data-i="' + i + '" aria-label="Subir" title="Subir"' + (i === 0 ? " disabled" : "") + '>' + ICO_SUBIR + '</button>' +
-        '<button type="button" class="cat-ico eg-desce" data-i="' + i + '" aria-label="Descer" title="Descer"' + (i === editorGrupos.length - 1 ? " disabled" : "") + '>' + ICO_DESCER + '</button>' +
+        '<button type="button" class="cat-ico eg-sobe" data-i="' + i + '" aria-label="Subir" title="Subir"' + (pos === 0 ? " disabled" : "") + '>' + ICO_SUBIR + '</button>' +
+        '<button type="button" class="cat-ico eg-desce" data-i="' + i + '" aria-label="Descer" title="Descer"' + (pos === visiveis.length - 1 ? " disabled" : "") + '>' + ICO_DESCER + '</button>' +
         '<button type="button" class="cat-ico eg-lib" data-id="' + escapar(g.id) + '" aria-label="Editar na biblioteca" title="Editar na biblioteca">' + ICO_LAPIS + '</button>' +
         '<button type="button" class="cat-ico cat-del eg-del" data-i="' + i + '" aria-label="Remover do produto" title="Remover do produto">' + ICO_LIXEIRA + '</button>' +
       '</div>';
@@ -2112,8 +2175,13 @@ function renderEditorGrupos() {
   egRenderLegado();
 }
 
+// Sobe/desce dentro da PRÓPRIA aba: troca com o vizinho do mesmo tipo, pulando os
+// da outra aba (o array é único, a ordem é global).
 function egMover(i, dir) {
-  const alvo = i + dir;
+  const bib = egBiblioteca();
+  const mesmoTipo = (v) => { const g = bib[String(v && v.id)]; return !g || g.tipo === egSubTipo; };
+  let alvo = i + dir;
+  while (alvo >= 0 && alvo < editorGrupos.length && !mesmoTipo(editorGrupos[alvo])) alvo += dir;
   if (alvo < 0 || alvo >= editorGrupos.length) return;
   const t = editorGrupos[i];
   editorGrupos[i] = editorGrupos[alvo];
@@ -2197,6 +2265,7 @@ function egRenderLegado() {
 
 // ---- Modal "Usar grupo da biblioteca" ----
 function egAbrirVincular() {
+  $("vincularTitulo").textContent = egSubTipo === "complemento" ? "Usar complemento da biblioteca" : "Usar composição da biblioteca";
   vincMarcados = editorGrupos.map((v) => String(v.id));
   $("vincularBusca").value = "";
   renderVincularLista();
@@ -2208,21 +2277,23 @@ function egFecharVincular() { $("vincularOverlay").style.display = "none"; }
 function renderVincularLista() {
   const cont = $("vincularLista");
   const busca = ($("vincularBusca").value || "").trim().toLowerCase();
-  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || []);
+  // Só os grupos da aba atual: composição e complemento não se misturam.
+  const bib = Grupos.normalizarBiblioteca((cardapioAtual && cardapioAtual.grupos) || [])
+    .filter((g) => g.tipo === egSubTipo);
   const lista = bib.filter((g) => !busca
     || (g.nome || "").toLowerCase().indexOf(busca) >= 0
     || g.opcoes.some((o) => o.nome.toLowerCase().indexOf(busca) >= 0));
   if (!lista.length) {
     cont.innerHTML = bib.length
       ? '<p class="editor-dica">Nenhum grupo encontrado com essa busca.</p>'
-      : '<p class="editor-dica">A biblioteca ainda está vazia. Feche aqui e use "Criar grupo novo".</p>';
+      : '<p class="editor-dica">Nenhum grupo deste tipo na biblioteca ainda. Feche aqui e use "Criar grupo novo".</p>';
     return;
   }
   cont.innerHTML = lista.map((g) =>
     '<label class="vinc-item"><input type="checkbox" class="vinc-chk" value="' + escapar(g.id) + '"' +
     (vincMarcados.indexOf(g.id) >= 0 ? " checked" : "") + ' />' +
     '<span class="eg-info"><span class="eg-nome">' + escapar(g.nome) + '</span>' +
-    '<span class="eg-resumo">' + escapar(grpTextoRegra(g.padrao) + " · " + egResumoGrupo(g)) + '</span></span></label>'
+    '<span class="eg-resumo">' + escapar(grpTextoRegra(g.padrao, g.tipo) + " · " + egResumoGrupo(g)) + '</span></span></label>'
   ).join("");
   cont.querySelectorAll(".vinc-chk").forEach((c) => c.addEventListener("change", () => {
     const i = vincMarcados.indexOf(c.value);
@@ -2232,8 +2303,11 @@ function renderVincularLista() {
 }
 
 // Confirma mantendo a ORDEM já definida no produto; grupo novo entra no fim.
+// Só mexe nos vínculos da ABA ATUAL: desmarcar aqui não pode derrubar o outro tipo.
 function egConfirmarVincular() {
-  const mantidos = editorGrupos.filter((v) => vincMarcados.indexOf(String(v.id)) >= 0);
+  const bib = egBiblioteca();
+  const daAba = (v) => { const g = bib[String(v && v.id)]; return g && g.tipo === egSubTipo; };
+  const mantidos = editorGrupos.filter((v) => !daAba(v) || vincMarcados.indexOf(String(v.id)) >= 0);
   const jaTem = mantidos.map((v) => String(v.id));
   vincMarcados.forEach((id) => { if (jaTem.indexOf(id) < 0) mantidos.push({ id: id }); });
   editorGrupos = mantidos;
@@ -2252,8 +2326,15 @@ document.addEventListener("keydown", (e) => {   // Esc fecha só o modal; o edit
 $("vincularBusca").addEventListener("input", renderVincularLista);
 $("btnCriarGrupoNoItem").addEventListener("click", (e) => {
   egVincularAoSalvar = true;               // ao salvar a gaveta, já entra neste produto
+  grpTipoNovo = egSubTipo;                 // nasce do tipo da aba em que o dono está
   grpAbrirGaveta(null, e.currentTarget);
 });
+$("egSubTabs").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListener("click", () => {
+  egSubTipo = b.dataset.egTipo;
+  egRegraAberta = -1;
+  $("egSubTabs").querySelectorAll(".filtro-chip").forEach((x) => x.classList.toggle("ativo", x === b));
+  renderEditorGrupos();
+}));
 
 // ============================================================
 // OPCIONAIS DO FORMATO ANTIGO (leitura)
