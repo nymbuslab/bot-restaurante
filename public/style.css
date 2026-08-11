@@ -54,6 +54,12 @@
 
 * { box-sizing: border-box; }
 
+/* `hidden` tem que esconder SEMPRE. A regra padrão do navegador é só
+   `[hidden] { display: none }`, que perde para qualquer classe que defina `display`
+   (ex.: `.filtro-chips` com inline-flex). Sem isto, `el.hidden = true` seta o
+   atributo e o elemento continua na tela — bug silencioso e difícil de ver. */
+[hidden] { display: none !important; }
+
 /* Foco de teclado visível e consistente (acessibilidade — WCAG 2.4.7). Só aparece
    na navegação por teclado, não no clique do mouse. Inputs mantêm o halo próprio. */
 :focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
