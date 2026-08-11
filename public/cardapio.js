@@ -413,7 +413,8 @@
   // Biblioteca de grupos (item convertido): opção tem id e preço próprios e a regra
   // vem resolvida do servidor. Com `modalBib` preenchido, o caminho legado
   // (composicao + opcionais) não é renderizado.
-  var modalBib = [], modalSel = {};   // modalSel[grupoId] = [opcaoId]
+  var modalBib = [], modalSel = {};   // composição: modalSel[grupoId] = [opcaoId]
+  var modalQtdBib = {};               // complemento: modalQtdBib[grupoId][opcaoId] = quantidade
 
   function abrirModal(it) {
     var soVer = !!it.apenasLocal; // item "Só no local": modal só de visualização (não pede)
@@ -434,6 +435,7 @@
     modalGrupoCompleto = {};
     modalBib = (it.grupos || []);
     modalSel = {};
+    modalQtdBib = {};
     var grps = modalBib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(it.composicao) : []);
     modalGrupos = grps;
     if (modalBib.length) ops = [];   // item convertido: os adicionais vêm dos grupos
@@ -495,10 +497,15 @@
     modalBib.forEach(function (g) {
       var unico = g.max === 1;
       var minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
-      var sub = unico
-        ? "Escolha 1 opção"
-        : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
-                         : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+      // Complemento é ACRÉSCIMO: o cliente escolhe QUANTOS, então vai de stepper e o
+      // máximo limita unidades. Composição é ESCOLHA: rádio ou caixa de seleção.
+      var ehCompl = g.tipo === "complemento";
+      var sub = ehCompl
+        ? (g.max > 0 ? "Até " + g.max + (g.max === 1 ? " unidade" : " unidades") : "Quantidade livre")
+        : (unico
+          ? "Escolha 1 opção"
+          : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                           : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional")));
       html += '<div class="cd-m-grp" data-grupo-wrap="' + esc(g.id) + '">' +
         '<div class="cd-m-grp-cab">' +
           '<div class="cd-m-grp-tit">' + esc(g.nome) +
@@ -508,12 +515,22 @@
           '<span class="cd-m-check" data-check="' + esc(g.id) + '" hidden>' + IC.check + '</span>' +
         '</div>';
       g.opcoes.forEach(function (o, i) {
-        var tipo = unico ? "radio" : "checkbox";
         var domId = "bib_" + String(g.id).replace(/\W/g, "") + "_" + i;
+        if (ehCompl) {
+          html += '<div class="cd-m-opt">' +
+            '<div class="cd-m-opt-txt"><span class="cd-m-opt-nome">' + esc(o.nome) + '</span>' +
+              (o.preco > 0 ? '<span class="cd-m-opt-preco">+ ' + money(o.preco) + '</span>' : '') + '</div>' +
+            '<div class="cd-m-step">' +
+              '<button type="button" data-bibdec="' + esc(g.id) + '|' + esc(o.id) + '" aria-label="Menos ' + esc(o.nome) + '">−</button>' +
+              '<span data-bibqtd="' + esc(g.id) + '|' + esc(o.id) + '">0</span>' +
+              '<button type="button" data-bibinc="' + esc(g.id) + '|' + esc(o.id) + '" aria-label="Mais ' + esc(o.nome) + '">+</button>' +
+            '</div>' +
+          '</div>';
+          return;
+        }
         html += '<label class="cd-m-opt cd-m-opt-sel" for="' + domId + '">' +
-          '<span class="cd-m-opt-txt"><span class="cd-m-opt-nome">' + esc(o.nome) + '</span>' +
-            (o.preco > 0 ? '<span class="cd-m-opt-preco">+ ' + money(o.preco) + '</span>' : '') + '</span>' +
-          '<input type="' + tipo + '" name="bib_' + esc(g.id) + '" value="' + esc(o.id) + '" data-bib="' + esc(g.id) + '" data-max="' + g.max + '" id="' + domId + '" class="cd-m-input" />' +
+          '<span class="cd-m-opt-txt"><span class="cd-m-opt-nome">' + esc(o.nome) + '</span></span>' +
+          '<input type="' + (unico ? "radio" : "checkbox") + '" name="bib_' + esc(g.id) + '" value="' + esc(o.id) + '" data-bib="' + esc(g.id) + '" data-max="' + g.max + '" id="' + domId + '" class="cd-m-input" />' +
           '<span class="cd-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
         '</label>';
       });
@@ -571,6 +588,8 @@
         if (inp.getAttribute("data-bib")) onEscolhaBib(inp); else onEscolhaGrupo(inp);
       });
     });
+    caixa.querySelectorAll("[data-bibinc]").forEach(function (b) { b.addEventListener("click", function () { mudarBibQtd(b.getAttribute("data-bibinc"), 1); }); });
+    caixa.querySelectorAll("[data-bibdec]").forEach(function (b) { b.addEventListener("click", function () { mudarBibQtd(b.getAttribute("data-bibdec"), -1); }); });
     caixa.querySelectorAll("[data-opinc]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opinc"), 1); }); });
     caixa.querySelectorAll("[data-opdec]").forEach(function (b) { b.addEventListener("click", function () { mudarOp(+b.getAttribute("data-opdec"), -1); }); });
     caixa.querySelectorAll("[data-vinc]").forEach(function (b) { b.addEventListener("click", function () { mudarVar(+b.getAttribute("data-vinc"), 1); }); });
@@ -595,7 +614,10 @@
   function atualizarGrupos() {
     var caixa = $("cdModalCaixa");
     (modalBib || []).forEach(function (g) {
-      var sel = (modalSel[g.id] || []).length;
+      // Complemento conta unidades; composição conta escolhas.
+      var sel = g.tipo === "complemento"
+        ? Object.keys(modalQtdBib[g.id] || {}).reduce(function (s, k) { return s + (modalQtdBib[g.id][k] || 0); }, 0)
+        : (modalSel[g.id] || []).length;
       var min = g.obrigatorio ? Math.max(1, g.min) : 0;
       var max = g.max > 0 ? g.max : g.opcoes.length;
       var okReq = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
@@ -651,9 +673,38 @@
     }
   }
 
-  // Escolhas no formato que `avaliarEscolhas` espera: [{ grupo: id, opcoes: [id] }].
+  // Quantidade de um complemento. `chave` = "grupoId|opcaoId" (vem do data-attr).
+  function mudarBibQtd(chave, delta) {
+    var partes = String(chave).split("|");
+    var gid = partes[0], oid = partes[1];
+    var g = modalBib.filter(function (x) { return String(x.id) === gid; })[0];
+    if (!g) return;
+    modalQtdBib[gid] = modalQtdBib[gid] || {};
+    var atual = modalQtdBib[gid][oid] || 0;
+    var novo = Math.max(0, Math.min(99, atual + delta));
+    // O máximo do grupo limita o TOTAL de unidades, não cada opção.
+    if (delta > 0 && g.max > 0) {
+      var total = Object.keys(modalQtdBib[gid]).reduce(function (s, k) { return s + (modalQtdBib[gid][k] || 0); }, 0);
+      if (total >= g.max) return;
+    }
+    modalQtdBib[gid][oid] = novo;
+    var span = $("cdModalCaixa").querySelector('[data-bibqtd="' + cssEsc(chave) + '"]');
+    if (span) span.textContent = novo;
+    atualizarPrecoModal();
+    atualizarGrupos();
+  }
+
+  // Escolhas no formato que `avaliarEscolhas` espera. Composição manda os ids;
+  // complemento manda { id, qtd }.
   function escolhasBib() {
-    return Object.keys(modalSel).map(function (gid) { return { grupo: gid, opcoes: modalSel[gid] }; });
+    var out = Object.keys(modalSel).map(function (gid) { return { grupo: gid, opcoes: modalSel[gid] }; });
+    Object.keys(modalQtdBib).forEach(function (gid) {
+      var opcoes = Object.keys(modalQtdBib[gid])
+        .filter(function (oid) { return modalQtdBib[gid][oid] > 0; })
+        .map(function (oid) { return { id: oid, qtd: modalQtdBib[gid][oid] }; });
+      if (opcoes.length) out.push({ grupo: gid, opcoes: opcoes });
+    });
+    return out;
   }
   function onEscolhaGrupo(inp) {
     var grupo = inp.getAttribute("data-grupo");

@@ -4981,8 +4981,17 @@ function abrirPdvItemModal(item, uid) {
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
   pdvItemCtx = { item, ops, grps, bib, vars, uid: uid != null ? uid : null, ehKg };
   pdvGrupoCompleto = {};
-  const bibIni = {};   // reabrir a linha: remarca as opções já escolhidas
-  (linha && Array.isArray(linha.grupos) ? linha.grupos : []).forEach((e) => { bibIni[e.grupo] = e.opcoes || []; });
+  // Reabrir a linha: remarca as escolhas. Composição guarda ids; complemento guarda { id, qtd }.
+  const bibIni = {}, bibQtdIni = {};
+  (linha && Array.isArray(linha.grupos) ? linha.grupos : []).forEach((e) => {
+    const ids = [], qtds = {};
+    (e.opcoes || []).forEach((x) => {
+      if (x && typeof x === "object") { qtds[x.id] = x.qtd || 1; ids.push(x.id); }
+      else ids.push(x);
+    });
+    bibIni[e.grupo] = ids;
+    bibQtdIni[e.grupo] = qtds;
+  });
   const opsQtd = ops.map((o) => {
     const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
     return found ? found.qtd : 0;
@@ -5030,9 +5039,13 @@ function abrirPdvItemModal(item, uid) {
   bib.forEach((g) => {
     const unico = g.max === 1;
     const minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
-    const sub = unico ? "Escolha 1 opção"
-      : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
-                       : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
+    // Complemento é acréscimo (stepper, máximo em unidades); composição é escolha.
+    const ehCompl = g.tipo === "complemento";
+    const sub = ehCompl
+      ? (g.max > 0 ? "Até " + g.max + (g.max === 1 ? " unidade" : " unidades") : "Quantidade livre")
+      : (unico ? "Escolha 1 opção"
+        : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
+                         : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional")));
     html += '<div class="pdv-grp-bib pdv-m-grp" data-bib="' + pdvEsc(g.id) + '" data-grupo-wrap="' + pdvEsc(g.id) + '">' +
       '<div class="pdv-m-grp-cab">' +
         '<div class="pdv-m-grp-tit">' + pdvEsc(g.nome) + '<div class="pdv-m-grp-sub" data-sub="' + pdvEsc(g.id) + '">' + pdvEsc(sub) + '</div></div>' +
@@ -5040,13 +5053,23 @@ function abrirPdvItemModal(item, uid) {
         '<span class="pdv-m-check" data-check="' + pdvEsc(g.id) + '" hidden>' + PDV_CHECK + '</span>' +
       '</div>';
     g.opcoes.forEach((o, idx) => {
-      const marcado = (bibIni[g.id] || []).indexOf(o.id) !== -1 ? " checked" : "";
-      const tipo = unico ? "radio" : "checkbox";
       const domId = "pbib_" + String(g.id).replace(/\W/g, "") + "_" + idx;
+      if (ehCompl) {
+        const q = (bibQtdIni[g.id] || {})[o.id] || 0;
+        html += '<div class="pdv-m-opt">' +
+          '<div class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span>' +
+            (o.preco > 0 ? '<span class="pdv-m-opt-preco">+ ' + pdvMoney(o.preco) + '</span>' : '') + '</div>' +
+          '<div class="pdv-stepper" data-stepper="bib" data-bibopcao="' + pdvEsc(o.id) + '">' +
+            '<button type="button" data-step="-1" aria-label="Menos">−</button>' +
+            '<span>' + q + '</span>' +
+            '<button type="button" data-step="1" aria-label="Mais">+</button>' +
+          '</div></div>';
+        return;
+      }
+      const marcado = (bibIni[g.id] || []).indexOf(o.id) !== -1 ? " checked" : "";
       html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + domId + '">' +
-        '<span class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span>' +
-          (o.preco > 0 ? '<span class="pdv-m-opt-preco">+ ' + pdvMoney(o.preco) + '</span>' : '') + '</span>' +
-        '<input type="' + tipo + '" name="pbib_' + pdvEsc(g.id) + '" value="' + pdvEsc(o.id) + '" data-bib="' + pdvEsc(g.id) + '" data-max="' + g.max + '"' + marcado + ' id="' + domId + '" class="pdv-m-input" />' +
+        '<span class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span></span>' +
+        '<input type="' + (unico ? "radio" : "checkbox") + '" name="pbib_' + pdvEsc(g.id) + '" value="' + pdvEsc(o.id) + '" data-bib="' + pdvEsc(g.id) + '" data-max="' + g.max + '"' + marcado + ' id="' + domId + '" class="pdv-m-input" />' +
         '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
       '</label>';
     });
@@ -5238,6 +5261,16 @@ function _pdvLerModalItem() {
   const grupos = [];
   ($("pdvItemCaixa").querySelectorAll(".pdv-grp-bib")).forEach((box) => {
     const gid = box.getAttribute("data-bib");
+    const steppers = box.querySelectorAll('[data-stepper="bib"]');
+    if (steppers.length) {   // complemento: quantidade por opção
+      const opcoes = [];
+      steppers.forEach((s) => {
+        const q = parseInt(s.querySelector("span").textContent, 10) || 0;
+        if (q > 0) opcoes.push({ id: s.dataset.bibopcao, qtd: q });
+      });
+      grupos.push({ grupo: gid, opcoes });
+      return;
+    }
     const opcoes = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
     grupos.push({ grupo: gid, opcoes });
   });

@@ -51,6 +51,16 @@ produtos. A biblioteca mora em `cardapio.grupos`; o produto guarda só o **vínc
 [{ "id": "grp_m1a2", "obrigatorio": true, "min": 1, "max": 1 }]
 ```
 
+- **`tipo` separa duas coisas diferentes**, e é ele (não o preço da opção) que decide a regra:
+  - **`composicao`** — o que vai DENTRO do prato. O cliente **escolhe** entre as opções (rádio se
+    `max === 1`, caixa de seleção nos demais). **Sem preço** (normalizar zera) e **sem quantidade**;
+    `min`/`max` contam **escolhas**. Sai no pedido em `composicao`.
+  - **`complemento`** — o extra que ele **acrescenta**. Tem preço e **quantidade livre** (stepper);
+    `max` conta **unidades** (0 = sem limite) e `obrigatorio`/`min` não se aplicam. Sai em `opcionais`
+    com `qtd`. É como o formato antigo sempre funcionou; o tipo devolve isso ao modelo novo.
+  - Grupo sem `tipo` (dado antigo) é inferido pelo preço, na leitura e na avaliação, então opção paga
+    nunca cai na composição e sai de graça.
+  - A escolha do cliente aceita `opcoes: ["op_a1"]` (composição) ou `opcoes: [{ id, qtd }]` (complemento).
 - **As opções moram no grupo; a regra efetiva mora no vínculo.** Sem regra no vínculo vale o
   `padrao` do grupo. É isso que deixa Marmitex P/M/G usarem a mesma lista escolhendo 1, 2 e 3.
 - **`id` de grupo e de opção é estável**: renomear não gera id novo. É a âncora da futura ficha
