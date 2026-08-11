@@ -32,9 +32,11 @@ test("projetarCardapio: só campos públicos, só itens disponíveis, sem catego
   assert.equal(proj.categorias.length, 1); // categoria só com indisponíveis some
   const it = proj.categorias[0].itens;
   assert.equal(it.length, 1); // item indisponível some
+  // Sem vínculo com a biblioteca o item não expõe opção nenhuma, nem a antiga
+  // "Bacon | 3" que segue gravada no jsonb: o que vale é só `grupos`.
   assert.deepEqual(it[0], {
-    id: 1, nome: "X", preco: 20, desc: "d", imagem: "u", composicao: [],
-    opcionais: [{ nome: "Bacon", preco: 3 }], grupos: [], variacoes: [], precoAPartir: null,
+    id: 1, nome: "X", preco: 20, desc: "d", imagem: "u",
+    grupos: [], variacoes: [], precoAPartir: null,
     apenasLocal: false, esgotado: false, unidade: "un", destaque: false,
   });
   assert.equal("segredo" in it[0], false); // não vaza campo cru do jsonb
@@ -100,19 +102,17 @@ test("projetarCardapio: expõe apenasLocal normalizado", () => {
   assert.equal(itens[0].apenasLocal, true);
   assert.equal(itens[1].apenasLocal, false);
 });
-test("projetarCardapio: composicao vai estruturada (array normalizado)", () => {
+test("projetarCardapio: campos do formato antigo NÃO vazam para o cliente", () => {
   const cardapio = { categorias: [{ nome: "Marmitas", itens: [
     { id: 1, nome: "Marmitex", preco: 18, composicao: [
       { nome: "Proteínas", obrigatorio: true, min: 1, max: 1, itens: ["Frango", "Carne"] },
-      { nome: "Lixo", itens: [] },
     ], opcionais: "Bacon | 3.50" },
   ] }] };
-  const p = cw.projetarCardapio(cardapio);
-  const it = p.categorias[0].itens[0];
-  assert.ok(Array.isArray(it.composicao));
-  assert.equal(it.composicao.length, 1); // subgrupo vazio descartado
-  assert.equal(it.composicao[0].nome, "Proteínas");
-  assert.deepEqual(it.opcionais, [{ nome: "Bacon", preco: 3.5 }]); // opcionais inalterado
+  const it = cw.projetarCardapio(cardapio).categorias[0].itens[0];
+  // O dono apagou o vínculo: o cliente não pode continuar vendo a opção antiga.
+  assert.deepEqual(it.grupos, []);
+  assert.equal("composicao" in it, false);
+  assert.equal("opcionais" in it, false);
 });
 test("projetarCardapio: cardápio vazio/sem categorias → { categorias: [] }", () => {
   assert.deepEqual(cw.projetarCardapio(null), { categorias: [] });
@@ -126,11 +126,11 @@ const CARD = { categorias: [
     { id: 2, nome: "Off", preco: 9, disponivel: false },
   ] },
 ] };
-test("recalcularItens: usa preços do cardápio e soma opcionais×qtd", () => {
+test("recalcularItens: item sem vínculo IGNORA opcional do formato antigo enviado pelo cliente", () => {
   const r = cw.recalcularItens(CARD, [{ id: 1, qtd: 2, opcionais: [{ nome: "Ovo", qtd: 3 }], observacao: "x" }]);
-  assert.equal(r.subtotal, 52); // (20 + 2*3) * 2
+  assert.equal(r.subtotal, 40); // 20 * 2 — o "Ovo | 2" do jsonb antigo não vale mais
   assert.equal(r.itens.length, 1);
-  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Ovo", preco: 2, qtd: 3 }]);
+  assert.deepEqual(r.itens[0].opcionais, []);
   assert.equal(r.itens[0].nome, "Burger");
   assert.equal(r.itens[0].preco, 20);
 });
@@ -214,24 +214,17 @@ const cardComp = { categorias: [{ nome: "M", itens: [
   ] },
 ] }] };
 
-test("recalcularItens: escolhas válidas vão para o item (composicao não muda preço)", () => {
+test("recalcularItens: composição do formato antigo não vale mais nem como obrigatória", () => {
+  // O item tem composicao/opcionais gravados, mas nenhum grupo vinculado. Nada de
+  // opção entra no pedido, e a antiga obrigatoriedade não pode barrar a venda.
   const r = cw.recalcularItens(cardComp, [
     { id: 7, qtd: 1, composicao: [
       { grupo: "Proteínas", itens: ["Frango"] },
-      { grupo: "Principais", itens: ["Arroz", "Feijão"] },
     ], opcionais: [{ nome: "Bacon", qtd: 1 }] },
   ]);
-  assert.equal(r.subtotal, 18 + 3.5); // só o opcional soma
-  assert.deepEqual(r.itens[0].composicao, [
-    { grupo: "Proteínas", itens: ["Frango"] },
-    { grupo: "Principais", itens: ["Arroz", "Feijão"] },
-  ]);
-});
-
-test("recalcularItens: composição obrigatória ausente lança erro", () => {
-  assert.throws(() => cw.recalcularItens(cardComp, [
-    { id: 7, qtd: 1, composicao: [{ grupo: "Principais", itens: ["Arroz"] }] },
-  ]), /Proteínas/);
+  assert.equal(r.subtotal, 18);
+  assert.deepEqual(r.itens[0].composicao, []);
+  assert.deepEqual(r.itens[0].opcionais, []);
 });
 
 // ---- variações (opções com preço + estoque) ----
@@ -311,11 +304,16 @@ test("recalcularItens: grupo obrigatório sem escolha barra o pedido", () => {
   );
 });
 
-test("recalcularItens: item sem grupos segue pelo caminho legado", () => {
-  const legado = { categorias: [{ nome: "L", itens: [
-    { id: 1, nome: "X", preco: 10, disponivel: true, opcionais: "Bacon | 3.00" },
+test("recalcularItens: apagar o grupo da biblioteca tira a opção do pedido", () => {
+  // Cenário real: o dono apagou os grupos, mas o item ainda tem o vínculo órfão e o
+  // campo antigo gravado. Nada disso pode continuar sendo vendido.
+  const semBiblioteca = { grupos: [], categorias: [{ nome: "L", itens: [
+    { id: 1, nome: "X", preco: 10, disponivel: true, opcionais: "Bacon | 3.00", grupos: [{ id: "g_sumiu" }] },
   ] }] };
-  const r = cw.recalcularItens(legado, [{ id: 1, qtd: 1, opcionais: [{ nome: "Bacon", qtd: 1 }] }]);
-  assert.equal(r.subtotal, 13);
-  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+  const r = cw.recalcularItens(semBiblioteca, [
+    { id: 1, qtd: 1, opcionais: [{ nome: "Bacon", qtd: 1 }], grupos: [{ grupo: "g_sumiu", opcoes: ["o1"] }] },
+  ]);
+  assert.equal(r.subtotal, 10);
+  assert.deepEqual(r.itens[0].opcionais, []);
+  assert.deepEqual(r.itens[0].composicao, []);
 });

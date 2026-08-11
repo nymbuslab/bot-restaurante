@@ -1886,10 +1886,9 @@ async function salvarEditorItem() {
   // Complementos vêm da biblioteca; o produto guarda só o vínculo.
   const gruposLimpos = editorGrupos.filter((v) => v && v.id);
   if (gruposLimpos.length) novoItem.grupos = gruposLimpos;
-  // Legado (composição/opcionais do formato antigo) copiado EXATAMENTE como veio:
-  // a edição agora é pela biblioteca, mas nada é apagado — a conversão é reversível.
-  if (orig && orig.composicao !== undefined) novoItem.composicao = orig.composicao;
-  if (orig && orig.opcionais !== undefined) novoItem.opcionais = orig.opcionais;
+  // Os campos do formato antigo (composicao/opcionais) NÃO são copiados: ninguém mais
+  // os lê, e mantê-los fazia o produto voltar a mostrar opção que o dono achava
+  // apagada. Salvar o produto limpa o resto do lixo.
   if (precoCusto > 0) novoItem.precoCusto = precoCusto;
 
   const unidade = $("editor-unidade").value === "kg" ? "kg" : "un";
@@ -2140,7 +2139,6 @@ function renderEditorGrupos() {
     cont.innerHTML = compl
       ? '<p class="editor-dica eg-vazio">Nenhum complemento neste produto. Use "Usar grupo da biblioteca" ou "Criar grupo novo".</p>'
       : '<p class="editor-dica eg-vazio">Nenhuma composição neste produto. Use "Usar grupo da biblioteca" ou "Criar grupo novo".</p>';
-    egRenderLegado();
     return;
   }
   visiveis.forEach((x, pos) => {
@@ -2188,7 +2186,6 @@ function renderEditorGrupos() {
   }));
   // Editar na biblioteca abre a gaveta por cima do editor: o dono não perde o produto de vista.
   cont.querySelectorAll(".eg-lib").forEach((b) => b.addEventListener("click", () => grpAbrirGaveta(b.dataset.id, b)));
-  egRenderLegado();
 }
 
 // Sobe/desce dentro da PRÓPRIA aba: troca com o vizinho do mesmo tipo, pulando os
@@ -2256,28 +2253,6 @@ function egPainelRegra(i, v, g) {
   return box;
 }
 
-// Complementos do formato antigo do item: leitura apenas, até a conversão rodar.
-function egRenderLegado() {
-  const box = $("editorLegado");
-  if (!box) return;
-  // Produto JÁ convertido não mostra o bloco: os campos antigos continuam gravados
-  // (reversibilidade), mas repetir aqui o que os grupos acima já exibem só confunde.
-  if (editorGrupos.length) { box.hidden = true; return; }
-  const it = editorIi === -1 ? null : cardapioAtual.categorias[editorCi].itens[editorIi];
-  const comp = it ? Grupos.normalizarGrupos(it.composicao) : [];
-  const ops = it ? parsearOpcionais(it.opcionais || "") : [];
-  if (!comp.length && !ops.length) { box.hidden = true; return; }
-  const linhas = comp.map((g) =>
-    '<div class="eg-legado-linha"><span class="eg-nome">' + escapar(g.nome) + '</span>' +
-    '<span class="eg-resumo">' + escapar(g.itens.join(", ")) + '</span></div>'
-  );
-  if (ops.length) {
-    linhas.push('<div class="eg-legado-linha"><span class="eg-nome">Complementos com preço</span>' +
-      '<span class="eg-resumo">' + escapar(ops.map((o) => o.nome + (o.preco > 0 ? " +" + Dinheiro.comPrefixo(o.preco) : "")).join(", ")) + '</span></div>');
-  }
-  $("editorLegadoLista").innerHTML = linhas.join("");
-  box.hidden = false;
-}
 
 // ---- Modal "Usar grupo da biblioteca" ----
 function egAbrirVincular() {
@@ -2351,25 +2326,6 @@ $("egSubTabs").querySelectorAll(".filtro-chip").forEach((b) => b.addEventListene
   $("egSubTabs").querySelectorAll(".filtro-chip").forEach((x) => x.classList.toggle("ativo", x === b));
   renderEditorGrupos();
 }));
-
-// ============================================================
-// OPCIONAIS DO FORMATO ANTIGO (leitura)
-// Texto "Nome | preco" por linha, como o item guardava antes da biblioteca.
-// ============================================================
-function parsearOpcionais(texto) {
-  if (!texto || !texto.trim()) return [];
-  const lista = [];
-  for (let linha of texto.split("\n")) {
-    linha = linha.trim().replace(/^[*\-•]\s*/, "");
-    if (!linha) continue;
-    const partes = linha.split("|");
-    const nome = partes[0].trim();
-    let preco = 0;
-    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-    if (nome) lista.push({ nome, preco });
-  }
-  return lista;
-}
 
 // Padroniza o nome do produto ao sair do campo (Title Case PT-BR; assistivo — o save lê este valor).
 $("editor-nome").addEventListener("blur", (e) => { e.target.value = Texto.tituloPt(e.target.value); });

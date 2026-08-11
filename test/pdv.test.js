@@ -19,16 +19,15 @@ const cardapio = {
   ],
 };
 
-test("recalcularVenda: item un + opcionais, preço pelo cardápio (ignora preço do cliente)", () => {
+test("recalcularVenda: preço vem do cardápio e opcional do formato antigo é ignorado", () => {
   const r = recalcularVenda(cardapio, [
     { id: "a1", qtd: 2, preco: 999, opcionais: [{ nome: "Bacon", qtd: 1 }, { nome: "Fantasma", qtd: 5 }] },
   ]);
   assert.equal(r.itens.length, 1);
   assert.equal(r.itens[0].preco, 8);
   assert.equal(r.itens[0].unidade, "un");
-  assert.equal(r.itens[0].opcionais.length, 1); // opcional desconhecido descartado
-  // (8 + 3.50) * 2 = 23
-  assert.equal(r.subtotal, 23);
+  assert.deepEqual(r.itens[0].opcionais, []); // sem vínculo na biblioteca, sem opção
+  assert.equal(r.subtotal, 16); // 8 * 2
 });
 
 test("recalcularVenda: item por kg usa peso decimal (preço por kg)", () => {
@@ -112,16 +111,15 @@ test("totalComFrete: soma o frete ao total (>= 0)", () => {
   assert.equal(totalComFrete(50, -3), 50);  // frete negativo é ignorado
 });
 
-test("recalcularVenda: composição válida vai no item, não soma preço", () => {
+test("recalcularVenda: composição do formato antigo não entra nem barra a venda", () => {
+  // Item com composicao gravada mas sem grupo vinculado: nada de opção na venda, e a
+  // antiga obrigatoriedade não pode travar o operador no balcão.
   const r = recalcularVenda(cardapio, [
     { id: "m1", qtd: 1, composicao: [{ grupo: "Proteínas", itens: ["Frango"] }] },
   ]);
   assert.equal(r.subtotal, 18);
-  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Proteínas", itens: ["Frango"] }]);
-});
-
-test("recalcularVenda: composição obrigatória ausente lança erro", () => {
-  assert.throws(() => recalcularVenda(cardapio, [{ id: "m1", qtd: 1 }]), /Proteínas/);
+  assert.deepEqual(r.itens[0].composicao, []);
+  assert.deepEqual(recalcularVenda(cardapio, [{ id: "m1", qtd: 1 }]).itens[0].composicao, []);
 });
 
 // ---- variações no PDV ----
@@ -172,7 +170,13 @@ test("recalcularVenda: grupo obrigatório sem escolha barra a venda", () => {
   assert.throws(() => recalcularVenda(cardapioBiblioteca, [{ id: "b2", qtd: 1, grupos: [] }]), /Proteínas/);
 });
 
-test("recalcularVenda: item sem grupos segue pelo caminho legado", () => {
-  const r = recalcularVenda(cardapio, [{ id: "a1", qtd: 1, opcionais: [{ nome: "Bacon", qtd: 1 }] }]);
-  assert.equal(r.subtotal, 11.5);
+test("recalcularVenda: vínculo órfão (grupo apagado da biblioteca) não vende nada", () => {
+  const semBiblioteca = { grupos: [], categorias: [{ nome: "L", itens: [
+    { id: "x1", nome: "X", preco: 10, unidade: "un", opcionais: "Bacon | 3.50", grupos: [{ id: "g_sumiu" }] },
+  ] }] };
+  const r = recalcularVenda(semBiblioteca, [
+    { id: "x1", qtd: 1, opcionais: [{ nome: "Bacon", qtd: 1 }], grupos: [{ grupo: "g_sumiu", opcoes: ["o1"] }] },
+  ]);
+  assert.equal(r.subtotal, 10);
+  assert.deepEqual(r.itens[0].opcionais, []);
 });

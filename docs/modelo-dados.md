@@ -65,8 +65,12 @@ produtos. A biblioteca mora em `cardapio.grupos`; o produto guarda só o **vínc
   `padrao` do grupo. É isso que deixa Marmitex P/M/G usarem a mesma lista escolhendo 1, 2 e 3.
 - **`id` de grupo e de opção é estável**: renomear não gera id novo. É a âncora da futura ficha
   técnica de Insumos, e por isso o painel preserva ids ao salvar (só opção nova ganha um).
-- **Regra de leitura:** item com ao menos um vínculo resolvido usa a biblioteca e **ignora**
-  `composicao`/`opcionais`; item sem vínculo segue pelo caminho legado, inalterado.
+- **Regra de leitura: só a biblioteca vale.** Item sem vínculo resolvido **não tem opção nenhuma**,
+  nem na projeção pública nem no recálculo (web e PDV). Os campos antigos `composicao`/`opcionais`
+  continuam gravados em itens não editados, mas **ninguém os lê**. Havia um fallback para eles, e ele
+  foi removido: apagar um grupo da biblioteca fazia o produto voltar a mostrar a opção antiga, então
+  o dono achava que tinha apagado e o cliente seguia comprando. Salvar o produto no painel descarta
+  os campos antigos.
 - **A saída do pedido não mudou.** Opção com preço 0 vira `composicao: [{ grupo, itens:[nome] }]`;
   opção com preço vira `opcionais: [{ nome, preco, qtd }]`. Comanda, `itens_venda`, relatórios e
   pedidos antigos não sabem que a biblioteca existe.
