@@ -761,6 +761,8 @@ nav button.ativo svg { opacity: 1; }
   background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary);
 }
 .grp-tipo.compl { border-color: var(--accent); color: var(--accent-fg); }
+/* Na EDIÇÃO o tipo vira leitura: trocar depois zeraria preço e mudaria todos os produtos */
+.grp-tipo-selo { margin: var(--space-1) 0 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 /* Sub-abas Composição x Complementos dentro do editor do produto */
 .eg-subabas { margin-bottom: var(--space-4); }
 .grp-ops { display: flex; flex-wrap: wrap; gap: 4px; }

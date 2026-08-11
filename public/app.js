@@ -379,7 +379,8 @@ function grpTextoRegra(r, tipo) {
   const min = Math.max(0, parseInt(r && r.min, 10) || 0);
   const max = Math.max(0, parseInt(r && r.max, 10) || 0);
   if (tipo === "complemento") {
-    return max > 0 ? "Até " + max + (max === 1 ? " unidade" : " unidades") : "Quantidade livre";
+    const limite = max > 0 ? "até " + max + (max === 1 ? " unidade" : " unidades") : "quantidade livre";
+    return (r && r.obrigatorio ? "Obrigatório, " : "Opcional, ") + limite;
   }
   if (r && r.obrigatorio) {
     const piso = Math.max(1, min);
@@ -477,7 +478,9 @@ function grpMarcarTipo(tipo) {
 // mínimo de escolhas; complemento só limita unidades e é o único com preço.
 function grpAplicarTipo() {
   const compl = grpTipoSelecionado() === "complemento";
-  $("grpCampoObrig").hidden = compl;
+  // Os dois perguntam se é obrigatório. Só a composição pede MÍNIMO de escolhas:
+  // no complemento, obrigatório já quer dizer "pelo menos 1 unidade".
+  $("grpCampoObrig").hidden = false;
   $("grpCampoMin").hidden = compl;
   $("grpMaxLabel").textContent = compl ? "Máximo de unidades" : "Máximo";
   $("grpNome").placeholder = compl ? "Ex.: Adicionais" : "Ex.: Guarnição";
@@ -553,6 +556,16 @@ function grpAbrirGaveta(id, origem) {
   grpMarcarObrigatorio(padrao.obrigatorio);
   // Grupo novo nasce do tipo da aba/filtro em que o dono estava (grpTipoNovo).
   grpMarcarTipo(g ? g.tipo : grpTipoNovo);
+  // O tipo se escolhe ao CRIAR e não muda depois: trocar em grupo já em uso zeraria
+  // preço (complemento → composição) e mudaria o comportamento em todos os produtos.
+  // Para mudar de ideia, cria-se o grupo certo e troca-se o vínculo, que é explícito.
+  const editando = !!g;
+  $("grpTipo").hidden = editando;
+  $("grpTipoDica").hidden = editando;
+  $("grpTipoSelo").hidden = !editando;
+  if (editando) {
+    $("grpTipoSelo").textContent = (g.tipo === "complemento" ? "Complemento" : "Composição") + " · o tipo não muda depois de criado";
+  }
   grpAplicarTipo();   // já chama grpRenderOpcoes + grpAtualizarDicaRegra
   $("grpGavetaOverlay").classList.add("visivel");
   $("grpGaveta").classList.add("aberto");
@@ -590,9 +603,10 @@ async function grpSalvarGaveta() {
     .filter((o) => o.nome);
   if (!opcoes.length) { toast("Adicione pelo menos uma opção.", "erro"); return; }
   opcoes.forEach((o) => { if (!o.id) o.id = grpNovoId("op_"); });  // id novo SÓ para opção nova
-  // Complemento não pergunta obrigatoriedade nem mínimo: é acréscimo, o máximo limita unidades.
-  const obrigatorio = compl ? false : grpObrigatorioSelecionado();
-  let min = compl ? 0 : Math.max(0, parseInt($("grpMin").value, 10) || 0);
+  // Complemento também pode ser obrigatório; o que ele não tem é MÍNIMO de escolhas.
+  // Obrigatório num complemento quer dizer "pelo menos 1 unidade".
+  const obrigatorio = grpObrigatorioSelecionado();
+  let min = compl ? (obrigatorio ? 1 : 0) : Math.max(0, parseInt($("grpMin").value, 10) || 0);
   let max = Math.max(0, parseInt($("grpMax").value, 10) || 0);
   if (obrigatorio && min < 1) min = 1;
   if (!compl && min > opcoes.length) min = opcoes.length;   // mínimo maior que a lista é impossível
