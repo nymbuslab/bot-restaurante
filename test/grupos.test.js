@@ -121,6 +121,7 @@ test("normalizarBiblioteca: coage tipos e descarta grupo sem id, sem opções ou
   assert.equal(b.length, 1);
   assert.deepEqual(b[0], {
     id: "g1", nome: "X",
+    tipo: "complemento",   // sem `tipo` no dado, infere pelo preço da opção
     padrao: { obrigatorio: true, min: 2, max: 4 },
     opcoes: [{ id: "o1", nome: "a", preco: 3.5 }],
   });
@@ -163,9 +164,9 @@ test("resolverGrupos: item sem grupos vira []", () => {
 const { avaliarEscolhas } = require("../public/grupos");
 
 const resolvidos = [
-  { id: "g1", nome: "Guarnições", obrigatorio: true, min: 2, max: 2,
+  { id: "g1", nome: "Guarnições", tipo: "composicao", obrigatorio: true, min: 2, max: 2,
     opcoes: [{ id: "o1", nome: "Farofa", preco: 0 }, { id: "o2", nome: "Vinagrete", preco: 0 }, { id: "o3", nome: "Purê", preco: 0 }] },
-  { id: "g2", nome: "Adicionais", obrigatorio: false, min: 0, max: 0,
+  { id: "g2", nome: "Adicionais", tipo: "complemento", obrigatorio: false, min: 0, max: 0,
     opcoes: [{ id: "o4", nome: "Bacon", preco: 3 }, { id: "o5", nome: "Ovo", preco: 2 }] },
 ];
 
@@ -214,6 +215,75 @@ test("avaliarEscolhas: grupo opcional sem escolha não entra na saída", () => {
   const r = avaliarEscolhas(resolvidos, [{ grupo: "g1", opcoes: ["o1", "o2"] }]);
   assert.equal(r.valido, true);
   assert.deepEqual(r.opcionais, []);
+});
+
+// ---- Composição x complemento: regras diferentes, não variações da mesma ----
+
+test("avaliarEscolhas: complemento aceita quantidade e multiplica o preço", () => {
+  const r = avaliarEscolhas(resolvidos, [
+    { grupo: "g1", opcoes: ["o1", "o2"] },
+    { grupo: "g2", opcoes: [{ id: "o4", qtd: 2 }, { id: "o5", qtd: 3 }] },
+  ]);
+  assert.equal(r.valido, true);
+  assert.equal(r.addUnit, 12); // 2x3 + 3x2
+  assert.deepEqual(r.opcionais, [
+    { nome: "Bacon", preco: 3, qtd: 2 },
+    { nome: "Ovo", preco: 2, qtd: 3 },
+  ]);
+});
+
+test("avaliarEscolhas: composição ignora quantidade (é escolha, não acréscimo)", () => {
+  const r = avaliarEscolhas(resolvidos, [
+    { grupo: "g1", opcoes: [{ id: "o1", qtd: 5 }, { id: "o2", qtd: 2 }] },
+  ]);
+  assert.equal(r.valido, true);
+  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"] }]);
+});
+
+test("avaliarEscolhas: no complemento o máximo conta UNIDADES, não opções", () => {
+  const g = [{ id: "gx", nome: "Adicionais", tipo: "complemento", obrigatorio: false, min: 0, max: 3,
+    opcoes: [{ id: "a", nome: "Ovo", preco: 2 }] }];
+  assert.equal(avaliarEscolhas(g, [{ grupo: "gx", opcoes: [{ id: "a", qtd: 3 }] }]).valido, true);
+  const excede = avaliarEscolhas(g, [{ grupo: "gx", opcoes: [{ id: "a", qtd: 4 }] }]);
+  assert.equal(excede.valido, false);
+  assert.match(excede.pendencias[0], /no máximo 3 unidades/);
+});
+
+test("avaliarEscolhas: sem tipo declarado, opção paga não cai na composição", () => {
+  const g = [{ id: "gy", nome: "Extras", obrigatorio: false, min: 0, max: 0,
+    opcoes: [{ id: "b", nome: "Bacon", preco: 3 }] }];
+  const r = avaliarEscolhas(g, [{ grupo: "gy", opcoes: ["b"] }]);
+  assert.equal(r.addUnit, 3);
+  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+  assert.deepEqual(r.composicao, []);
+});
+
+test("normalizarBiblioteca: composição zera preço da opção; complemento preserva", () => {
+  const b = normalizarBiblioteca([
+    { id: "g1", nome: "Proteína", tipo: "composicao", opcoes: [{ id: "o1", nome: "Picanha", preco: 5 }] },
+    { id: "g2", nome: "Extras", tipo: "complemento", opcoes: [{ id: "o2", nome: "Bacon", preco: 3 }] },
+  ]);
+  assert.equal(b[0].tipo, "composicao");
+  assert.equal(b[0].opcoes[0].preco, 0);
+  assert.equal(b[1].tipo, "complemento");
+  assert.equal(b[1].opcoes[0].preco, 3);
+});
+
+test("resolverGrupos: propaga o tipo do grupo para o vínculo resolvido", () => {
+  const r = resolverGrupos({ grupos: [{ id: "g1" }, { id: "g2" }] }, biblio);
+  assert.equal(r[0].tipo, "composicao");
+  assert.equal(r[1].tipo, "complemento");
+});
+
+test("converterCardapio: composição vira tipo composicao e opcionais viram complemento", () => {
+  const r = converterCardapio({
+    categorias: [{ nome: "C", itens: [{
+      id: 1, nome: "Marmita",
+      composicao: [{ nome: "Guarnição", obrigatorio: true, min: 1, max: 1, itens: ["Arroz"] }],
+      opcionais: "Ovo | 2.50",
+    }] }],
+  }, idFake());
+  assert.deepEqual(r.grupos.map((g) => [g.nome, g.tipo]), [["Guarnição", "composicao"], ["Complementos", "complemento"]]);
 });
 
 // ---- Conversão do formato legado (composicao/opcionais) para a biblioteca ----

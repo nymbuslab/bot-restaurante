@@ -1709,7 +1709,13 @@ function normalizarConteudoCardapio(cardapio) {
     });
     return Object.assign({}, c, { itens });
   });
-  return Object.assign({}, cardapio, { categorias: cats });
+  const saida = Object.assign({}, cardapio, { categorias: cats });
+  // Biblioteca de complementos: grava o `tipo` resolvido (composicao|complemento) e
+  // zera preço em grupo de composição, pra não depender de inferência na leitura.
+  if (Array.isArray(cardapio && cardapio.grupos)) {
+    saida.grupos = gruposMod.normalizarBiblioteca(cardapio.grupos);
+  }
+  return saida;
 }
 
 app.put("/api/cardapio", exigeAuth, async (req, res) => {

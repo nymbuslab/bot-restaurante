@@ -76,6 +76,18 @@
     return { obrigatorio: !!o.obrigatorio, min: min, max: max };
   }
 
+  // TIPO do grupo — são duas coisas diferentes, não variações da mesma:
+  //  - "composicao": o que vai DENTRO do prato. O cliente ESCOLHE entre as opções
+  //    (rádio/caixa), sem preço e sem quantidade. Sai no pedido em `composicao`.
+  //  - "complemento": o extra que ele ACRESCENTA. Tem preço e quantidade livre
+  //    (stepper). Sai no pedido em `opcionais`, com `qtd`.
+  // Grupo antigo sem `tipo` é inferido pelo preço, que era como a conversão separava.
+  function tipoDoGrupo(g, opcoes) {
+    const t = String((g && g.tipo) || "").trim().toLowerCase();
+    if (t === "complemento" || t === "composicao") return t;
+    return opcoes.some(function (o) { return o.preco > 0; }) ? "complemento" : "composicao";
+  }
+
   function normalizarBiblioteca(lista) {
     if (!Array.isArray(lista)) return [];
     const out = [];
@@ -92,11 +104,16 @@
         opcoes.push({ id: oid, nome: nome, preco: Math.max(0, Number(o.preco) || 0) });
       });
       if (!opcoes.length) return; // grupo sem opção não existe
+      const tipo = tipoDoGrupo(g, opcoes);
       out.push({
         id: id,
         nome: String(g.nome == null ? "" : g.nome).trim(),
+        tipo: tipo,
         padrao: normalizarRegra(g.padrao),
-        opcoes: opcoes,
+        // Composição não tem preço: é escolha do que vem no prato, não acréscimo.
+        opcoes: tipo === "composicao"
+          ? opcoes.map(function (o) { return { id: o.id, nome: o.nome, preco: 0 }; })
+          : opcoes,
       });
     });
     return out;
@@ -117,7 +134,7 @@
       const temRegra = v.min != null || v.max != null || v.obrigatorio != null;
       const regra = temRegra ? normalizarRegra(v) : g.padrao;
       out.push({
-        id: g.id, nome: g.nome,
+        id: g.id, nome: g.nome, tipo: g.tipo,
         obrigatorio: regra.obrigatorio, min: regra.min, max: regra.max,
         opcoes: g.opcoes,
       });
@@ -125,11 +142,20 @@
     return out;
   }
 
+  // Escolha do cliente: aceita o id solto (quantidade 1) ou { id, qtd }.
+  function normalizarEscolha(e) {
+    if (e && typeof e === "object") {
+      return { id: String(e.id == null ? "" : e.id).trim(), qtd: Math.max(1, parseInt(e.qtd, 10) || 1) };
+    }
+    return { id: String(e == null ? "" : e).trim(), qtd: 1 };
+  }
+
   // Avalia as escolhas do cliente contra os grupos JÁ RESOLVIDOS.
-  // `escolhas` = [{ grupo: <grupoId>, opcoes: [<opcaoId>] }].
-  // A saída sai no formato LEGADO do pedido de propósito: opção sem custo vira
-  // composicao, opção paga vira opcional. Assim comanda, relatórios e
-  // itens_venda seguem inalterados.
+  // `escolhas` = [{ grupo: <grupoId>, opcoes: [<opcaoId> | { id, qtd }] }].
+  // Quem manda na saída é o TIPO do grupo, não o preço da opção: composição vira
+  // `composicao` (escolha, 1 por opção) e complemento vira `opcionais` (com `qtd`).
+  // O formato de saída é o LEGADO de propósito — comanda, relatórios e itens_venda
+  // seguem inalterados.
   function avaliarEscolhas(resolvidos, escolhas) {
     const grupos = Array.isArray(resolvidos) ? resolvidos : [];
     const porGrupo = {};
@@ -143,31 +169,42 @@
     grupos.forEach(function (g) {
       const porOpcao = {};
       g.opcoes.forEach(function (o) { porOpcao[o.id] = o; });
-      const escolhidas = porGrupo[g.id] || [];
+      // Sem `tipo` (grupo montado à mão ou dado antigo), infere pelo preço — nunca
+      // deixa opção paga cair na composição, que sairia de graça.
+      const ehComplemento = g.tipo
+        ? g.tipo === "complemento"
+        : g.opcoes.some(function (o) { return o.preco > 0; });
       const validas = [];
       const vistos = {};
-      escolhidas.forEach(function (oid) {
-        const k = String(oid == null ? "" : oid).trim();
-        if (!porOpcao[k] || vistos[k]) return; // id de outro grupo, inexistente ou repetido
-        vistos[k] = true;
-        validas.push(porOpcao[k]);
+      (porGrupo[g.id] || []).forEach(function (raw) {
+        const e = normalizarEscolha(raw);
+        if (!porOpcao[e.id] || vistos[e.id]) return; // id de outro grupo, inexistente ou repetido
+        vistos[e.id] = true;
+        // Composição é ESCOLHA (1 por opção); complemento é ACRÉSCIMO (quantidade livre).
+        validas.push({ opcao: porOpcao[e.id], qtd: ehComplemento ? Math.min(99, e.qtd) : 1 });
       });
+      // Composição conta escolhas; complemento conta unidades.
+      const total = ehComplemento
+        ? validas.reduce(function (s, v) { return s + v.qtd; }, 0)
+        : validas.length;
       const min = g.obrigatorio ? Math.max(1, g.min) : g.min;
-      const max = g.max > 0 ? g.max : g.opcoes.length;
-      if (validas.length < min) {
+      const max = g.max > 0 ? g.max : 0; // 0 = sem limite
+      if (total < min) {
         pendencias.push(g.nome + ": escolha " + (min === 1 ? "1 opção" : "ao menos " + min + " opções"));
         return;
       }
-      if (validas.length > max) {
-        pendencias.push(g.nome + ": escolha no máximo " + max);
+      if (max > 0 && total > max) {
+        pendencias.push(g.nome + ": no máximo " + max + (ehComplemento ? (max === 1 ? " unidade" : " unidades") : ""));
         return;
       }
-      const semCusto = [];
-      validas.forEach(function (o) {
-        if (o.preco > 0) { opcionais.push({ nome: o.nome, preco: o.preco, qtd: 1 }); addUnit += o.preco; }
-        else semCusto.push(o.nome);
-      });
-      if (semCusto.length) composicao.push({ grupo: g.nome, itens: semCusto });
+      if (ehComplemento) {
+        validas.forEach(function (v) {
+          opcionais.push({ nome: v.opcao.nome, preco: v.opcao.preco, qtd: v.qtd });
+          addUnit += v.opcao.preco * v.qtd;
+        });
+      } else if (validas.length) {
+        composicao.push({ grupo: g.nome, itens: validas.map(function (v) { return v.opcao.nome; }) });
+      }
     });
     return {
       valido: pendencias.length === 0,
@@ -226,7 +263,7 @@
     const nomesUsados = {};
     let criados = 0, reusados = 0, sufixados = 0;
 
-    function obterGrupo(nome, padrao, opcoes) {
+    function obterGrupo(nome, tipo, padrao, opcoes) {
       const chave = chaveGrupo(nome, padrao, opcoes);
       if (porChave[chave]) { reusados++; return porChave[chave]; }
       let nomeFinal = String(nome == null ? "" : nome).trim() || "Grupo";
@@ -236,6 +273,7 @@
       const g = {
         id: novoId("g_"),
         nome: nomeFinal,
+        tipo: tipo,   // a origem já diz o tipo: composicao do prato x opcionais pagos
         padrao: normalizarRegra(padrao),
         opcoes: opcoes.map(function (o) { return { id: novoId("o_"), nome: o.nome, preco: Number(o.preco) || 0 }; }),
       };
@@ -252,12 +290,12 @@
       normalizarGrupos(item.composicao).forEach(function (c) {
         const opcoes = c.itens.map(function (n) { return { nome: n, preco: 0 }; });
         const padrao = { obrigatorio: c.obrigatorio, min: c.min, max: c.max };
-        const g = obterGrupo(c.nome, padrao, opcoes);
+        const g = obterGrupo(c.nome, "composicao", padrao, opcoes);
         vinculos.push({ id: g.id, obrigatorio: g.padrao.obrigatorio, min: g.padrao.min, max: g.padrao.max });
       });
       const ops = lerOpcionaisLegado(item.opcionais);
       if (ops.length) {
-        const g = obterGrupo("Complementos", { obrigatorio: false, min: 0, max: 0 }, ops);
+        const g = obterGrupo("Complementos", "complemento", { obrigatorio: false, min: 0, max: 0 }, ops);
         vinculos.push({ id: g.id, obrigatorio: false, min: 0, max: 0 });
       }
       if (!vinculos.length) return item;
