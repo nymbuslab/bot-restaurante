@@ -159,7 +159,9 @@ Explicação de campo **não é parágrafo**. Três formas, nesta ordem de prefe
 
 ### Sidebar aninhado (grupos acordeão)
 
-O menu suporta grupos que expandem/recolhem no próprio sidebar (um aberto por vez). Padrão para agrupar telas de gestão (Cadastros, Financeiro, Relatórios).
+O menu suporta grupos que expandem/recolhem no próprio sidebar (um aberto por vez). Padrão para agrupar telas de gestão (Financeiro, Relatórios).
+
+**Profundidade máxima: 2 níveis.** O grupo "Cadastros" foi removido por criar pai → filho → neto (Cadastros → Produtos → Categorias), pesado de navegar. Hoje Produtos, Clientes e Fornecedores ficam no topo, e só Produtos tem filhos.
 
 - **Grupo:** `<div class="nav-grupo-wrap">` com `<button class="nav-grupo" aria-expanded aria-controls="navsub-x">` (ícone + rótulo + `.nav-chevron` que gira via `[aria-expanded="true"]`) seguido de `<div class="nav-sub" id="navsub-x" hidden>` com os filhos (botões `nav button[data-aba]`). Filhos recuados com guia `border-left`.
 - **Comportamento (em `app.js`):** grupos têm handler próprio (`alternarGrupo`); só `nav button[data-aba]` troca de tela. `abrirGrupoDaAba` abre o grupo do item ativo no boot (sem flash).
