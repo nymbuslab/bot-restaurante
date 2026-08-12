@@ -289,7 +289,7 @@ que vêm do WhatsApp.
 
 Aba **PDV** no painel (gate `temPdv`, front+back) para registrar venda de balcão. **Exige caixa
 aberto** (senão mostra "Abra o caixa para vender"). Fluxo: grade de produtos (chips de categoria +
-busca) → toque adiciona ao carrinho; itens com **opcionais** ou por **kg** abrem um mini-modal
+busca) → toque adiciona ao carrinho; itens com **grupo da biblioteca**, **variações** ou por **kg** abrem um mini-modal
 (peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **tipo de venda** (Balcão/Entrega/Retirada),
 **desconto** (R$ ou %), **pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e
 **CPF na nota** (opcional).
