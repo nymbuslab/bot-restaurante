@@ -31,38 +31,6 @@
     return out;
   }
 
-  // Avalia as escolhas do cliente contra as regras do item-base.
-  // `escolhas` = [{ grupo, itens:[nome] }]. Mantém só itens existentes no subgrupo,
-  // dedupe, e aplica mín/máx/obrigatório. Retorna { valido, selecoes, pendencias }.
-  function avaliarComposicao(base, escolhas) {
-    const grupos = normalizarGrupos(base && base.composicao);
-    const porGrupo = {};
-    (Array.isArray(escolhas) ? escolhas : []).forEach((e) => {
-      if (e && e.grupo != null) porGrupo[String(e.grupo)] = Array.isArray(e.itens) ? e.itens : [];
-    });
-    const selecoes = [];
-    const pendencias = [];
-    grupos.forEach((g) => {
-      const escolhidos = porGrupo[g.nome] || [];
-      const validos = [];
-      escolhidos.forEach((nome) => {
-        const n = String(nome == null ? "" : nome).trim();
-        if (g.itens.indexOf(n) !== -1 && validos.indexOf(n) === -1) validos.push(n);
-      });
-      const min = g.obrigatorio ? Math.max(1, g.min) : g.min;
-      const max = g.max > 0 ? g.max : g.itens.length;
-      if (validos.length < min) {
-        pendencias.push(g.nome + ": escolha " + (min === 1 ? "1 opção" : "ao menos " + min + " opções"));
-      } else if (validos.length > max) {
-        pendencias.push(g.nome + ": escolha no máximo " + max);
-      }
-      if (validos.length && validos.length >= min && validos.length <= max) {
-        selecoes.push({ grupo: g.nome, itens: validos });
-      }
-    });
-    return { valido: pendencias.length === 0, selecoes: selecoes, pendencias: pendencias };
-  }
-
   // ---- Biblioteca de grupos (cardapio.grupos) ----
   // Grupo: { id, nome, padrao:{obrigatorio,min,max}, opcoes:[{id,nome,preco}] }.
   // O id é ESTÁVEL: renomear não gera id novo (é a âncora da ficha técnica de
@@ -334,7 +302,6 @@
 
   return {
     normalizarGrupos: normalizarGrupos,
-    avaliarComposicao: avaliarComposicao,
     normalizarBiblioteca: normalizarBiblioteca,
     resolverGrupos: resolverGrupos,
     avaliarEscolhas: avaliarEscolhas,
