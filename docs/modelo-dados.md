@@ -79,9 +79,11 @@ produtos. A biblioteca mora em `cardapio.grupos`; o produto guarda só o **vínc
 - Helpers puros em `public/grupos.js`: `normalizarBiblioteca`, `resolverGrupos` (expande o vínculo
   aplicando a regra efetiva), `avaliarEscolhas` (valida e devolve `composicao`/`opcionais`/`addUnit`)
   e `converterCardapio` (usado pela migração).
-- **Conversão reversível:** `npm run converter-complementos` simula e `-- --aplicar` grava. Monta a
-  biblioteca a partir de `composicao`/`opcionais` de cada item, deduplicando grupos iguais, e **nunca
-  apaga** os campos antigos. Tenant que já tem biblioteca é pulado (idempotente).
+- **Conversão:** `npm run converter-complementos` simula e `-- --aplicar` grava. Monta a biblioteca a
+  partir de `composicao`/`opcionais` de cada item, deduplicando grupos iguais e marcando o `tipo` pela
+  origem. Tenant que já tem biblioteca é pulado (idempotente). O script não apaga os campos antigos,
+  mas **isso não é mais um plano B**: como nada os lê, desfazer a conversão exigiria reescrever código.
+  Aplicada em produção em 2026-08-10 (2 tenants, 7 grupos, 4 produtos).
 - Telas: **Cadastros → Produtos → Complementos** (biblioteca) e a aba **Complementos** do editor do
   produto (vínculos, ordem e regra por produto).
 

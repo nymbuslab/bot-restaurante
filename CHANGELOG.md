@@ -886,3 +886,15 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - No cardápio e no PDV, as opções aparecem separadas por grupo, com escolha única ou múltipla
   conforme a regra, e o preço do adicional fica ao lado da opção.
 - Nada muda na comanda, nos relatórios nem nos pedidos já feitos.
+
+## [0.91.0] — Complementos com quantidade e menu mais direto
+
+- Nos complementos com preço, o cliente escolhe **quantas unidades** quer. Dois ovos
+  agora somam dois ovos.
+- Ao criar um grupo você escolhe se é **Composição** (o que vem no prato, o cliente
+  escolhe) ou **Complemento** (extra com preço e quantidade). Cada um pergunta só o
+  que faz sentido.
+- Apagou um grupo? Ele some do cardápio na hora. Antes as opções antigas voltavam a
+  aparecer sozinhas, e o cliente comprava algo que você achava que tinha removido.
+- Menu lateral mais curto: Produtos, Clientes e Fornecedores saíram de dentro de
+  "Cadastros" e foram para o primeiro nível.
