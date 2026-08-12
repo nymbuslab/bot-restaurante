@@ -11,29 +11,19 @@ esconde a categoria (e seus itens) do cardápio web e do PDV **sem excluir** (fi
 ```jsonc
 { "id": 10, "nome": "Marmitex P", "preco": 18.0, "desc": "...",
   "disponivel": true,
-  // composicao = subgrupos SELECIONÁVEIS pelo cliente (array estruturado)
-  "composicao": [
-    { "nome": "Proteínas", "obrigatorio": true, "min": 1, "max": 1, "itens": ["Frango", "Carne"] }
-  ],
-  // opcionais permanece TEXTO `Nome | preço` (acréscimos pagos) — inalterado
-  "opcionais": "Ovo frito | 2.00\nBacon | 3.50",
+  // grupos = VÍNCULO com a biblioteca (as opções moram em cardapio.grupos).
+  // É a ÚNICA fonte de opção do item; a regra aqui sobrescreve a padrão do grupo.
+  "grupos": [{ "id": "g_ab12", "obrigatorio": true, "min": 1, "max": 1 }],
   // variacoes = opções com PREÇO e ESTOQUE próprios (ex.: sabores de refrigerante)
   "variacoes": [
     { "id": "v_ab12", "nome": "Coca-Cola", "preco": 6.0, "estoque": 12, "estoqueMinimo": 2 }
   ] }
 ```
-`composicao` é um **array de subgrupos** `[{ nome, obrigatorio, min, max, itens:[string] }]`
-que o cliente seleciona ao montar o pedido. Regras:
-
-- `max = 1` → **escolha única** (radio); `max > 1` → **múltipla** (checkbox, trava no máximo);
-- `obrigatorio: true` ⇒ exige `min ≥ 1` (ao menos uma escolha no subgrupo);
-- a **composição é grátis** — escolher itens **não soma preço** ao item;
-- helpers puros em `public/grupos.js` (`normalizarGrupos`, `avaliarComposicao`); o **servidor valida**
-  por aqui (cardápio web + PDV), descartando itens fora do subgrupo e aplicando mín/máx/obrigatório.
-
-`opcionais` segue como **texto** `Nome | preço` (um por linha), parseado em runtime — são os
-acréscimos **pagos** (steppers) e é o que soma no preço da linha. **Sem migração de schema**: ambos
-moram no mesmo `cardapio` jsonb.
+**Item sem vínculo não tem opção nenhuma.** Os campos do formato antigo (`composicao` estruturada e
+`opcionais` em texto) ainda podem estar no jsonb de produtos nunca reeditados, mas **ninguém mais os
+lê**: nem a projeção pública, nem o recálculo do pedido, nem o PDV, nem o modal do cardápio web.
+**Salvar o cardápio apaga os dois campos** (`PUT /api/cardapio`), então o resto some conforme o dono
+usa o sistema. A regra vale em toda a stack para o dono não vender o que acha que apagou.
 
 ### Biblioteca de complementos (`cardapio.grupos` + `item.grupos`)
 
@@ -180,9 +170,9 @@ só houver `config.atendimento.taxaEntrega`, vale como frete fixo (normalizado p
 Preço da linha = `(preco + Σ(opcional.preco × qtd) + Σ(variacao.preco × qtd)) * qtd`. O opcional e a
 variação têm quantidade (ex.: 2 ovos / 2 Cocas) — escolhidas no cardápio web/PDV. **A composição não
 entra no preço** (é grátis):
-`composicao` guarda apenas as escolhas do cliente por subgrupo (`{ grupo, itens:[nome] }`), validadas
-no servidor por `public/grupos.js` (`avaliarComposicao`). A comanda da cozinha lista essas escolhas
-agrupadas por subgrupo.
+`composicao` guarda apenas as escolhas do cliente por grupo (`{ grupo, itens:[nome] }`), validadas
+no servidor por `public/grupos.js` (`avaliarEscolhas`). A comanda da cozinha lista essas escolhas
+agrupadas por grupo.
 
 ## Bot (fluxo.js) — enxuto, baseado em link
 

@@ -35,7 +35,7 @@ const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
-const gruposMod = require("../public/grupos");       // normalizarGrupos (dual-mode)
+const gruposMod = require("../public/grupos");       // normalizarBiblioteca/resolverGrupos (dual-mode)
 const pdv = require("./pdv");
 const dashboardCalc = require("./dashboard-calc");
 const mesas = require("./mesas");       // lógica pura (total/split/falta)
@@ -1677,8 +1677,8 @@ app.get("/api/cardapio", exigeAuth, async (req, res) => {
 
 // Normaliza o CONTEÚDO do cardápio no SERVIDOR (fonte da verdade — não confia no
 // cliente): preço/estoque ≥ 0, variações normalizadas COM id garantido (sem id → nunca
-// dava baixa de estoque) e composição normalizada. A projeção pública já normalizava na
-// leitura, mas o jsonb salvo ficava inválido para dashboard/itens_venda/impressão.
+// dava baixa de estoque) e biblioteca de grupos normalizada. A projeção pública já
+// normalizava na leitura, mas o jsonb salvo ficava inválido p/ dashboard/itens_venda/impressão.
 function normalizarConteudoCardapio(cardapio) {
   const cats = ((cardapio && cardapio.categorias) || []).map((c) => {
     if (!c) return c;
@@ -1702,9 +1702,12 @@ function normalizarConteudoCardapio(cardapio) {
         // estoque do pai para não checar/baixar contra a qtd do item (evita confusão).
         delete out.estoque; delete out.estoqueMinimo;
       }
-      if (Array.isArray(out.composicao) && out.composicao.length) {
-        out.composicao = gruposMod.normalizarGrupos(out.composicao);
-      }
+      // Formato antigo: as opções do item vêm SÓ da biblioteca (`item.grupos`).
+      // Ninguém mais lê `composicao`/`opcionais` do item, então salvar o cardápio
+      // apaga o resto em vez de regravá-lo — dado morto que fica no jsonb reaparece
+      // em auditoria/exportação e sugere uma regra que não existe mais.
+      delete out.composicao;
+      delete out.opcionais;
       return out;
     });
     return Object.assign({}, c, { itens });

@@ -44,23 +44,45 @@ test("tituloPt: vazio/nulo devolve string vazia", () => {
   assert.equal(tituloPt(undefined), "");
 });
 
-test("padronizarNomesCardapio: padroniza categoria, item e opcional preservando o resto", () => {
+test("padronizarNomesCardapio: padroniza categoria, item e variação preservando o resto", () => {
   const entrada = {
     categorias: [{
       nome: "pratos executivos",
-      itens: [{ nome: "bife a cavalo", preco: 25, estoque: 10, opcionais: "bacon EXTRA | 3.00\novo | 2.00" }],
+      itens: [{ nome: "bife a cavalo", preco: 25, estoque: 10, variacoes: [{ id: "v1", nome: "coca-cola", preco: 6 }] }],
     }],
   };
   const out = padronizarNomesCardapio(entrada);
   assert.equal(out.categorias[0].nome, "Pratos Executivos");
   assert.equal(out.categorias[0].itens[0].nome, "Bife a Cavalo");
-  assert.equal(out.categorias[0].itens[0].opcionais, "Bacon Extra | 3.00\nOvo | 2.00");
+  assert.equal(out.categorias[0].itens[0].variacoes[0].nome, "Coca-Cola");
   // preserva campos não-nome
   assert.equal(out.categorias[0].itens[0].preco, 25);
   assert.equal(out.categorias[0].itens[0].estoque, 10);
+  assert.equal(out.categorias[0].itens[0].variacoes[0].id, "v1");
   // não muta o original
   assert.equal(entrada.categorias[0].nome, "pratos executivos");
   assert.equal(entrada.categorias[0].itens[0].nome, "bife a cavalo");
+});
+
+test("padronizarNomesCardapio: padroniza a biblioteca (grupo e opção) preservando id/preço/tipo", () => {
+  const entrada = {
+    categorias: [],
+    grupos: [{
+      id: "g1", nome: "guarnicao de casa", tipo: "composicao",
+      padrao: { obrigatorio: true, min: 1, max: 2 },
+      opcoes: [{ id: "o1", nome: "arroz BRANCO", preco: 0 }, { id: "o2", nome: "ovo frito", preco: 2.5 }],
+    }],
+  };
+  const out = padronizarNomesCardapio(entrada);
+  assert.equal(out.grupos[0].nome, "Guarnicao de Casa");
+  assert.deepEqual(out.grupos[0].opcoes.map((o) => o.nome), ["Arroz Branco", "Ovo Frito"]);
+  assert.equal(out.grupos[0].id, "g1");
+  assert.equal(out.grupos[0].tipo, "composicao");
+  assert.equal(out.grupos[0].opcoes[1].preco, 2.5);
+  assert.deepEqual(out.grupos[0].padrao, { obrigatorio: true, min: 1, max: 2 });
+  // não muta o original
+  assert.equal(entrada.grupos[0].nome, "guarnicao de casa");
+  assert.equal(entrada.grupos[0].opcoes[0].nome, "arroz BRANCO");
 });
 
 test("padronizarNomesCardapio: entrada sem categorias volta intacta", () => {
