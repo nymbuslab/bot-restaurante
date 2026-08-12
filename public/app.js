@@ -4745,20 +4745,6 @@ function pdvSelecionarAoFocar(el) {
   el.addEventListener("focus", () => setTimeout(() => { try { el.select(); } catch (_) {} }, 0));
 }
 function pdvEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-function pdvParseOpcionais(texto) {
-  if (!texto || !String(texto).trim()) return [];
-  const lista = [];
-  String(texto).split("\n").forEach((l) => {
-    l = l.trim().replace(/^[*\-•]\s*/, "");
-    if (!l) return;
-    const partes = l.split("|");
-    const nome = partes[0].trim();
-    let preco = 0;
-    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-    if (nome) lista.push({ nome, preco });
-  });
-  return lista;
-}
 function pdvPrecoUnit(l) {
   const add = (l.opcionais || []).reduce((s, o) => s + (Number(o.preco) || 0) * (o.qtd || 1), 0);
   const addV = (l.variacoes || []).reduce((s, v) => s + (Number(v.preco) || 0) * (v.qtd || 1), 0);
@@ -4876,9 +4862,7 @@ function pdvMontarTile(item, variacao) {
 // Clique num tile de sabor (resultado de busca): adiciona a variação direto ao carrinho.
 // Se o pai tiver opcionais/composição, cai no modal (não dá p/ pular essas escolhas).
 function pdvVariacaoClick(item, v) {
-  const ops = pdvParseOpcionais(item.opcionais);
-  const grps = (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
-  if (ops.length || grps.length) { abrirPdvItemModal(item, null); return; }
+  if (pdvGruposDoItem(item).length) { abrirPdvItemModal(item, null); return; }
   // Agrupa se já houver a MESMA variação sozinha no carrinho (soma a quantidade da linha).
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao
     && !(l.composicao && l.composicao.length)
@@ -4915,11 +4899,9 @@ function pdvAtualizarBadges() {
 
 function pdvTileClick(item) {
   const bib = pdvGruposDoItem(item);
-  const ops = bib.length ? [] : pdvParseOpcionais(item.opcionais);
-  const grps = bib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []);
   const ehKg = item.unidade === "kg";
-  if (bib.length || ops.length || grps.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (bib.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs/composição) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao && !(l.composicao && l.composicao.length));
   if (ex) ex.qtd += 1;
@@ -4940,18 +4922,17 @@ let pdvItemCtx = null; // { item, ops, grps, bib, vars, uid|null, ehKg }
 let pdvGrupoCompleto = {}; // grupo → já rolou p/ o próximo (evita re-rolar ao trocar opção)
 
 function abrirPdvItemModal(item, uid) {
-  // Item convertido manda: as opções vêm da biblioteca (com id e preço próprios) e
-  // o caminho legado (composicao + opcionais em texto) não é renderizado.
+  // As opções vêm SÓ da biblioteca, igual ao servidor: item sem vínculo não oferece
+  // nada. Renderizar o formato antigo aqui deixaria o operador marcar opção que o
+  // recálculo ignora, e a tela cobraria diferente do pedido.
   const bib = pdvGruposDoItem(item);
-  const ops = bib.length ? [] : pdvParseOpcionais(item.opcionais);
-  const grps = bib.length ? [] : (window.Grupos ? window.Grupos.normalizarGrupos(item.composicao) : []);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []).map((v) => ({
     id: v.id, nome: v.nome, preco: v.preco,
     esgotado: window.Estoque ? window.Estoque.statusEstoque(v).esgotado : false,
   }));
   const ehKg = item.unidade === "kg";
   const linha = uid != null ? pdvCart.find((l) => l.uid === uid) : null;
-  pdvItemCtx = { item, ops, grps, bib, vars, uid: uid != null ? uid : null, ehKg };
+  pdvItemCtx = { item, bib, vars, uid: uid != null ? uid : null, ehKg };
   pdvGrupoCompleto = {};
   // Reabrir a linha: remarca as escolhas. Composição guarda ids; complemento guarda { id, qtd }.
   const bibIni = {}, bibQtdIni = {};
@@ -4964,16 +4945,10 @@ function abrirPdvItemModal(item, uid) {
     bibIni[e.grupo] = ids;
     bibQtdIni[e.grupo] = qtds;
   });
-  const opsQtd = ops.map((o) => {
-    const found = linha && (linha.opcionais || []).find((x) => x.nome === o.nome);
-    return found ? found.qtd : 0;
-  });
   const varsQtd = vars.map((v) => {
     const found = linha && (linha.variacoes || []).find((x) => x.id === v.id);
     return found ? found.qtd : 0;
   });
-  const escIni = {};
-  (linha && Array.isArray(linha.composicao) ? linha.composicao : []).forEach((c) => { escIni[c.grupo] = c.itens || []; });
   const qtdIni = linha ? linha.qtd : (ehKg ? "" : 1);
   const obsIni = linha ? linha.observacao : "";
 
@@ -4983,30 +4958,6 @@ function abrirPdvItemModal(item, uid) {
     '<button class="pdv-modal-x" type="button" data-pdv-close="item" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
     '<div class="pdv-m-head"><h3 class="pdv-m-nome">' + pdvEsc(item.nome) + '</h3>' +
       '<div class="pdv-m-preco">' + pdvMoney(Number(item.preco) || 0) + (ehKg ? '<small>/kg</small>' : '') + '</div></div>';
-  grps.forEach((g) => {
-    const unico = g.max === 1;
-    const minReq = g.obrigatorio ? Math.max(1, g.min) : 0;
-    const sub = unico ? "Escolha 1 opção"
-      : (g.obrigatorio ? "Escolha ao menos " + minReq + (minReq > 1 ? " opções" : " opção")
-                       : (g.max > 1 ? "Escolha até " + g.max + " opções" : "Opcional"));
-    html += '<div class="pdv-grp pdv-m-grp" data-grupo="' + pdvEsc(g.nome) + '" data-grupo-wrap="' + pdvEsc(g.nome) + '">' +
-      '<div class="pdv-m-grp-cab">' +
-        '<div class="pdv-m-grp-tit">' + pdvEsc(g.nome) + '<div class="pdv-m-grp-sub" data-sub="' + pdvEsc(g.nome) + '">' + pdvEsc(sub) + '</div></div>' +
-        '<span class="pdv-m-grp-selo' + (g.obrigatorio ? ' obrig' : '') + '" data-selo="' + pdvEsc(g.nome) + '">' + (g.obrigatorio ? 'Obrigatório' : 'Opcional') + '</span>' +
-        '<span class="pdv-m-check" data-check="' + pdvEsc(g.nome) + '" hidden>' + PDV_CHECK + '</span>' +
-      '</div>';
-    g.itens.forEach((nome, idx) => {
-      const marcado = (escIni[g.nome] || []).indexOf(nome) !== -1 ? " checked" : "";
-      const tipo = unico ? "radio" : "checkbox";
-      const id = "pgrp_" + pdvEsc(g.nome).replace(/\W/g, "") + "_" + idx;
-      html += '<label class="pdv-m-opt pdv-m-opt-sel" for="' + id + '">' +
-        '<span class="pdv-m-opt-nome">' + pdvEsc(nome) + '</span>' +
-        '<input type="' + tipo + '" name="pgrp_' + pdvEsc(g.nome) + '" value="' + pdvEsc(nome) + '" data-grupo="' + pdvEsc(g.nome) + '" data-max="' + g.max + '"' + marcado + ' id="' + id + '" class="pdv-m-input" />' +
-        '<span class="pdv-m-mark ' + (unico ? 'radio' : 'checkbox') + '" aria-hidden="true"></span>' +
-      '</label>';
-    });
-    html += '</div>';
-  });
   // Grupos da biblioteca: rádio quando é escolha única, caixa de seleção nos demais.
   bib.forEach((g) => {
     const unico = g.max === 1;
@@ -5047,14 +4998,6 @@ function abrirPdvItemModal(item, uid) {
     });
     html += '</div>';
   });
-  if (ops.length) {
-    html += '<div class="pdv-m-grp-cab"><div class="pdv-m-grp-tit">Adicionais<div class="pdv-m-grp-sub">Opcional</div></div></div>';
-    ops.forEach((o, i) => {
-      html += '<div class="pdv-m-opt">' +
-        '<div class="pdv-m-opt-txt"><span class="pdv-m-opt-nome">' + pdvEsc(o.nome) + '</span><span class="pdv-m-opt-preco">+ ' + pdvMoney(o.preco) + '</span></div>' +
-        '<div class="pdv-stepper" data-stepper="op" data-opi="' + i + '"><button type="button" data-step="-1">−</button><span class="pdv-op-q">' + opsQtd[i] + '</span><button type="button" data-step="1">+</button></div></div>';
-    });
-  }
   if (vars.length) {
     html += '<div class="pdv-m-grp-cab"><div class="pdv-m-grp-tit">Opções<div class="pdv-m-grp-sub">Escolha ao menos 1</div></div></div>';
     vars.forEach((v, i) => {
@@ -5109,26 +5052,6 @@ function abrirPdvItemModal(item, uid) {
       pdvItemRecalc();
     });
   }
-  $("pdvItemCaixa").querySelectorAll(".pdv-grp input").forEach((inp) => inp.addEventListener("change", () => {
-    const grupo = inp.dataset.grupo;
-    const escG = (window.CSS && CSS.escape) ? CSS.escape(grupo) : grupo.replace(/"/g, '\\"');
-    if (inp.type === "checkbox") {
-      const max = parseInt(inp.dataset.max, 10) || 0;
-      const marc = $("pdvItemCaixa").querySelectorAll('.pdv-grp input[data-grupo="' + escG + '"]:checked');
-      if (max > 1 && marc.length > max) inp.checked = false;
-    }
-    pdvItemRecalc();
-    pdvAtualizarGrupos();
-    // rolagem automática ao completar um grupo (só na transição p/ completo)
-    const gm = (pdvItemCtx.grps || []).filter((x) => x.nome === grupo)[0];
-    if (gm) {
-      const sel = $("pdvItemCaixa").querySelectorAll('.pdv-grp[data-grupo="' + escG + '"] input:checked').length;
-      const effMax = gm.max > 0 ? gm.max : gm.itens.length;
-      if (sel >= effMax) {
-        if (!pdvGrupoCompleto[grupo]) { pdvGrupoCompleto[grupo] = true; pdvScrollProximaSecao(grupo); }
-      } else { pdvGrupoCompleto[grupo] = false; }
-    }
-  }));
   $("pdvItemCaixa").querySelectorAll(".pdv-grp-bib input").forEach((inp) => inp.addEventListener("change", () => {
     const gid = inp.dataset.bib;
     const escG = (window.CSS && CSS.escape) ? CSS.escape(gid) : gid.replace(/"/g, '\\"');
@@ -5160,7 +5083,7 @@ function abrirPdvItemModal(item, uid) {
 function fecharPdvItemModal() { $("pdvItemOverlay").hidden = true; pdvItemCtx = null; }
 
 // Atualiza o check verde + selo + subtítulo (contador) de cada grupo do modal PDV
-// conforme as escolhas — só apresentação (a validação segue em avaliarComposicao).
+// conforme as escolhas — só apresentação (a validação segue em avaliarEscolhas).
 function pdvAtualizarGrupos() {
   const cx = $("pdvItemCaixa");
   ((pdvItemCtx && pdvItemCtx.bib) || []).forEach((g) => {
@@ -5168,21 +5091,6 @@ function pdvAtualizarGrupos() {
     const sel = cx.querySelectorAll('.pdv-grp-bib[data-bib="' + escG + '"] input:checked').length;
     const min = g.obrigatorio ? Math.max(1, g.min) : 0;
     const max = g.max > 0 ? g.max : g.opcoes.length;
-    const ok = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
-    const check = cx.querySelector('.pdv-m-check[data-check="' + escG + '"]');
-    const selo = cx.querySelector('.pdv-m-grp-selo[data-selo="' + escG + '"]');
-    if (check) check.hidden = !ok;
-    if (selo) selo.hidden = ok;
-    if (!g.obrigatorio && g.max > 1) {
-      const sub = cx.querySelector('.pdv-m-grp-sub[data-sub="' + escG + '"]');
-      if (sub) sub.textContent = "Escolha até " + g.max + " opções · " + sel + "/" + g.max;
-    }
-  });
-  ((pdvItemCtx && pdvItemCtx.grps) || []).forEach((g) => {
-    const escG = (window.CSS && CSS.escape) ? CSS.escape(g.nome) : g.nome.replace(/"/g, '\\"');
-    const sel = cx.querySelectorAll('.pdv-grp[data-grupo="' + escG + '"] input:checked').length;
-    const min = g.obrigatorio ? Math.max(1, g.min) : 0;
-    const max = g.max > 0 ? g.max : g.itens.length;
     const ok = g.obrigatorio ? (sel >= min && sel <= max) : (sel >= 1 && sel <= max);
     const check = cx.querySelector('.pdv-m-check[data-check="' + escG + '"]');
     const selo = cx.querySelector('.pdv-m-grp-selo[data-selo="' + escG + '"]');
@@ -5210,25 +5118,13 @@ function pdvScrollProximaSecao(nomeGrupo) {
 }
 
 function _pdvLerModalItem() {
-  const { item, ops, vars, ehKg } = pdvItemCtx;
+  const { item, vars, ehKg } = pdvItemCtx;
   let qtd;
   if (ehKg) {
     qtd = parseFloat(String(($("pdvMpeso").value || "")).replace(",", ".")) || 0;
   } else {
     qtd = parseInt($("pdvMqtd").value, 10) || 1;
   }
-  const opcionais = [];
-  $("pdvItemCaixa").querySelectorAll('[data-stepper="op"]').forEach((box) => {
-    const i = Number(box.dataset.opi);
-    const q = parseInt(box.querySelector("span").textContent, 10) || 0;
-    if (q > 0) opcionais.push({ nome: ops[i].nome, preco: ops[i].preco, qtd: q });
-  });
-  const composicao = [];
-  ($("pdvItemCaixa").querySelectorAll(".pdv-grp")).forEach((box) => {
-    const grupo = box.getAttribute("data-grupo");
-    const itens = Array.prototype.slice.call(box.querySelectorAll("input:checked")).map((c) => c.value);
-    if (itens.length) composicao.push({ grupo, itens });
-  });
   // Escolhas nos grupos da biblioteca (ids), no formato de `avaliarEscolhas`.
   const grupos = [];
   ($("pdvItemCaixa").querySelectorAll(".pdv-grp-bib")).forEach((box) => {
@@ -5253,37 +5149,27 @@ function _pdvLerModalItem() {
     if (q > 0 && vars[i]) variacoes.push({ id: vars[i].id, nome: vars[i].nome, preco: vars[i].preco, qtd: q });
   });
   const observacao = ($("pdvMobs").value || "").trim().slice(0, 200);
-  return { item, qtd, composicao, opcionais, grupos, variacoes, observacao, ehKg };
+  return { item, qtd, grupos, variacoes, observacao, ehKg };
 }
 function pdvItemRecalc() {
-  const { item, qtd, opcionais, grupos, variacoes } = _pdvLerModalItem();
+  const { item, qtd, grupos, variacoes } = _pdvLerModalItem();
   const bib = (pdvItemCtx && pdvItemCtx.bib) || [];
-  const add = bib.length
-    ? window.Grupos.avaliarEscolhas(bib, grupos).addUnit
-    : opcionais.reduce((s, o) => s + o.preco * o.qtd, 0);
+  const add = window.Grupos.avaliarEscolhas(bib, grupos).addUnit;
   const addV = (variacoes || []).reduce((s, v) => s + v.preco * v.qtd, 0);
   const tot = ((Number(item.preco) || 0) + add + addV) * (Number(qtd) || 0);
   const el = $("pdvMtot"); if (el) el.textContent = pdvMoney(tot);
 }
 function pdvConfirmarItem() {
-  const { item, qtd, composicao, opcionais, grupos, variacoes, observacao, ehKg } = _pdvLerModalItem();
+  const { item, qtd, grupos, variacoes, observacao, ehKg } = _pdvLerModalItem();
   if (ehKg && !(qtd > 0)) { toast("Informe o peso.", "erro"); return; }
   const bib = (pdvItemCtx && pdvItemCtx.bib) || [];
-  let compLinha, opsLinha, gruposLinha = null;
-  if (bib.length) {
-    // avaliarEscolhas valida E devolve composição/adicionais no formato antigo: o
-    // carrinho, a comanda e o pedido seguem iguais, sem nada saber de id.
-    const av = window.Grupos.avaliarEscolhas(bib, grupos);
-    if (!av.valido) { toast(av.pendencias[0] || "Complete as escolhas.", "erro"); return; }
-    compLinha = av.composicao;
-    opsLinha = av.opcionais;
-    gruposLinha = grupos.filter((e) => e.opcoes && e.opcoes.length);
-  } else {
-    const aval = window.Grupos ? window.Grupos.avaliarComposicao(item, composicao) : { valido: true, selecoes: composicao };
-    if (!aval.valido) { toast(aval.pendencias[0] || "Complete a composição.", "erro"); return; }
-    compLinha = aval.selecoes;
-    opsLinha = opcionais;
-  }
+  // avaliarEscolhas valida E devolve composição/adicionais no formato do pedido: o
+  // carrinho, a comanda e o caixa seguem iguais, sem nada saber de id.
+  const av = window.Grupos.avaliarEscolhas(bib, grupos);
+  if (!av.valido) { toast(av.pendencias[0] || "Complete as escolhas.", "erro"); return; }
+  const compLinha = av.composicao;
+  const opsLinha = av.opcionais;
+  const gruposLinha = grupos.filter((e) => e.opcoes && e.opcoes.length);
   // item COM variações exige ≥1 escolha (senão o total seria só o preço base)
   if ((pdvItemCtx.vars || []).length && !(variacoes || []).length) { toast("Escolha ao menos 1 opção.", "erro"); return; }
   const linha = { uid: pdvItemCtx.uid != null ? pdvItemCtx.uid : pdvUidSeq++, id: item.id, nome: item.nome, preco: Number(item.preco) || 0, unidade: ehKg ? "kg" : "un", qtd, composicao: compLinha, opcionais: opsLinha, grupos: gruposLinha, variacoes, observacao };

@@ -3356,12 +3356,6 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .eg-regra-num label { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; }
 .eg-regra-num input { width: 72px; }
 .eg-regra-acoes { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-/* Complementos do formato antigo (leitura), até a conversão para a biblioteca */
-.eg-legado { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
-.eg-legado-tit { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.eg-legado-linha { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--border-subtle); }
-.eg-legado-linha:last-child { border-bottom: none; }
-.eg-legado-linha .eg-resumo { white-space: normal; }
 /* Modal: escolher grupos da biblioteca */
 .vinc-lista { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; margin: 12px 0; }
 .vinc-item {
