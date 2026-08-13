@@ -14,9 +14,16 @@ Direção do produto. O que está planejado, por prioridade.
 
 ## Visão
 
-Plataforma SaaS multi-tenant para restaurantes receberem pedidos via WhatsApp.
-O bot é a **porta de entrada** — coleta o pedido completo (itens, opcionais, entrega, pagamento)
-e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sistema do restaurante.
+Plataforma SaaS multi-tenant de **gestão para restaurantes**: pedidos, PDV, caixa, mesas e cardápio,
+sem comissão por pedido. O WhatsApp é **um canal de entrada**, não a promessa central: o bot manda o
+link do cardápio, o cliente monta o pedido na web e ele entra no sistema.
+
+> **Reposicionamento (2026-07-30):** o produto passou a se vender como sistema de gestão do restaurante,
+> com o bot como complemento. Landing, login e a skill `copy-nymbus` já seguem essa linha. Antes a visão
+> aqui dizia "plataforma para restaurantes receberem pedidos via WhatsApp".
+
+O ciclo do pedido (preparo, status, entrega) segue **fora do escopo**, gerenciado pelo sistema do
+restaurante.
 
 > **Implementado (2026-06-17):** o pedido **conversacional** foi **substituído** por um **cardápio web
 > linkado** — o bot manda o link e o cliente monta/finaliza na web. Ver *"Cardápio web como canal de
@@ -36,12 +43,14 @@ e registra. O ciclo do pedido (preparo, status, entrega) é gerenciado pelo sist
   escopo**. O valor real (comunicar o cliente) já é entregue pelo botão **"Avisar cliente"**
   (pedido pronto — entrega/retirada). Gerenciar o ciclo do pedido contradiz a premissa do
   produto: o bot é **porta de entrada**, o andamento fica no sistema próprio do restaurante.
-- **Taxa de entrega por bairro/CEP** — **parcialmente revertido.** A opção **(b) por raio/km
-  via geocoding foi IMPLEMENTADA** no **Plano Completo** (frete por raio: Geoapify +
-  Haversine + faixas por km; CEP+número no checkout) — ver `CHANGELOG.md` v0.27.0 e
-  [docs/planos-e-frete.md](docs/planos-e-frete.md). Seguem **fora de escopo**: (a) **por bairro
-  cadastrado** — manutenção infinita por tenant; (c) **geolocalização por IP** — inviável, não
-  há IP do cliente numa conversa de WhatsApp. O **Essencial** mantém **taxa única por tenant**.
+- **Taxa de entrega por bairro/CEP** — **revertido, saiu do fora de escopo.** As duas modalidades
+  foram implementadas no **Plano Completo**: **(b) por raio/km via geocoding** (Geoapify + Haversine +
+  faixas por km; CEP+número no checkout, `CHANGELOG.md` v0.27.0) e **(a) por bairro cadastrado**
+  (bairro→valor fixo, match exato normalizado, sem geocode; `CHANGELOG.md` v0.81.0, entregue em
+  2026-07-07). O receio de "manutenção infinita por tenant" não se confirmou: o cadastro é do próprio
+  dono e vale no cardápio web e no PDV. Segue fora de escopo só **(c) geolocalização por IP**, inviável
+  porque não há IP do cliente numa conversa de WhatsApp. O **Essencial** mantém **taxa única por tenant**.
+  Ver [docs/planos-e-frete.md](docs/planos-e-frete.md).
 
 ---
 
@@ -148,9 +157,17 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 ### Fase 0 — Fundação operacional (cabe 100% na stack; maior valor / menor custo)
 
-- [ ] **Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca é atualizada;
-  falta transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
-  *Reverte a decisão "fora de escopo" acima — precisa de aval consciente.*
+- [ ] **Split de Produtos em 4 cadastros** (M, em andamento) — "Produtos" deixa de ser uma tela só e
+  vira os cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅ (v0.89.0) e
+  **2/4 Complementos** ✅ (biblioteca de grupos reutilizáveis, v0.90.0/0.91.0) entregues;
+  **3/4 Controle de estoque** e **4/4 Insumos** em aberto (detalhe e escopo no `PROGRESSO.md`).
+  O **`id` estável de opção**, criado na 2/4, é a âncora das duas telas restantes.
+- [ ] **(decisão pendente) Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca
+  é atualizada; faltariam transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
+  **Contradiz a decisão "fora de escopo" acima**, que tirou o ciclo do pedido do produto por premissa, e a
+  fronteira reafirmada na revisão da tela de Pedidos ("não virar KDS"). **Não implementar sem o dono decidir
+  qual das duas vale.** Enquanto não houver decisão, o comportamento atual continua: quem comunica o cliente
+  é o botão "Avisar cliente", e o andamento fica no sistema do restaurante.
 - [ ] **Relatórios de verdade** (P/M) — faturamento agregado, mais vendidos, mix de pagamento,
   horário de pico. Dados já estão em `pedidos`.
 - [x] **Refino de UX tela a tela (benchmark concorrentes)** — ✅ **concluído**: revisão das telas do painel

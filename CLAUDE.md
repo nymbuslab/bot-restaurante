@@ -6,10 +6,12 @@ alterar. **Este arquivo é o índice/essencial** — o detalhe de cada assunto f
 
 ## Visão geral
 
-Plataforma **SaaS multi-tenant** de atendimento de restaurantes no WhatsApp, com
-**painel web administrativo** por empresa. Cada empresa cadastrada recebe seu próprio
-ambiente isolado (cardápio, config, pedidos, sessão WhatsApp). O bot é a **porta de
-entrada de pedidos**: na conversa do WhatsApp ele envia o **link do cardápio web**
+Plataforma **SaaS multi-tenant de gestão para restaurantes** (pedidos, PDV, caixa, mesas e
+cardápio), com **painel web administrativo** por empresa. Cada empresa cadastrada recebe seu
+próprio ambiente isolado (cardápio, config, pedidos, sessão WhatsApp). O WhatsApp é **um canal
+de entrada**, não a promessa central (reposicionamento de 2026-07-30; a voz da marca vive na
+skill `copy-nymbus`). Nesse canal, o bot é a **porta de entrada de pedidos**: na conversa do
+WhatsApp ele envia o **link do cardápio web**
 (`/c/:slug`), onde o cliente monta o pedido (itens, opcionais, observação, entrega,
 pagamento) e finaliza; o pedido cai no backend (recalculado lá) e o bot **confirma**
 automaticamente. O andamento do pedido é feito por um sistema externo — este projeto

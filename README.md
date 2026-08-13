@@ -1,8 +1,10 @@
-# 🍴 Nymbus Pedidos — Bot de Pedidos no WhatsApp + Painel
+# 🍴 Nymbus Pedidos — Sistema de gestão para restaurantes
 
-Plataforma **SaaS multi-tenant** da **Nymbus Lab**: qualquer restaurante se cadastra, configura
-o cardápio e começa a receber pedidos pelo WhatsApp de forma automatizada. Cada empresa tem seu
-próprio ambiente isolado — cardápio, configurações, pedidos e conexão WhatsApp separados.
+Plataforma **SaaS multi-tenant** da **Nymbus Lab**: o restaurante se cadastra, monta o cardápio e
+passa a gerir a operação num lugar só (pedidos, PDV, caixa, mesas e cardápio), sem comissão por
+pedido. O **WhatsApp é um canal de entrada**: o bot manda o link do cardápio e o cliente monta o
+pedido na web. Cada empresa tem seu próprio ambiente isolado: cardápio, configurações, pedidos e
+conexão WhatsApp separados.
 
 **Modelo de negócio (pago):** cadastro grátis → **teste grátis de 7 dias com cartão** → dois planos
 via **Stripe**: **Essencial R$ 79/mês** e **Completo R$ 99/mês** (o Completo adiciona **frete por
