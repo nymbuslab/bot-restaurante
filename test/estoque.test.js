@@ -166,3 +166,47 @@ test("aplicarBaixa segue devolvendo só o cardápio", () => {
   const novo = E.aplicarBaixa(cloneMov(), [{ id: "a1", qtd: 1 }]);
   assert.equal(novo.categorias[0].itens[0].estoque, 2);
 });
+
+// ---- diffEstoque ----
+test("diffEstoque: mudança de saldo vira movimento de ajuste", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens[0].estoque = 10; // era 3
+  assert.deepEqual(E.diffEstoque(antes, depois), [
+    { itemId: "a1", variacaoId: null, quantidade: 7, saldoDepois: 10, descricao: "Espeto", unidade: "un" },
+  ]);
+});
+
+test("diffEstoque: saldo igual não gera movimento", () => {
+  assert.deepEqual(E.diffEstoque(cloneMov(), cloneMov()), []);
+});
+
+test("diffEstoque: ligar o controle gera movimento com o saldo inicial", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens[2].estoque = 12; // Refri era ilimitado
+  const m = E.diffEstoque(antes, depois);
+  assert.equal(m.length, 1);
+  assert.equal(m[0].itemId, "a3");
+  assert.equal(m[0].quantidade, 12);
+  assert.equal(m[0].saldoDepois, 12);
+});
+
+test("diffEstoque: desligar o controle não gera movimento de saldo", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  delete depois.categorias[0].itens[0].estoque; // virou ilimitado
+  assert.deepEqual(E.diffEstoque(antes, depois), []);
+});
+
+test("diffEstoque: alcança variação", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens[3].variacoes[0].estoque = 9; // era 5
+  assert.deepEqual(E.diffEstoque(antes, depois), [
+    { itemId: "a4", variacaoId: "v1", quantidade: 4, saldoDepois: 9, descricao: "Marmitex (P)", unidade: "un" },
+  ]);
+});
+
+test("diffEstoque: item novo já controlado entra como movimento", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens.push({ id: "a9", nome: "Suco", unidade: "un", estoque: 4 });
+  const m = E.diffEstoque(antes, depois);
+  assert.deepEqual(m, [{ itemId: "a9", variacaoId: null, quantidade: 4, saldoDepois: 4, descricao: "Suco", unidade: "un" }]);
+});

@@ -166,8 +166,60 @@
   function calcularDevolucao(cardapio, itensPayload) { return _movimentar(cardapio, itensPayload, 1); }
   // Casca compatível: quem só quer o cardápio novo (código antigo) continua chamando.
   function aplicarBaixa(cardapio, itensPayload) { return calcularBaixa(cardapio, itensPayload).cardapio; }
+  // Mapa dos saldos do cardápio (item e variação), por chave estável: "itemId" ou
+  // "itemId::variacaoId". Por padrão só entra quem está CONTROLADO; com
+  // `incluirIlimitados` entram também os sem controle (com `controlado: false` e
+  // `quantidade: null`), que é o que `acharSaldo` precisa para a primeira contagem.
+  function _mapaSaldos(cardapio, incluirIlimitados) {
+    const mapa = {};
+    ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+      ((c && c.itens) || []).forEach(function (it) {
+        if (!it || it.id == null) return;
+        if (temControle(it) || incluirIlimitados) {
+          const st = statusEstoque(it);
+          mapa[String(it.id)] = {
+            itemId: it.id, variacaoId: null, controlado: st.controlado,
+            quantidade: st.quantidade, minimo: st.minimo,
+            descricao: it.nome || "", unidade: it.unidade === "kg" ? "kg" : "un",
+          };
+        }
+        (Array.isArray(it.variacoes) ? it.variacoes : []).forEach(function (v) {
+          if (!v || v.id == null) return;
+          if (!temControle(v) && !incluirIlimitados) return;
+          const stv = statusEstoque(v);
+          mapa[_chaveVar(it.id, v.id)] = {
+            itemId: it.id, variacaoId: String(v.id), controlado: stv.controlado,
+            quantidade: stv.quantidade, minimo: stv.minimo,
+            descricao: (it.nome || "") + " (" + (v.nome || "") + ")", unidade: "un",
+          };
+        });
+      });
+    });
+    return mapa;
+  }
+  // Compara dois cardápios e devolve os movimentos de AJUSTE (o dono mexeu no
+  // número pelo editor do item). Desligar o controle NÃO é movimento de saldo:
+  // o item passa a ser ilimitado, não a ter uma quantidade diferente.
+  function diffEstoque(cardapioAntes, cardapioDepois) {
+    const a = _mapaSaldos(cardapioAntes);
+    const d = _mapaSaldos(cardapioDepois);
+    const movimentos = [];
+    Object.keys(d).forEach(function (k) {
+      const dep = d[k];
+      const ant = a[k];
+      const antes = ant ? ant.quantidade : null;
+      if (antes === dep.quantidade) return;
+      const ehKg = dep.unidade === "kg";
+      movimentos.push({
+        itemId: dep.itemId, variacaoId: dep.variacaoId,
+        quantidade: antes === null ? dep.quantidade : _round(dep.quantidade - antes, ehKg),
+        saldoDepois: dep.quantidade, descricao: dep.descricao, unidade: dep.unidade,
+      });
+    });
+    return movimentos;
+  }
   return {
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
-    aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao,
+    aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
   };
 });
