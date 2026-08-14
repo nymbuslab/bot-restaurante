@@ -7,6 +7,7 @@
 const path = require("path");
 const db = require("./db");
 const caixa = require("./caixa");
+const store = require("./store"); // devolverEstoqueTx/sincronizarCardapio (cancelamento devolve ao estoque)
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {};
@@ -281,26 +282,51 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
   }
 }
 
-// Cancela a mesa: marca os pedidos abertos como cancelados e libera a mesa.
-// (Não restaura estoque nem estorna recebimentos — operação de correção pontual.)
-async function cancelar(dir, id) {
+// Cancela a mesa: devolve ao estoque os itens de CADA pedido aberto (um
+// `devolverEstoqueTx` por pedido, para o movimento sair amarrado ao pedido que
+// o gerou — a mesa pode ter vários pedidos abertos, uma devolução só em bloco
+// deixaria a trilha ilegível), marca os pedidos como cancelados e libera a
+// mesa — tudo na MESMA transação, devolução sempre antes do status.
+// `devolver: false` pula a devolução (não estorna recebimentos) mas cancela do
+// mesmo jeito.
+async function cancelar(dir, id, { devolver = true } = {}) {
   const empId = await empresaId(dir);
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query(
-      "UPDATE pedidos SET status = 'cancelado' WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL",
+    const abertos = await client.query(
+      `SELECT id, numero, itens FROM pedidos
+        WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL AND status <> 'cancelado'
+        ORDER BY id ASC FOR UPDATE`,
       [empId, id]
     );
+    let cardapioNovo = null;
+    if (devolver) {
+      // Sequencial de propósito: devolverEstoqueTx relê o cardápio sob a trava
+      // a cada chamada, então as chamadas compõem corretamente uma após a outra.
+      for (const p of abertos.rows) {
+        cardapioNovo = await store.devolverEstoqueTx(client, dir, p.itens || [], {
+          pedidoId: p.id, numero: p.numero, obs: "Mesa cancelada",
+        });
+      }
+    }
+    const ids = abertos.rows.map((p) => p.id);
+    if (ids.length) {
+      await client.query("UPDATE pedidos SET status = 'cancelado' WHERE id = ANY($1::bigint[])", [ids]);
+    }
     const r = await client.query(
       `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
          WHERE empresa_id = $1 AND id = $2 RETURNING *`,
       [empId, id]
     );
     await client.query("COMMIT");
+    if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
     return r.rows[0] ? mapRow(r.rows[0]) : null;
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: se a conexão já caiu (o próprio motivo do catch, às
+    // vezes), a rejeição do ROLLBACK não pode escapar do handler e virar
+    // unhandledRejection sem resposta ao chamador.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -452,44 +478,65 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
   return pedido;
 }
 
-// Remove um único item de um pedido da mesa. Recalcula o total do pedido;
-// se o pedido ficar sem itens, marca-o como cancelado.
-async function cancelarItem(dir, mesaId, pedidoId, itemIdx) {
+// Remove um único item de um pedido da mesa. Devolve ao estoque SÓ o item
+// removido, na MESMA transação, antes de regravar o pedido. Recalcula o total
+// do pedido; se o pedido ficar sem itens, marca-o como cancelado. `devolver:
+// false` pula a devolução mas remove o item do mesmo jeito.
+async function cancelarItem(dir, mesaId, pedidoId, itemIdx, { devolver = true } = {}) {
   const empId = await empresaId(dir);
-  const r = await db.query(
-    "SELECT id, itens FROM pedidos WHERE id=$1 AND empresa_id=$2 AND mesa_id=$3 AND status<>'cancelado'",
-    [pedidoId, empId, mesaId]
-  );
-  if (!r.rows[0]) throw new Error("Pedido não encontrado nesta mesa.");
-  const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
-  if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
-  itens.splice(itemIdx, 1);
-  if (!itens.length) {
-    await db.query(
-      "UPDATE pedidos SET itens='[]'::jsonb, total=0, status='cancelado' WHERE id=$1",
-      [pedidoId]
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await client.query(
+      "SELECT id, numero, itens FROM pedidos WHERE id=$1 AND empresa_id=$2 AND mesa_id=$3 AND status<>'cancelado' FOR UPDATE",
+      [pedidoId, empId, mesaId]
     );
-  } else {
-    const novoTotal = Math.round(itens.reduce((s, i) => {
-      const extras =
-        (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0) +
-        (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
-      return s + ((i.preco || 0) + extras) * (i.qtd || 1);
-    }, 0) * 100) / 100;
-    await db.query(
-      "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
-      [JSON.stringify(itens), novoTotal, pedidoId]
+    if (!r.rows[0]) throw new Error("Pedido não encontrado nesta mesa.");
+    const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
+    if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
+    const [itemRemovido] = itens.splice(itemIdx, 1);
+    let cardapioNovo = null;
+    if (devolver) {
+      cardapioNovo = await store.devolverEstoqueTx(client, dir, [itemRemovido], {
+        pedidoId: r.rows[0].id, numero: r.rows[0].numero, obs: "Item cancelado (mesa)",
+      });
+    }
+    if (!itens.length) {
+      await client.query(
+        "UPDATE pedidos SET itens='[]'::jsonb, total=0, status='cancelado' WHERE id=$1",
+        [pedidoId]
+      );
+    } else {
+      const novoTotal = Math.round(itens.reduce((s, i) => {
+        const extras =
+          (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0) +
+          (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
+        return s + ((i.preco || 0) + extras) * (i.qtd || 1);
+      }, 0) * 100) / 100;
+      await client.query(
+        "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
+        [JSON.stringify(itens), novoTotal, pedidoId]
+      );
+    }
+    // Mantém o total_consumido da mesa em dia (senão o card da grade e o resumo "Em aberto"
+    // seguem mostrando o valor antigo até o próximo lançamento). Mesma soma do lancarItens.
+    // Via `client` (mesma transação): ainda não commitou o status/total acima.
+    await client.query(
+      `UPDATE mesas m SET total_consumido = (
+          SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
+           WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
+         WHERE m.empresa_id = $1 AND m.id = $2`,
+      [empId, mesaId]
     );
+    await client.query("COMMIT");
+    if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
+  } catch (e) {
+    // ROLLBACK guardado: mesmo motivo do cancelar acima.
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
-  // Mantém o total_consumido da mesa em dia (senão o card da grade e o resumo "Em aberto"
-  // seguem mostrando o valor antigo até o próximo lançamento). Mesma soma do lancarItens.
-  await db.query(
-    `UPDATE mesas m SET total_consumido = (
-        SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
-       WHERE m.empresa_id = $1 AND m.id = $2`,
-    [empId, mesaId]
-  );
 }
 
 function esquecer(slug) { delete idCache[slug]; }

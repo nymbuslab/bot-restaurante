@@ -2580,9 +2580,11 @@ app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
   try {
     const mesaId = Number(req.params.id);
     const motivo = String((req.body || {}).motivo || "").slice(0, 200);
+    // `devolver` volta ao estoque os itens de todos os pedidos abertos da mesa; padrão true.
+    const devolver = (req.body || {}).devolver !== false;
     // Estado ANTES do cancelamento (o cancelar zera o total) — para a auditoria.
     const antes = await mesasDb.buscarPorId(req.tenantDir, mesaId);
-    const mesa = await mesasDb.cancelar(req.tenantDir, mesaId);
+    const mesa = await mesasDb.cancelar(req.tenantDir, mesaId, { devolver });
     if (!mesa) return res.status(404).json({ erro: "Mesa não encontrada." });
     // Anti-fraude: cancelar mesa COM consumo deixa rastro na trilha de auditoria
     // (mesa/total/motivo — sem PII). Best-effort, não quebra o fluxo.
@@ -2607,7 +2609,9 @@ app.post("/api/mesas/:id/cancelar-item", exigeAuth, async (req, res) => {
     const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
     if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
     if (mesa.status === "fechando") return res.status(400).json({ erro: "Conta já iniciada. Reabra a mesa para cancelar itens." });
-    await mesasDb.cancelarItem(req.tenantDir, mesaId, Number(b.pedidoId), Number(b.itemIdx));
+    // `devolver` volta ao estoque só o item cancelado; padrão true.
+    const devolver = b.devolver !== false;
+    await mesasDb.cancelarItem(req.tenantDir, mesaId, Number(b.pedidoId), Number(b.itemIdx), { devolver });
     res.json(await detalheMesa(req.tenantDir, mesaId));
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao cancelar o item." });
