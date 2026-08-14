@@ -78,3 +78,12 @@ test("baixarEstoqueTx: item sem controle não gera INSERT", async () => {
   await store.baixarEstoqueTx(c, "/x/slug", [{ id: "a3", qtd: 5 }]);
   assert.equal(c.calls.filter((q) => /INSERT INTO estoque_movimentos/i.test(q.sql)).length, 0);
 });
+
+test("amarrarPedidoTx: carimba o pedido nos movimentos órfãos da transação", async () => {
+  const c = fakeClient(clone());
+  await store.amarrarPedidoTx(c, "emp-uuid", "/x/slug", 7, 12);
+  const q = c.calls[c.calls.length - 1];
+  assert.match(q.sql, /UPDATE estoque_movimentos[\s\S]*SET pedido_id/i);
+  assert.match(q.sql, /pedido_id IS NULL/i);
+  assert.deepEqual(q.params, [7, 12, "emp-uuid"]);
+});

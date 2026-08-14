@@ -33,6 +33,7 @@ const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
+const estoqueDb = require("./estoque-db"); // amarra o pedido ao movimento de venda (empresaId cacheado)
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarBiblioteca/resolverGrupos (dual-mode)
@@ -928,6 +929,7 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
         cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
         taxaEntrega, itens: recalc.itens, total, observacao,
       }, clientTx);
+      await store.amarrarPedidoTx(clientTx, await estoqueDb.empresaId(dir), dir, pedido.id, pedido.numero);
       await clientTx.query("COMMIT");
     } catch (e) {
       await clientTx.query("ROLLBACK").catch(() => {});
@@ -2089,6 +2091,7 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
           pagamento: "", taxaEntrega, itens, total, observacao: obs,
           desconto, origem: "pdv",
         }, clientTx);
+        await store.amarrarPedidoTx(clientTx, await estoqueDb.empresaId(req.tenantDir), req.tenantDir, pedido.id, pedido.numero);
         await clientTx.query("COMMIT");
         store.sincronizarCardapio(req.tenantDir, novoCardapio);
       } catch (e) {
@@ -2267,12 +2270,13 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
     try {
       await client.query("BEGIN");
       const novoCardapio = await store.baixarEstoqueTx(client, req.tenantDir, b.itens);
-      await mesasDb.lancarItens(req.tenantDir, mesaId, {
+      const pedidoMesa = await mesasDb.lancarItens(req.tenantDir, mesaId, {
         itens,
         total: subtotal,
         cliente: "Mesa " + mesa.nome,
         observacao: String(b.observacao || "").slice(0, 200),
       }, client);
+      await store.amarrarPedidoTx(client, await estoqueDb.empresaId(req.tenantDir), req.tenantDir, pedidoMesa.id, pedidoMesa.numero);
       await client.query("COMMIT");
       store.sincronizarCardapio(req.tenantDir, novoCardapio);
       // Enfileira a via da cozinha da rodada (best-effort, fora da transação).

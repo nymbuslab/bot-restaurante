@@ -59,7 +59,7 @@ async function salvarPedido(dir, pedido, client) {
      VALUES
        ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
         $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14)
-     RETURNING numero, criado_em`,
+     RETURNING id, numero, criado_em`,
     [
       empId,
       pedido.cliente || "",
@@ -79,6 +79,7 @@ async function salvarPedido(dir, pedido, client) {
   );
   const row = r.rows[0];
   return {
+    id: row.id,
     numero: row.numero,
     status: "novo",
     criadoEm: new Date(row.criado_em).toISOString(),

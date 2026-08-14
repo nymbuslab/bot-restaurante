@@ -406,15 +406,18 @@ async function salvarQrToken(dir, mesaId, token) {
 // Lança itens na mesa usando comanda acumulada: se já existe pedido 'novo' aberto,
 // acumula os itens nele; caso contrário, insere um novo pedido.
 // Isso garante 1 pedido por sessão de mesa (padrão da indústria — open check).
+// Devolve { id, numero } do pedido afetado: o chamador carimba o pedido nos
+// movimentos de estoque da rodada (store.amarrarPedidoTx), fora desta função.
 async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, client) {
   const empId = await empresaId(dir);
   const exec = client ? (s, p) => client.query(s, p) : (s, p) => db.query(s, p);
 
   const existing = await exec(
-    "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' AND recebido_em IS NULL ORDER BY id ASC LIMIT 1",
+    "SELECT id, numero, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' AND recebido_em IS NULL ORDER BY id ASC LIMIT 1",
     [empId, mesaId]
   );
 
+  let pedido;
   if (existing.rows[0]) {
     const itensAntigos = existing.rows[0].itens || [];
     const todosItens = [...itensAntigos, ...itens];
@@ -423,15 +426,18 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
       "UPDATE pedidos SET itens = $1::jsonb, total = $2 WHERE id = $3",
       [JSON.stringify(todosItens), novoTotal, existing.rows[0].id]
     );
+    pedido = { id: existing.rows[0].id, numero: existing.rows[0].numero };
   } else {
-    await exec(
+    const inserted = await exec(
       `INSERT INTO pedidos
          (empresa_id, numero, status, cliente, tipo_entrega, itens, total, observacao, mesa_id, origem)
        VALUES
          ($1, (SELECT COALESCE(MAX(numero), 0) + 1 FROM pedidos WHERE empresa_id = $1), 'novo',
-          $2, 'Balcão', $3::jsonb, $4, $5, $6, 'mesa')`,
+          $2, 'Balcão', $3::jsonb, $4, $5, $6, 'mesa')
+       RETURNING id, numero`,
       [empId, cliente || "", JSON.stringify(itens), total || 0, observacao || "", mesaId]
     );
+    pedido = { id: inserted.rows[0].id, numero: inserted.rows[0].numero };
   }
 
   // Recalcula total_consumido da mesa
@@ -442,6 +448,8 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
        WHERE m.empresa_id = $1 AND m.id = $2`,
     [empId, mesaId]
   );
+
+  return pedido;
 }
 
 // Remove um único item de um pedido da mesa. Recalcula o total do pedido;

@@ -201,6 +201,7 @@ async function venderLocal(dir, venda) {
       [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );
     const row = ped.rows[0];
+    await store.amarrarPedidoTx(client, empId, dir, row.id, row.numero);
     const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
     for (const p of pagamentos) {
       await client.query(

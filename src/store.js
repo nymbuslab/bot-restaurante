@@ -85,6 +85,19 @@ async function baixarEstoqueTx(client, dir, itensPayload, ctx = {}) {
   return novo;
 }
 
+// Carimba o pedido nos movimentos de venda gravados NESTA transação (que nasceram
+// sem pedido_id porque a baixa roda antes do salvarPedido). Restringe a linhas
+// órfãs do próprio tenant; como a linha da empresa está travada (FOR UPDATE), não
+// existe venda concorrente do mesmo tenant para carimbar por engano.
+async function amarrarPedidoTx(client, empresaId, dir, pedidoId, numero) {
+  if (!empresaId || !pedidoId) return;
+  await client.query(
+    `UPDATE estoque_movimentos SET pedido_id = $1, numero = $2
+      WHERE empresa_id = $3 AND tipo = 'venda' AND pedido_id IS NULL`,
+    [pedidoId, numero == null ? null : numero, empresaId]
+  );
+}
+
 // Atualiza o cache em memória do cardápio (após o COMMIT da baixa atômica).
 function sincronizarCardapio(dir, cardapio) {
   const slug = slugDe(dir);
@@ -108,4 +121,4 @@ function esquecer(slug) {
   delete cache[slug];
 }
 
-module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, sincronizarCardapio, itensDisponiveis, esquecer };
+module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };
