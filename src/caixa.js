@@ -190,7 +190,7 @@ async function venderLocal(dir, venda) {
     // Baixa de estoque ATÔMICA: trava o tenant (FOR UPDATE), revalida e
     // decrementa. Se faltar estoque (corrida), lança e a venda inteira é desfeita —
     // nada é cobrado. O lock também serializa o MAX(numero)+1 abaixo.
-    const novoCardapio = await store.baixarEstoqueTx(client, dir, itens);
+    const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, dir, itens);
     const ped = await client.query(
       `INSERT INTO pedidos
          (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, origem, recebido_em)
@@ -201,7 +201,7 @@ async function venderLocal(dir, venda) {
       [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );
     const row = ped.rows[0];
-    await store.amarrarPedidoTx(client, empId, dir, row.id, row.numero);
+    await store.amarrarPedidoTx(client, movimentoIds, row.id, row.numero);
     const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
     for (const p of pagamentos) {
       await client.query(

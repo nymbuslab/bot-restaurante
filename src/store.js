@@ -67,8 +67,12 @@ async function setCardapio(dir, dados) {
 // (lança Error com `.code="ESTOQUE"` se faltar → o chamador faz ROLLBACK e a venda
 // não acontece); decrementa e regrava o JSONB. `ctx` opcional `{ pedidoId, numero }`
 // identifica o movimento (a Task 6 amarra o pedidoId, que só existe depois do
-// salvarPedido). Retorna o novo cardápio — o chamador deve chamar
-// `sincronizarCardapio(dir, novo)` APÓS o COMMIT para atualizar o cache.
+// salvarPedido). Retorna `{ cardapio, movimentoIds }`: o cardápio novo (o chamador
+// deve chamar `sincronizarCardapio(dir, cardapio)` APÓS o COMMIT) e os IDs das
+// linhas de `estoque_movimentos` gravadas nesta chamada — o chamador repassa esses
+// IDs para `amarrarPedidoTx` depois de salvar o pedido, para carimbar por PRIMARY
+// KEY (não por um filtro "órfão do tenant", que também casaria com movimento velho
+// esquecido sem carimbo — ver Ruling C / Task 6).
 async function baixarEstoqueTx(client, dir, itensPayload, ctx = {}) {
   const slug = slugDe(dir);
   const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
@@ -79,22 +83,24 @@ async function baixarEstoqueTx(client, dir, itensPayload, ctx = {}) {
   const { cardapio: novo, movimentos } = Estoque.calcularBaixa(cardapio, itensPayload);
   await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
   // Trilha na MESMA transação: se o INSERT falhar, a venda inteira faz ROLLBACK.
-  await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, {
+  const movimentoIds = await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, {
     tipo: "venda", pedidoId: ctx.pedidoId, numero: ctx.numero,
   });
-  return novo;
+  return { cardapio: novo, movimentoIds };
 }
 
-// Carimba o pedido nos movimentos de venda gravados NESTA transação (que nasceram
-// sem pedido_id porque a baixa roda antes do salvarPedido). Restringe a linhas
-// órfãs do próprio tenant; como a linha da empresa está travada (FOR UPDATE), não
-// existe venda concorrente do mesmo tenant para carimbar por engano.
-async function amarrarPedidoTx(client, empresaId, dir, pedidoId, numero) {
-  if (!empresaId || !pedidoId) return;
+// Carimba pelo PRIMARY KEY de cada movimento gravado NESTA chamada de
+// baixarEstoqueTx (não mais por "empresa_id + tipo + pedido_id IS NULL"). Esse
+// filtro antigo dependia de um invariante que nada garantia — qualquer órfão
+// esquecido (5º ponto de venda que não carimbasse, correção manual, janela de
+// deploy) seria roubado pela PRÓXIMA venda não relacionada, sem erro nem log.
+// Amarrando por ID a operação é precisa por construção: não sobra invariante
+// nenhum pra manter.
+async function amarrarPedidoTx(client, movimentoIds, pedidoId, numero) {
+  if (!movimentoIds || !movimentoIds.length || !pedidoId) return;
   await client.query(
-    `UPDATE estoque_movimentos SET pedido_id = $1, numero = $2
-      WHERE empresa_id = $3 AND tipo = 'venda' AND pedido_id IS NULL`,
-    [pedidoId, numero == null ? null : numero, empresaId]
+    `UPDATE estoque_movimentos SET pedido_id = $1, numero = $2 WHERE id = ANY($3::bigint[])`,
+    [pedidoId, numero == null ? null : numero, movimentoIds]
   );
 }
 

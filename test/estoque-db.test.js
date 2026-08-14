@@ -5,7 +5,19 @@ const db = require("../src/db");
 
 function fakeClient() {
   const calls = [];
-  return { calls, async query(sql, params) { calls.push({ sql, params }); return { rows: [], rowCount: 1 }; } };
+  return {
+    calls,
+    async query(sql, params) {
+      calls.push({ sql, params });
+      // INSERT ... RETURNING id: devolve um id canned por linha inserida (params
+      // vêm em blocos de 12 por movimento — ver estoque-db.registrarTx).
+      if (/INSERT INTO estoque_movimentos/i.test(sql)) {
+        const n = params.length / 12;
+        return { rows: Array.from({ length: n }, (_, i) => ({ id: 100 + i })) };
+      }
+      return { rows: [], rowCount: 1 };
+    },
+  };
 }
 
 const MOV = [
@@ -13,29 +25,31 @@ const MOV = [
   { itemId: "a4", variacaoId: "v1", quantidade: -1, saldoDepois: 3, descricao: "Marmitex (P)", unidade: "un" },
 ];
 
-test("registrarTx: um INSERT só, com todos os movimentos", async () => {
+test("registrarTx: um INSERT só, com todos os movimentos, devolve os ids inseridos", async () => {
   const c = fakeClient();
-  const n = await estoqueDb.registrarTx(c, "emp-uuid", MOV, { tipo: "venda", pedidoId: 7, numero: 12 });
-  assert.equal(n, 2);
+  const ids = await estoqueDb.registrarTx(c, "emp-uuid", MOV, { tipo: "venda", pedidoId: 7, numero: 12 });
+  assert.equal(ids.length, 2);
+  assert.deepEqual(ids, [100, 101]); // ids canned da resposta do RETURNING
   assert.equal(c.calls.length, 1);
   assert.match(c.calls[0].sql, /INSERT INTO estoque_movimentos/i);
+  assert.match(c.calls[0].sql, /RETURNING id/i);
   assert.equal(c.calls[0].params.length, 2 * 12);
   assert.equal(c.calls[0].params[0], "emp-uuid");
   assert.equal(c.calls[0].params[3], "venda");
 });
 
-test("registrarTx: lista vazia não toca o banco", async () => {
+test("registrarTx: lista vazia não toca o banco e devolve []", async () => {
   const c = fakeClient();
-  assert.equal(await estoqueDb.registrarTx(c, "emp-uuid", [], { tipo: "venda" }), 0);
+  assert.deepEqual(await estoqueDb.registrarTx(c, "emp-uuid", [], { tipo: "venda" }), []);
   assert.equal(c.calls.length, 0);
 });
 
-test("registrarTx: movimento de quantidade zero é descartado", async () => {
+test("registrarTx: movimento de quantidade zero é descartado e devolve []", async () => {
   const c = fakeClient();
-  const n = await estoqueDb.registrarTx(c, "emp-uuid",
+  const ids = await estoqueDb.registrarTx(c, "emp-uuid",
     [{ itemId: "a1", variacaoId: null, quantidade: 0, saldoDepois: 3, descricao: "x", unidade: "un" }],
     { tipo: "ajuste" });
-  assert.equal(n, 0);
+  assert.deepEqual(ids, []);
   assert.equal(c.calls.length, 0);
 });
 

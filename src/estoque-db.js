@@ -24,12 +24,15 @@ async function empresaId(dir) {
 }
 
 // Grava os movimentos na transação do chamador. Movimento de quantidade zero é
-// descartado (nada mudou de saldo → não é evento).
+// descartado (nada mudou de saldo → não é evento). Devolve os IDs das linhas
+// inseridas (não a contagem): quem amarra o pedido depois (store.amarrarPedidoTx)
+// carimba por PRIMARY KEY, não por um filtro "órfão do tenant" que um movimento
+// velho não-carimbado também casaria.
 async function registrarTx(client, empId, movimentos, ctx = {}) {
   const tipo = String(ctx.tipo || "");
   if (!TIPOS.includes(tipo)) throw new Error("Tipo de movimento inválido: " + tipo);
   const linhas = (movimentos || []).filter((m) => m && Number(m.quantidade) !== 0);
-  if (!linhas.length) return 0;
+  if (!linhas.length) return [];
   const valores = [];
   const params = [];
   linhas.forEach((m, i) => {
@@ -46,14 +49,15 @@ async function registrarTx(client, empId, movimentos, ctx = {}) {
       new Date()
     );
   });
-  await client.query(
+  const r = await client.query(
     `INSERT INTO estoque_movimentos
        (empresa_id, item_id, variacao_id, tipo, quantidade, saldo_depois,
         descricao, unidade, pedido_id, numero, obs, criado_em)
-     VALUES ${valores.join(",")}`,
+     VALUES ${valores.join(",")}
+     RETURNING id`,
     params
   );
-  return linhas.length;
+  return r.rows.map((row) => row.id);
 }
 
 function mapRow(r) {
