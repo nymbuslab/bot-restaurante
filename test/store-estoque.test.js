@@ -85,6 +85,82 @@ test("baixarEstoqueTx: item sem controle não gera INSERT", async () => {
   assert.equal(c.calls.filter((q) => /INSERT INTO estoque_movimentos/i.test(q.sql)).length, 0);
 });
 
+// ---- devolverEstoqueTx (Task 7) ----
+test("devolverEstoqueTx: soma de volta e grava movimento de devolução", async () => {
+  const c = fakeClient(clone());
+  const novo = await store.devolverEstoqueTx(c, "/x/slug", [{ id: "a1", qtd: 2 }], { pedidoId: 7, numero: 12 });
+  assert.equal(novo.categorias[0].itens[0].estoque, 5); // 3 + 2
+  const ins = c.calls.find((q) => /INSERT INTO estoque_movimentos/i.test(q.sql));
+  assert.equal(ins.params[3], "devolucao");
+  assert.equal(ins.params[4], 2);
+});
+
+test("devolverEstoqueTx: item sem controle agora não ganha estoque e não grava nada", async () => {
+  const c = fakeClient(clone());
+  const novo = await store.devolverEstoqueTx(c, "/x/slug", [{ id: "a3", qtd: 5 }]);
+  assert.equal(novo.categorias[0].itens[2].estoque, undefined);
+  assert.equal(c.calls.filter((q) => /INSERT INTO estoque_movimentos/i.test(q.sql)).length, 0);
+});
+
+// ---- ajustarEstoqueTx (Task 7) ----
+test("ajustarEstoqueTx: entrada soma", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "entrada", quantidade: 5 });
+  assert.equal(r.movimento.saldoDepois, 8);
+  assert.equal(r.movimento.quantidade, 5);
+});
+
+test("ajustarEstoqueTx: perda maior que o saldo trava em zero", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "perda", quantidade: 10 });
+  assert.equal(r.movimento.saldoDepois, 0);
+  assert.equal(r.movimento.quantidade, -3); // o delta aplicado, não o pedido
+});
+
+test("ajustarEstoqueTx: contagem calcula a diferença", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "contagem", contado: 7 });
+  assert.equal(r.movimento.quantidade, 4); // contou 7, tinha 3
+  assert.equal(r.movimento.saldoDepois, 7);
+});
+
+test("ajustarEstoqueTx: contagem liga o controle de item ilimitado", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a3", tipo: "contagem", contado: 12 });
+  assert.equal(r.cardapio.categorias[0].itens[2].estoque, 12);
+  assert.equal(r.movimento.quantidade, 12);
+});
+
+test("ajustarEstoqueTx: contagem igual ao saldo (já controlado) não grava nada", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "contagem", contado: 3 });
+  assert.equal(r.movimento, null);
+  assert.equal(c.calls.filter((q) => /INSERT INTO estoque_movimentos/i.test(q.sql)).length, 0);
+  assert.equal(c.calls.filter((q) => /UPDATE empresas SET cardapio/i.test(q.sql)).length, 0);
+});
+
+// Correção 2 (Ruling): contagem em item AINDA NÃO controlado liga o controle mesmo
+// contando 0 — é assim que o dono zera um produto que esgotou. Persiste o cardápio
+// com o saldo, mas não grava movimento (delta zero não é evento).
+test("ajustarEstoqueTx: contagem zero em item ilimitado liga o controle em zero e persiste", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a3", tipo: "contagem", contado: 0 });
+  assert.equal(r.movimento, null);
+  assert.equal(r.cardapio.categorias[0].itens[2].estoque, 0);
+  assert.equal(c.calls.filter((q) => /UPDATE empresas SET cardapio/i.test(q.sql)).length, 1);
+  assert.equal(c.calls.filter((q) => /INSERT INTO estoque_movimentos/i.test(q.sql)).length, 0);
+});
+
+test("ajustarEstoqueTx: item inexistente falha", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(() => store.ajustarEstoqueTx(c, "/x/slug", { itemId: "zzz", tipo: "entrada", quantidade: 1 }), /não encontrado/i);
+});
+
+test("ajustarEstoqueTx: tipo desconhecido falha", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(() => store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "sei-la", quantidade: 1 }), /[Tt]ipo/);
+});
+
 test("amarrarPedidoTx: carimba só os ids desta transação, nunca um órfão de outra venda", async () => {
   const calls = [];
   const c = { calls, async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } };

@@ -89,6 +89,83 @@ async function baixarEstoqueTx(client, dir, itensPayload, ctx = {}) {
   return { cardapio: novo, movimentoIds };
 }
 
+// Devolve ao estoque (cancelamento de pedido). Espelho da baixa: mesma trava,
+// mesma transação, movimento positivo. Item que NÃO está controlado AGORA é
+// ignorado (devolver criaria quantidade do nada). `ctx` opcional
+// `{ pedidoId, numero, obs }` — quem cancela já sabe o pedidoId, então não há
+// carimbo posterior (ao contrário da venda, que só descobre o id depois de
+// salvar). Devolve só o cardápio (não há id de movimento para repassar).
+async function devolverEstoqueTx(client, dir, itensPayload, ctx = {}) {
+  const slug = slugDe(dir);
+  const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+  if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+  const { cardapio: novo, movimentos } = Estoque.calcularDevolucao(r.rows[0].cardapio || { categorias: [] }, itensPayload);
+  if (!movimentos.length) return novo; // nada controlado foi afetado: não grava
+  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
+  await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, {
+    tipo: "devolucao", pedidoId: ctx.pedidoId, numero: ctx.numero, obs: ctx.obs,
+  });
+  return novo;
+}
+
+// Movimento lançado na tela de Controle de estoque: entrada, perda ou contagem.
+// `contagem` recebe `contado` (o que foi contado de verdade) e o delta sai daqui.
+// Reusa o motor de baixa/devolução montando um payload de um item só. Mesma
+// trava (`FOR UPDATE`) e mesma transação do chamador.
+//
+// Contagem em item AINDA NÃO controlado sempre liga o controle, MESMO contando
+// zero — é assim que o dono zera um produto que esgotou (não dá pra ligar o
+// controle "a partir de nada" sem persistir). Quando o delta dá zero (não
+// mudou nada de saldo real), a função ainda persiste o cardápio nesse caso,
+// mas não grava movimento (quantidade zero não é evento). Já numa contagem
+// sobre item JÁ controlado cujo `contado` bate com o saldo atual, nada muda:
+// não persiste, não grava, `movimento: null`.
+async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, quantidade, contado, obs } = {}) {
+  const slug = slugDe(dir);
+  const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+  if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+  const cardapio = r.rows[0].cardapio || { categorias: [] };
+  const alvo = Estoque.acharSaldo(cardapio, itemId, variacaoId);
+  if (!alvo) throw new Error("Produto não encontrado no cardápio.");
+
+  let delta;
+  if (tipo === "contagem") {
+    delta = Number(contado) - (alvo.controlado ? alvo.quantidade : 0);
+  } else if (tipo === "entrada") {
+    delta = Math.abs(Number(quantidade) || 0);
+  } else if (tipo === "perda") {
+    delta = -Math.abs(Number(quantidade) || 0);
+  } else {
+    throw new Error("Tipo de movimento inválido: " + tipo);
+  }
+
+  // Contagem SEMPRE liga o controle, mesmo com delta zero (contado igual ao
+  // que já tinha ilimitado, ou seja, zero) — é a diferença entre "nunca
+  // controlei" e "controlei e o saldo bate".
+  const ligaControle = tipo === "contagem" && !alvo.controlado;
+
+  if (delta === 0) {
+    if (!ligaControle) return { cardapio, movimento: null }; // nada mudou: não persiste
+    const novo = Estoque.garantirControle(cardapio, itemId, variacaoId);
+    await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
+    return { cardapio: novo, movimento: null }; // liga o controle em zero, sem movimento
+  }
+
+  const base = ligaControle ? Estoque.garantirControle(cardapio, itemId, variacaoId) : cardapio;
+  const payload = [variacaoId == null
+    ? { id: itemId, qtd: Math.abs(delta) }
+    : { id: itemId, qtd: 0, variacoes: [{ id: variacaoId, qtd: Math.abs(delta) }] }];
+  const calc = delta > 0
+    ? Estoque.calcularDevolucao(base, payload)
+    : Estoque.calcularBaixa(base, payload);
+  const movimento = calc.movimentos[0] || null;
+  if (!movimento) return { cardapio, movimento: null };
+
+  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(calc.cardapio), slug]);
+  await estoqueDb.registrarTx(client, r.rows[0].id, [movimento], { tipo, obs });
+  return { cardapio: calc.cardapio, movimento };
+}
+
 // Carimba pelo PRIMARY KEY de cada movimento gravado NESTA chamada de
 // baixarEstoqueTx (não mais por "empresa_id + tipo + pedido_id IS NULL"). Esse
 // filtro antigo dependia de um invariante que nada garantia — qualquer órfão
@@ -127,4 +204,4 @@ function esquecer(slug) {
   delete cache[slug];
 }
 
-module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };
+module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, devolverEstoqueTx, ajustarEstoqueTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };

@@ -210,3 +210,18 @@ test("diffEstoque: item novo já controlado entra como movimento", () => {
   const m = E.diffEstoque(antes, depois);
   assert.deepEqual(m, [{ itemId: "a9", variacaoId: null, quantidade: 4, saldoDepois: 4, descricao: "Suco", unidade: "un" }]);
 });
+
+// ---- acharSaldo / garantirControle (Task 7) ----
+test("acharSaldo: acha item, variação e devolve null para id inexistente", () => {
+  assert.equal(E.acharSaldo(cloneMov(), "a1", null).quantidade, 3);
+  assert.equal(E.acharSaldo(cloneMov(), "a4", "v1").quantidade, 5);
+  assert.equal(E.acharSaldo(cloneMov(), "a3", null).controlado, false);
+  assert.equal(E.acharSaldo(cloneMov(), "zzz", null), null);
+});
+
+test("garantirControle: item ilimitado passa a ter estoque 0 sem mutar o original", () => {
+  const c = cloneMov();
+  const novo = E.garantirControle(c, "a3", null);
+  assert.equal(novo.categorias[0].itens[2].estoque, 0);
+  assert.equal(c.categorias[0].itens[2].estoque, undefined);
+});

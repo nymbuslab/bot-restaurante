@@ -197,6 +197,36 @@
     });
     return mapa;
   }
+  // Localiza um saldo (item ou variação) e devolve { itemId, variacaoId, controlado,
+  // quantidade, minimo, descricao, unidade }. null se o id não existe no cardápio.
+  // Enxerga também o item ilimitado (é dele que sai a primeira contagem).
+  function acharSaldo(cardapio, itemId, variacaoId) {
+    const chave = variacaoId == null ? String(itemId) : _chaveVar(itemId, variacaoId);
+    return _mapaSaldos(cardapio, true)[chave] || null;
+  }
+  // Liga o controle num item/variação ainda ilimitado, colocando estoque 0, para a
+  // primeira contagem ter de onde partir. Cópia, não muta. Já controlado volta igual.
+  function garantirControle(cardapio, itemId, variacaoId) {
+    const alvo = String(itemId);
+    const categorias = ((cardapio && cardapio.categorias) || []).map(function (c) {
+      return Object.assign({}, c, {
+        itens: ((c && c.itens) || []).map(function (it) {
+          if (!it || String(it.id) !== alvo) return it;
+          if (variacaoId == null) {
+            return temControle(it) ? it : Object.assign({}, it, { estoque: 0 });
+          }
+          if (!Array.isArray(it.variacoes)) return it;
+          return Object.assign({}, it, {
+            variacoes: it.variacoes.map(function (v) {
+              if (!v || String(v.id) !== String(variacaoId)) return v;
+              return temControle(v) ? v : Object.assign({}, v, { estoque: 0 });
+            }),
+          });
+        }),
+      });
+    });
+    return Object.assign({}, cardapio, { categorias: categorias });
+  }
   // Compara dois cardápios e devolve os movimentos de AJUSTE (o dono mexeu no
   // número pelo editor do item). Desligar o controle NÃO é movimento de saldo:
   // o item passa a ser ilimitado, não a ter uma quantidade diferente.
@@ -221,5 +251,6 @@
   return {
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
+    acharSaldo: acharSaldo, garantirControle: garantirControle,
   };
 });
