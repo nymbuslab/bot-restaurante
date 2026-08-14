@@ -9,6 +9,7 @@
 
 const path = require("path");
 const db = require("./db");
+const store = require("./store"); // devolverEstoqueTx/sincronizarCardapio (cancelamento devolve ao estoque)
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {}; // slug -> empresa_id (uuid)
@@ -234,48 +235,89 @@ async function anonimizarAntigos(meses = 12) {
   return r.rowCount;
 }
 
-// Cancela um pedido inteiro (não recebido). Seta status='cancelado'.
-async function cancelarPedido(dir, pedidoId) {
+// Cancela um pedido inteiro (não recebido). Devolve o estoque dos itens ANTES
+// de marcar status='cancelado', na MESMA transação: nunca pode existir pedido
+// cancelado com o estoque ainda baixado. `devolver: false` pula a devolução
+// (ex.: quando quem chama já devolveu por outro caminho) mas cancela do mesmo jeito.
+async function cancelarPedido(dir, pedidoId, { devolver = true } = {}) {
   const empId = await empresaId(dir);
-  const r = await db.query(
-    "UPDATE pedidos SET status = 'cancelado' WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado' RETURNING id",
-    [empId, pedidoId]
-  );
-  if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou já cancelado.");
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await client.query(
+      `SELECT id, numero, itens FROM pedidos
+        WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado' FOR UPDATE`,
+      [empId, pedidoId]
+    );
+    if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou já cancelado.");
+    let cardapioNovo = null;
+    if (devolver) {
+      cardapioNovo = await store.devolverEstoqueTx(client, dir, r.rows[0].itens || [], {
+        pedidoId: r.rows[0].id, numero: r.rows[0].numero, obs: "Pedido cancelado",
+      });
+    }
+    await client.query("UPDATE pedidos SET status = 'cancelado' WHERE id = $1", [pedidoId]);
+    await client.query("COMMIT");
+    if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
-// Remove um item de um pedido (não recebido), recalcula total.
+// Remove um item de um pedido (não recebido), recalcula total e devolve ao
+// estoque SÓ o item removido — mesma transação, antes de regravar o pedido.
 // Se ficar sem itens, cancela o pedido inteiro.
-async function cancelarItemPedido(dir, pedidoId, itemIdx) {
+async function cancelarItemPedido(dir, pedidoId, itemIdx, { devolver = true } = {}) {
   const empId = await empresaId(dir);
-  const r = await db.query(
-    "SELECT id, itens, taxa_entrega, desconto FROM pedidos WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado'",
-    [empId, pedidoId]
-  );
-  if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou cancelado.");
-  const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
-  if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
-  itens.splice(itemIdx, 1);
-  if (!itens.length) {
-    await db.query(
-      "UPDATE pedidos SET itens='[]'::jsonb, total=0, status='cancelado' WHERE id=$1",
-      [pedidoId]
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await client.query(
+      `SELECT id, numero, itens, taxa_entrega, desconto FROM pedidos
+        WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado' FOR UPDATE`,
+      [empId, pedidoId]
     );
-  } else {
-    // Recalcula o total a partir dos itens restantes, mantendo a taxa de entrega
-    // (frete não pertence a nenhum item) e ABATENDO o desconto do pedido (PDV) —
-    // sem isto o total ignorava o desconto e o cliente era cobrado a mais.
-    const taxa = r.rows[0].taxa_entrega == null ? 0 : Number(r.rows[0].taxa_entrega);
-    const desconto = r.rows[0].desconto == null ? 0 : Number(r.rows[0].desconto);
-    const novoTotal = Math.round(Math.max(0, itens.reduce((s, i) => {
-      const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0)
-        + (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
-      return s + ((i.preco || 0) + extras) * (i.qtd || 1);
-    }, 0) + taxa - desconto) * 100) / 100;
-    await db.query(
-      "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
-      [JSON.stringify(itens), novoTotal, pedidoId]
-    );
+    if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou cancelado.");
+    const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
+    if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
+    const [itemRemovido] = itens.splice(itemIdx, 1);
+    let cardapioNovo = null;
+    if (devolver) {
+      cardapioNovo = await store.devolverEstoqueTx(client, dir, [itemRemovido], {
+        pedidoId: r.rows[0].id, numero: r.rows[0].numero, obs: "Item cancelado",
+      });
+    }
+    if (!itens.length) {
+      await client.query(
+        "UPDATE pedidos SET itens='[]'::jsonb, total=0, status='cancelado' WHERE id=$1",
+        [pedidoId]
+      );
+    } else {
+      // Recalcula o total a partir dos itens restantes, mantendo a taxa de entrega
+      // (frete não pertence a nenhum item) e ABATENDO o desconto do pedido (PDV) —
+      // sem isto o total ignorava o desconto e o cliente era cobrado a mais.
+      const taxa = r.rows[0].taxa_entrega == null ? 0 : Number(r.rows[0].taxa_entrega);
+      const desconto = r.rows[0].desconto == null ? 0 : Number(r.rows[0].desconto);
+      const novoTotal = Math.round(Math.max(0, itens.reduce((s, i) => {
+        const extras = (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0)
+          + (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
+        return s + ((i.preco || 0) + extras) * (i.qtd || 1);
+      }, 0) + taxa - desconto) * 100) / 100;
+      await client.query(
+        "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
+        [JSON.stringify(itens), novoTotal, pedidoId]
+      );
+    }
+    await client.query("COMMIT");
+    if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
   }
 }
 

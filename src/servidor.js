@@ -1966,6 +1966,8 @@ app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
 app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
+    // `devolver` volta ao estoque os itens do pedido cancelado; padrão true.
+    const devolver = req.body?.devolver !== false;
     const pedido = await pedidos.lerPorId(req.tenantDir, id);
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
     if (pedido.recebidoEm) {
@@ -1974,7 +1976,7 @@ app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
       if (!(await exigeCaixa(req, res))) return;
       await caixa.cancelarRecebido(req.tenantDir, id);
     } else {
-      await pedidos.cancelarPedido(req.tenantDir, id);
+      await pedidos.cancelarPedido(req.tenantDir, id, { devolver });
     }
     res.json({ ok: true, recebido: !!pedido.recebidoEm });
   } catch (e) {
@@ -1986,7 +1988,9 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
   try {
     const b = req.body || {};
     if (b.itemIdx == null) return res.status(400).json({ erro: "itemIdx é obrigatório." });
-    await pedidos.cancelarItemPedido(req.tenantDir, Number(req.params.id), Number(b.itemIdx));
+    // `devolver` volta ao estoque só o item cancelado; padrão true.
+    const devolver = b.devolver !== false;
+    await pedidos.cancelarItemPedido(req.tenantDir, Number(req.params.id), Number(b.itemIdx), { devolver });
     const pedido = await pedidos.lerPorId(req.tenantDir, Number(req.params.id));
     res.json(pedido);
   } catch (e) {
