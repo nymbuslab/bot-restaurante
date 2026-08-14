@@ -286,9 +286,13 @@ async function estornarRecebimento(dir, pedidoId) {
 
 // Cancela um pedido JÁ RECEBIDO mantendo o rastro (anti-fraude): não apaga o
 // recebimento; insere um movimento de 'cancelamento' por forma recebida (mesma
-// forma/valor) que DEDUZ do caixa, e marca o pedido como cancelado. Exige caixa
-// aberto e que o recebimento do pedido esteja NESTE caixa (não mexe em caixa fechado).
-async function cancelarRecebido(dir, pedidoId) {
+// forma/valor) que DEDUZ do caixa, devolve o estoque dos itens e marca o pedido
+// como cancelado. Exige caixa aberto e que o recebimento do pedido esteja NESTE
+// caixa (não mexe em caixa fechado). Ordem dentro da MESMA transação: dinheiro
+// primeiro (caixa_movimentos), depois estoque (devolverEstoqueTx), status por
+// último — assim nenhuma falha deixa o pedido cancelado com dinheiro ou estoque
+// intocados. `devolver: false` pula a devolução (padrão true, igual pedidos.js).
+async function cancelarRecebido(dir, pedidoId, { devolver = true } = {}) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa para cancelar um pedido pago.");
@@ -296,7 +300,7 @@ async function cancelarRecebido(dir, pedidoId) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT numero, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, numero, itens, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
@@ -324,14 +328,23 @@ async function cancelarRecebido(dir, pedidoId) {
         [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Cancelamento pedido #" + numero]
       );
     }
+    let cardapioNovo = null;
+    if (devolver) {
+      cardapioNovo = await store.devolverEstoqueTx(client, dir, ped.rows[0].itens || [], {
+        pedidoId: ped.rows[0].id, numero: ped.rows[0].numero, obs: "Pedido pago cancelado",
+      });
+    }
     await client.query(
       "UPDATE pedidos SET status = 'cancelado' WHERE empresa_id = $1 AND id = $2",
       [empId, pedidoId]
     );
     await client.query("COMMIT");
+    if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
     return { ok: true, cancelado: true };
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: mesmo padrão de pedidos.js — se a conexão já caiu, a
+    // rejeição do ROLLBACK não pode escapar como unhandledRejection.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();

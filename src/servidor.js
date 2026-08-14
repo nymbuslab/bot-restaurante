@@ -1974,7 +1974,7 @@ app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
       // Pedido PAGO: cancela mantendo o rastro e deduz no caixa (exige caixa aberto).
       // Caixa é recurso do Plano Completo → gate de servidor.
       if (!(await exigeCaixa(req, res))) return;
-      await caixa.cancelarRecebido(req.tenantDir, id);
+      await caixa.cancelarRecebido(req.tenantDir, id, { devolver });
     } else {
       await pedidos.cancelarPedido(req.tenantDir, id, { devolver });
     }
