@@ -226,6 +226,31 @@ test("ajustarEstoqueTx: contagem sem número válido (ausente ou não numérico)
   );
 });
 
+// ---- setCardapio (Task 8) ----
+test("setCardapio: mudança de estoque pelo editor vira movimento de ajuste", async () => {
+  const chamadas = [];
+  const fakePool = { connect: async () => ({
+    query: async (sql, params) => {
+      chamadas.push({ sql, params });
+      if (/SELECT id, cardapio/i.test(sql)) return { rows: [{ id: "emp-uuid", cardapio: clone() }] };
+      return { rows: [] };
+    },
+    release() {},
+  }) };
+  const dbMod = require("../src/db");
+  const original = dbMod.pool;
+  dbMod.pool = fakePool;
+  try {
+    const novo = clone();
+    novo.categorias[0].itens[0].estoque = 10; // era 3
+    await store.setCardapio("/x/slug", novo);
+    const ins = chamadas.find((q) => /INSERT INTO estoque_movimentos/i.test(q.sql));
+    assert.ok(ins, "deveria gravar o ajuste");
+    assert.equal(ins.params[3], "ajuste");
+    assert.equal(ins.params[4], 7);
+  } finally { dbMod.pool = original; }
+});
+
 test("amarrarPedidoTx: carimba só os ids desta transação, nunca um órfão de outra venda", async () => {
   const calls = [];
   const c = { calls, async query(sql, params) { calls.push({ sql, params }); return { rows: [] }; } };

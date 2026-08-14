@@ -53,9 +53,27 @@ async function setConfig(dir, dados) {
   return dados;
 }
 
+// Salva o cardápio inteiro (único chamador: PUT /api/cardapio). Transacional
+// porque o que mudou de ESTOQUE vira movimento de 'ajuste': lê o estado anterior
+// travando a linha, grava o novo e registra o diff. Como é comparação de estados,
+// qualquer caminho que salve cardápio fica coberto sem precisar lembrar de nada.
 async function setCardapio(dir, dados) {
   const slug = slugDe(dir);
-  await db.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(dados), slug]);
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+    if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+    await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(dados), slug]);
+    const movimentos = Estoque.diffEstoque(r.rows[0].cardapio || { categorias: [] }, dados);
+    await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, { tipo: "ajuste", obs: "Editor do produto" });
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
   if (!cache[slug]) cache[slug] = { config: {}, cardapio: dados };
   else cache[slug].cardapio = dados;
   return dados;
