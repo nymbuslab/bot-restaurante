@@ -260,7 +260,10 @@ async function cancelarPedido(dir, pedidoId, { devolver = true } = {}) {
     await client.query("COMMIT");
     if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: se a conexão já caiu (o próprio motivo do catch, às
+    // vezes), a rejeição do ROLLBACK não pode escapar do handler e virar
+    // unhandledRejection sem resposta ao chamador.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -314,7 +317,8 @@ async function cancelarItemPedido(dir, pedidoId, itemIdx, { devolver = true } = 
     await client.query("COMMIT");
     if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: mesmo motivo do cancelarPedido acima.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
