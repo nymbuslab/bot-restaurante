@@ -1819,7 +1819,17 @@ app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
   const itemId = String(b.itemId || "");
   if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
   const num = (v) => Math.max(0, parseFloat(String(v).replace(",", ".")) || 0);
-  if (tipo !== "contagem" && num(b.quantidade) <= 0) {
+  // `contado` não pode ser pré-coagido pra 0: um payload que esqueceu o campo
+  // (ou mandou algo não numérico) precisa ser REJEITADO, não lido como "contei
+  // zero" — isso zeraria o saldo do produto (e ligaria o controle) por engano.
+  // A tolerância à vírgula decimal continua valendo pro valor válido.
+  let contado = 0;
+  if (tipo === "contagem") {
+    contado = parseFloat(String(b.contado).replace(",", "."));
+    if (!Number.isFinite(contado)) {
+      return res.status(400).json({ erro: "Informe uma contagem numérica válida." });
+    }
+  } else if (num(b.quantidade) <= 0) {
     return res.status(400).json({ erro: "Informe uma quantidade maior que zero." });
   }
   const client = await db.pool.connect();
@@ -1827,14 +1837,18 @@ app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
     await client.query("BEGIN");
     const r = await store.ajustarEstoqueTx(client, req.tenantDir, {
       itemId, variacaoId: b.variacaoId ? String(b.variacaoId) : null, tipo,
-      quantidade: num(b.quantidade), contado: num(b.contado),
+      quantidade: num(b.quantidade), contado,
       obs: String(b.obs || "").slice(0, 200),
     });
     await client.query("COMMIT");
     store.sincronizarCardapio(req.tenantDir, r.cardapio);
     res.json({ ok: true, movimento: r.movimento, quantidade: r.movimento ? r.movimento.saldoDepois : null });
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: se a conexão já caiu (o próprio motivo do catch, às
+    // vezes), a rejeição do ROLLBACK não pode escapar do handler e deixar a
+    // requisição sem resposta (unhandledRejection). Mesmo padrão da baixa de
+    // estoque do pedido (linha ~936).
+    await client.query("ROLLBACK").catch(() => {});
     res.status(400).json({ erro: e.message || "Não foi possível registrar o movimento." });
   } finally {
     client.release();
@@ -1847,7 +1861,12 @@ app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
   const b = req.body || {};
   const itemId = String(b.itemId || "");
   if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
-  const minimo = Math.max(0, parseFloat(String(b.minimo).replace(",", ".")) || 0);
+  // Malformado (ausente/não numérico) é REJEITADO, não virado 0 em silêncio —
+  // 0 é um mínimo legítimo, então só a coerção silenciosa era o problema.
+  const minimo = parseFloat(String(b.minimo).replace(",", "."));
+  if (!Number.isFinite(minimo)) {
+    return res.status(400).json({ erro: "Informe um mínimo numérico válido." });
+  }
   try {
     await store.ensure(req.tenantDir);
     const atual = store.getCardapio(req.tenantDir);
