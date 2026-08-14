@@ -225,3 +225,53 @@ test("garantirControle: item ilimitado passa a ter estoque 0 sem mutar o origina
   assert.equal(novo.categorias[0].itens[2].estoque, 0);
   assert.equal(c.categorias[0].itens[2].estoque, undefined);
 });
+
+// ---- aplicarAjuste (Ruling D — revisão da Task 7) ----
+// Motor de ajuste de UM alvo só: nunca reusa o payload de venda (que agrega por
+// pedido e força mínimo 1 pra item "un"), porque isso deixava vazar um
+// movimento fantasma no item quando o alvo real era a variação.
+test("aplicarAjuste: ajusta a variação sem tocar o estoque próprio do item", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "a4", nome: "Marmitex", unidade: "un", estoque: 6, variacoes: [
+      { id: "v1", nome: "P", estoque: 5 },
+    ] },
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "a4", variacaoId: "v1", delta: 2 });
+  assert.equal(r.movimento.itemId, "a4");
+  assert.equal(r.movimento.variacaoId, "v1");
+  assert.equal(r.movimento.quantidade, 2);
+  assert.equal(r.movimento.saldoDepois, 7);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 6); // item intocado
+  assert.equal(card.categorias[0].itens[0].estoque, 6);       // original intocado
+  assert.equal(card.categorias[0].itens[0].variacoes[0].estoque, 5); // original intocado
+});
+
+test("aplicarAjuste: ajusta o item (sem variacaoId), trava em zero e arredonda kg", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "p1", nome: "Picanha", unidade: "kg", estoque: 2 },
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "p1", variacaoId: null, delta: -5 });
+  assert.equal(r.movimento.itemId, "p1");
+  assert.equal(r.movimento.variacaoId, null);
+  assert.equal(r.movimento.quantidade, -2); // trava em zero, não -5
+  assert.equal(r.movimento.saldoDepois, 0);
+  assert.equal(r.movimento.unidade, "kg");
+});
+
+test("aplicarAjuste: ligaControle liga o controle antes de aplicar; delta zero não gera movimento", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "a3", nome: "Refri", unidade: "un" }, // sem controle
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "a3", variacaoId: null, delta: 0, ligaControle: true });
+  assert.equal(r.movimento, null);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 0); // controle ligado em zero
+});
+
+test("aplicarAjuste: nada muda quando o delta é zero e o controle já estava ligado", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "a1", nome: "Espeto", unidade: "un", estoque: 3 },
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "a1", variacaoId: null, delta: 0 });
+  assert.equal(r.movimento, null);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 3);
+});

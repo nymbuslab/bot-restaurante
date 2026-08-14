@@ -227,6 +227,65 @@
     });
     return Object.assign({}, cardapio, { categorias: categorias });
   }
+  // Ajuste MANUAL de um único alvo (o item OU a variação, NUNCA os dois): entrada,
+  // perda ou contagem lançados na tela de Controle de estoque. Ruling D: um ajuste
+  // não é "isso foi vendido" (formato de payload de pedido, agregado por id), é
+  // "este saldo mudou" — por isso NÃO reusa calcularBaixa/calcularDevolucao. O
+  // motor de venda (`_agregar`) força quantidade mínima 1 pra item "un" (pensado
+  // pro carrinho, onde não se pede zero); usar aquele motor aqui com um payload
+  // sintético `{ qtd: 0 }` no item pra "não mexer nele" acabava aplicando um
+  // movimento fantasma de ±1 no saldo PRÓPRIO do item sempre que ele também
+  // tinha estoque controlado além da variação.
+  // `ligaControle` (true) liga o controle no alvo (via garantirControle) ANTES
+  // de aplicar o delta — caminho da primeira contagem (Correção 2). Cópia, não
+  // muta o cardápio recebido; `movimento: null` quando nada mudou de saldo
+  // (já no clamp, ou delta zero com controle já ligado).
+  function aplicarAjuste(cardapio, opts) {
+    const o = opts || {};
+    const itemId = o.itemId;
+    const variacaoId = o.variacaoId == null ? null : o.variacaoId;
+    const delta = Number(o.delta) || 0;
+    const base = o.ligaControle ? garantirControle(cardapio, itemId, variacaoId) : (cardapio || { categorias: [] });
+    const alvoId = String(itemId);
+    let movimento = null;
+    function aplicarNoAlvo(alvo, ehKg, idMov, varMov, descricao) {
+      const atual = Math.max(0, ehKg
+        ? (parseFloat(String(alvo.estoque).replace(",", ".")) || 0)
+        : (parseInt(alvo.estoque, 10) || 0));
+      const novo = _round(Math.max(0, atual + delta), ehKg);
+      if (novo === atual) return null;
+      movimento = {
+        itemId: idMov, variacaoId: varMov,
+        quantidade: _round(novo - atual, ehKg), saldoDepois: novo,
+        descricao: descricao, unidade: ehKg ? "kg" : "un",
+      };
+      return novo;
+    }
+    const categorias = ((base && base.categorias) || []).map(function (c) {
+      return Object.assign({}, c, {
+        itens: ((c && c.itens) || []).map(function (it) {
+          if (!it || String(it.id) !== alvoId) return it;
+          if (variacaoId == null) {
+            if (!temControle(it)) return it; // alvo é o item, mas ele não está controlado
+            const ehKg = it.unidade === "kg";
+            const novo = aplicarNoAlvo(it, ehKg, it.id, null, it.nome || "");
+            return novo === null ? it : Object.assign({}, it, { estoque: novo });
+          }
+          if (!Array.isArray(it.variacoes)) return it;
+          let mudou = false;
+          const novasVar = it.variacoes.map(function (v) {
+            if (!v || String(v.id) !== String(variacaoId) || !temControle(v)) return v;
+            const novo = aplicarNoAlvo(v, false, it.id, String(v.id), (it.nome || "") + " (" + (v.nome || "") + ")");
+            if (novo === null) return v;
+            mudou = true;
+            return Object.assign({}, v, { estoque: novo });
+          });
+          return mudou ? Object.assign({}, it, { variacoes: novasVar }) : it;
+        }),
+      });
+    });
+    return { cardapio: Object.assign({}, base, { categorias: categorias }), movimento: movimento };
+  }
   // Compara dois cardápios e devolve os movimentos de AJUSTE (o dono mexeu no
   // número pelo editor do item). Desligar o controle NÃO é movimento de saldo:
   // o item passa a ser ilimitado, não a ter uma quantidade diferente.
@@ -251,6 +310,6 @@
   return {
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
-    acharSaldo: acharSaldo, garantirControle: garantirControle,
+    acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste,
   };
 });

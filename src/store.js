@@ -109,9 +109,16 @@ async function devolverEstoqueTx(client, dir, itensPayload, ctx = {}) {
 }
 
 // Movimento lançado na tela de Controle de estoque: entrada, perda ou contagem.
-// `contagem` recebe `contado` (o que foi contado de verdade) e o delta sai daqui.
-// Reusa o motor de baixa/devolução montando um payload de um item só. Mesma
-// trava (`FOR UPDATE`) e mesma transação do chamador.
+// `contagem` recebe `contado` (o que foi contado de verdade) e o delta sai
+// daqui. Usa `Estoque.aplicarAjuste`, que mexe em UM alvo só (Ruling D — revisão
+// da Task 7): a versão anterior reusava o payload de venda
+// (`calcularBaixa`/`calcularDevolucao`), montando um `{ qtd: 0 }` sintético no
+// item pra só a variação mudar; mas o motor de venda força quantidade mínima 1
+// pra item "un" (pensado pro carrinho), então aquele `0` virava `1` e aplicava
+// um movimento fantasma no saldo PRÓPRIO do item toda vez que ele também tinha
+// estoque controlado além da variação — corrompendo o saldo e carimbando o
+// movimento errado na trilha. Mesma trava (`FOR UPDATE`) e mesma transação do
+// chamador.
 //
 // Contagem em item AINDA NÃO controlado sempre liga o controle, MESMO contando
 // zero — é assim que o dono zera um produto que esgotou (não dá pra ligar o
@@ -120,6 +127,12 @@ async function devolverEstoqueTx(client, dir, itensPayload, ctx = {}) {
 // mas não grava movimento (quantidade zero não é evento). Já numa contagem
 // sobre item JÁ controlado cujo `contado` bate com o saldo atual, nada muda:
 // não persiste, não grava, `movimento: null`.
+//
+// `entrada`/`perda` exigem o alvo JÁ controlado: a tela só oferece essas duas
+// ações pra produto com controle ligado, então chegar aqui sem controle é bug
+// do chamador — o erro deixa isso explícito em vez de fingir que aplicou.
+// `contagem` exige `contado` numérico: `Number(undefined)`/`Number("abc")` são
+// NaN e não podem vazar pra aritmética do delta.
 async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, quantidade, contado, obs } = {}) {
   const slug = slugDe(dir);
   const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
@@ -130,11 +143,12 @@ async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, 
 
   let delta;
   if (tipo === "contagem") {
-    delta = Number(contado) - (alvo.controlado ? alvo.quantidade : 0);
-  } else if (tipo === "entrada") {
-    delta = Math.abs(Number(quantidade) || 0);
-  } else if (tipo === "perda") {
-    delta = -Math.abs(Number(quantidade) || 0);
+    const contadoNum = Number(contado);
+    if (!Number.isFinite(contadoNum)) throw new Error("Informe uma contagem numérica válida.");
+    delta = contadoNum - (alvo.controlado ? alvo.quantidade : 0);
+  } else if (tipo === "entrada" || tipo === "perda") {
+    if (!alvo.controlado) throw new Error("Ative o controle de estoque deste produto antes de lançar entrada ou perda.");
+    delta = tipo === "entrada" ? Math.abs(Number(quantidade) || 0) : -Math.abs(Number(quantidade) || 0);
   } else {
     throw new Error("Tipo de movimento inválido: " + tipo);
   }
@@ -143,27 +157,17 @@ async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, 
   // que já tinha ilimitado, ou seja, zero) — é a diferença entre "nunca
   // controlei" e "controlei e o saldo bate".
   const ligaControle = tipo === "contagem" && !alvo.controlado;
+  const { cardapio: novo, movimento } = Estoque.aplicarAjuste(cardapio, { itemId, variacaoId, delta, ligaControle });
 
-  if (delta === 0) {
+  if (!movimento) {
     if (!ligaControle) return { cardapio, movimento: null }; // nada mudou: não persiste
-    const novo = Estoque.garantirControle(cardapio, itemId, variacaoId);
     await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
     return { cardapio: novo, movimento: null }; // liga o controle em zero, sem movimento
   }
 
-  const base = ligaControle ? Estoque.garantirControle(cardapio, itemId, variacaoId) : cardapio;
-  const payload = [variacaoId == null
-    ? { id: itemId, qtd: Math.abs(delta) }
-    : { id: itemId, qtd: 0, variacoes: [{ id: variacaoId, qtd: Math.abs(delta) }] }];
-  const calc = delta > 0
-    ? Estoque.calcularDevolucao(base, payload)
-    : Estoque.calcularBaixa(base, payload);
-  const movimento = calc.movimentos[0] || null;
-  if (!movimento) return { cardapio, movimento: null };
-
-  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(calc.cardapio), slug]);
+  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
   await estoqueDb.registrarTx(client, r.rows[0].id, [movimento], { tipo, obs });
-  return { cardapio: calc.cardapio, movimento };
+  return { cardapio: novo, movimento };
 }
 
 // Carimba pelo PRIMARY KEY de cada movimento gravado NESTA chamada de

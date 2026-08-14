@@ -25,6 +25,11 @@ const baseCardapio = {
       { id: "a1", nome: "Espeto", unidade: "un", estoque: 3, estoqueMinimo: 1 },
       { id: "a2", nome: "Picanha", unidade: "kg", estoque: 2, estoqueMinimo: 0 },
       { id: "a3", nome: "Refri", unidade: "un" }, // sem controle (ilimitado)
+      // item COM estoque próprio E variação com estoque próprio (dono pode controlar os dois
+      // independentemente no editor) — cenário da regressão do Ruling D.
+      { id: "a4", nome: "Marmitex", unidade: "un", estoque: 6, variacoes: [
+        { id: "v1", nome: "P", estoque: 5 },
+      ] },
     ] },
   ],
 };
@@ -159,6 +164,66 @@ test("ajustarEstoqueTx: item inexistente falha", async () => {
 test("ajustarEstoqueTx: tipo desconhecido falha", async () => {
   const c = fakeClient(clone());
   await assert.rejects(() => store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "sei-la", quantidade: 1 }), /[Tt]ipo/);
+});
+
+// ---- Ruling D (revisão da Task 7): ajuste de UM alvo só, sem reusar o payload de venda ----
+
+// REGRESSÃO: item "a4" tem estoque PRÓPRIO (6) E uma variação "v1" com estoque
+// próprio (5). Ajustar a variação NÃO pode tocar no saldo do item. Isso falhava
+// porque o payload sintético { id: itemId, qtd: 0, variacoes: [...] } virava
+// qtd:1 dentro de `_agregar` (item "un" força mínimo 1), e o motor de venda
+// aplicava um movimento fantasma de +1 no item, cujo `calc.movimentos[0]`
+// ainda por cima "vencia" o movimento real da variação.
+test("ajustarEstoqueTx: ajustar a variação não mexe no estoque próprio do item (regressão Ruling D)", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a4", variacaoId: "v1", tipo: "entrada", quantidade: 2 });
+  assert.equal(r.movimento.itemId, "a4");
+  assert.equal(r.movimento.variacaoId, "v1");        // não pode ser null (o fantasma do item)
+  assert.equal(r.movimento.saldoDepois, 7);           // 5 + 2 (saldo da VARIAÇÃO)
+  assert.equal(r.movimento.quantidade, 2);
+  const itemA4 = r.cardapio.categorias[0].itens[3];
+  assert.equal(itemA4.estoque, 6);                    // saldo PRÓPRIO do item intocado
+  assert.equal(itemA4.variacoes[0].estoque, 7);
+});
+
+test("ajustarEstoqueTx: perda na variação decrementa só a variação, trava em zero e não toca o item", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a4", variacaoId: "v1", tipo: "perda", quantidade: 20 });
+  assert.equal(r.movimento.variacaoId, "v1");
+  assert.equal(r.movimento.saldoDepois, 0);
+  assert.equal(r.movimento.quantidade, -5);           // tinha 5, não -20
+  const itemA4 = r.cardapio.categorias[0].itens[3];
+  assert.equal(itemA4.estoque, 6);                    // item não mudou
+});
+
+// ---- Minors da revisão: guardas de entrada/perda sem controle e contagem inválida ----
+test("ajustarEstoqueTx: entrada em item sem controle lança erro (a tela só oferece isso a item controlado)", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(
+    () => store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a3", tipo: "entrada", quantidade: 5 }),
+    /ative o controle/i
+  );
+});
+
+test("ajustarEstoqueTx: perda em item sem controle lança erro", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(
+    () => store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a3", tipo: "perda", quantidade: 5 }),
+    /ative o controle/i
+  );
+});
+
+test("ajustarEstoqueTx: contagem sem número válido (ausente ou não numérico) lança erro", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(
+    () => store.ajustarEstoqueTx(c, "/x/slug", { itemId: "a1", tipo: "contagem" }), // contado ausente
+    /contagem/i
+  );
+  const c2 = fakeClient(clone());
+  await assert.rejects(
+    () => store.ajustarEstoqueTx(c2, "/x/slug", { itemId: "a1", tipo: "contagem", contado: "abc" }),
+    /contagem/i
+  );
 });
 
 test("amarrarPedidoTx: carimba só os ids desta transação, nunca um órfão de outra venda", async () => {
