@@ -191,13 +191,13 @@ function confirmar(titulo, mensagem, txtConfirmar = "Confirmar", txtCancelar = "
 // padrão. Devolve false se cancelou, ou { opcao: boolean } se confirmou. Reusa o
 // mesmo modal do confirmar() — a caixinha some de novo ao fechar, então uma
 // confirmação sem opção nunca herda o estado de uma chamada anterior.
-function confirmarComOpcao(titulo, mensagem, rotuloOpcao, txtConfirmar = "Confirmar") {
+function confirmarComOpcao(titulo, mensagem, rotuloOpcao, txtConfirmar = "Confirmar", txtCancelar = "Cancelar") {
   const wrap = $("modal-opcao-wrap");
   const check = $("modal-opcao");
   $("modal-opcao-texto").textContent = rotuloOpcao;
   check.checked = true;
   wrap.hidden = false;
-  return confirmar(titulo, mensagem, txtConfirmar).then((ok) => {
+  return confirmar(titulo, mensagem, txtConfirmar, txtCancelar).then((ok) => {
     const marcado = check.checked;
     wrap.hidden = true;
     return ok ? { opcao: marcado } : false;
@@ -2845,7 +2845,10 @@ const SVG_OPERADOR = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height=
 
 // Modal acessível com campos (substitui window.prompt). Resolve com um objeto
 // { id: valor } ou null se cancelar. Campos `dinheiro` usam a máscara e devolvem
-// número; `texto` devolve string. `live(valores)` → texto atualizado a cada tecla.
+// número; `texto` devolve string; `checkbox` (rótulo em `label`, marcado por padrão
+// salvo `checked: false`) devolve boolean. `live(valores)` → texto atualizado a cada
+// tecla. `cont.innerHTML` é reescrito do zero em toda chamada — um campo `checkbox`
+// de uma chamada nunca sobra pra próxima, cada modalCaixa() define os seus.
 function modalCaixa({ titulo, info, campos, txtConfirmar = "Confirmar", live }) {
   return new Promise((resolve) => {
     const overlay = $("caixa-modal-overlay");
@@ -2854,8 +2857,9 @@ function modalCaixa({ titulo, info, campos, txtConfirmar = "Confirmar", live }) 
     infoEl.hidden = !info; if (info) infoEl.textContent = info;
     const liveEl = $("caixa-modal-live"); liveEl.hidden = true; liveEl.textContent = "";
     const cont = $("caixa-modal-campos");
-    cont.innerHTML = campos.map((c) =>
-      `<div class="campo"><label for="${c.id}">${escapar(c.label)}</label>
+    cont.innerHTML = campos.map((c) => c.tipo === "checkbox"
+      ? `<label class="modal-opcao"><input type="checkbox" id="${c.id}"${c.checked === false ? "" : " checked"} /><span>${escapar(c.label)}</span></label>`
+      : `<div class="campo"><label for="${c.id}">${escapar(c.label)}</label>
         <input id="${c.id}" inputmode="${c.tipo === "dinheiro" ? "numeric" : "text"}" placeholder="${escapar(c.placeholder || "")}" value="${c.tipo === "dinheiro" ? "0,00" : ""}"></div>`
     ).join("");
     campos.forEach((c) => { if (c.tipo === "dinheiro" && window.Dinheiro) Dinheiro.mascarar(c.id); });
@@ -2863,7 +2867,10 @@ function modalCaixa({ titulo, info, campos, txtConfirmar = "Confirmar", live }) 
 
     const lerValores = () => {
       const v = {};
-      campos.forEach((c) => { v[c.id] = c.tipo === "dinheiro" ? (window.Dinheiro ? Dinheiro.valor(c.id) : 0) : ($(c.id).value || "").trim(); });
+      campos.forEach((c) => {
+        v[c.id] = c.tipo === "checkbox" ? $(c.id).checked
+          : c.tipo === "dinheiro" ? (window.Dinheiro ? Dinheiro.valor(c.id) : 0) : ($(c.id).value || "").trim();
+      });
       return v;
     };
     const atualizarLive = () => {
@@ -6478,21 +6485,28 @@ async function mesaCancelar() {
   var devolver = true;
   if (total > 0) {
     // Reforço anti-fraude: mesa COM consumo exige MOTIVO (fica na auditoria) e mostra o valor.
+    // É justo o caso em que HÁ itens lançados (estoque baixado) — a caixinha de devolução
+    // precisa estar aqui tanto quanto no ramo sem consumo.
     var r0 = await modalCaixa({
       titulo: "Cancelar mesa " + d.nome + "?",
       info: "Esta mesa tem " + pdvMoney(total) + " em consumo. Cancelar marca os pedidos como cancelados e libera a mesa SEM receber. Informe o motivo (fica registrado).",
-      campos: [{ id: "mesaCancelMotivo", label: "Motivo do cancelamento", tipo: "texto", placeholder: "Ex.: cliente desistiu, mesa aberta por engano" }],
+      campos: [
+        { id: "mesaCancelMotivo", label: "Motivo do cancelamento", tipo: "texto", placeholder: "Ex.: cliente desistiu, mesa aberta por engano" },
+        { id: "mesaCancelDevolver", label: "Devolver os itens ao estoque", tipo: "checkbox" },
+      ],
       txtConfirmar: "Cancelar mesa",
     });
     if (!r0) return;
     motivo = (r0.mesaCancelMotivo || "").trim();
     if (!motivo) { toast("Informe o motivo para cancelar uma mesa com consumo.", "erro"); return; }
+    devolver = r0.mesaCancelDevolver;
   } else {
     var conf = await confirmarComOpcao(
       "Cancelar mesa " + d.nome + "?",
       "A mesa será liberada.",
       "Devolver os itens ao estoque",
-      "Cancelar mesa"
+      "Cancelar mesa",
+      "Voltar"
     );
     if (!conf) return;
     devolver = conf.opcao;

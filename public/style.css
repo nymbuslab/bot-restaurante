@@ -2491,13 +2491,14 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   margin: 0 0 24px;
 }
 
-/* Caixinha opcional do modal de confirmação (ex.: "devolver ao estoque"), inserida
-   por confirmarComOpcao entre a mensagem e os botões. Mesmos tokens de .auth-lembrar. */
+/* Caixinha opcional reusada em dois modais: confirmarComOpcao (#modal-overlay, entre a
+   mensagem e os botões) e modalCaixa (campo tipo "checkbox" em #caixa-modal-campos, junto
+   dos demais campos). Mesmos tokens de .auth-lembrar. */
 .modal-opcao {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: -12px 0 20px;
+  margin: 4px 0 16px;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -2510,6 +2511,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   accent-color: var(--accent);
   cursor: pointer;
 }
+/* No modal de confirmação simples a caixinha vem logo após o <p> (margin-bottom 24px) —
+   puxa pra cima pra não abrir um vão duplo antes dos botões. */
+#modal-overlay .modal-opcao { margin-top: -12px; }
 
 /* ---------- Botão "Imprimir comanda" bloqueado (Essencial) ---------- */
 .bloqueado-impr { color: var(--text-disabled); border-color: var(--border-subtle); }
