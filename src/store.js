@@ -16,6 +16,7 @@
 const path = require("path");
 const db = require("./db");
 const Estoque = require("../public/estoque"); // puro (dual-mode): validar/aplicar baixa
+const estoqueDb = require("./estoque-db"); // grava a trilha de movimento na mesma transação
 
 const cache = {}; // slug -> { config, cardapio }
 const slugDe = (dir) => path.basename(dir);
@@ -64,17 +65,23 @@ async function setCardapio(dir, dados) {
 // Trava a linha do tenant (`FOR UPDATE`) → serializa baixas concorrentes (sem
 // lost-update) e o `MAX(numero)+1` do pedido; revalida o estoque na versão FRESCA
 // (lança Error com `.code="ESTOQUE"` se faltar → o chamador faz ROLLBACK e a venda
-// não acontece); decrementa e regrava o JSONB. Retorna o novo cardápio — o chamador
-// deve chamar `sincronizarCardapio(dir, novo)` APÓS o COMMIT para atualizar o cache.
-async function baixarEstoqueTx(client, dir, itensPayload) {
+// não acontece); decrementa e regrava o JSONB. `ctx` opcional `{ pedidoId, numero }`
+// identifica o movimento (a Task 6 amarra o pedidoId, que só existe depois do
+// salvarPedido). Retorna o novo cardápio — o chamador deve chamar
+// `sincronizarCardapio(dir, novo)` APÓS o COMMIT para atualizar o cache.
+async function baixarEstoqueTx(client, dir, itensPayload, ctx = {}) {
   const slug = slugDe(dir);
-  const r = await client.query("SELECT cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+  const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
   if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
   const cardapio = r.rows[0].cardapio || { categorias: [] };
   const check = Estoque.validarEstoque(cardapio, itensPayload);
   if (!check.ok) { const e = new Error(check.erro); e.code = "ESTOQUE"; throw e; }
-  const novo = Estoque.aplicarBaixa(cardapio, itensPayload);
+  const { cardapio: novo, movimentos } = Estoque.calcularBaixa(cardapio, itensPayload);
   await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
+  // Trilha na MESMA transação: se o INSERT falhar, a venda inteira faz ROLLBACK.
+  await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, {
+    tipo: "venda", pedidoId: ctx.pedidoId, numero: ctx.numero,
+  });
   return novo;
 }
 
