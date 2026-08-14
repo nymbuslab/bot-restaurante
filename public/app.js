@@ -163,20 +163,44 @@ function confirmar(titulo, mensagem, txtConfirmar = "Confirmar", txtCancelar = "
     function onCancelar() { fechar(false); }
     function onConfirmar() { fechar(true); }
     function onFora(e) { if (e.target === overlay) fechar(false); }
-    // Esc fecha (= Cancelar) e Tab circula só entre os 2 botões (focus-trap). Captura +
+    // Esc fecha (= Cancelar) e Tab circula pelos focáveis do modal (focus-trap). Captura +
     // stopPropagation: Esc fecha só este diálogo (por cima), não um modal por baixo.
+    // A lista é montada a cada tecla: se a caixinha (confirmarComOpcao) estiver visível,
+    // ela entra no meio do ciclo; escondida, o comportamento é o de sempre (só 2 botões).
     function onKey(e) {
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fechar(false); return; }
       if (e.key !== "Tab") return;
-      const a = $("modal-cancelar"), b = $("modal-confirmar");
-      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); b.focus(); }
-      else if (!e.shiftKey && document.activeElement === b) { e.preventDefault(); a.focus(); }
+      const foco = [$("modal-cancelar"), $("modal-confirmar")];
+      const opcaoWrap = $("modal-opcao-wrap");
+      if (opcaoWrap && !opcaoWrap.hidden) foco.splice(1, 0, $("modal-opcao"));
+      const i = foco.indexOf(document.activeElement);
+      if (i === -1) return;
+      e.preventDefault();
+      const prox = e.shiftKey ? (i - 1 + foco.length) % foco.length : (i + 1) % foco.length;
+      foco[prox].focus();
     }
 
     $("modal-cancelar").addEventListener("click", onCancelar);
     $("modal-confirmar").addEventListener("click", onConfirmar);
     document.addEventListener("keydown", onKey, true);
     overlay.addEventListener("mousedown", onFora);
+  });
+}
+
+// Confirmação com UMA caixinha opcional (ex.: "devolver ao estoque"), marcada por
+// padrão. Devolve false se cancelou, ou { opcao: boolean } se confirmou. Reusa o
+// mesmo modal do confirmar() — a caixinha some de novo ao fechar, então uma
+// confirmação sem opção nunca herda o estado de uma chamada anterior.
+function confirmarComOpcao(titulo, mensagem, rotuloOpcao, txtConfirmar = "Confirmar") {
+  const wrap = $("modal-opcao-wrap");
+  const check = $("modal-opcao");
+  $("modal-opcao-texto").textContent = rotuloOpcao;
+  check.checked = true;
+  wrap.hidden = false;
+  return confirmar(titulo, mensagem, txtConfirmar).then((ok) => {
+    const marcado = check.checked;
+    wrap.hidden = true;
+    return ok ? { opcao: marcado } : false;
   });
 }
 
@@ -4409,13 +4433,14 @@ function abrirModalPedido(p) {
         e.stopPropagation();
         var idx = Number(btn.dataset.itemIdx);
         var nome = (pedidoModalAtual.itens[idx] || {}).nome || "item";
-        var ok = await confirmar(
+        var r0 = await confirmarComOpcao(
           "Cancelar item?",
           "Remover \"" + nome + "\" do pedido. Esta ação não pode ser desfeita.",
+          "Devolver os itens ao estoque",
           "Cancelar item"
         );
-        if (!ok) return;
-        var r = await api("POST", "/api/pedidos/" + pedidoModalAtual.id + "/cancelar-item", { itemIdx: idx });
+        if (!r0) return;
+        var r = await api("POST", "/api/pedidos/" + pedidoModalAtual.id + "/cancelar-item", { itemIdx: idx, devolver: r0.opcao });
         if (!r || !r.ok) {
           var d = await (r && r.json().catch(function () { return {}; })) || {};
           toast(d.erro || "Erro ao cancelar o item.", "erro");
@@ -4499,15 +4524,16 @@ function montarAcoes(p) {
     btnCancelar.className = "btn-cancelar-pedido mini";
     btnCancelar.textContent = "Cancelar pedido";
     btnCancelar.addEventListener("click", async () => {
-      const ok = await confirmar(
+      const r0 = await confirmarComOpcao(
         "Cancelar pedido #" + p.numero + "?",
         pago
           ? "Este pedido já foi PAGO. Ao cancelar, o valor será deduzido do caixa (com registro) e o pedido fica marcado como cancelado. Exige caixa aberto. Esta ação não pode ser desfeita."
           : "O pedido será marcado como cancelado. Esta ação não pode ser desfeita.",
+        "Devolver os itens ao estoque",
         "Cancelar pedido"
       );
-      if (!ok) return;
-      const r = await api("POST", "/api/pedidos/" + p.id + "/cancelar");
+      if (!r0) return;
+      const r = await api("POST", "/api/pedidos/" + p.id + "/cancelar", { devolver: r0.opcao });
       if (!r || !r.ok) {
         const d = r ? await r.json().catch(() => ({})) : {};
         toast(d.erro || "Erro ao cancelar o pedido.", "erro");
@@ -6261,15 +6287,16 @@ function renderMesaItens() {
 }
 
 async function mesaCancelarItem(pedidoId, itemIdx, nomeItem) {
-  var conf = await confirmar(
+  var conf = await confirmarComOpcao(
     "Cancelar item?",
     "Remover \"" + (nomeItem || "item") + "\" da conta da mesa. Esta ação não pode ser desfeita.",
+    "Devolver os itens ao estoque",
     "Cancelar item"
   );
   if (!conf) return;
   var d = mesaState.detalhe;
   if (!d) return;
-  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar-item", { pedidoId: pedidoId, itemIdx: itemIdx });
+  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar-item", { pedidoId: pedidoId, itemIdx: itemIdx, devolver: conf.opcao });
   if (!r || !r.ok) {
     var e = await (r && r.json().catch(function () { return {}; })) || {};
     toast(e.erro || "Erro ao cancelar o item.", "erro");
@@ -6448,6 +6475,7 @@ async function mesaCancelar() {
   if (!d) return;
   var total = (d.resumo && d.resumo.total) || 0;
   var motivo = "";
+  var devolver = true;
   if (total > 0) {
     // Reforço anti-fraude: mesa COM consumo exige MOTIVO (fica na auditoria) e mostra o valor.
     var r0 = await modalCaixa({
@@ -6460,10 +6488,16 @@ async function mesaCancelar() {
     motivo = (r0.mesaCancelMotivo || "").trim();
     if (!motivo) { toast("Informe o motivo para cancelar uma mesa com consumo.", "erro"); return; }
   } else {
-    var conf = await confirmar("Cancelar mesa " + d.nome + "?", "A mesa será liberada.", "Cancelar mesa", "Voltar");
+    var conf = await confirmarComOpcao(
+      "Cancelar mesa " + d.nome + "?",
+      "A mesa será liberada.",
+      "Devolver os itens ao estoque",
+      "Cancelar mesa"
+    );
     if (!conf) return;
+    devolver = conf.opcao;
   }
-  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar", { motivo: motivo });
+  var r = await api("POST", "/api/mesas/" + d.id + "/cancelar", { motivo: motivo, devolver: devolver });
   if (!r.ok) { var e = await r.json().catch(function () { return {}; }); toast(e.erro || "Não foi possível cancelar a mesa. Tente de novo.", "erro"); return; }
   toast("Mesa " + d.nome + " cancelada.");
   fecharMesaPainel();

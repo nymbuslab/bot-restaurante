@@ -2491,6 +2491,26 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   margin: 0 0 24px;
 }
 
+/* Caixinha opcional do modal de confirmação (ex.: "devolver ao estoque"), inserida
+   por confirmarComOpcao entre a mensagem e os botões. Mesmos tokens de .auth-lembrar. */
+.modal-opcao {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: -12px 0 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.modal-opcao input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 /* ---------- Botão "Imprimir comanda" bloqueado (Essencial) ---------- */
 .bloqueado-impr { color: var(--text-disabled); border-color: var(--border-subtle); }
 .bloqueado-impr > svg { opacity: 0.55; }
