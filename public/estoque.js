@@ -108,40 +108,66 @@
     }
     return { ok: true, erro: "" };
   }
-  function aplicarBaixa(cardapio, itensPayload) {
+  // Arredonda respeitando a unidade (kg tem 3 casas; un é inteiro).
+  function _round(n, ehKg) {
+    return ehKg ? Math.round(n * 1000) / 1000 : Math.round(n);
+  }
+  // Motor comum da baixa (sinal -1) e da devolução (sinal +1). Devolve uma CÓPIA
+  // do cardápio e a lista de movimentos com o saldo resultante de cada um.
+  // Saldo nunca fica negativo: o movimento registra o delta EFETIVAMENTE aplicado.
+  function _movimentar(cardapio, itensPayload, sinal) {
     const mapa = _mapaItens(cardapio);
     const ped = _agregar(itensPayload, mapa);
     const pedV = _agregarVariacoes(itensPayload);
+    const movimentos = [];
+    function aplicar(alvo, pedido, ehKg, itemId, variacaoId, descricao) {
+      const atual = Math.max(0, ehKg
+        ? (parseFloat(String(alvo.estoque).replace(",", ".")) || 0)
+        : (parseInt(alvo.estoque, 10) || 0));
+      const novo = _round(Math.max(0, atual + sinal * pedido), ehKg);
+      if (novo === atual) return null;
+      movimentos.push({
+        itemId: itemId, variacaoId: variacaoId,
+        quantidade: _round(novo - atual, ehKg), saldoDepois: novo,
+        descricao: descricao, unidade: ehKg ? "kg" : "un",
+      });
+      return novo;
+    }
     const categorias = ((cardapio && cardapio.categorias) || []).map(function (c) {
       return Object.assign({}, c, {
         itens: ((c && c.itens) || []).map(function (it) {
           if (!it) return it;
           let novoIt = it;
-          // baixa do item-base (un/kg) — como antes
           if (temControle(it) && ped[it.id]) {
             const ehKg = it.unidade === "kg";
-            const q = ehKg
-              ? Math.max(0, parseFloat(String(it.estoque).replace(",", ".")) || 0)
-              : Math.max(0, parseInt(it.estoque, 10) || 0);
-            const novo = Math.max(0, q - ped[it.id]);
-            novoIt = Object.assign({}, it, { estoque: ehKg ? Math.round(novo * 1000) / 1000 : novo });
+            const novo = aplicar(it, ped[it.id], ehKg, it.id, null, it.nome || "");
+            if (novo !== null) novoIt = Object.assign({}, it, { estoque: novo });
           }
-          // baixa por variação (sempre "un") — clona só o que mudou
           if (Array.isArray(it.variacoes) && it.variacoes.length) {
+            let mudou = false;
             const novasVar = it.variacoes.map(function (v) {
               if (!v || v.id == null || !temControle(v)) return v;
-              const dec = pedV[_chaveVar(it.id, v.id)];
-              if (!dec) return v;
-              const q = Math.max(0, parseInt(v.estoque, 10) || 0);
-              return Object.assign({}, v, { estoque: Math.max(0, q - dec) });
+              const q = pedV[_chaveVar(it.id, v.id)];
+              if (!q) return v;
+              const novo = aplicar(v, q, false, it.id, String(v.id), (it.nome || "") + " (" + (v.nome || "") + ")");
+              if (novo === null) return v;
+              mudou = true;
+              return Object.assign({}, v, { estoque: novo });
             });
-            novoIt = Object.assign({}, novoIt, { variacoes: novasVar });
+            if (mudou) novoIt = Object.assign({}, novoIt, { variacoes: novasVar });
           }
           return novoIt;
         }),
       });
     });
-    return Object.assign({}, cardapio, { categorias: categorias });
+    return { cardapio: Object.assign({}, cardapio, { categorias: categorias }), movimentos: movimentos };
   }
-  return { temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque, aplicarBaixa: aplicarBaixa };
+  function calcularBaixa(cardapio, itensPayload) { return _movimentar(cardapio, itensPayload, -1); }
+  function calcularDevolucao(cardapio, itensPayload) { return _movimentar(cardapio, itensPayload, 1); }
+  // Casca compatível: quem só quer o cardápio novo (código antigo) continua chamando.
+  function aplicarBaixa(cardapio, itensPayload) { return calcularBaixa(cardapio, itensPayload).cardapio; }
+  return {
+    temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
+    aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao,
+  };
 });

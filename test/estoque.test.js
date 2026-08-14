@@ -90,3 +90,79 @@ test("aplicarBaixa (variação): desconta a variação certa, trava em 0, ignora
   assert.equal("estoque" in vs.find((v) => v.id === "agua"), false); // ilimitada intacta
   assert.equal(cardV.categorias[0].itens[0].variacoes[0].estoque, 5); // original não mutado
 });
+
+// ---- calcularBaixa / calcularDevolucao (motor comum com lista de movimentos) ----
+const baseMov = {
+  categorias: [
+    { nome: "Cat", itens: [
+      { id: "a1", nome: "Espeto", unidade: "un", estoque: 3, estoqueMinimo: 1 },
+      { id: "a2", nome: "Picanha", unidade: "kg", estoque: 2 },
+      { id: "a3", nome: "Refri", unidade: "un" }, // sem controle
+      { id: "a4", nome: "Marmitex", unidade: "un", variacoes: [
+        { id: "v1", nome: "P", preco: 18, estoque: 5 },
+        { id: "v2", nome: "G", preco: 25 },        // variação sem controle
+      ] },
+    ] },
+  ],
+};
+const cloneMov = () => JSON.parse(JSON.stringify(baseMov));
+
+test("calcularBaixa: movimento negativo com saldo resultante", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a1", qtd: 2 }]);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 1);
+  assert.deepEqual(r.movimentos, [
+    { itemId: "a1", variacaoId: null, quantidade: -2, saldoDepois: 1, descricao: "Espeto", unidade: "un" },
+  ]);
+});
+
+test("calcularBaixa: item sem controle não gera movimento", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a3", qtd: 5 }]);
+  assert.deepEqual(r.movimentos, []);
+});
+
+test("calcularBaixa: trava em zero e registra o delta aplicado", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a1", qtd: 10 }]);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 0);
+  assert.equal(r.movimentos[0].quantidade, -3); // tinha 3, não -10
+  assert.equal(r.movimentos[0].saldoDepois, 0);
+});
+
+test("calcularBaixa: kg com três casas", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a2", qtd: "0,5" }]);
+  assert.equal(r.movimentos[0].saldoDepois, 1.5);
+  assert.equal(r.movimentos[0].quantidade, -0.5);
+  assert.equal(r.movimentos[0].unidade, "kg");
+});
+
+test("calcularBaixa: variação tem movimento próprio", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a4", qtd: 1, variacoes: [{ id: "v1", qtd: 2 }, { id: "v2", qtd: 1 }] }]);
+  assert.equal(r.movimentos.length, 1); // v2 não é controlada
+  assert.deepEqual(r.movimentos[0], {
+    itemId: "a4", variacaoId: "v1", quantidade: -2, saldoDepois: 3,
+    descricao: "Marmitex (P)", unidade: "un",
+  });
+});
+
+test("calcularBaixa: não muta o cardápio recebido", () => {
+  const original = cloneMov();
+  E.calcularBaixa(original, [{ id: "a1", qtd: 2 }]);
+  assert.equal(original.categorias[0].itens[0].estoque, 3);
+});
+
+test("calcularDevolucao: soma de volta com movimento positivo", () => {
+  const r = E.calcularDevolucao(cloneMov(), [{ id: "a1", qtd: 2 }]);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 5);
+  assert.equal(r.movimentos[0].quantidade, 2);
+  assert.equal(r.movimentos[0].saldoDepois, 5);
+});
+
+test("calcularDevolucao: item sem controle agora não ganha estoque", () => {
+  const r = E.calcularDevolucao(cloneMov(), [{ id: "a3", qtd: 2 }]);
+  assert.deepEqual(r.movimentos, []);
+  assert.equal(r.cardapio.categorias[0].itens[2].estoque, undefined);
+});
+
+test("aplicarBaixa segue devolvendo só o cardápio", () => {
+  const novo = E.aplicarBaixa(cloneMov(), [{ id: "a1", qtd: 1 }]);
+  assert.equal(novo.categorias[0].itens[0].estoque, 2);
+});
