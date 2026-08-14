@@ -33,6 +33,7 @@ const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
+const estoqueDb = require("./estoque-db"); // trilha de movimentação (estoque_movimentos)
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarBiblioteca/resolverGrupos (dual-mode)
@@ -1760,6 +1761,48 @@ app.get("/api/cardapio/item/:id/vendas", exigeAuth, async (req, res) => {
   } catch (e) {
     console.error("GET item vendas:", e.message);
     res.status(500).json({ erro: "Falha ao checar vendas." });
+  }
+});
+
+// ============================================================
+// CONTROLE DE ESTOQUE (Plano Completo) — visão consolidada + trilha.
+// A lista sai do CACHE do cardápio (sem ida ao banco); só o extrato consulta.
+// ============================================================
+
+app.get("/api/estoque", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    await store.ensure(req.tenantDir);
+    const linhas = estoque.linhasDeEstoque(store.getCardapio(req.tenantDir));
+    const controlados = linhas.filter((l) => l.controlado);
+    res.json({
+      linhas,
+      contadores: {
+        controlados: controlados.length,
+        esgotados: controlados.filter((l) => l.esgotado).length,
+        baixos: controlados.filter((l) => l.baixo).length,
+      },
+    });
+  } catch (e) {
+    console.error("GET /api/estoque:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar o estoque." });
+  }
+});
+
+app.get("/api/estoque/movimentos", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const itemId = String(req.query.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  const variacaoId = req.query.variacaoId ? String(req.query.variacaoId) : null;
+  try {
+    const [movimentos, resumo] = await Promise.all([
+      estoqueDb.listar(req.tenantDir, { itemId, variacaoId, limite: req.query.limite, antes: req.query.antes || null }),
+      estoqueDb.resumo(req.tenantDir, { itemId, variacaoId, dias: 30 }),
+    ]);
+    res.json({ movimentos, resumo });
+  } catch (e) {
+    console.error("GET /api/estoque/movimentos:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar o histórico." });
   }
 });
 

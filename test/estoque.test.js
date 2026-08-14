@@ -275,3 +275,62 @@ test("aplicarAjuste: nada muda quando o delta é zero e o controle já estava li
   assert.equal(r.movimento, null);
   assert.equal(r.cardapio.categorias[0].itens[0].estoque, 3);
 });
+
+// ---- linhasDeEstoque (Task 9) ----
+const cardLinhas = { categorias: [
+  { nome: "Pratos", itens: [
+    // item com variações: 1 linha do pai + 1 linha por variação
+    { id: "a4", nome: "Marmitex", unidade: "un", variacoes: [
+      { id: "v1", nome: "P", estoque: 5, estoqueMinimo: 1 },
+      { id: "v2", nome: "G", estoque: 0, estoqueMinimo: 1 },
+    ] },
+    // item sem controle
+    { id: "a3", nome: "Refri", unidade: "un" },
+    // item arquivado: não deve aparecer
+    { id: "a9", nome: "Descontinuado", unidade: "un", estoque: 4, arquivado: true },
+    // item controlado, esgotado
+    { id: "a5", nome: "Picanha", unidade: "kg", estoque: 0, estoqueMinimo: 1 },
+    // item controlado, baixo
+    { id: "a6", nome: "Espeto", unidade: "un", estoque: 2, estoqueMinimo: 3 },
+  ] },
+] };
+
+test("linhasDeEstoque: item com variações gera a linha do pai mais uma por variação", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  const doMarmitex = linhas.filter((l) => l.itemId === "a4");
+  assert.equal(doMarmitex.length, 3); // pai + v1 + v2
+  const pai = doMarmitex.find((l) => l.variacaoId === null);
+  assert.equal(pai.nome, "Marmitex");
+  assert.equal(pai.categoria, "Pratos");
+  assert.equal(pai.temVariacoes, true);
+  const v1 = doMarmitex.find((l) => l.variacaoId === "v1");
+  assert.equal(v1.nome, "P");
+  assert.equal(v1.pai, "Marmitex");
+  assert.equal(v1.controlado, true);
+  assert.equal(v1.quantidade, 5);
+  const v2 = doMarmitex.find((l) => l.variacaoId === "v2");
+  assert.equal(v2.esgotado, true);
+});
+
+test("linhasDeEstoque: item não controlado entra com controlado: false", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  const refri = linhas.find((l) => l.itemId === "a3");
+  assert.ok(refri);
+  assert.equal(refri.controlado, false);
+  assert.equal(refri.quantidade, null);
+});
+
+test("linhasDeEstoque: item arquivado não aparece", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  assert.equal(linhas.some((l) => l.itemId === "a9"), false);
+});
+
+test("linhasDeEstoque: flags esgotado e baixo refletem o status do saldo", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  const picanha = linhas.find((l) => l.itemId === "a5");
+  assert.equal(picanha.esgotado, true);
+  assert.equal(picanha.baixo, false);
+  const espeto = linhas.find((l) => l.itemId === "a6");
+  assert.equal(espeto.esgotado, false);
+  assert.equal(espeto.baixo, true);
+});

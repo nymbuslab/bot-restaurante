@@ -307,9 +307,40 @@
     });
     return movimentos;
   }
+  // Uma linha por SALDO: o item e, quando houver, cada variação (que tem estoque
+  // próprio). Item sem controle entra com `controlado: false` para a tela poder
+  // oferecer "Controlar" sem obrigar a abrir o editor do produto. Item arquivado
+  // não entra (não é mais vendido, saldo dele não interessa ao painel).
+  function linhasDeEstoque(cardapio) {
+    const linhas = [];
+    ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+      ((c && c.itens) || []).forEach(function (it) {
+        if (!it || it.id == null || it.arquivado) return;
+        const temVar = Array.isArray(it.variacoes) && it.variacoes.length > 0;
+        const st = statusEstoque(it);
+        linhas.push({
+          itemId: String(it.id), variacaoId: null, nome: it.nome || "", categoria: (c && c.nome) || "",
+          controlado: st.controlado, quantidade: st.quantidade, minimo: st.minimo,
+          unidade: st.unidade, esgotado: st.esgotado, baixo: st.baixo, temVariacoes: !!temVar,
+        });
+        if (!temVar) return;
+        it.variacoes.forEach(function (v) {
+          if (!v || v.id == null) return;
+          const stv = statusEstoque(v);
+          linhas.push({
+            itemId: String(it.id), variacaoId: String(v.id),
+            nome: v.nome || "", categoria: (c && c.nome) || "", pai: it.nome || "",
+            controlado: stv.controlado, quantidade: stv.quantidade, minimo: stv.minimo,
+            unidade: stv.unidade, esgotado: stv.esgotado, baixo: stv.baixo,
+          });
+        });
+      });
+    });
+    return linhas;
+  }
   return {
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
-    acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste,
+    acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste, linhasDeEstoque: linhasDeEstoque,
   };
 });
