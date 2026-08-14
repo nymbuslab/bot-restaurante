@@ -115,4 +115,9 @@ async function limparAntigos(meses = 12) {
   }
 }
 
-module.exports = { registrarTx, listar, resumo, limparAntigos, empresaId, TIPOS };
+// Limpa o empresa_id cacheado de um slug (ex.: ao excluir o tenant).
+function esquecer(slug) {
+  delete idCache[slug];
+}
+
+module.exports = { registrarTx, listar, resumo, limparAntigos, empresaId, esquecer, TIPOS };

@@ -1,6 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const estoqueDb = require("../src/estoque-db");
+const db = require("../src/db");
 
 function fakeClient() {
   const calls = [];
@@ -41,4 +42,34 @@ test("registrarTx: movimento de quantidade zero é descartado", async () => {
 test("registrarTx: tipo desconhecido é recusado", async () => {
   const c = fakeClient();
   await assert.rejects(() => estoqueDb.registrarTx(c, "emp-uuid", MOV, { tipo: "chute" }), /tipo/i);
+});
+
+test("esquecer: limpa o cache de empresa_id para o slug", async () => {
+  const origQuery = db.query;
+  let queryCount = 0;
+  try {
+    db.query = async (sql, params) => {
+      if (sql.includes("SELECT id FROM empresas")) queryCount++;
+      return { rows: [{ id: "uuid-123" }], rowCount: 1 };
+    };
+    const slug = "test-slug-for-cache";
+    const dir = `/some/path/${slug}`;
+
+    // Primeira chamada deve consultar o banco
+    await estoqueDb.empresaId(dir);
+    assert.equal(queryCount, 1, "primeira chamada deve fazer query");
+
+    // Segunda chamada deve usar o cache (sem query)
+    await estoqueDb.empresaId(dir);
+    assert.equal(queryCount, 1, "segunda chamada deve usar cache");
+
+    // Limpar cache
+    estoqueDb.esquecer(slug);
+
+    // Terceira chamada deve consultar novamente (cache limpo)
+    await estoqueDb.empresaId(dir);
+    assert.equal(queryCount, 2, "terceira chamada após esquecer deve fazer query de novo");
+  } finally {
+    db.query = origQuery;
+  }
 });
