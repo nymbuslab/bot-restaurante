@@ -1806,6 +1806,60 @@ app.get("/api/estoque/movimentos", exigeAuth, async (req, res) => {
   }
 });
 
+// Lança um movimento manual (entrada, perda ou contagem) na tela de Controle
+// de estoque. Saldo e movimento são gravados juntos, na mesma transação, sob
+// o lock do tenant (ajustarEstoqueTx) — o cache só sincroniza após o COMMIT.
+app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  const tipo = String(b.tipo || "");
+  if (!["entrada", "perda", "contagem"].includes(tipo)) {
+    return res.status(400).json({ erro: "Movimento inválido." });
+  }
+  const itemId = String(b.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  const num = (v) => Math.max(0, parseFloat(String(v).replace(",", ".")) || 0);
+  if (tipo !== "contagem" && num(b.quantidade) <= 0) {
+    return res.status(400).json({ erro: "Informe uma quantidade maior que zero." });
+  }
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await store.ajustarEstoqueTx(client, req.tenantDir, {
+      itemId, variacaoId: b.variacaoId ? String(b.variacaoId) : null, tipo,
+      quantidade: num(b.quantidade), contado: num(b.contado),
+      obs: String(b.obs || "").slice(0, 200),
+    });
+    await client.query("COMMIT");
+    store.sincronizarCardapio(req.tenantDir, r.cardapio);
+    res.json({ ok: true, movimento: r.movimento, quantidade: r.movimento ? r.movimento.saldoDepois : null });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    res.status(400).json({ erro: e.message || "Não foi possível registrar o movimento." });
+  } finally {
+    client.release();
+  }
+});
+
+// Mínimo não mexe em saldo, então NÃO é movimento: grava direto no cardápio.
+app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  const itemId = String(b.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  const minimo = Math.max(0, parseFloat(String(b.minimo).replace(",", ".")) || 0);
+  try {
+    await store.ensure(req.tenantDir);
+    const atual = store.getCardapio(req.tenantDir);
+    const novo = estoque.definirMinimo(atual, itemId, b.variacaoId ? String(b.variacaoId) : null, minimo);
+    if (!novo) return res.status(404).json({ erro: "Produto não encontrado." });
+    await store.setCardapio(req.tenantDir, novo);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Não foi possível salvar o mínimo." });
+  }
+});
+
 // ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----
 
 const MIME_TO_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };

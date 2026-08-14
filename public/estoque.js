@@ -307,6 +307,33 @@
     });
     return movimentos;
   }
+  // Define o estoque mínimo de um item/variação. Devolve uma CÓPIA do cardápio,
+  // ou null se o id não existir. Não mexe no saldo (não é movimento).
+  function definirMinimo(cardapio, itemId, variacaoId, minimo) {
+    const alvo = String(itemId);
+    const min = Math.max(0, Number(minimo) || 0);
+    let achou = false;
+    const categorias = ((cardapio && cardapio.categorias) || []).map(function (c) {
+      return Object.assign({}, c, {
+        itens: ((c && c.itens) || []).map(function (it) {
+          if (!it || String(it.id) !== alvo) return it;
+          if (variacaoId == null) {
+            achou = true;
+            return Object.assign({}, it, { estoqueMinimo: min });
+          }
+          if (!Array.isArray(it.variacoes)) return it;
+          return Object.assign({}, it, {
+            variacoes: it.variacoes.map(function (v) {
+              if (!v || String(v.id) !== String(variacaoId)) return v;
+              achou = true;
+              return Object.assign({}, v, { estoqueMinimo: min });
+            }),
+          });
+        }),
+      });
+    });
+    return achou ? Object.assign({}, cardapio, { categorias: categorias }) : null;
+  }
   // Uma linha por SALDO: o item e, quando houver, cada variação (que tem estoque
   // próprio). Item sem controle entra com `controlado: false` para a tela poder
   // oferecer "Controlar" sem obrigar a abrir o editor do produto. Item arquivado
@@ -342,5 +369,6 @@
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
     acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste, linhasDeEstoque: linhasDeEstoque,
+    definirMinimo: definirMinimo,
   };
 });

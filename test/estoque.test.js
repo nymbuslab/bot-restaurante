@@ -334,3 +334,12 @@ test("linhasDeEstoque: flags esgotado e baixo refletem o status do saldo", () =>
   assert.equal(espeto.esgotado, false);
   assert.equal(espeto.baixo, true);
 });
+
+// ---- definirMinimo (Task 10) ----
+test("definirMinimo: grava no item e na variação, e devolve null para id inexistente", () => {
+  const c = cloneMov();
+  assert.equal(E.definirMinimo(c, "a1", null, 4).categorias[0].itens[0].estoqueMinimo, 4);
+  assert.equal(E.definirMinimo(c, "a4", "v1", 2).categorias[0].itens[3].variacoes[0].estoqueMinimo, 2);
+  assert.equal(E.definirMinimo(c, "zzz", null, 1), null);
+  assert.equal(c.categorias[0].itens[0].estoqueMinimo, 1); // não mutou
+});
