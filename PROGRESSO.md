@@ -14,32 +14,37 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-08-14 00:46**
+**Checkpoint salvo em 2026-08-14 09:11**
 
-Split de Produtos 3/4 (Controle de estoque) na branch `feat/controle-estoque`, executando o plano `docs/superpowers/plans/2026-08-13-controle-estoque.md` por subagentes. **6 das 19 tarefas concluídas**, cada uma revisada e commitada. Suíte em 263/263. Working tree limpo no commit `2ab9bac`.
+Split de Produtos 3/4 (Controle de estoque) na branch `feat/controle-estoque`, executando o plano [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md) por subagentes. **15 das 19 tarefas concluídas**, cada uma com teste antes do código, revisão por agente independente e commit próprio. Suíte em 297/297. Working tree limpo no commit `18201ac`.
 
-### Feito nesta sessão
+**O backend está inteiro. Falta a tela.**
 
-- Desenho fechado com o dono e commitado: [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md). Tela de estoque com histórico, no Plano Completo; tabela nova `estoque_movimentos` grava toda mudança de saldo na mesma transação que muda o número; o saldo segue no jsonb do cardápio.
-- Plano de implementação em 19 tarefas commitado.
-- **T1** migration `estoque_movimentos` **aplicada em produção** (RLS ligada, tabela vazia, conferida).
-- **T2/T3** funções puras em `public/estoque.js`: `calcularBaixa`, `calcularDevolucao`, `diffEstoque` e `_mapaSaldos`. `aplicarBaixa` virou casca, sem mudar comportamento.
-- **T4** `src/estoque-db.js`, único ponto que fala com a tabela, com `esquecer(slug)` ligado à exclusão de tenant em `src/empresas.js`.
-- **T5/T6** a venda passou a gravar movimento dentro da transação da baixa, nos quatro caminhos (cardápio web, PDV, balcão e mesa), com o pedido carimbado no movimento.
+### Feito até aqui
+
+- Desenho fechado com o dono e commitado: [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md), mais o plano de 19 tarefas.
+- **Tabela `estoque_movimentos` aplicada em produção** (RLS ligada, conferida). É a trilha de toda mudança de saldo; o saldo em si continua no jsonb do cardápio.
+- **Cálculo puro** em `public/estoque.js`: `calcularBaixa`, `calcularDevolucao`, `diffEstoque`, `aplicarAjuste`, `acharSaldo`, `definirMinimo` e `linhasDeEstoque`, todos testados.
+- **`src/estoque-db.js`**, único ponto que fala com a tabela, com invalidação de cache ligada à exclusão de tenant.
+- **A venda grava movimento** dentro da transação da baixa, nos quatro caminhos que vendem (cardápio web, PDV, balcão e mesa), com o pedido carimbado por id.
+- **Devolução e ajuste manual** (`devolverEstoqueTx`, `ajustarEstoqueTx`), e o editor do produto passou a virar movimento de `ajuste` por comparação de estados.
+- **Quatro rotas** (duas de leitura, duas de escrita), todas no Plano Completo pelo gate que PDV e Mesas já usam.
+- **O cancelamento devolve ao estoque nos cinco caminhos** que existiam sem devolver: pedido inteiro, item do pedido, mesa, item da comanda e pedido já pago. Cada um com a caixinha "devolver ao estoque" marcada por padrão, inclusive no cancelamento de mesa com consumo.
+- **Retenção de 12 meses** do histórico, no mesmo formato das outras quatro faxinas diárias.
 
 ### Em meio de edição
 
-- Nada. Tudo commitado e revisado; a próxima tarefa ainda não foi iniciada.
+- Nada. Tudo commitado e revisado.
 
 ### Próximo passo
 
-- Retomar na **T7** (`devolverEstoqueTx` e `ajustarEstoqueTx` em `src/store.js`), continuando o plano pela skill `subagent-driven-development`. O ledger da execução está em `.superpowers/sdd/2026-08-13-controle-estoque/progress.md` e diz exatamente onde parou.
+- Retomar na **T16**, que é o **portão do dono**: gerar o protótipo da tela no Stitch e mostrar para aprovação antes de escrever qualquer código de interface. Depois seguem T17 (lista e filtros), T18 (gaveta com extrato e ações) e T19 (documentação e fechamento). O ledger da execução, com todas as decisões e seus motivos, está em `.superpowers/sdd/2026-08-13-controle-estoque/progress.md`.
 
 ### Decisões pendentes
 
-- **Aviso para quem retomar:** o texto das T7 e T8 no plano está desatualizado num ponto. Uma decisão tomada na T6 mudou o contrato de duas funções depois que o plano foi escrito: `registrarTx` devolve os ids inseridos (não a contagem) e `baixarEstoqueTx` devolve `{ cardapio, movimentoIds }` (não só o cardápio). O motivo foi fechar um furo de auditoria: o carimbo do pedido alcançava qualquer movimento órfão do restaurante, e agora carimba por id.
-- **T16 é um portão:** o protótipo da tela no Stitch precisa da aprovação do dono antes de qualquer código de interface.
-- A migration já está em produção, mas o código que escreve na tabela ainda **não** foi deployado. Enquanto a branch não subir, produção segue no comportamento antigo.
+- **O plano está desatualizado em dois pontos**, por decisões tomadas durante a execução: `registrarTx` devolve os ids inseridos (não a contagem) e `baixarEstoqueTx` devolve `{ cardapio, movimentoIds }` (não só o cardápio). Foi para fechar um furo de auditoria: o carimbo do pedido alcançava qualquer movimento órfão do restaurante e agora carimba por id.
+- **Nada da interface foi visto rodando no navegador.** A caixinha de devolução e as quatro rotas foram verificadas por leitura e por teste, não em uso. A validação visual precisa acontecer junto com a tela.
+- A migration já está em produção, mas **o código ainda não foi deployado**. Enquanto a branch não subir, produção segue no comportamento antigo.
 
 ## 📋 Próximos Passos
 
