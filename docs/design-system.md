@@ -26,7 +26,8 @@ Base: 14px / line-height 1.5.
 | `--secondary-hover` | `#5BC2D8` | hover do ciano (texto escuro em cima) |
 | `--secondary-subtle` | `rgba(115,210,230,0.14)` | fundo ciano suave |
 | `--success` | `#22C55E` | verde — status aberto, tag retirada |
-| `--error` | `#EF4444` | vermelho — status fechado, erros |
+| `--error` | `#EF4444` | vermelho — PREENCHIMENTO e ícone grande: status fechado, erros |
+| `--error-fg` | `#F87171` | vermelho CLARO — TEXTO vermelho pequeno sobre fundo escuro (pill/selo) |
 | `--warning` | `#EAB308` | amarelo — observação no pedido |
 | `--info` | `#3B82F6` | azul — tag entrega |
 
@@ -36,6 +37,10 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 > **texto/ícone sobre fundo escuro**, usar sempre `--accent-fg` (#A589EA) — o roxo cheio
 > perde contraste no escuro. No `style.css`, os 3 pontos que usam `--accent` como cor de
 > texto passam a `--accent-fg`: `nav button.ativo`, `.btn-ver-pedido` e a pill do simulador.
+>
+> O vermelho tem a **mesma regra**: `--error` cheio em texto de 11px sobre `--error-subtle`
+> fica em **4,0:1**, abaixo do mínimo AA (4,5:1). Pill/selo vermelho usa `--error-fg`
+> (**5,4:1**) — hoje em `.selo-cancelado` (Pedidos) e `.selo-esgotado` (Controle de estoque).
 >
 > **Tags de status são semânticas, nunca de marca:** Entrega = `--info` (azul),
 > Retirada = `--success` (verde). Sem laranja em lugar nenhum.
@@ -65,6 +70,7 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 | `linha` | flex row para campos lado a lado |
 | `barra-salvar` | barra sticky inferior para ações de salvar |
 | `tag` | pill de status inline (`tag-entrega` = azul/info · `tag-retirada` = verde/success) |
+| `selo-pag` | pill semântica ÚNICA do painel + modificador de cor (`selo-pago`, `selo-areceber`, `selo-cancelado`, `selo-esgotado`, `selo-baixo`). Selo novo = modificador novo aqui, **não** uma pill nova por tela |
 | `badge-atendimento` | pill do header (`.aberto` verde / `.fechado` vermelho) |
 | `nav-badge` | contador roxo na aba do nav |
 | `bolinha` | dot de status (`.on` verde / `.off` vermelho / `.wait` amarelo) |

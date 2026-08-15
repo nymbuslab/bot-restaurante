@@ -831,8 +831,8 @@ function estLinhaHtml(l, qtdVariacoes, ultimaSub) {
   if (!l.controlado && !maeSemSaldo) classes.push("est-semcontrole");
 
   let selo = "";
-  if (l.esgotado) selo = '<span class="est-selo est-selo-esgotado">Esgotado</span>';
-  else if (l.baixo) selo = '<span class="est-selo est-selo-baixo">Baixo</span>';
+  if (l.esgotado) selo = '<span class="selo-pag selo-esgotado">Esgotado</span>';
+  else if (l.baixo) selo = '<span class="selo-pag selo-baixo">Baixo</span>';
 
   let saldo;
   if (maeSemSaldo) {

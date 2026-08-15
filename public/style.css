@@ -4992,11 +4992,17 @@ html.embed, html.embed body { background: var(--bg-primary); }
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
 .tag svg, .cfg-frete-lock svg, .np-som-pill svg { vertical-align: -2px; }
 
-/* Selo de status de pagamento na lista de Pedidos (Plano Completo) */
+/* Pill de status. Nasceu no pagamento da lista de Pedidos e é a pill ÚNICA do
+   painel: quem precisar de selo semântico usa `.selo-pag` + um modificador de
+   cor daqui, em vez de criar outra (o Controle de estoque usa esgotado/baixo). */
 .selo-pag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; vertical-align: 1px; white-space: nowrap; }
 .selo-pago { background: var(--success-subtle); color: var(--success); }
 .selo-areceber { background: var(--warning-subtle); color: var(--warning); }
-.selo-cancelado { background: var(--error-subtle); color: var(--error); }
+/* Vermelho CLARO nos dois selos vermelhos: em 11px o --error cheio fica em
+   4,0:1 sobre o fundo suave, abaixo do mínimo AA de 4,5:1 (ver --error-fg). */
+.selo-cancelado { background: var(--error-subtle); color: var(--error-fg); }
+.selo-esgotado { background: var(--error-subtle); color: var(--error-fg); }
+.selo-baixo { background: var(--warning-subtle); color: var(--warning); }
 
 /* Botão de cancelar item no modal de pedido */
 .ped-item { align-items: center; }
@@ -6260,17 +6266,8 @@ table + .secundario.mini,
 .est-semcontrole .est-cat { color: var(--text-disabled); }
 .est-sem-marca { font-size: 13px; color: var(--text-disabled); }
 
-.est-selo {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-}
-/* Texto pequeno sobre fundo suave: usa o vermelho CLARO (ver --error-fg). */
-.est-selo-esgotado { background: var(--error-subtle); color: var(--error-fg); }
-.est-selo-baixo { background: var(--warning-subtle); color: var(--warning); }
+/* Os selos Esgotado e Baixo usam a pill única do painel (`.selo-pag`, na seção
+   de Pedidos), com os modificadores .selo-esgotado / .selo-baixo. */
 
 .est-saldo { text-align: right; font-variant-numeric: tabular-nums; }
 .est-qtd { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
