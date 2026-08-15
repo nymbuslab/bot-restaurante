@@ -130,6 +130,12 @@ restaurante.
     > **implementado** a pedido do dono como controle **anti-fraude** (CHANGELOG 0.60.0): cancelar um
     > pedido pago deduz no caixa **mantendo o rastro** (movimento `cancelamento`, não apaga o recebimento),
     > aparece no extrato e no relatório de fechamento. Estoque, fiado e fiscal seguem fora.
+    > **Atualização (2026-08-14):** o **controle de estoque** também saiu do "fora de escopo". A frase
+    > acima nasceu no contexto do caixa (o caixa não controla estoque) e passou a contradizer o
+    > produto: estoque por item existe desde a v0.20, e a etapa **3/4 do split de Produtos** dá a
+    > visão consolidada, o histórico de movimentação e a devolução no cancelamento. Ver
+    > [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md).
+    > **Fiscal (NFC-e/SAT) e fiado seguem fora**, e o fiado foi inclusive removido do produto.
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
     Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
 - [ ] App mobile para o atendente receber pedidos
@@ -160,7 +166,10 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 - [ ] **Split de Produtos em 4 cadastros** (M, em andamento) — "Produtos" deixa de ser uma tela só e
   vira os cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅ (v0.89.0) e
   **2/4 Complementos** ✅ (biblioteca de grupos reutilizáveis, v0.90.0/0.91.0) entregues;
-  **3/4 Controle de estoque** e **4/4 Insumos** em aberto (detalhe e escopo no `PROGRESSO.md`).
+  **3/4 Controle de estoque** em construção (desenho e plano em
+  [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md)
+  e [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md);
+  andamento no `PROGRESSO.md`) e **4/4 Insumos** em aberto.
   O **`id` estável de opção**, criado na 2/4, é a âncora das duas telas restantes.
 - [ ] **(decisão pendente) Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca
   é atualizada; faltariam transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
