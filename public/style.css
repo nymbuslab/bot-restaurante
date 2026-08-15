@@ -6206,8 +6206,8 @@ table + .secundario.mini,
 .est-metricas {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 .est-metrica {
   text-align: left;
@@ -6215,7 +6215,16 @@ table + .secundario.mini,
   font: inherit;
   color: inherit;
 }
-.est-metrica:hover { border-color: var(--accent); }
+/* Hover de CARD DE ESCOLHA (borda roxa, sem salto), como .co-plano-opt e
+   .cfg-frete-modo. Cancela o translateY do .metrica-card, que é o hover do card
+   passivo do Dashboard: aqui o card é um filtro, não um número para olhar. */
+.est-metrica:hover {
+  background: var(--bg-surface);      /* mata o `button:hover` global (roxo cheio) */
+  border-color: var(--accent);
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+.est-metrica[aria-pressed="true"]:hover { background: var(--accent-subtle); }
 .est-metrica[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-subtle);
@@ -6232,8 +6241,8 @@ table + .secundario.mini,
   display: grid;
   grid-template-columns: minmax(0, 1fr) 132px auto;
   align-items: center;
-  gap: 16px;
-  padding: 14px 18px;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
   transition: background 0.15s ease;
 }
@@ -6242,7 +6251,7 @@ table + .secundario.mini,
 .est-nome {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   font-size: 15px;
   font-weight: 600;
@@ -6250,11 +6259,11 @@ table + .secundario.mini,
 .est-cat { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
 /* Variação: recuo com a barra vertical marcando que o saldo é do tamanho, não do produto. */
-.est-sub { position: relative; padding-left: 46px; }
+.est-sub { position: relative; padding-left: calc(var(--space-6) * 2); }
 .est-sub::before {
   content: "";
   position: absolute;
-  left: 26px; top: 0; bottom: 0;
+  left: var(--space-6); top: 0; bottom: 0;
   width: 2px;
   background: var(--border);
 }
@@ -6276,14 +6285,17 @@ table + .secundario.mini,
 .est-variacoes {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: 12px;
   color: var(--text-secondary);
   justify-self: end;
 }
 
-.est-acoes { display: flex; gap: 8px; justify-content: flex-end; }
-.est-acao { display: inline-flex; align-items: center; gap: 6px; }
+.est-acoes { display: flex; gap: var(--space-2); justify-content: flex-end; }
+.est-acao { display: inline-flex; align-items: center; gap: var(--space-2); }
+/* Hover de AÇÃO DE LINHA, igual ao .ped-acao-btn da lista de Pedidos: borda
+   roxa clara em vez do cinza do .secundario genérico. */
+button.est-acao:hover { border-color: var(--accent-fg); }
 
 /* Carregando: esqueleto no lugar das linhas, sem pulo de layout. */
 .est-esqueleto { display: flex; flex-direction: column; }
@@ -6302,20 +6314,30 @@ table + .secundario.mini,
 @media (prefers-reduced-motion: reduce) {
   .est-esqueleto span { animation: none; }
 }
-.est-erro h3 { margin-bottom: 4px; }
+.est-erro h3 { margin-bottom: var(--space-1); }
 
-/* No celular as três ações saem da linha e vão para a gaveta do produto. */
-@media (max-width: 720px) {
+/* Tablet (1024px): as três ações saem da linha e vão para a gaveta do produto.
+   Abaixo disso o menu lateral ainda ocupa 240px, e nome + quantidade + três
+   botões passam da largura, empurrando a página para o lado. */
+@media (max-width: 1024px) {
+  .est-linha {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
+  }
+  .est-acoes { display: none; }
+}
+
+/* Mobile (640px): compacta o topo, que é o que interessa na tela pequena. */
+@media (max-width: 640px) {
   /* minmax(0,1fr) para as colunas poderem encolher abaixo do conteúdo: com 1fr
      puro o terceiro card era empurrado para fora da tela em 390px. */
-  .est-metricas { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .est-metrica { padding: 12px 10px; }
+  .est-metricas { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .est-metrica { padding: var(--space-3); }
   .est-metrica .metrica-valor { font-size: 24px; }
   .est-metrica .metrica-label { font-size: 10px; letter-spacing: 0.3px; }
   .est-metrica .metrica-ico { display: none; }        /* espaço todo para o rótulo */
   #estFiltros { flex-wrap: wrap; }                    /* os 4 chips quebram em 2 linhas */
-  .est-linha { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 13px 14px; }
-  .est-acoes { display: none; }
-  .est-sub { padding-left: 30px; }
-  .est-sub::before { left: 14px; }
+  .est-linha { padding: var(--space-3) var(--space-4); }
+  .est-sub { padding-left: var(--space-8); }
+  .est-sub::before { left: var(--space-3); }
 }
