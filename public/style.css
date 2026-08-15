@@ -32,6 +32,12 @@
      --accent-fg cumpre para o roxo: o --error cheio dá 4,0:1 em texto pequeno
      sobre o fundo vermelho suave, abaixo do mínimo AA (4,5:1). Este dá 5,4:1. */
   --error-fg: #F87171;
+  /* Fonte de máquina (código, slug, chave, número técnico). Era declarada à mão
+     em cada lugar, com 5 pilhas diferentes, então a mesma tela mudava de cara
+     conforme o computador do cliente. Exceção proposital: a prévia do cupom
+     usa "Courier New" para espelhar a métrica da impressora térmica (48
+     colunas em 72mm), e não deve usar este token. */
+  --fonte-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace;
   --warning: #EAB308;
   --warning-subtle: rgba(234,179,8,0.12);
   --info: #3B82F6;
@@ -78,6 +84,34 @@ html {
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+/* Números que o dono lê EM COLUNA (valor, total, quantidade) usam numerais
+   tabulares. Em Plus Jakarta Sans o "1" tem quase metade da largura do "0"
+   (medido em 20px: "111" = 22,3px, "000" = 43,9px), então sem isto a coluna de
+   valores dança a cada linha. Vale no painel de operação; a landing (.lp-*)
+   fica com o padrão, que é texto de leitura, não coluna de conferência.
+   Número novo em tela = acrescentar a classe AQUI, não repetir a propriedade. */
+.metrica-valor, .metrica-num,
+.dash-td-numero, .dash-td-total, .dash-rank-qtd, .dash-whats-num, .dash-top-val,
+.dash-visao-linha strong,
+.caixa-tab-valor, .caixa-total, .col-total,
+.cx-box-valor, .cx-total, .cx-num, .cx-td-num,
+.ped-total, .ped-num, .ped-item-preco, .ped-item-qtd,
+.ped-resumo-total, .ped-resumo-valor,
+.pedido-card-total, .pedido-card-num,
+.pdv-linha-preco, .pdv-m-preco, .pdv-m-opt-preco, .pdv-op-preco,
+.pdv-tile-preco, .pdv-tot-total, .pdv-desc-valor, .pdv-ent-num, .pdv-qtd-input,
+.pdv-tot-linha span, .pdv-fab strong,
+.mesa-cart-linha-preco, .mesa-resumo-total, .mesa-rodada-item-preco,
+.mesa-rodada-item-qtd, .mesa-card-num,
+.np-item-preco, .np-item-qtd, .np-num, .np-total, .np-total-valor, .np-info-valor,
+.fatura-valor, .assin-col-valor, .mon-valor,
+.am-t-valor, .am-hero-valor,
+.il-num, .il-preco, .il-un-preco,
+.grp-op-preco, .opc-preco, .fc-total-linha,
+.est-saldo {
+  font-variant-numeric: tabular-nums;
 }
 
 body {
@@ -476,7 +510,7 @@ h3 {
   color: var(--text-primary);
 }
 .faq-code {
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--fonte-mono);
   font-size: 12.5px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
@@ -486,7 +520,7 @@ h3 {
 }
 .faq-code-bloco {
   display: block;
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--fonte-mono);
   font-size: 12px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
@@ -1689,7 +1723,7 @@ button:disabled {
   color: var(--text-secondary);
 }
 .cfg-vars code {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-size: 11px;
   background: var(--bg-elevated);
   padding: 1px 5px;
@@ -2674,7 +2708,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 .sim-ctx-linha:last-child { margin-bottom: 0; }
 .sim-ctx-val {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-weight: 700;
   color: var(--accent-fg);
   word-break: break-word;
@@ -2689,7 +2723,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   color: var(--text-secondary);
 }
 .sim-ctx-nota code {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-size: 11px;
   background: var(--bg-elevated);
   padding: 1px 5px;
@@ -3676,7 +3710,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 
 /* Slug em código */
 .am-slug, .am-slug-alvo {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-size: 12px;
   background: var(--bg-elevated);
   color: var(--accent-fg);
@@ -4826,7 +4860,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
    Isso impede a quebra de linha dos separadores e do alinhamento rótulo→valor. */
 #area-impressao { display: none; }
 .cupom-print {
-  font-family: "Courier New", monospace;
+  font-family: "Courier New", monospace;   /* exceção ao --fonte-mono: a métrica do papel */
   font-size: 2.5mm;
   line-height: 1.3;
   white-space: pre-wrap;
@@ -4863,7 +4897,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-resumo { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
 .caixa-linha { display: flex; justify-content: space-between; padding: 4px 0; }
 .caixa-linha.caixa-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; }
-.caixa-tab-valor { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.caixa-tab-valor { white-space: nowrap; }   /* tabular-nums vem da regra única do topo */
 .caixa-tab-neg { color: var(--error); }
 .caixa-tab-acao { text-align: right; width: 1%; white-space: nowrap; }
 
@@ -5038,6 +5072,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .impressao-via { flex: 0 1 auto; min-width: 0; }
 .impressao-via-rotulo { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
 .cupom-preview {
+  /* exceção ao --fonte-mono, mesmo motivo do .cupom-print: espelha o papel */
   font-family: "Courier New", monospace; font-size: 10px; line-height: 1.35;
   white-space: pre-wrap; width: 49ch; box-sizing: content-box; max-width: 100%; margin: 0;
   max-height: 320px; overflow: auto;
@@ -5589,7 +5624,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .dash-whats-num {
   margin: 8px 0 0;
   font-size: 12px;
-  font-family: monospace;
+  font-family: var(--fonte-mono);
   color: var(--text-secondary);
 }
 .dash-acoes .card {
@@ -6278,7 +6313,7 @@ table + .secundario.mini,
 /* Os selos Esgotado e Baixo usam a pill única do painel (`.selo-pag`, na seção
    de Pedidos), com os modificadores .selo-esgotado / .selo-baixo. */
 
-.est-saldo { text-align: right; font-variant-numeric: tabular-nums; }
+.est-saldo { text-align: right; }   /* tabular-nums vem da regra única do topo */
 .est-qtd { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
 .est-un { font-size: 13px; color: var(--text-secondary); margin-left: 3px; }
 .est-min { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }

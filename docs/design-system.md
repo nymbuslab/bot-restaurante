@@ -89,6 +89,24 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 - `.sub` — 13 px, cor secondary (subtítulos)
 - Labels de campo — 11 px, 700, uppercase, tracking 0.5px
 
+### Numerais tabulares (obrigatório em número de coluna)
+
+Em Plus Jakarta Sans o `1` tem quase **metade** da largura do `0` (medido em 20px:
+`111` = 22,3px, `000` = 43,9px). Sem numeral tabular, a coluna de valores dança a cada
+linha. Existe **uma regra única** no topo do `style.css` com a lista de classes que
+recebem `font-variant-numeric: tabular-nums` (valor, total, preço, quantidade do painel).
+
+> **Número novo em tela: acrescente a classe NAQUELA regra**, nunca repita a propriedade
+> na classe do componente. A landing (`.lp-*`) fica de fora de propósito: lá o número é
+> texto de leitura, não coluna de conferência.
+
+### Fonte monoespaçada
+
+Token único **`--fonte-mono`** (código, slug, chave, número técnico). Antes cada lugar
+declarava a sua pilha, e havia 5 diferentes no arquivo, então a mesma tela mudava de cara
+conforme o computador do cliente. **Exceção proposital:** `.cupom-print` e `.cupom-preview`
+seguem em `"Courier New"` para espelhar a métrica do papel térmico (48 colunas em 72mm).
+
 ## Regras ao criar nova UI
 
 - Sempre usar as variáveis CSS — nunca valores hexadecimais fixos no HTML/JS inline.
