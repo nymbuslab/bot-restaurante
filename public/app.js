@@ -712,6 +712,200 @@ function abrirGrupoDaAba(btn) {
   }
 }
 
+// ============================================================
+// CONTROLE DE ESTOQUE (Cadastros → Produtos) — Plano Completo
+// A lista sai de GET /api/estoque: uma linha por SALDO (o produto e, quando ele
+// tem variações, cada variação com estoque próprio). O gate é decidido pela
+// RESPOSTA da API (403), como no caixa, e não pelo `planoAtual` — que pode ainda
+// não ter carregado na navegação inicial.
+// ============================================================
+let estoqueLinhas = [];
+let estFiltro = "controlados";
+let estTermoBusca = "";
+
+const EST_ICO = {
+  entrada: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  perda: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  contagem: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>',
+  controlar: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+  variacoes: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 21 7l-9 5-9-5 9-5z"/><polyline points="3 12 12 17 21 12"/><polyline points="3 17 12 22 21 17"/></svg>',
+};
+
+// Chave do saldo: produto sozinho termina em "::"; variação leva o id dela.
+function estChave(l) { return String(l.itemId) + "::" + (l.variacaoId == null ? "" : String(l.variacaoId)); }
+
+async function carregarEstoque() {
+  $("estoqueLock").hidden = true;
+  $("estoqueConteudo").hidden = false;
+  const cont = $("estoque-lista");
+  if (cont) cont.innerHTML = '<div class="est-esqueleto"><span></span><span></span><span></span><span></span></div>';
+  const r = await api("GET", "/api/estoque");
+  if (!r) return;                                             // 401 já redirecionou
+  if (r.status === 403) {                                     // sem Plano Completo
+    $("estoqueConteudo").hidden = true;
+    $("estoqueLock").hidden = false;
+    return;
+  }
+  if (!r.ok) {
+    if (cont) cont.innerHTML =
+      '<div class="estado-vazio est-erro">' +
+        '<h3>Não deu para carregar o estoque</h3>' +
+        '<p class="sub">A conexão falhou no meio do caminho. Verifique a internet e tente de novo.</p>' +
+        '<button type="button" class="secundario" id="btnEstTentarDeNovo">Tentar de novo</button>' +
+      '</div>';
+    const btn = $("btnEstTentarDeNovo");
+    if (btn) btn.addEventListener("click", carregarEstoque);
+    return;
+  }
+  const dados = await r.json();
+  estoqueLinhas = Array.isArray(dados.linhas) ? dados.linhas : [];
+  const c = dados.contadores || {};
+  $("estContEsgotados").textContent = c.esgotados == null ? "0" : String(c.esgotados);
+  $("estContBaixos").textContent = c.baixos == null ? "0" : String(c.baixos);
+  $("estContControlados").textContent = c.controlados == null ? "0" : String(c.controlados);
+  renderEstoque();
+}
+
+function renderEstoque() {
+  const cont = $("estoque-lista");
+  if (!cont) return;
+  if (!estoqueLinhas.length) {
+    cont.innerHTML =
+      '<div class="estado-vazio">' +
+        '<h3>Seu cardápio ainda está vazio</h3>' +
+        '<p class="sub">Cadastre os produtos primeiro. Depois você escolhe quais quer controlar.</p>' +
+        '<button type="button" class="secundario" id="btnEstIrCardapio">Ir para o Cardápio</button>' +
+      '</div>';
+    const b = $("btnEstIrCardapio");
+    if (b) b.addEventListener("click", () => {
+      const nav = document.querySelector("nav button[data-aba='cardapio']");
+      if (nav) nav.click();
+    });
+    return;
+  }
+
+  const busca = estTermoBusca.trim().toLowerCase();
+  const passa = (l) => {
+    if (estFiltro === "controlados" && !l.controlado) return false;
+    if (estFiltro === "esgotados" && !l.esgotado) return false;
+    if (estFiltro === "baixos" && !l.baixo) return false;
+    if (!busca) return true;
+    return ((l.nome || "") + " " + (l.pai || "") + " " + (l.categoria || "")).toLowerCase().indexOf(busca) >= 0;
+  };
+
+  // A sub-linha não pode ficar órfã: se a variação passou, o produto dela entra
+  // junto como contexto, mesmo que ele próprio não passe no filtro.
+  const manter = new Set();
+  estoqueLinhas.forEach((l) => { if (passa(l)) manter.add(estChave(l)); });
+  estoqueLinhas.forEach((l) => {
+    if (l.variacaoId != null && manter.has(estChave(l))) manter.add(String(l.itemId) + "::");
+  });
+  const lista = estoqueLinhas.filter((l) => manter.has(estChave(l)));
+
+  if (!lista.length) {
+    cont.innerHTML = '<p class="dash-vazio">Nenhum produto com esse filtro. Limpe a busca ou volte para "Todos".</p>';
+    return;
+  }
+
+  const varPorItem = {};
+  estoqueLinhas.forEach((l) => {
+    if (l.variacaoId == null) return;
+    varPorItem[l.itemId] = (varPorItem[l.itemId] || 0) + 1;
+  });
+
+  cont.innerHTML = lista.map((l, i) => {
+    const proxima = lista[i + 1];
+    const ultimaSub = l.variacaoId != null && (!proxima || proxima.variacaoId == null || String(proxima.itemId) !== String(l.itemId));
+    return estLinhaHtml(l, varPorItem[l.itemId] || 0, ultimaSub);
+  }).join("");
+}
+
+// Uma linha da lista. Produto com variações não tem número próprio quando o
+// controle está nas variações: no lugar do saldo entra quantos tamanhos ele tem.
+function estLinhaHtml(l, qtdVariacoes, ultimaSub) {
+  const ehSub = l.variacaoId != null;
+  const maeSemSaldo = !ehSub && l.temVariacoes && !l.controlado;
+  const classes = ["est-linha"];
+  if (ehSub) classes.push("est-sub");
+  if (ultimaSub) classes.push("est-sub-ultima");
+  if (!l.controlado && !maeSemSaldo) classes.push("est-semcontrole");
+
+  let selo = "";
+  if (l.esgotado) selo = '<span class="est-selo est-selo-esgotado">Esgotado</span>';
+  else if (l.baixo) selo = '<span class="est-selo est-selo-baixo">Baixo</span>';
+
+  let saldo;
+  if (maeSemSaldo) {
+    saldo = '<div class="est-variacoes">' + EST_ICO.variacoes +
+      qtdVariacoes + (qtdVariacoes === 1 ? " tamanho" : " tamanhos") + '</div>';
+  } else if (l.controlado) {
+    saldo =
+      '<div class="est-saldo">' +
+        '<span class="est-qtd">' + escapar(Estoque.formatarQtd(l.quantidade, l.unidade)) + '</span>' +
+        '<span class="est-un">' + escapar(l.unidade) + '</span>' +
+        '<div class="est-min">' + (l.minimo > 0
+          ? "mín. " + escapar(Estoque.formatarQtd(l.minimo, l.unidade)) + (l.unidade === "kg" ? " kg" : "")
+          : "sem mínimo") + '</div>' +
+      '</div>';
+  } else {
+    saldo = '<div class="est-saldo"><span class="est-sem-marca">Sem controle</span></div>';
+  }
+
+  let acoes = "";
+  if (maeSemSaldo) acoes = "";
+  else if (l.controlado) {
+    acoes =
+      '<button type="button" class="secundario mini est-acao" data-est-acao="entrada">' + EST_ICO.entrada + 'Entrada</button>' +
+      '<button type="button" class="secundario mini est-acao" data-est-acao="perda">' + EST_ICO.perda + 'Perda</button>' +
+      '<button type="button" class="secundario mini est-acao" data-est-acao="contagem">' + EST_ICO.contagem + 'Contagem</button>';
+  } else {
+    acoes = '<button type="button" class="secundario mini est-acao" data-est-acao="controlar">' + EST_ICO.controlar + 'Controlar</button>';
+  }
+
+  return (
+    '<div class="' + classes.join(" ") + '" data-est-chave="' + escapar(estChave(l)) + '">' +
+      '<div class="est-produto">' +
+        '<div class="est-nome">' + escapar(l.nome || "Sem nome") + selo + '</div>' +
+        (ehSub ? "" : '<div class="est-cat">' + escapar(l.categoria || "Sem categoria") + '</div>') +
+      '</div>' +
+      saldo +
+      '<div class="est-acoes">' + acoes + '</div>' +
+    '</div>'
+  );
+}
+
+if ($("estBusca")) $("estBusca").addEventListener("input", (e) => {
+  estTermoBusca = e.target.value || "";
+  renderEstoque();
+});
+
+// Os chips e os três contadores mexem no MESMO filtro: clicar em "Esgotados" no
+// card de cima é o mesmo que clicar no chip.
+function estAplicarFiltro(filtro) {
+  estFiltro = filtro;
+  document.querySelectorAll("#estFiltros .filtro-chip").forEach((c) => {
+    c.classList.toggle("ativo", c.dataset.estFiltro === filtro);
+  });
+  document.querySelectorAll("[data-est-contador]").forEach((m) => {
+    m.setAttribute("aria-pressed", m.dataset.estContador === filtro ? "true" : "false");
+  });
+  renderEstoque();
+}
+
+if ($("estFiltros")) $("estFiltros").addEventListener("click", (e) => {
+  const chip = e.target.closest(".filtro-chip");
+  if (chip) estAplicarFiltro(chip.dataset.estFiltro);
+});
+
+document.querySelectorAll("[data-est-contador]").forEach((card) => {
+  card.addEventListener("click", () => estAplicarFiltro(card.dataset.estContador));
+});
+
+if ($("btnVerPlanosEstoque")) $("btnVerPlanosEstoque").addEventListener("click", () => {
+  const b = document.querySelector("nav button[data-aba='assinatura']");
+  if (b) b.click();
+});
+
 // Só os botões de aba (com data-aba) trocam de tela; os de grupo têm handler próprio.
 document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -736,6 +930,7 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "mesas") carregarMesas();
     if (btn.dataset.aba === "categorias") carregarCategorias();
     if (btn.dataset.aba === "complementos") carregarComplementos();
+    if (btn.dataset.aba === "estoque") carregarEstoque();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });

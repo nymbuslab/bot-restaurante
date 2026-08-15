@@ -70,10 +70,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/><circle cx="12" cy="12" r="10"/></svg>
             <span>Complementos</span>
           </button>
-          <button type="button" class="nav-breve" disabled aria-disabled="true">
+          <button data-aba="estoque">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
             <span>Controle de estoque</span>
-            <span class="nav-tag">Em breve</span>
           </button>
           <button type="button" class="nav-breve" disabled aria-disabled="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
@@ -1324,6 +1323,64 @@
       </div>
       <div class="card">
         <div id="grupos-lista"></div>
+      </div>
+    </section>
+
+    <!-- CONTROLE DE ESTOQUE (Cadastros → Produtos → Controle de estoque) — Plano Completo.
+         Uma linha por SALDO: o produto e, quando houver, cada variação recuada sob ele. -->
+    <section class="aba" id="aba-estoque">
+      <div class="cardapio-topo">
+        <div class="cardapio-topo-texto">
+          <h2 class="cardapio-titulo">Controle de estoque</h2>
+          <p class="sub">Veja o que está acabando e registre entrada, perda e contagem sem abrir produto por produto.</p>
+        </div>
+      </div>
+
+      <div class="caixa-lock" id="estoqueLock" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <h3>Controle de estoque é do Plano Completo</h3>
+        <p class="sub">Saiba o que está acabando antes do cliente pedir, com o histórico de cada entrada, perda e venda.</p>
+        <button type="button" class="secundario" id="btnVerPlanosEstoque">Ver planos</button>
+      </div>
+
+      <div id="estoqueConteudo" hidden>
+        <div class="est-metricas">
+          <button type="button" class="metrica-card est-metrica esgotado" data-est-contador="esgotados" aria-pressed="false">
+            <div class="metrica-topo">
+              <span class="metrica-label">Esgotados</span>
+              <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+            </div>
+            <span class="metrica-valor" id="estContEsgotados">—</span>
+          </button>
+          <button type="button" class="metrica-card est-metrica baixo" data-est-contador="baixos" aria-pressed="false">
+            <div class="metrica-topo">
+              <span class="metrica-label">Abaixo do mínimo</span>
+              <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></span>
+            </div>
+            <span class="metrica-valor" id="estContBaixos">—</span>
+          </button>
+          <button type="button" class="metrica-card est-metrica" data-est-contador="controlados" aria-pressed="false">
+            <div class="metrica-topo">
+              <span class="metrica-label">Controlados</span>
+              <span class="metrica-ico"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+            </div>
+            <span class="metrica-valor" id="estContControlados">—</span>
+          </button>
+        </div>
+
+        <div class="pedidos-filtros">
+          <input type="search" id="estBusca" class="grp-busca" placeholder="Buscar produto" aria-label="Buscar produto" />
+          <div class="filtro-chips" id="estFiltros" role="group" aria-label="Filtrar o estoque">
+            <button type="button" class="filtro-chip ativo" data-est-filtro="controlados">Só controlados</button>
+            <button type="button" class="filtro-chip" data-est-filtro="todos">Todos</button>
+            <button type="button" class="filtro-chip" data-est-filtro="esgotados">Esgotados</button>
+            <button type="button" class="filtro-chip" data-est-filtro="baixos">Baixo</button>
+          </div>
+        </div>
+
+        <div class="card est-card">
+          <div id="estoque-lista"></div>
+        </div>
       </div>
     </section>
       </main>

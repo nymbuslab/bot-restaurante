@@ -28,6 +28,10 @@
   --error: #EF4444;
   --error-subtle: rgba(239,68,68,0.12);
   --error-hover: #DC2626;
+  /* Vermelho CLARO para TEXTO/ÍCONE sobre fundo escuro, no mesmo papel que
+     --accent-fg cumpre para o roxo: o --error cheio dá 4,0:1 em texto pequeno
+     sobre o fundo vermelho suave, abaixo do mínimo AA (4,5:1). Este dá 5,4:1. */
+  --error-fg: #F87171;
   --warning: #EAB308;
   --warning-subtle: rgba(234,179,8,0.12);
   --info: #3B82F6;
@@ -6187,3 +6191,134 @@ table + .secundario.mini,
 .opc-del svg, .grp-op-del svg, .var-del svg,
 .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
 .mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }
+
+/* ===================== CONTROLE DE ESTOQUE (Plano Completo) =====================
+   Uma linha por SALDO: o produto e, quando o controle está nas variações, cada
+   variação recuada sob ele. Os três contadores do topo também filtram, então são
+   <button> e carregam aria-pressed. Nada de dinheiro aqui: quantidade sai por
+   Estoque.formatarQtd (inteiro em "un", vírgula com 3 casas em "kg"). */
+.est-metricas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.est-metrica {
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.est-metrica:hover { border-color: var(--accent); }
+.est-metrica[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.est-metrica.esgotado .metrica-valor { color: var(--error); }
+.est-metrica.esgotado .metrica-ico { color: var(--error); }
+.est-metrica.baixo .metrica-valor { color: var(--warning); }
+.est-metrica.baixo .metrica-ico { color: var(--warning); }
+.est-metrica .metrica-ico { color: var(--accent-fg); display: inline-flex; }
+
+.est-card { padding: 0; overflow: hidden; }
+
+.est-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s ease;
+}
+.est-linha:last-child { border-bottom: 0; }
+.est-linha:hover { background: var(--bg-elevated); }
+.est-nome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+.est-cat { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Variação: recuo com a barra vertical marcando que o saldo é do tamanho, não do produto. */
+.est-sub { position: relative; padding-left: 46px; }
+.est-sub::before {
+  content: "";
+  position: absolute;
+  left: 26px; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.est-sub-ultima::before { bottom: 50%; }
+.est-sub .est-nome { font-size: 14px; font-weight: 500; }
+
+/* Produto sem controle: continua na lista, apagado, com o botão Controlar. */
+.est-semcontrole .est-nome,
+.est-semcontrole .est-cat { color: var(--text-disabled); }
+.est-sem-marca { font-size: 13px; color: var(--text-disabled); }
+
+.est-selo {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+/* Texto pequeno sobre fundo suave: usa o vermelho CLARO (ver --error-fg). */
+.est-selo-esgotado { background: var(--error-subtle); color: var(--error-fg); }
+.est-selo-baixo { background: var(--warning-subtle); color: var(--warning); }
+
+.est-saldo { text-align: right; font-variant-numeric: tabular-nums; }
+.est-qtd { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+.est-un { font-size: 13px; color: var(--text-secondary); margin-left: 3px; }
+.est-min { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+.est-variacoes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  justify-self: end;
+}
+
+.est-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+.est-acao { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Carregando: esqueleto no lugar das linhas, sem pulo de layout. */
+.est-esqueleto { display: flex; flex-direction: column; }
+.est-esqueleto span {
+  height: 64px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.035), transparent);
+  background-size: 200% 100%;
+  animation: est-brilho 1.4s ease-in-out infinite;
+}
+.est-esqueleto span:last-child { border-bottom: 0; }
+@keyframes est-brilho {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .est-esqueleto span { animation: none; }
+}
+.est-erro h3 { margin-bottom: 4px; }
+
+/* No celular as três ações saem da linha e vão para a gaveta do produto. */
+@media (max-width: 720px) {
+  /* minmax(0,1fr) para as colunas poderem encolher abaixo do conteúdo: com 1fr
+     puro o terceiro card era empurrado para fora da tela em 390px. */
+  .est-metricas { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .est-metrica { padding: 12px 10px; }
+  .est-metrica .metrica-valor { font-size: 24px; }
+  .est-metrica .metrica-label { font-size: 10px; letter-spacing: 0.3px; }
+  .est-metrica .metrica-ico { display: none; }        /* espaço todo para o rótulo */
+  #estFiltros { flex-wrap: wrap; }                    /* os 4 chips quebram em 2 linhas */
+  .est-linha { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 13px 14px; }
+  .est-acoes { display: none; }
+  .est-sub { padding-left: 30px; }
+  .est-sub::before { left: 14px; }
+}
