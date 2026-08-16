@@ -190,7 +190,7 @@ async function venderLocal(dir, venda) {
     // Baixa de estoque ATÔMICA: trava o tenant (FOR UPDATE), revalida e
     // decrementa. Se faltar estoque (corrida), lança e a venda inteira é desfeita —
     // nada é cobrado. O lock também serializa o MAX(numero)+1 abaixo.
-    const novoCardapio = await store.baixarEstoqueTx(client, dir, itens);
+    const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, dir, itens);
     const ped = await client.query(
       `INSERT INTO pedidos
          (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, origem, recebido_em)
@@ -201,6 +201,7 @@ async function venderLocal(dir, venda) {
       [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );
     const row = ped.rows[0];
+    await store.amarrarPedidoTx(client, movimentoIds, row.id, row.numero);
     const cent2 = (n) => (n == null ? null : Math.round((Number(n) || 0) * 100) / 100);
     for (const p of pagamentos) {
       await client.query(
@@ -285,9 +286,13 @@ async function estornarRecebimento(dir, pedidoId) {
 
 // Cancela um pedido JÁ RECEBIDO mantendo o rastro (anti-fraude): não apaga o
 // recebimento; insere um movimento de 'cancelamento' por forma recebida (mesma
-// forma/valor) que DEDUZ do caixa, e marca o pedido como cancelado. Exige caixa
-// aberto e que o recebimento do pedido esteja NESTE caixa (não mexe em caixa fechado).
-async function cancelarRecebido(dir, pedidoId) {
+// forma/valor) que DEDUZ do caixa, devolve o estoque dos itens e marca o pedido
+// como cancelado. Exige caixa aberto e que o recebimento do pedido esteja NESTE
+// caixa (não mexe em caixa fechado). Ordem dentro da MESMA transação: dinheiro
+// primeiro (caixa_movimentos), depois estoque (devolverEstoqueTx), status por
+// último — assim nenhuma falha deixa o pedido cancelado com dinheiro ou estoque
+// intocados. `devolver: false` pula a devolução (padrão true, igual pedidos.js).
+async function cancelarRecebido(dir, pedidoId, { devolver = true } = {}) {
   const empId = await empresaId(dir);
   const caixa = await caixaAberto(dir);
   if (!caixa) throw new Error("Abra o caixa para cancelar um pedido pago.");
@@ -295,7 +300,7 @@ async function cancelarRecebido(dir, pedidoId) {
   try {
     await client.query("BEGIN");
     const ped = await client.query(
-      "SELECT numero, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, numero, itens, status FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
@@ -323,14 +328,23 @@ async function cancelarRecebido(dir, pedidoId) {
         [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Cancelamento pedido #" + numero]
       );
     }
+    let cardapioNovo = null;
+    if (devolver) {
+      cardapioNovo = await store.devolverEstoqueTx(client, dir, ped.rows[0].itens || [], {
+        pedidoId: ped.rows[0].id, numero: ped.rows[0].numero, obs: "Pedido pago cancelado",
+      });
+    }
     await client.query(
       "UPDATE pedidos SET status = 'cancelado' WHERE empresa_id = $1 AND id = $2",
       [empId, pedidoId]
     );
     await client.query("COMMIT");
+    if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
     return { ok: true, cancelado: true };
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: mesmo padrão de pedidos.js — se a conexão já caiu, a
+    // rejeição do ROLLBACK não pode escapar como unhandledRejection.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();

@@ -28,6 +28,16 @@
   --error: #EF4444;
   --error-subtle: rgba(239,68,68,0.12);
   --error-hover: #DC2626;
+  /* Vermelho CLARO para TEXTO/ÍCONE sobre fundo escuro, no mesmo papel que
+     --accent-fg cumpre para o roxo: o --error cheio dá 4,0:1 em texto pequeno
+     sobre o fundo vermelho suave, abaixo do mínimo AA (4,5:1). Este dá 5,4:1. */
+  --error-fg: #F87171;
+  /* Fonte de máquina (código, slug, chave, número técnico). Era declarada à mão
+     em cada lugar, com 5 pilhas diferentes, então a mesma tela mudava de cara
+     conforme o computador do cliente. Exceção proposital: a prévia do cupom
+     usa "Courier New" para espelhar a métrica da impressora térmica (48
+     colunas em 72mm), e não deve usar este token. */
+  --fonte-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace;
   --warning: #EAB308;
   --warning-subtle: rgba(234,179,8,0.12);
   --info: #3B82F6;
@@ -74,6 +84,34 @@ html {
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+/* Números que o dono lê EM COLUNA (valor, total, quantidade) usam numerais
+   tabulares. Em Plus Jakarta Sans o "1" tem quase metade da largura do "0"
+   (medido em 20px: "111" = 22,3px, "000" = 43,9px), então sem isto a coluna de
+   valores dança a cada linha. Vale no painel de operação; a landing (.lp-*)
+   fica com o padrão, que é texto de leitura, não coluna de conferência.
+   Número novo em tela = acrescentar a classe AQUI, não repetir a propriedade. */
+.metrica-valor, .metrica-num,
+.dash-td-numero, .dash-td-total, .dash-rank-qtd, .dash-whats-num, .dash-top-val,
+.dash-visao-linha strong,
+.caixa-tab-valor, .caixa-total, .col-total,
+.cx-box-valor, .cx-total, .cx-num, .cx-td-num,
+.ped-total, .ped-num, .ped-item-preco, .ped-item-qtd,
+.ped-resumo-total, .ped-resumo-valor,
+.pedido-card-total, .pedido-card-num,
+.pdv-linha-preco, .pdv-m-preco, .pdv-m-opt-preco, .pdv-op-preco,
+.pdv-tile-preco, .pdv-tot-total, .pdv-desc-valor, .pdv-ent-num, .pdv-qtd-input,
+.pdv-tot-linha span, .pdv-fab strong,
+.mesa-cart-linha-preco, .mesa-resumo-total, .mesa-rodada-item-preco,
+.mesa-rodada-item-qtd, .mesa-card-num,
+.np-item-preco, .np-item-qtd, .np-num, .np-total, .np-total-valor, .np-info-valor,
+.fatura-valor, .assin-col-valor, .mon-valor,
+.am-t-valor, .am-hero-valor,
+.il-num, .il-preco, .il-un-preco,
+.grp-op-preco, .opc-preco, .fc-total-linha,
+.est-saldo {
+  font-variant-numeric: tabular-nums;
 }
 
 body {
@@ -472,7 +510,7 @@ h3 {
   color: var(--text-primary);
 }
 .faq-code {
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--fonte-mono);
   font-size: 12.5px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
@@ -482,7 +520,7 @@ h3 {
 }
 .faq-code-bloco {
   display: block;
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-family: var(--fonte-mono);
   font-size: 12px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
@@ -1685,7 +1723,7 @@ button:disabled {
   color: var(--text-secondary);
 }
 .cfg-vars code {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-size: 11px;
   background: var(--bg-elevated);
   padding: 1px 5px;
@@ -2491,6 +2529,30 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   margin: 0 0 24px;
 }
 
+/* Caixinha opcional reusada em dois modais: confirmarComOpcao (#modal-overlay, entre a
+   mensagem e os botões) e modalCaixa (campo tipo "checkbox" em #caixa-modal-campos, junto
+   dos demais campos). Mesmos tokens de .auth-lembrar. */
+.modal-opcao {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 4px 0 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.modal-opcao input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+/* No modal de confirmação simples a caixinha vem logo após o <p> (margin-bottom 24px) —
+   puxa pra cima pra não abrir um vão duplo antes dos botões. */
+#modal-overlay .modal-opcao { margin-top: -12px; }
+
 /* ---------- Botão "Imprimir comanda" bloqueado (Essencial) ---------- */
 .bloqueado-impr { color: var(--text-disabled); border-color: var(--border-subtle); }
 .bloqueado-impr > svg { opacity: 0.55; }
@@ -2646,7 +2708,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 .sim-ctx-linha:last-child { margin-bottom: 0; }
 .sim-ctx-val {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-weight: 700;
   color: var(--accent-fg);
   word-break: break-word;
@@ -2661,7 +2723,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
   color: var(--text-secondary);
 }
 .sim-ctx-nota code {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-size: 11px;
   background: var(--bg-elevated);
   padding: 1px 5px;
@@ -3648,7 +3710,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 
 /* Slug em código */
 .am-slug, .am-slug-alvo {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--fonte-mono);
   font-size: 12px;
   background: var(--bg-elevated);
   color: var(--accent-fg);
@@ -4798,7 +4860,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
    Isso impede a quebra de linha dos separadores e do alinhamento rótulo→valor. */
 #area-impressao { display: none; }
 .cupom-print {
-  font-family: "Courier New", monospace;
+  font-family: "Courier New", monospace;   /* exceção ao --fonte-mono: a métrica do papel */
   font-size: 2.5mm;
   line-height: 1.3;
   white-space: pre-wrap;
@@ -4835,7 +4897,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-resumo { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
 .caixa-linha { display: flex; justify-content: space-between; padding: 4px 0; }
 .caixa-linha.caixa-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 700; }
-.caixa-tab-valor { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.caixa-tab-valor { white-space: nowrap; }   /* tabular-nums vem da regra única do topo */
 .caixa-tab-neg { color: var(--error); }
 .caixa-tab-acao { text-align: right; width: 1%; white-space: nowrap; }
 
@@ -4964,11 +5026,17 @@ html.embed, html.embed body { background: var(--bg-primary); }
 /* Alinhamento dos ícones SVG inline (tags de pedido, cadeado, pill de som) */
 .tag svg, .cfg-frete-lock svg, .np-som-pill svg { vertical-align: -2px; }
 
-/* Selo de status de pagamento na lista de Pedidos (Plano Completo) */
+/* Pill de status. Nasceu no pagamento da lista de Pedidos e é a pill ÚNICA do
+   painel: quem precisar de selo semântico usa `.selo-pag` + um modificador de
+   cor daqui, em vez de criar outra (o Controle de estoque usa esgotado/baixo). */
 .selo-pag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; vertical-align: 1px; white-space: nowrap; }
 .selo-pago { background: var(--success-subtle); color: var(--success); }
 .selo-areceber { background: var(--warning-subtle); color: var(--warning); }
-.selo-cancelado { background: var(--error-subtle); color: var(--error); }
+/* Vermelho CLARO nos dois selos vermelhos: em 11px o --error cheio fica em
+   4,0:1 sobre o fundo suave, abaixo do mínimo AA de 4,5:1 (ver --error-fg). */
+.selo-cancelado { background: var(--error-subtle); color: var(--error-fg); }
+.selo-esgotado { background: var(--error-subtle); color: var(--error-fg); }
+.selo-baixo { background: var(--warning-subtle); color: var(--warning); }
 
 /* Botão de cancelar item no modal de pedido */
 .ped-item { align-items: center; }
@@ -5004,6 +5072,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .impressao-via { flex: 0 1 auto; min-width: 0; }
 .impressao-via-rotulo { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
 .cupom-preview {
+  /* exceção ao --fonte-mono, mesmo motivo do .cupom-print: espelha o papel */
   font-family: "Courier New", monospace; font-size: 10px; line-height: 1.35;
   white-space: pre-wrap; width: 49ch; box-sizing: content-box; max-width: 100%; margin: 0;
   max-height: 320px; overflow: auto;
@@ -5555,7 +5624,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .dash-whats-num {
   margin: 8px 0 0;
   font-size: 12px;
-  font-family: monospace;
+  font-family: var(--fonte-mono);
   color: var(--text-secondary);
 }
 .dash-acoes .card {
@@ -6163,3 +6232,265 @@ table + .secundario.mini,
 .opc-del svg, .grp-op-del svg, .var-del svg,
 .fc-del svg, .ff-remover svg, .mesa-cart-rm svg,
 .mesa-tag-rm svg, .pdv-pg-item button svg { width: 14px; height: 14px; }
+
+/* ===================== CONTROLE DE ESTOQUE (Plano Completo) =====================
+   Uma linha por SALDO: o produto e, quando o controle está nas variações, cada
+   variação recuada sob ele. Os três contadores do topo também filtram, então são
+   <button> e carregam aria-pressed. Nada de dinheiro aqui: quantidade sai por
+   Estoque.formatarQtd (inteiro em "un", vírgula com 3 casas em "kg"). */
+.est-metricas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.est-metrica {
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+/* Hover de CARD DE ESCOLHA (borda roxa, sem salto), como .co-plano-opt e
+   .cfg-frete-modo. Cancela o translateY do .metrica-card, que é o hover do card
+   passivo do Dashboard: aqui o card é um filtro, não um número para olhar. */
+.est-metrica:hover {
+  background: var(--bg-surface);      /* mata o `button:hover` global (roxo cheio) */
+  border-color: var(--accent);
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+.est-metrica[aria-pressed="true"]:hover { background: var(--accent-subtle); }
+.est-metrica[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.est-metrica.esgotado .metrica-valor { color: var(--error); }
+.est-metrica.esgotado .metrica-ico { color: var(--error); }
+.est-metrica.baixo .metrica-valor { color: var(--warning); }
+.est-metrica.baixo .metrica-ico { color: var(--warning); }
+.est-metrica .metrica-ico { color: var(--accent-fg); display: inline-flex; }
+
+.est-card { padding: 0; overflow: hidden; }
+
+.est-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.15s ease;
+}
+.est-linha:last-child { border-bottom: 0; }
+.est-linha:hover { background: var(--bg-elevated); }
+.est-nome {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+.est-cat { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Variação: recuo com a barra vertical marcando que o saldo é do tamanho, não do produto. */
+.est-sub { position: relative; padding-left: calc(var(--space-6) * 2); }
+.est-sub::before {
+  content: "";
+  position: absolute;
+  left: var(--space-6); top: 0; bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.est-sub-ultima::before { bottom: 50%; }
+.est-sub .est-nome { font-size: 14px; font-weight: 500; }
+
+/* Produto sem controle: continua na lista, apagado, com o botão Controlar. */
+.est-semcontrole .est-nome,
+.est-semcontrole .est-cat { color: var(--text-disabled); }
+.est-sem-marca { font-size: 13px; color: var(--text-disabled); }
+
+/* Os selos Esgotado e Baixo usam a pill única do painel (`.selo-pag`, na seção
+   de Pedidos), com os modificadores .selo-esgotado / .selo-baixo. */
+
+.est-saldo { text-align: right; }   /* tabular-nums vem da regra única do topo */
+.est-qtd { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+.est-un { font-size: 13px; color: var(--text-secondary); margin-left: 3px; }
+.est-min { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+.est-variacoes {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--text-secondary);
+  justify-self: end;
+}
+
+.est-acoes { display: flex; gap: var(--space-2); justify-content: flex-end; }
+.est-acao { display: inline-flex; align-items: center; gap: var(--space-2); }
+/* Hover de AÇÃO DE LINHA, igual ao .ped-acao-btn da lista de Pedidos: borda
+   roxa clara em vez do cinza do .secundario genérico. */
+button.est-acao:hover { border-color: var(--accent-fg); }
+
+/* Carregando: esqueleto no lugar das linhas, sem pulo de layout. */
+.est-esqueleto { display: flex; flex-direction: column; }
+.est-esqueleto span {
+  height: 64px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.035), transparent);
+  background-size: 200% 100%;
+  animation: est-brilho 1.4s ease-in-out infinite;
+}
+.est-esqueleto span:last-child { border-bottom: 0; }
+@keyframes est-brilho {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .est-esqueleto span { animation: none; }
+}
+.est-erro h3 { margin-bottom: var(--space-1); }
+
+/* Tablet (1024px): as três ações saem da linha e vão para a gaveta do produto.
+   Abaixo disso o menu lateral ainda ocupa 240px, e nome + quantidade + três
+   botões passam da largura, empurrando a página para o lado. */
+@media (max-width: 1024px) {
+  .est-linha {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
+  }
+  .est-acoes { display: none; }
+}
+
+/* Mobile (640px): compacta o topo, que é o que interessa na tela pequena. */
+@media (max-width: 640px) {
+  /* minmax(0,1fr) para as colunas poderem encolher abaixo do conteúdo: com 1fr
+     puro o terceiro card era empurrado para fora da tela em 390px. */
+  .est-metricas { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .est-metrica { padding: var(--space-3); }
+  .est-metrica .metrica-valor { font-size: 24px; }
+  .est-metrica .metrica-label { font-size: 10px; letter-spacing: 0.3px; }
+  .est-metrica .metrica-ico { display: none; }        /* espaço todo para o rótulo */
+  #estFiltros { flex-wrap: wrap; }                    /* os 4 chips quebram em 2 linhas */
+  .est-linha { padding: var(--space-3) var(--space-4); }
+  .est-sub { padding-left: var(--space-8); }
+  .est-sub::before { left: var(--space-3); }
+}
+
+/* ---- Gaveta do produto (Controle de estoque) ----
+   Reusa a gaveta única do painel (.gaveta*); daqui pra baixo é só o miolo. */
+.est-clicavel { cursor: pointer; }
+.est-g-saldo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.est-g-saldo-rot {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+.est-g-saldo-num {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+.est-g-saldo-num .est-un { font-size: 15px; }
+
+/* Ritmo vertical da gaveta do estoque, na escala do painel: sem isto os blocos
+   (saldo, mínimo, ações, resumo, extrato) encostam uns nos outros. */
+#estGaveta .gaveta-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Rótulo + campo na primeira coluna, "Salvar" alinhado ao input, e a nota
+   ocupando a linha inteira embaixo (senão ela empurrava o botão para baixo). */
+.est-g-min {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+.est-g-min .campo { margin: 0; }
+.est-g-min .campo-nota { grid-column: 1 / -1; margin: 0; }
+.est-g-min input { font-variant-numeric: tabular-nums; }
+
+.est-g-acoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.est-g-acoes:has(> :only-child) { grid-template-columns: 1fr; }
+.est-g-acao {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+}
+.est-g-acao svg { width: 18px; height: 18px; }
+
+.est-g-lanc { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.est-g-lanc h3 { margin: 0; font-size: 13px; }
+.est-g-lanc .campo { margin: 0; }
+.est-g-lanc input { font-variant-numeric: tabular-nums; }
+.est-g-lanc-acoes { display: flex; gap: var(--space-2); justify-content: flex-end; }
+/* A conta da contagem aparece ANTES de gravar: é o que evita o susto. */
+.est-g-diferenca {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+}
+.est-g-diferenca.menos { background: var(--error-subtle); color: var(--error-fg); }
+.est-g-diferenca.mais { background: var(--success-subtle); color: var(--success); }
+.est-g-diferenca.igual { background: var(--bg-elevated); color: var(--text-secondary); }
+
+.est-g-bloco h3 { margin-bottom: var(--space-3); }
+.est-g-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.est-g-resumo-item {
+  padding: var(--space-3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.est-g-resumo-item span { display: block; font-size: 12px; color: var(--text-secondary); }
+.est-g-resumo-item strong { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.est-g-resumo-item small { font-size: 12px; color: var(--text-secondary); margin-left: 3px; }
+
+.est-g-mov {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.est-g-mov:last-child { border-bottom: 0; }
+.est-g-mov-tipo { display: flex; align-items: center; gap: var(--space-2); font-size: 13px; font-weight: 600; }
+.est-g-mov-quando { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.est-g-mov-num { text-align: right; font-variant-numeric: tabular-nums; }
+.est-g-mov-delta { font-size: 15px; font-weight: 700; }
+.est-g-mov-delta.mais { color: var(--success); }
+.est-g-mov-delta.menos { color: var(--error-fg); }
+.est-g-mov-ficou { font-size: 12px; color: var(--text-secondary); }
+.est-g-pedido {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-elevated);
+  color: var(--secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.est-g-pedido:hover { border-color: var(--secondary); background: var(--secondary-subtle); }
+.est-g-mais { width: 100%; margin-top: var(--space-3); }

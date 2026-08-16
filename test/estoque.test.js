@@ -90,3 +90,256 @@ test("aplicarBaixa (variação): desconta a variação certa, trava em 0, ignora
   assert.equal("estoque" in vs.find((v) => v.id === "agua"), false); // ilimitada intacta
   assert.equal(cardV.categorias[0].itens[0].variacoes[0].estoque, 5); // original não mutado
 });
+
+// ---- calcularBaixa / calcularDevolucao (motor comum com lista de movimentos) ----
+const baseMov = {
+  categorias: [
+    { nome: "Cat", itens: [
+      { id: "a1", nome: "Espeto", unidade: "un", estoque: 3, estoqueMinimo: 1 },
+      { id: "a2", nome: "Picanha", unidade: "kg", estoque: 2 },
+      { id: "a3", nome: "Refri", unidade: "un" }, // sem controle
+      { id: "a4", nome: "Marmitex", unidade: "un", variacoes: [
+        { id: "v1", nome: "P", preco: 18, estoque: 5 },
+        { id: "v2", nome: "G", preco: 25 },        // variação sem controle
+      ] },
+    ] },
+  ],
+};
+const cloneMov = () => JSON.parse(JSON.stringify(baseMov));
+
+test("calcularBaixa: movimento negativo com saldo resultante", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a1", qtd: 2 }]);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 1);
+  assert.deepEqual(r.movimentos, [
+    { itemId: "a1", variacaoId: null, quantidade: -2, saldoDepois: 1, descricao: "Espeto", unidade: "un" },
+  ]);
+});
+
+test("calcularBaixa: item sem controle não gera movimento", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a3", qtd: 5 }]);
+  assert.deepEqual(r.movimentos, []);
+});
+
+test("calcularBaixa: trava em zero e registra o delta aplicado", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a1", qtd: 10 }]);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 0);
+  assert.equal(r.movimentos[0].quantidade, -3); // tinha 3, não -10
+  assert.equal(r.movimentos[0].saldoDepois, 0);
+});
+
+test("calcularBaixa: kg com três casas", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a2", qtd: "0,5" }]);
+  assert.equal(r.movimentos[0].saldoDepois, 1.5);
+  assert.equal(r.movimentos[0].quantidade, -0.5);
+  assert.equal(r.movimentos[0].unidade, "kg");
+});
+
+test("calcularBaixa: variação tem movimento próprio", () => {
+  const r = E.calcularBaixa(cloneMov(), [{ id: "a4", qtd: 1, variacoes: [{ id: "v1", qtd: 2 }, { id: "v2", qtd: 1 }] }]);
+  assert.equal(r.movimentos.length, 1); // v2 não é controlada
+  assert.deepEqual(r.movimentos[0], {
+    itemId: "a4", variacaoId: "v1", quantidade: -2, saldoDepois: 3,
+    descricao: "Marmitex (P)", unidade: "un",
+  });
+});
+
+test("calcularBaixa: não muta o cardápio recebido", () => {
+  const original = cloneMov();
+  E.calcularBaixa(original, [{ id: "a1", qtd: 2 }]);
+  assert.equal(original.categorias[0].itens[0].estoque, 3);
+});
+
+test("calcularDevolucao: soma de volta com movimento positivo", () => {
+  const r = E.calcularDevolucao(cloneMov(), [{ id: "a1", qtd: 2 }]);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 5);
+  assert.equal(r.movimentos[0].quantidade, 2);
+  assert.equal(r.movimentos[0].saldoDepois, 5);
+});
+
+test("calcularDevolucao: item sem controle agora não ganha estoque", () => {
+  const r = E.calcularDevolucao(cloneMov(), [{ id: "a3", qtd: 2 }]);
+  assert.deepEqual(r.movimentos, []);
+  assert.equal(r.cardapio.categorias[0].itens[2].estoque, undefined);
+});
+
+test("aplicarBaixa segue devolvendo só o cardápio", () => {
+  const novo = E.aplicarBaixa(cloneMov(), [{ id: "a1", qtd: 1 }]);
+  assert.equal(novo.categorias[0].itens[0].estoque, 2);
+});
+
+// ---- diffEstoque ----
+test("diffEstoque: mudança de saldo vira movimento de ajuste", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens[0].estoque = 10; // era 3
+  assert.deepEqual(E.diffEstoque(antes, depois), [
+    { itemId: "a1", variacaoId: null, quantidade: 7, saldoDepois: 10, descricao: "Espeto", unidade: "un" },
+  ]);
+});
+
+test("diffEstoque: saldo igual não gera movimento", () => {
+  assert.deepEqual(E.diffEstoque(cloneMov(), cloneMov()), []);
+});
+
+test("diffEstoque: ligar o controle gera movimento com o saldo inicial", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens[2].estoque = 12; // Refri era ilimitado
+  const m = E.diffEstoque(antes, depois);
+  assert.equal(m.length, 1);
+  assert.equal(m[0].itemId, "a3");
+  assert.equal(m[0].quantidade, 12);
+  assert.equal(m[0].saldoDepois, 12);
+});
+
+test("diffEstoque: desligar o controle não gera movimento de saldo", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  delete depois.categorias[0].itens[0].estoque; // virou ilimitado
+  assert.deepEqual(E.diffEstoque(antes, depois), []);
+});
+
+test("diffEstoque: alcança variação", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens[3].variacoes[0].estoque = 9; // era 5
+  assert.deepEqual(E.diffEstoque(antes, depois), [
+    { itemId: "a4", variacaoId: "v1", quantidade: 4, saldoDepois: 9, descricao: "Marmitex (P)", unidade: "un" },
+  ]);
+});
+
+test("diffEstoque: item novo já controlado entra como movimento", () => {
+  const antes = cloneMov(), depois = cloneMov();
+  depois.categorias[0].itens.push({ id: "a9", nome: "Suco", unidade: "un", estoque: 4 });
+  const m = E.diffEstoque(antes, depois);
+  assert.deepEqual(m, [{ itemId: "a9", variacaoId: null, quantidade: 4, saldoDepois: 4, descricao: "Suco", unidade: "un" }]);
+});
+
+// ---- acharSaldo / garantirControle (Task 7) ----
+test("acharSaldo: acha item, variação e devolve null para id inexistente", () => {
+  assert.equal(E.acharSaldo(cloneMov(), "a1", null).quantidade, 3);
+  assert.equal(E.acharSaldo(cloneMov(), "a4", "v1").quantidade, 5);
+  assert.equal(E.acharSaldo(cloneMov(), "a3", null).controlado, false);
+  assert.equal(E.acharSaldo(cloneMov(), "zzz", null), null);
+});
+
+test("garantirControle: item ilimitado passa a ter estoque 0 sem mutar o original", () => {
+  const c = cloneMov();
+  const novo = E.garantirControle(c, "a3", null);
+  assert.equal(novo.categorias[0].itens[2].estoque, 0);
+  assert.equal(c.categorias[0].itens[2].estoque, undefined);
+});
+
+// ---- aplicarAjuste (Ruling D — revisão da Task 7) ----
+// Motor de ajuste de UM alvo só: nunca reusa o payload de venda (que agrega por
+// pedido e força mínimo 1 pra item "un"), porque isso deixava vazar um
+// movimento fantasma no item quando o alvo real era a variação.
+test("aplicarAjuste: ajusta a variação sem tocar o estoque próprio do item", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "a4", nome: "Marmitex", unidade: "un", estoque: 6, variacoes: [
+      { id: "v1", nome: "P", estoque: 5 },
+    ] },
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "a4", variacaoId: "v1", delta: 2 });
+  assert.equal(r.movimento.itemId, "a4");
+  assert.equal(r.movimento.variacaoId, "v1");
+  assert.equal(r.movimento.quantidade, 2);
+  assert.equal(r.movimento.saldoDepois, 7);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 6); // item intocado
+  assert.equal(card.categorias[0].itens[0].estoque, 6);       // original intocado
+  assert.equal(card.categorias[0].itens[0].variacoes[0].estoque, 5); // original intocado
+});
+
+test("aplicarAjuste: ajusta o item (sem variacaoId), trava em zero e arredonda kg", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "p1", nome: "Picanha", unidade: "kg", estoque: 2 },
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "p1", variacaoId: null, delta: -5 });
+  assert.equal(r.movimento.itemId, "p1");
+  assert.equal(r.movimento.variacaoId, null);
+  assert.equal(r.movimento.quantidade, -2); // trava em zero, não -5
+  assert.equal(r.movimento.saldoDepois, 0);
+  assert.equal(r.movimento.unidade, "kg");
+});
+
+test("aplicarAjuste: ligaControle liga o controle antes de aplicar; delta zero não gera movimento", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "a3", nome: "Refri", unidade: "un" }, // sem controle
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "a3", variacaoId: null, delta: 0, ligaControle: true });
+  assert.equal(r.movimento, null);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 0); // controle ligado em zero
+});
+
+test("aplicarAjuste: nada muda quando o delta é zero e o controle já estava ligado", () => {
+  const card = { categorias: [ { nome: "Cat", itens: [
+    { id: "a1", nome: "Espeto", unidade: "un", estoque: 3 },
+  ] } ] };
+  const r = E.aplicarAjuste(card, { itemId: "a1", variacaoId: null, delta: 0 });
+  assert.equal(r.movimento, null);
+  assert.equal(r.cardapio.categorias[0].itens[0].estoque, 3);
+});
+
+// ---- linhasDeEstoque (Task 9) ----
+const cardLinhas = { categorias: [
+  { nome: "Pratos", itens: [
+    // item com variações: 1 linha do pai + 1 linha por variação
+    { id: "a4", nome: "Marmitex", unidade: "un", variacoes: [
+      { id: "v1", nome: "P", estoque: 5, estoqueMinimo: 1 },
+      { id: "v2", nome: "G", estoque: 0, estoqueMinimo: 1 },
+    ] },
+    // item sem controle
+    { id: "a3", nome: "Refri", unidade: "un" },
+    // item arquivado: não deve aparecer
+    { id: "a9", nome: "Descontinuado", unidade: "un", estoque: 4, arquivado: true },
+    // item controlado, esgotado
+    { id: "a5", nome: "Picanha", unidade: "kg", estoque: 0, estoqueMinimo: 1 },
+    // item controlado, baixo
+    { id: "a6", nome: "Espeto", unidade: "un", estoque: 2, estoqueMinimo: 3 },
+  ] },
+] };
+
+test("linhasDeEstoque: item com variações gera a linha do pai mais uma por variação", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  const doMarmitex = linhas.filter((l) => l.itemId === "a4");
+  assert.equal(doMarmitex.length, 3); // pai + v1 + v2
+  const pai = doMarmitex.find((l) => l.variacaoId === null);
+  assert.equal(pai.nome, "Marmitex");
+  assert.equal(pai.categoria, "Pratos");
+  assert.equal(pai.temVariacoes, true);
+  const v1 = doMarmitex.find((l) => l.variacaoId === "v1");
+  assert.equal(v1.nome, "P");
+  assert.equal(v1.pai, "Marmitex");
+  assert.equal(v1.controlado, true);
+  assert.equal(v1.quantidade, 5);
+  const v2 = doMarmitex.find((l) => l.variacaoId === "v2");
+  assert.equal(v2.esgotado, true);
+});
+
+test("linhasDeEstoque: item não controlado entra com controlado: false", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  const refri = linhas.find((l) => l.itemId === "a3");
+  assert.ok(refri);
+  assert.equal(refri.controlado, false);
+  assert.equal(refri.quantidade, null);
+});
+
+test("linhasDeEstoque: item arquivado não aparece", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  assert.equal(linhas.some((l) => l.itemId === "a9"), false);
+});
+
+test("linhasDeEstoque: flags esgotado e baixo refletem o status do saldo", () => {
+  const linhas = E.linhasDeEstoque(cardLinhas);
+  const picanha = linhas.find((l) => l.itemId === "a5");
+  assert.equal(picanha.esgotado, true);
+  assert.equal(picanha.baixo, false);
+  const espeto = linhas.find((l) => l.itemId === "a6");
+  assert.equal(espeto.esgotado, false);
+  assert.equal(espeto.baixo, true);
+});
+
+// ---- definirMinimo (Task 10) ----
+test("definirMinimo: grava no item e na variação, e devolve null para id inexistente", () => {
+  const c = cloneMov();
+  assert.equal(E.definirMinimo(c, "a1", null, 4).categorias[0].itens[0].estoqueMinimo, 4);
+  assert.equal(E.definirMinimo(c, "a4", "v1", 2).categorias[0].itens[3].variacoes[0].estoqueMinimo, 2);
+  assert.equal(E.definirMinimo(c, "zzz", null, 1), null);
+  assert.equal(c.categorias[0].itens[0].estoqueMinimo, 1); // não mutou
+});

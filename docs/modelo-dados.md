@@ -174,6 +174,78 @@ entra no preço** (é grátis):
 no servidor por `public/grupos.js` (`avaliarEscolhas`). A comanda da cozinha lista essas escolhas
 agrupadas por grupo.
 
+## Controle de estoque — saldo no jsonb, trilha em tabela (Plano Completo)
+
+**O saldo não mudou de lugar.** Continua em `empresas.cardapio` (jsonb): `item.estoque` /
+`item.estoqueMinimo`, e o mesmo par dentro de cada `item.variacoes[]`. Campo ausente, `null` ou
+`""` = **ilimitado** (produto sem controle). Cardápio web, PDV, Mesas e a baixa atômica seguem
+lendo de onde sempre leram.
+
+A tabela **`estoque_movimentos`** é **trilha, não fonte de verdade**: registra toda mudança de
+saldo, sempre na **mesma transação** que muda o saldo e pela mesma função, então nunca diverge do
+número. Reconstruir saldo somando o histórico trocaria o caminho crítico de venda (hoje atômico e
+testado) por soma de linhas; não compensa.
+
+```sql
+estoque_movimentos (
+  id, empresa_id, item_id text, variacao_id text,   -- referência SOLTA ao jsonb, sem FK
+  tipo text,            -- venda | devolucao | entrada | perda | contagem | ajuste
+  quantidade numeric,   -- ASSINADA: +20 entrada, -3 perda, ±N contagem
+  saldo_depois numeric, -- saldo após aplicar o movimento
+  descricao text,       -- nome do produto COMO ESTAVA (snapshot: renomear/excluir não apaga o rastro)
+  unidade text, pedido_id bigint, numero integer, obs text, criado_em timestamptz )
+```
+
+### Os seis tipos, e quem gera cada um
+
+| Tipo | Nasce de | Efeito no saldo |
+| --- | --- | --- |
+| `venda` | baixa da venda (cardápio web, PDV, balcão, mesa), carimbada com o pedido | subtrai |
+| `devolucao` | cancelamento com a caixinha "devolver ao estoque" marcada | soma |
+| `entrada` | tela de estoque, botão Entrada | **SOMA** ao que existe |
+| `perda` | tela de estoque, botão Perda | **SUBTRAI** do que existe (trava em zero) |
+| `contagem` | tela de estoque, botão Contagem | **SUBSTITUI** o saldo pelo contado; a `quantidade` gravada é a diferença (`contado − saldo`) |
+| `ajuste` | editar o estoque no editor do produto (`PUT /api/cardapio` roda `diffEstoque`) | o que o dono digitou lá |
+
+> **A distinção entrada × contagem é a dúvida clássica do dono** e está na interface: Entrada pede
+> *"quantidade que chegou"* e soma; Contagem pede *"quantidade que você contou"* e troca o saldo.
+> Os três lançamentos mostram o resultado **antes** de gravar ("Você tem 4. Vai ficar com 14.").
+> Contagem igual ao saldo **não gera movimento** (delta zero), mas **liga o controle** se ele
+> estava desligado. Perda maior que o saldo trava em zero e registra o que foi **de fato aplicado**.
+
+### Identidade de reconciliação
+
+```text
+saldo_atual = saldo_no_início + entradas + devoluções - vendas - perdas ± contagens ± ajustes
+```
+
+Vale linha a linha, porque cada movimento carrega o `saldo_depois` do momento em que foi aplicado.
+É o que faz a conta fechar na vertical no extrato da gaveta.
+
+### Por que a venda não é derivada de `itens_venda`
+
+`itens_venda` já é a projeção relacional dos itens vendidos, mantida por trigger, e o primeiro
+desenho lia as vendas de lá. **A devolução derrubou isso:** ao cancelar **um item** do pedido, o
+`itens` muda, o trigger reprojeta e a linha **desaparece** de `itens_venda`. Se a venda sumisse de
+uma fonte e a devolução existisse na outra, o mesmo estoque seria contado duas vezes.
+
+Não é escrita dupla do mesmo fato: `itens_venda` conta **faturamento** (inclui item sem controle de
+estoque) e `estoque_movimentos` conta **prateleira**.
+
+### Regras que valem em toda a stack
+
+- Produto **sem controle não gera movimento nenhum**: venda, devolução e cancelamento passam por
+  ele sem registrar, porque nada mudou de saldo.
+- **Devolução só alcança produto controlado agora.** Item vendido quando era ilimitado e controlado
+  depois não ganha estoque de volta, senão a devolução inventaria quantidade.
+- **Quilo com três casas** (`Math.round(n * 1000) / 1000`), igual à baixa da venda.
+- **Concorrência:** tudo passa pela mesma trava de linha (`SELECT ... FOR UPDATE` na `empresas`)
+  que já serializa as vendas; o movimento entra na mesma transação.
+- **Retenção de 12 meses**, faxina diária no `index.js`. Seguro porque o saldo não é a soma das
+  linhas: apagar histórico velho não altera número nenhum.
+- **Essencial também gera movimento** pelo editor do produto, mesmo sem ver a tela. Ao subir de
+  plano, o histórico já está lá.
+
 ## Bot (fluxo.js) — enxuto, baseado em link
 
 O pedido **não é mais montado no chat** — vai para o cardápio web. Estados: **MENU** e **ATENDENTE**.

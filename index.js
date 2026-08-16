@@ -21,6 +21,7 @@ const clientes = require("./src/clientes");
 const empresas = require("./src/empresas");
 const auditoria = require("./src/auditoria");
 const incidentes = require("./src/incidentes");
+const estoqueDb = require("./src/estoque-db");
 const multiBot = require("./src/multi-bot");
 const PORTA = process.env.PORT || 3000;
 
@@ -110,6 +111,21 @@ async function limparIncidentes() {
 }
 setTimeout(limparIncidentes, 105_000);              // 105s após o boot
 setInterval(limparIncidentes, 24 * 60 * 60 * 1000); // a cada 24h
+
+// Retenção do histórico de estoque: apaga movimento com mais de 12 meses. Seguro
+// porque o SALDO mora no jsonb do cardápio, não na soma das linhas — apagar
+// histórico velho não altera número nenhum. Global, idempotente. Boot + 24h.
+const MESES_RETENCAO_ESTOQUE = 12;
+async function limparEstoque() {
+  try {
+    const n = await estoqueDb.limparAntigos(MESES_RETENCAO_ESTOQUE);
+    if (n > 0) console.log(`🧹 Estoque: ${n} movimento(s) > ${MESES_RETENCAO_ESTOQUE} meses apagado(s).`);
+  } catch (e) {
+    console.error("Retenção de estoque falhou (ignorado):", e.message);
+  }
+}
+setTimeout(limparEstoque, 105_000);              // 105s após o boot
+setInterval(limparEstoque, 24 * 60 * 60 * 1000); // a cada 24h
 
 // Higiene de memória: varre as sessões de conversa (em memória) e descarta as
 // inativas há +30min. A expiração do sessoes.js é lazy (só limpa quando a mesma

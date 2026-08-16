@@ -33,6 +33,7 @@ const { getSessao, resetSessao } = require("./sessoes");
 const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
+const estoqueDb = require("./estoque-db"); // trilha de movimentação (estoque_movimentos)
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarBiblioteca/resolverGrupos (dual-mode)
@@ -923,11 +924,13 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     const clientTx = await db.pool.connect();
     try {
       await clientTx.query("BEGIN");
-      novoCardapio = await store.baixarEstoqueTx(clientTx, dir, b.itens);
+      const baixa = await store.baixarEstoqueTx(clientTx, dir, b.itens);
+      novoCardapio = baixa.cardapio;
       pedido = await pedidos.salvarPedido(dir, {
         cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
         taxaEntrega, itens: recalc.itens, total, observacao,
       }, clientTx);
+      await store.amarrarPedidoTx(clientTx, baixa.movimentoIds, pedido.id, pedido.numero);
       await clientTx.query("COMMIT");
     } catch (e) {
       await clientTx.query("ROLLBACK").catch(() => {});
@@ -1761,6 +1764,121 @@ app.get("/api/cardapio/item/:id/vendas", exigeAuth, async (req, res) => {
   }
 });
 
+// ============================================================
+// CONTROLE DE ESTOQUE (Plano Completo) — visão consolidada + trilha.
+// A lista sai do CACHE do cardápio (sem ida ao banco); só o extrato consulta.
+// ============================================================
+
+app.get("/api/estoque", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    await store.ensure(req.tenantDir);
+    const linhas = estoque.linhasDeEstoque(store.getCardapio(req.tenantDir));
+    const controlados = linhas.filter((l) => l.controlado);
+    res.json({
+      linhas,
+      contadores: {
+        controlados: controlados.length,
+        esgotados: controlados.filter((l) => l.esgotado).length,
+        baixos: controlados.filter((l) => l.baixo).length,
+      },
+    });
+  } catch (e) {
+    console.error("GET /api/estoque:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar o estoque." });
+  }
+});
+
+app.get("/api/estoque/movimentos", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const itemId = String(req.query.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  const variacaoId = req.query.variacaoId ? String(req.query.variacaoId) : null;
+  try {
+    const [movimentos, resumo] = await Promise.all([
+      estoqueDb.listar(req.tenantDir, { itemId, variacaoId, limite: req.query.limite, antes: req.query.antes || null }),
+      estoqueDb.resumo(req.tenantDir, { itemId, variacaoId, dias: 30 }),
+    ]);
+    res.json({ movimentos, resumo });
+  } catch (e) {
+    console.error("GET /api/estoque/movimentos:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar o histórico." });
+  }
+});
+
+// Lança um movimento manual (entrada, perda ou contagem) na tela de Controle
+// de estoque. Saldo e movimento são gravados juntos, na mesma transação, sob
+// o lock do tenant (ajustarEstoqueTx) — o cache só sincroniza após o COMMIT.
+app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  const tipo = String(b.tipo || "");
+  if (!["entrada", "perda", "contagem"].includes(tipo)) {
+    return res.status(400).json({ erro: "Movimento inválido." });
+  }
+  const itemId = String(b.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  const num = (v) => Math.max(0, parseFloat(String(v).replace(",", ".")) || 0);
+  // `contado` não pode ser pré-coagido pra 0: um payload que esqueceu o campo
+  // (ou mandou algo não numérico) precisa ser REJEITADO, não lido como "contei
+  // zero" — isso zeraria o saldo do produto (e ligaria o controle) por engano.
+  // A tolerância à vírgula decimal continua valendo pro valor válido.
+  let contado = 0;
+  if (tipo === "contagem") {
+    contado = parseFloat(String(b.contado).replace(",", "."));
+    if (!Number.isFinite(contado)) {
+      return res.status(400).json({ erro: "Informe uma contagem numérica válida." });
+    }
+  } else if (num(b.quantidade) <= 0) {
+    return res.status(400).json({ erro: "Informe uma quantidade maior que zero." });
+  }
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await store.ajustarEstoqueTx(client, req.tenantDir, {
+      itemId, variacaoId: b.variacaoId ? String(b.variacaoId) : null, tipo,
+      quantidade: num(b.quantidade), contado,
+      obs: String(b.obs || "").slice(0, 200),
+    });
+    await client.query("COMMIT");
+    store.sincronizarCardapio(req.tenantDir, r.cardapio);
+    res.json({ ok: true, movimento: r.movimento, quantidade: r.movimento ? r.movimento.saldoDepois : null });
+  } catch (e) {
+    // ROLLBACK guardado: se a conexão já caiu (o próprio motivo do catch, às
+    // vezes), a rejeição do ROLLBACK não pode escapar do handler e deixar a
+    // requisição sem resposta (unhandledRejection). Mesmo padrão da baixa de
+    // estoque do pedido (linha ~936).
+    await client.query("ROLLBACK").catch(() => {});
+    res.status(400).json({ erro: e.message || "Não foi possível registrar o movimento." });
+  } finally {
+    client.release();
+  }
+});
+
+// Mínimo não mexe em saldo, então NÃO é movimento: grava direto no cardápio.
+app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  const itemId = String(b.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  // Malformado (ausente/não numérico) é REJEITADO, não virado 0 em silêncio —
+  // 0 é um mínimo legítimo, então só a coerção silenciosa era o problema.
+  const minimo = parseFloat(String(b.minimo).replace(",", "."));
+  if (!Number.isFinite(minimo)) {
+    return res.status(400).json({ erro: "Informe um mínimo numérico válido." });
+  }
+  try {
+    await store.ensure(req.tenantDir);
+    const atual = store.getCardapio(req.tenantDir);
+    const novo = estoque.definirMinimo(atual, itemId, b.variacaoId ? String(b.variacaoId) : null, minimo);
+    if (!novo) return res.status(404).json({ erro: "Produto não encontrado." });
+    await store.setCardapio(req.tenantDir, novo);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Não foi possível salvar o mínimo." });
+  }
+});
+
 // ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----
 
 const MIME_TO_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -1848,15 +1966,17 @@ app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
 app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
+    // `devolver` volta ao estoque os itens do pedido cancelado; padrão true.
+    const devolver = req.body?.devolver !== false;
     const pedido = await pedidos.lerPorId(req.tenantDir, id);
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
     if (pedido.recebidoEm) {
       // Pedido PAGO: cancela mantendo o rastro e deduz no caixa (exige caixa aberto).
       // Caixa é recurso do Plano Completo → gate de servidor.
       if (!(await exigeCaixa(req, res))) return;
-      await caixa.cancelarRecebido(req.tenantDir, id);
+      await caixa.cancelarRecebido(req.tenantDir, id, { devolver });
     } else {
-      await pedidos.cancelarPedido(req.tenantDir, id);
+      await pedidos.cancelarPedido(req.tenantDir, id, { devolver });
     }
     res.json({ ok: true, recebido: !!pedido.recebidoEm });
   } catch (e) {
@@ -1868,7 +1988,9 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
   try {
     const b = req.body || {};
     if (b.itemIdx == null) return res.status(400).json({ erro: "itemIdx é obrigatório." });
-    await pedidos.cancelarItemPedido(req.tenantDir, Number(req.params.id), Number(b.itemIdx));
+    // `devolver` volta ao estoque só o item cancelado; padrão true.
+    const devolver = b.devolver !== false;
+    await pedidos.cancelarItemPedido(req.tenantDir, Number(req.params.id), Number(b.itemIdx), { devolver });
     const pedido = await pedidos.lerPorId(req.tenantDir, Number(req.params.id));
     res.json(pedido);
   } catch (e) {
@@ -2083,12 +2205,13 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       const clientTx = await db.pool.connect();
       try {
         await clientTx.query("BEGIN");
-        const novoCardapio = await store.baixarEstoqueTx(clientTx, req.tenantDir, b.itens);
+        const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(clientTx, req.tenantDir, b.itens);
         pedido = await pedidos.salvarPedido(req.tenantDir, {
           cliente: b.cliente || "", telefone, tipoEntrega, endereco,
           pagamento: "", taxaEntrega, itens, total, observacao: obs,
           desconto, origem: "pdv",
         }, clientTx);
+        await store.amarrarPedidoTx(clientTx, movimentoIds, pedido.id, pedido.numero);
         await clientTx.query("COMMIT");
         store.sincronizarCardapio(req.tenantDir, novoCardapio);
       } catch (e) {
@@ -2266,13 +2389,14 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
     const client = await db.pool.connect();
     try {
       await client.query("BEGIN");
-      const novoCardapio = await store.baixarEstoqueTx(client, req.tenantDir, b.itens);
-      await mesasDb.lancarItens(req.tenantDir, mesaId, {
+      const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, req.tenantDir, b.itens);
+      const pedidoMesa = await mesasDb.lancarItens(req.tenantDir, mesaId, {
         itens,
         total: subtotal,
         cliente: "Mesa " + mesa.nome,
         observacao: String(b.observacao || "").slice(0, 200),
       }, client);
+      await store.amarrarPedidoTx(client, movimentoIds, pedidoMesa.id, pedidoMesa.numero);
       await client.query("COMMIT");
       store.sincronizarCardapio(req.tenantDir, novoCardapio);
       // Enfileira a via da cozinha da rodada (best-effort, fora da transação).
@@ -2456,9 +2580,11 @@ app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
   try {
     const mesaId = Number(req.params.id);
     const motivo = String((req.body || {}).motivo || "").slice(0, 200);
+    // `devolver` volta ao estoque os itens de todos os pedidos abertos da mesa; padrão true.
+    const devolver = (req.body || {}).devolver !== false;
     // Estado ANTES do cancelamento (o cancelar zera o total) — para a auditoria.
     const antes = await mesasDb.buscarPorId(req.tenantDir, mesaId);
-    const mesa = await mesasDb.cancelar(req.tenantDir, mesaId);
+    const mesa = await mesasDb.cancelar(req.tenantDir, mesaId, { devolver });
     if (!mesa) return res.status(404).json({ erro: "Mesa não encontrada." });
     // Anti-fraude: cancelar mesa COM consumo deixa rastro na trilha de auditoria
     // (mesa/total/motivo — sem PII). Best-effort, não quebra o fluxo.
@@ -2483,7 +2609,9 @@ app.post("/api/mesas/:id/cancelar-item", exigeAuth, async (req, res) => {
     const mesa = await mesasDb.buscarPorId(req.tenantDir, mesaId);
     if (!mesa || mesa.status === "livre") return res.status(400).json({ erro: "Mesa não está aberta." });
     if (mesa.status === "fechando") return res.status(400).json({ erro: "Conta já iniciada. Reabra a mesa para cancelar itens." });
-    await mesasDb.cancelarItem(req.tenantDir, mesaId, Number(b.pedidoId), Number(b.itemIdx));
+    // `devolver` volta ao estoque só o item cancelado; padrão true.
+    const devolver = b.devolver !== false;
+    await mesasDb.cancelarItem(req.tenantDir, mesaId, Number(b.pedidoId), Number(b.itemIdx), { devolver });
     res.json(await detalheMesa(req.tenantDir, mesaId));
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao cancelar o item." });

@@ -26,7 +26,8 @@ Base: 14px / line-height 1.5.
 | `--secondary-hover` | `#5BC2D8` | hover do ciano (texto escuro em cima) |
 | `--secondary-subtle` | `rgba(115,210,230,0.14)` | fundo ciano suave |
 | `--success` | `#22C55E` | verde — status aberto, tag retirada |
-| `--error` | `#EF4444` | vermelho — status fechado, erros |
+| `--error` | `#EF4444` | vermelho — PREENCHIMENTO e ícone grande: status fechado, erros |
+| `--error-fg` | `#F87171` | vermelho CLARO — TEXTO vermelho pequeno sobre fundo escuro (pill/selo) |
 | `--warning` | `#EAB308` | amarelo — observação no pedido |
 | `--info` | `#3B82F6` | azul — tag entrega |
 
@@ -36,6 +37,10 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 > **texto/ícone sobre fundo escuro**, usar sempre `--accent-fg` (#A589EA) — o roxo cheio
 > perde contraste no escuro. No `style.css`, os 3 pontos que usam `--accent` como cor de
 > texto passam a `--accent-fg`: `nav button.ativo`, `.btn-ver-pedido` e a pill do simulador.
+>
+> O vermelho tem a **mesma regra**: `--error` cheio em texto de 11px sobre `--error-subtle`
+> fica em **4,0:1**, abaixo do mínimo AA (4,5:1). Pill/selo vermelho usa `--error-fg`
+> (**5,4:1**) — hoje em `.selo-cancelado` (Pedidos) e `.selo-esgotado` (Controle de estoque).
 >
 > **Tags de status são semânticas, nunca de marca:** Entrega = `--info` (azul),
 > Retirada = `--success` (verde). Sem laranja em lugar nenhum.
@@ -65,6 +70,7 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 | `linha` | flex row para campos lado a lado |
 | `barra-salvar` | barra sticky inferior para ações de salvar |
 | `tag` | pill de status inline (`tag-entrega` = azul/info · `tag-retirada` = verde/success) |
+| `selo-pag` | pill semântica ÚNICA do painel + modificador de cor (`selo-pago`, `selo-areceber`, `selo-cancelado`, `selo-esgotado`, `selo-baixo`). Selo novo = modificador novo aqui, **não** uma pill nova por tela |
 | `badge-atendimento` | pill do header (`.aberto` verde / `.fechado` vermelho) |
 | `nav-badge` | contador roxo na aba do nav |
 | `bolinha` | dot de status (`.on` verde / `.off` vermelho / `.wait` amarelo) |
@@ -82,6 +88,24 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 - `h3` — 11 px, 700, uppercase, tracking 0.5px, cor secondary (rótulos de seção)
 - `.sub` — 13 px, cor secondary (subtítulos)
 - Labels de campo — 11 px, 700, uppercase, tracking 0.5px
+
+### Numerais tabulares (obrigatório em número de coluna)
+
+Em Plus Jakarta Sans o `1` tem quase **metade** da largura do `0` (medido em 20px:
+`111` = 22,3px, `000` = 43,9px). Sem numeral tabular, a coluna de valores dança a cada
+linha. Existe **uma regra única** no topo do `style.css` com a lista de classes que
+recebem `font-variant-numeric: tabular-nums` (valor, total, preço, quantidade do painel).
+
+> **Número novo em tela: acrescente a classe NAQUELA regra**, nunca repita a propriedade
+> na classe do componente. A landing (`.lp-*`) fica de fora de propósito: lá o número é
+> texto de leitura, não coluna de conferência.
+
+### Fonte monoespaçada
+
+Token único **`--fonte-mono`** (código, slug, chave, número técnico). Antes cada lugar
+declarava a sua pilha, e havia 5 diferentes no arquivo, então a mesma tela mudava de cara
+conforme o computador do cliente. **Exceção proposital:** `.cupom-print` e `.cupom-preview`
+seguem em `"Courier New"` para espelhar a métrica do papel térmico (48 colunas em 72mm).
 
 ## Regras ao criar nova UI
 
