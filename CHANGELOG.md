@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-08-12
+atualizado: 2026-08-16
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -918,3 +918,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - No celular a lista mostra o essencial e as ações ficam na ficha do produto.
 - Disponível no **Plano Completo**. O campo de estoque no cadastro do produto continua nos
   dois planos, e quem está no Essencial não perde nada do que já tinha.
+
+## [0.92.1] — Tipografia mais consistente entre as telas
+
+- Os tamanhos de texto do sistema foram unificados. Antes, o mesmo tipo de informação
+  aparecia em tamanhos ligeiramente diferentes conforme a tela: o PDV usava uma medida,
+  o painel outra e o cardápio uma terceira. Agora todas falam a mesma escala.
+- A mudança é sutil na maioria das telas. Onde se nota mais é no cardápio público, no
+  número grande do dashboard e nos títulos da página de apresentação.
+- Nada muda de lugar nem de função. É acabamento: telas do mesmo produto passam a parecer
+  do mesmo produto.

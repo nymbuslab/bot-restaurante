@@ -83,6 +83,32 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 
 ## Tipografia
 
+### Escala de tamanhos (fechada, 14 valores)
+
+| Faixa | Valores | Onde vive |
+| --- | --- | --- |
+| Interface | 10 · 11 · 12 · 13 · 14 · 15 · 16 | rótulo, label, corpo, linha de tabela, botão, título de tela |
+| Destaque | 18 · 20 · 24 · 32 · 40 · 48 · 56 | número de métrica, total, título de card grande, headline da landing |
+
+> **Tamanho novo em tela sai desta lista.** Não existe meio pixel (13,5px), não existe
+> `rem` e não existe valor intermediário "só nesta seção". De 24 para cima a escala é
+> múltipla de 8, a mesma base do `--space-1..8`, então o próximo degrau se deduz sem
+> consultar tabela. `public/cardapio.css` usa um subconjunto desta escala, nunca uma
+> paralela.
+
+Quando a tela tem versão para celular, o par desce um ou dois degraus **da mesma lista**,
+nunca para um valor fora dela. Os quatro pares que existem hoje:
+
+| Elemento | Desktop | Intermediário | Celular |
+| --- | --- | --- | --- |
+| Headline da landing (`.lp-hero h1`) | 48 | 40 | 32 |
+| Número em destaque (`.metrica-card.destaque .metrica-valor`) | 48 | 40 | 32 |
+| Título do painel master (`.am-dash-topo .am-titulo`) | 24 | | 20 |
+| Título das páginas legais (`.lp-termos h1`) | 32 | | 24 |
+
+Ao mexer num desses, mexer no par junto: encostar os dois no mesmo degrau apaga a
+diferença entre desktop e celular sem que nada quebre, então o erro passa despercebido.
+
 - `h1` — 15 px, 700, tracking -0.3px (header do painel)
 - `h2` — 15 px, 700 (títulos de seção)
 - `h3` — 11 px, 700, uppercase, tracking 0.5px, cor secondary (rótulos de seção)
@@ -110,6 +136,8 @@ seguem em `"Courier New"` para espelhar a métrica do papel térmico (48 colunas
 ## Regras ao criar nova UI
 
 - Sempre usar as variáveis CSS — nunca valores hexadecimais fixos no HTML/JS inline.
+- Tamanho de fonte sai da **escala fechada** (ver "Tipografia"); se o texto pede um valor
+  que não está lá, o problema é o layout, não a escala.
 - Inputs sempre com classe implícita (seletor `input, textarea, select` já estilizado).
 - Novos modais seguem o padrão `modal-overlay > modal-caixa` com animação já definida.
 - Placeholders usam texto genérico descritivo — sem nomes reais de restaurantes ou pessoas.
