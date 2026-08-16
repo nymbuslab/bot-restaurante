@@ -1605,7 +1605,7 @@ const PLANOS_INFO = { essencial: { nome: "Plano Essencial", valor: 79 }, complet
 async function trocarPlanoAcao(novoPlano) {
   const info = PLANOS_INFO[novoPlano] || PLANOS_INFO.essencial;
   const ehUpgrade = novoPlano === "completo";
-  const recursos = "Mesas e comandas, PDV de balcão, Caixa do dia, frete por raio e impressão de pedidos";
+  const recursos = "Mesas e comandas, PDV de balcão, Caixa do dia, controle de estoque, frete por raio e impressão de pedidos";
   const msg = ehUpgrade
     ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter: ${recursos}.`
     : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter: ${recursos}.`;
