@@ -4317,6 +4317,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .lp-nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; }
 .lp-nav-links a:hover { color: var(--text-primary); }
 .lp-nav-acoes { display: flex; gap: 12px; flex-shrink: 0; }
+/* O CTA da nav tem dois rótulos: o longo some no celular, onde a marca e o botão
+   juntos não cabem em 360px. Um dos dois está sempre em display:none, então o
+   leitor de tela anuncia só um. O CTA do hero mantém o texto completo. */
+.lp-cta-curto { display: none; }
 
 /* Hero */
 .lp-hero {
@@ -4694,6 +4698,16 @@ html.embed, html.embed body { background: var(--bg-primary); }
   .lp-footer-col { flex: 1 1 40%; min-width: 0; }
   .lp-float-card { left: 8px; bottom: 12px; padding: 9px 12px; }
   .lp-stat + .lp-stat::before { display: none; }
+}
+@media (max-width: 480px) {
+  /* Marca (167px) + botão (166px) + vão (24) + laterais (48) = 405px, e a tela tem 360.
+     Encurtar o rótulo tira 40px; sem apertar o vão e o botão ainda faltariam 4px. */
+  .lp-cta-longo { display: none; }
+  .lp-cta-curto { display: inline; }
+  .lp-nav-inner { gap: 12px; }
+  /* 11px em cima e embaixo leva o botão a 45px de altura: é o alvo de toque
+     mínimo de 44px, que ele não alcançava (43px) nem antes desta faixa. */
+  .lp-nav-acoes .lp-btn { padding: 11px 14px; }
 }
 
 /* ---------- Card do link/QR do cardápio digital (aba Cardápio) ---------- */
