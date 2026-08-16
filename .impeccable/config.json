@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-08-16T03:53:52.206Z",
+        "reason": "Fonte da marca Nymbus Pedidos, estabelecida em docs/design-system.md linha 3 e usada em todo o produto (o design system ate documenta a largura dos numerais dela). Trocar a fonte e decisao de marca do dono, nao ajuste de tela."
+      }
+    ]
+  }
+}
