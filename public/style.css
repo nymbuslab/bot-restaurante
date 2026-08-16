@@ -5786,7 +5786,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
   line-height: 1;
 }
 .mesa-card-num {
-  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  /* Fluido de propósito (o card tem controle de tamanho na tela), mas os dois
+     extremos saem da escala: 24px embaixo, 32px em cima. Antes era rem
+     (1.5/2.2), que fechava em 35,2px, fora da escala e sem ninguém saber. */
+  font-size: clamp(24px, 4vw, 32px);
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1;

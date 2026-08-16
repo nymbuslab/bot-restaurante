@@ -96,6 +96,21 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 > consultar tabela. `public/cardapio.css` usa um subconjunto desta escala, nunca uma
 > paralela.
 
+**Tamanho fluido também sai da escala.** `clamp()` é permitido quando o elemento
+precisa acompanhar a largura da tela, mas os dois extremos são valores da lista:
+`clamp(24px, 4vw, 32px)`, nunca `clamp(1.5rem, 4vw, 2.2rem)`. Em `rem` o teto vira
+35,2px, um tamanho fora da escala que nenhuma busca por `font-size: NNpx` encontra.
+
+**Para auditar, não basta procurar `font-size: NNpx`.** O comando que pega tudo:
+
+```bash
+grep -nE "font-size:" public/*.css | grep -vE "font-size:\s*[0-9]+px"
+```
+
+Hoje ele devolve três linhas, todas propositais: `font-size: 0` no `.toggle` (truque de
+layout, mata o espaço em branco, não é tipografia) e `2.5mm` no `.cupom-print` e
+`.cupom-preview` (amarra a letra ao papel térmico de 80mm, mesma razão do `Courier New`).
+
 Quando a tela tem versão para celular, o par desce um ou dois degraus **da mesma lista**,
 nunca para um valor fora dela. Os quatro pares que existem hoje:
 
