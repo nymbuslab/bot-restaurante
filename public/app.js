@@ -979,13 +979,29 @@ function estRenderAcoesGaveta() {
   const l = estGavetaLinha;
   const cont = $("estGavetaAcoes");
   if (!l || !cont) return;
-  const botao = (tipo, ico, txt, primario) =>
-    '<button type="button" class="' + (primario ? "primario" : "secundario") + ' est-g-acao" data-est-lanc="' + tipo + '">' + ico + txt + '</button>';
+  // Os três funcionam como um controle segmentado: escolhem QUAL lançamento
+  // está aberto. Nascem todos neutros, porque nada foi escolhido ainda.
+  const botao = (tipo, ico, txt) =>
+    '<button type="button" class="secundario est-g-acao" data-est-lanc="' + tipo + '" aria-pressed="false">' + ico + txt + '</button>';
   cont.innerHTML = l.controlado
-    ? botao("entrada", EST_ICO.entrada, "Entrada", true) + botao("perda", EST_ICO.perda, "Perda") + botao("contagem", EST_ICO.contagem, "Contagem")
-    : botao("controlar", EST_ICO.controlar, "Começar a controlar", true);
+    ? botao("entrada", EST_ICO.entrada, "Entrada") + botao("perda", EST_ICO.perda, "Perda") + botao("contagem", EST_ICO.contagem, "Contagem")
+    : '<button type="button" class="est-g-acao" data-est-lanc="controlar" aria-pressed="false">' + EST_ICO.controlar + 'Começar a controlar</button>';
   cont.querySelectorAll("[data-est-lanc]").forEach((b) =>
     b.addEventListener("click", () => estAbrirLancamento(b.dataset.estLanc)));
+  estMarcarAcao(estLancTipo);
+}
+
+// O botão do lançamento aberto fica preenchido (variante "selecionado" do design
+// system para controle segmentado). Sem isso o formulário mudava de texto e os
+// botões continuavam mostrando Entrada como escolhida.
+function estMarcarAcao(tipo) {
+  const cont = $("estGavetaAcoes");
+  if (!cont) return;
+  cont.querySelectorAll("[data-est-lanc]").forEach((b) => {
+    const ativo = b.dataset.estLanc === tipo;
+    b.classList.toggle("secundario", !ativo);
+    b.setAttribute("aria-pressed", ativo ? "true" : "false");
+  });
 }
 
 function estAbrirLancamento(tipo) {
@@ -1003,6 +1019,7 @@ function estAbrirLancamento(tipo) {
   $("estLancMinWrap").hidden = tipo !== "controlar";
   $("estLancDiferenca").hidden = true;
   $("formEstLanc").hidden = false;
+  estMarcarAcao(tipo);
   // O campo nasce vazio, então a frase só aparece quando o dono digita.
   estAtualizarPrevia();
   try { $("estLancQtd").focus(); } catch (_) {}
@@ -1012,6 +1029,7 @@ function estFecharLancamento() {
   estLancTipo = null;
   $("formEstLanc").hidden = true;
   $("estLancDiferenca").hidden = true;
+  estMarcarAcao(null);          // nenhum lançamento aberto: os três voltam a neutro
 }
 
 // Frase de conferência ANTES de gravar, nos três lançamentos. Sem ela, entrada e
