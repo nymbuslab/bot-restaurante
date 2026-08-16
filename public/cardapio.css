@@ -127,7 +127,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---- Main ---- */
 .cd-main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 96px; }
-.cd-title { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin: 0; }
+.cd-title { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; margin: 0; }
 .cd-sub { color: var(--text-secondary); margin: 4px 0 18px; font-size: 13px; }
 
 /* ---- Busca ---- */
@@ -242,7 +242,7 @@ button.cd-card { cursor: pointer; }
   .cd-topo { margin-bottom: 48px; }
   .cd-logo { width: 88px; height: 88px; }
   .cd-logo-wrap { bottom: -40px; }
-  #cdLogoFallback { font-size: 34px; }
+  #cdLogoFallback { font-size: 32px; }
   .cd-nome { font-size: 20px; }
   .cd-cart-fab { width: 44px; height: 44px; }
   .cd-cats { padding-right: 64px; }
@@ -303,7 +303,7 @@ button.cd-hero { cursor: pointer; }
   background: linear-gradient(to top, rgba(8,9,13,0.92) 8%, rgba(8,9,13,0.55) 40%, rgba(8,9,13,0.04) 76%); }
 .cd-hero-corpo { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 22px; display: flex; flex-direction: column; gap: 7px; }
 .cd-hero-selos { display: flex; gap: 6px; }
-.cd-hero-nome { font-size: 28px; font-weight: 800; line-height: 1.08; letter-spacing: -0.5px; margin: 2px 0 0; color: #fff; max-width: 18ch; }
+.cd-hero-nome { font-size: 32px; font-weight: 800; line-height: 1.08; letter-spacing: -0.5px; margin: 2px 0 0; color: #fff; max-width: 18ch; }
 .cd-hero-desc {
   font-size: 13px; color: rgba(240,242,250,0.82); margin: 0; max-width: 48ch;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -381,7 +381,7 @@ button.cd-hero { cursor: pointer; }
 }
 @keyframes cd-slide { from { transform: translateX(20px); opacity: .6; } to { transform: none; opacity: 1; } }
 .cd-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 18px 12px; }
-.cd-sheet-head h2 { font-size: 19px; font-weight: 800; margin: 0; }
+.cd-sheet-head h2 { font-size: 20px; font-weight: 800; margin: 0; }
 .cd-x { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--bg-elevated); color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; transition: color .15s; }
 /* X do modal de ITEM removido (fecha por Voltar/Adicionar + Esc + clique-fora). O X do
    carrinho (drawer, só .cd-x) fica. */
@@ -403,7 +403,7 @@ button.cd-hero { cursor: pointer; }
 .cd-lixo:hover { color: var(--error); }
 .cd-sheet-rodape { padding: 16px 18px; border-top: 1px solid var(--border); }
 .cd-sheet-total { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.cd-sheet-total strong { font-size: 19px; }
+.cd-sheet-total strong { font-size: 20px; }
 
 /* ---- Modal de item ---- */
 .cd-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; }
@@ -443,7 +443,7 @@ button.cd-hero { cursor: pointer; }
 
 /* Cabeçalho do item */
 .cd-m-head { padding: 16px 18px 4px; }
-.cd-m-nome { font-size: 21px; font-weight: 800; letter-spacing: -.02em; margin: 0; padding-right: 8px; }
+.cd-m-nome { font-size: 20px; font-weight: 800; letter-spacing: -.02em; margin: 0; padding-right: 8px; }
 .cd-m-desc { color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin: 6px 0 0; }
 .cd-m-preco { font-size: 15px; font-weight: 700; color: var(--accent-fg); margin-top: 8px; }
 
@@ -567,9 +567,9 @@ button.cd-hero { cursor: pointer; }
 .cd-sucesso { text-align: center; padding: 48px 16px; max-width: 420px; margin: 0 auto; }
 .cd-sucesso-icon {
   width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 18px; background: var(--success-subtle);
-  color: var(--success); font-size: 38px; display: flex; align-items: center; justify-content: center;
+  color: var(--success); font-size: 40px; display: flex; align-items: center; justify-content: center;
 }
-.cd-sucesso h1 { font-size: 22px; font-weight: 800; margin: 0 0 8px; }
+.cd-sucesso h1 { font-size: 20px; font-weight: 800; margin: 0 0 8px; }
 .cd-sucesso p { color: var(--text-secondary); margin: 0 0 24px; }
 .cd-sucesso .cd-btn { max-width: 280px; margin: 0 auto; }
 
