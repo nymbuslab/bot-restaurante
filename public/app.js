@@ -818,6 +818,27 @@ function renderEstoque() {
     const ultimaSub = l.variacaoId != null && (!proxima || proxima.variacaoId == null || String(proxima.itemId) !== String(l.itemId));
     return estLinhaHtml(l, varPorItem[l.itemId] || 0, ultimaSub);
   }).join("");
+
+  // A linha inteira abre a gaveta (no celular é o único caminho, já que as
+  // ações saem da linha); o botão abre a gaveta JÁ no lançamento escolhido.
+  cont.querySelectorAll("[data-est-chave]").forEach((linha) => {
+    linha.addEventListener("click", (e) => {
+      if (e.target.closest("[data-est-acao]")) return;
+      estAbrirGaveta(linha.dataset.estChave, linha);
+    });
+    linha.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if (e.target.closest("[data-est-acao]")) return;
+      e.preventDefault();
+      estAbrirGaveta(linha.dataset.estChave, linha);
+    });
+  });
+  cont.querySelectorAll("[data-est-acao]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const linha = btn.closest("[data-est-chave]");
+      if (linha) estAbrirGaveta(linha.dataset.estChave, btn, btn.dataset.estAcao);
+    });
+  });
 }
 
 // Uma linha da lista. Produto com variações não tem número próprio quando o
@@ -862,8 +883,11 @@ function estLinhaHtml(l, qtdVariacoes, ultimaSub) {
     acoes = '<button type="button" class="secundario mini est-acao" data-est-acao="controlar">' + EST_ICO.controlar + 'Controlar</button>';
   }
 
+  // Linha-mãe de produto com variações não abre gaveta: o saldo é de cada
+  // tamanho, e controlar o pai criaria dois estoques para o mesmo produto.
+  if (!maeSemSaldo) classes.push("est-clicavel");
   return (
-    '<div class="' + classes.join(" ") + '" data-est-chave="' + escapar(estChave(l)) + '">' +
+    '<div class="' + classes.join(" ") + '"' + (maeSemSaldo ? "" : ' data-est-chave="' + escapar(estChave(l)) + '" tabindex="0" role="button"') + '>' +
       '<div class="est-produto">' +
         '<div class="est-nome">' + escapar(l.nome || "Sem nome") + selo + '</div>' +
         (ehSub ? "" : '<div class="est-cat">' + escapar(l.categoria || "Sem categoria") + '</div>') +
@@ -873,6 +897,340 @@ function estLinhaHtml(l, qtdVariacoes, ultimaSub) {
     '</div>'
   );
 }
+
+// ---- Gaveta do produto: saldo, mínimo, lançamentos e extrato -------------
+// Uma gaveta por SALDO (produto ou variação). O extrato é paginado por cursor
+// de data (`antes`), como a rota manda, então "Carregar mais" nunca repete nem
+// pula linha quando chega movimento novo no meio.
+let estGavetaLinha = null;
+let estMovs = [];
+let estFocoVolta = null;
+let estLancTipo = null;
+let estExtratoFim = false;
+
+const EST_TIPO_ROTULO = {
+  venda: "Venda", devolucao: "Devolução", entrada: "Entrada",
+  perda: "Perda", contagem: "Contagem", ajuste: "Ajuste",
+};
+const EST_LANC_TEXTO = {
+  entrada: { titulo: "Registrar entrada", label: "Quantidade que entrou", botao: "Registrar entrada", dica: "Ex.: chegou do fornecedor" },
+  perda: { titulo: "Registrar perda", label: "Quantidade perdida", botao: "Registrar perda", dica: "Ex.: quebrou na cozinha" },
+  contagem: { titulo: "Registrar contagem", label: "Quantidade contada", botao: "Registrar contagem", dica: "Ex.: conferência do fim do dia" },
+  controlar: { titulo: "Começar a controlar", label: "Quantidade que você tem hoje", botao: "Começar a controlar", dica: "Ex.: contagem inicial" },
+};
+
+function estLinhaPorChave(chave) {
+  return estoqueLinhas.filter((l) => estChave(l) === chave)[0] || null;
+}
+
+// "hoje, 19:42" / "ontem, 08:30" / "12 de agosto, 22:05" — o dono lê data do
+// dia como o dia, não como carimbo.
+function estQuando(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const hoje = new Date();
+  const ontem = new Date(hoje.getTime() - 86400000);
+  const mesmoDia = (a, b) => a.toDateString() === b.toDateString();
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (mesmoDia(d, hoje)) return "hoje, " + hora;
+  if (mesmoDia(d, ontem)) return "ontem, " + hora;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" }) + ", " + hora;
+}
+
+function estAbrirGaveta(chave, origem, modo) {
+  const l = estLinhaPorChave(chave);
+  if (!l) return;
+  estGavetaLinha = l;
+  estFocoVolta = origem || null;
+  estMovs = [];
+  estExtratoFim = false;
+
+  $("estGavetaTitulo").textContent = l.nome || "Sem nome";
+  $("estGavetaSub").textContent = l.pai ? l.pai + " · " + (l.categoria || "") : (l.categoria || "");
+  $("estMinimo").value = l.controlado ? Estoque.formatarQtd(l.minimo, l.unidade) : "";
+  $("formEstMinimo").hidden = !l.controlado;   // sem controle, o mínimo entra junto da contagem inicial
+  estPintarSaldo();
+  estRenderAcoesGaveta();
+  estFecharLancamento();
+
+  $("estGavetaOverlay").classList.add("visivel");
+  $("estGaveta").classList.add("aberto");
+  document.addEventListener("keydown", estGavetaEsc);
+
+  if (modo) estAbrirLancamento(modo);
+  estCarregarExtrato(true);
+}
+
+function estPintarSaldo() {
+  const l = estGavetaLinha;
+  if (!l) return;
+  $("estGavetaSaldo").textContent = l.controlado ? Estoque.formatarQtd(l.quantidade, l.unidade) : "—";
+  $("estGavetaUn").textContent = l.controlado ? l.unidade : "sem controle";
+  const selo = $("estGavetaSelo");
+  if (l.esgotado) { selo.hidden = false; selo.className = "selo-pag selo-esgotado"; selo.textContent = "Esgotado"; }
+  else if (l.baixo) { selo.hidden = false; selo.className = "selo-pag selo-baixo"; selo.textContent = "Abaixo do mínimo"; }
+  else { selo.hidden = true; }
+}
+
+function estRenderAcoesGaveta() {
+  const l = estGavetaLinha;
+  const cont = $("estGavetaAcoes");
+  if (!l || !cont) return;
+  const botao = (tipo, ico, txt, primario) =>
+    '<button type="button" class="' + (primario ? "primario" : "secundario") + ' est-g-acao" data-est-lanc="' + tipo + '">' + ico + txt + '</button>';
+  cont.innerHTML = l.controlado
+    ? botao("entrada", EST_ICO.entrada, "Entrada", true) + botao("perda", EST_ICO.perda, "Perda") + botao("contagem", EST_ICO.contagem, "Contagem")
+    : botao("controlar", EST_ICO.controlar, "Começar a controlar", true);
+  cont.querySelectorAll("[data-est-lanc]").forEach((b) =>
+    b.addEventListener("click", () => estAbrirLancamento(b.dataset.estLanc)));
+}
+
+function estAbrirLancamento(tipo) {
+  const t = EST_LANC_TEXTO[tipo];
+  if (!t) return;
+  estLancTipo = tipo;
+  const l = estGavetaLinha;
+  $("estLancTitulo").textContent = t.titulo;
+  $("estLancLabel").textContent = t.label;
+  $("btnEstLancConfirmar").textContent = t.botao;
+  $("estLancObs").placeholder = t.dica;
+  $("estLancQtd").value = "";
+  $("estLancObs").value = "";
+  $("estLancMin").value = "";
+  $("estLancMinWrap").hidden = tipo !== "controlar";
+  $("estLancDiferenca").hidden = true;
+  $("formEstLanc").hidden = false;
+  // Contagem é a única que mostra a conta antes de gravar: o dono digita o que
+  // contou, não a diferença, então a diferença é responsabilidade da tela.
+  estAtualizarDiferenca();
+  try { $("estLancQtd").focus(); } catch (_) {}
+  if (l && !l.controlado) $("estLancDiferenca").hidden = true;
+}
+
+function estFecharLancamento() {
+  estLancTipo = null;
+  $("formEstLanc").hidden = true;
+  $("estLancDiferenca").hidden = true;
+}
+
+function estAtualizarDiferenca() {
+  const el = $("estLancDiferenca");
+  const l = estGavetaLinha;
+  if (estLancTipo !== "contagem" || !l) { el.hidden = true; return; }
+  const contado = parseFloat(String($("estLancQtd").value || "").replace(",", "."));
+  if (!Number.isFinite(contado)) { el.hidden = true; return; }
+  const delta = Math.round((contado - l.quantidade) * 1000) / 1000;
+  const un = l.unidade === "kg" ? " kg" : "";
+  if (delta === 0) {
+    el.textContent = "Você contou " + Estoque.formatarQtd(contado, l.unidade) + un + " e o sistema também tinha isso. Nada muda.";
+    el.className = "est-g-diferenca igual";
+  } else {
+    el.textContent = "Você contou " + Estoque.formatarQtd(contado, l.unidade) + un +
+      " e o sistema tinha " + Estoque.formatarQtd(l.quantidade, l.unidade) + un +
+      ". Vai registrar " + (delta > 0 ? "mais " : "menos ") + Estoque.formatarQtd(Math.abs(delta), l.unidade) + un + ".";
+    el.className = "est-g-diferenca " + (delta > 0 ? "mais" : "menos");
+  }
+  el.hidden = false;
+}
+
+async function estCarregarExtrato(reset) {
+  const cont = $("estExtrato");
+  const l = estGavetaLinha;
+  if (!l || !cont) return;
+  if (reset) { estMovs = []; estExtratoFim = false; cont.innerHTML = '<p class="dash-vazio">Carregando…</p>'; }
+  let url = "/api/estoque/movimentos?itemId=" + encodeURIComponent(l.itemId) + "&limite=20";
+  if (l.variacaoId != null) url += "&variacaoId=" + encodeURIComponent(l.variacaoId);
+  const ultimo = estMovs[estMovs.length - 1];
+  if (!reset && ultimo) url += "&antes=" + encodeURIComponent(ultimo.criadoEm);
+  const r = await api("GET", url);
+  if (!r) return;
+  if (!r.ok) {
+    cont.innerHTML = '<p class="dash-vazio">Não deu para carregar o histórico. Feche e abra de novo.</p>';
+    return;
+  }
+  const dados = await r.json();
+  const novos = Array.isArray(dados.movimentos) ? dados.movimentos : [];
+  if (novos.length < 20) estExtratoFim = true;
+  estMovs = estMovs.concat(novos);
+  if (reset) estRenderResumo(dados.resumo || {});
+  estRenderExtrato();
+}
+
+function estRenderResumo(resumo) {
+  const l = estGavetaLinha;
+  const un = l ? l.unidade : "un";
+  const abs = (v) => Estoque.formatarQtd(Math.abs(Number(v) || 0), un);
+  const item = (rot, v) => '<div class="est-g-resumo-item"><span>' + rot + '</span><strong>' + abs(v) + '</strong><small>' + un + '</small></div>';
+  $("estResumo").innerHTML =
+    item("Entrou", resumo.entrada) + item("Vendeu", resumo.venda) +
+    item("Perdeu", resumo.perda) + item("Devolveu", resumo.devolucao);
+}
+
+function estRenderExtrato() {
+  const cont = $("estExtrato");
+  const l = estGavetaLinha;
+  if (!cont || !l) return;
+  if (!estMovs.length) {
+    cont.innerHTML = '<p class="dash-vazio">Nenhuma movimentação ainda. Venda, entrada, perda e contagem aparecem aqui.</p>';
+    $("btnEstMais").hidden = true;
+    return;
+  }
+  cont.innerHTML = estMovs.map((m) => {
+    const q = Number(m.quantidade) || 0;
+    const sinal = q > 0 ? "mais" : "menos";
+    const pedido = m.numero
+      ? '<button type="button" class="est-g-pedido" data-est-pedido="' + escapar(String(m.numero)) + '">Pedido ' + escapar(String(m.numero)) + '</button>'
+      : "";
+    const obs = m.obs ? " · " + escapar(m.obs) : "";
+    return (
+      '<div class="est-g-mov">' +
+        '<div>' +
+          '<div class="est-g-mov-tipo">' + escapar(EST_TIPO_ROTULO[m.tipo] || m.tipo) + pedido + '</div>' +
+          '<div class="est-g-mov-quando">' + escapar(estQuando(m.criadoEm)) + obs + '</div>' +
+        '</div>' +
+        '<div class="est-g-mov-num">' +
+          '<div class="est-g-mov-delta ' + sinal + '">' + (q > 0 ? "+" : "-") + escapar(Estoque.formatarQtd(Math.abs(q), m.unidade || l.unidade)) + '</div>' +
+          '<div class="est-g-mov-ficou">ficou ' + escapar(Estoque.formatarQtd(m.saldoDepois, m.unidade || l.unidade)) + '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join("");
+  $("btnEstMais").hidden = estExtratoFim;
+  // Venda e devolução carregam o pedido: o número leva para a aba Pedidos já
+  // filtrada nele (não existe rota de pedido avulso, e a busca já resolve).
+  cont.querySelectorAll("[data-est-pedido]").forEach((b) => b.addEventListener("click", () => {
+    const busca = $("buscaPedido");
+    if (busca) { busca.value = b.dataset.estPedido; busca.dispatchEvent(new Event("input")); }
+    estFecharGaveta();
+    const nav = document.querySelector("nav button[data-aba='pedidos']");
+    if (nav) nav.click();
+  }));
+}
+
+// Depois de gravar, o saldo novo volta do servidor: atualiza a linha da lista,
+// os contadores e a gaveta sem fechar nada nem recarregar a tela inteira.
+function estAplicarSaldoNovo(quantidade) {
+  const l = estGavetaLinha;
+  if (!l || quantidade == null) return;
+  l.quantidade = Number(quantidade);
+  l.controlado = true;
+  l.esgotado = l.quantidade === 0;
+  l.baixo = l.quantidade > 0 && l.minimo > 0 && l.quantidade <= l.minimo;
+  estRecalcularContadores();
+  estPintarSaldo();
+  estRenderAcoesGaveta();
+  $("formEstMinimo").hidden = false;
+  $("estMinimo").value = Estoque.formatarQtd(l.minimo, l.unidade);
+  renderEstoque();
+}
+
+function estRecalcularContadores() {
+  const ctrl = estoqueLinhas.filter((l) => l.controlado);
+  $("estContControlados").textContent = String(ctrl.length);
+  $("estContEsgotados").textContent = String(ctrl.filter((l) => l.esgotado).length);
+  $("estContBaixos").textContent = String(ctrl.filter((l) => l.baixo).length);
+}
+
+async function estEnviarLancamento(e) {
+  e.preventDefault();
+  const l = estGavetaLinha;
+  if (!l || !estLancTipo) return;
+  const bruto = String($("estLancQtd").value || "").replace(",", ".");
+  const valor = parseFloat(bruto);
+  if (!Number.isFinite(valor) || (estLancTipo !== "contagem" && estLancTipo !== "controlar" && valor <= 0)) {
+    toast("Informe uma quantidade válida.", "erro");
+    try { $("estLancQtd").focus(); } catch (_) {}
+    return;
+  }
+  const contagem = estLancTipo === "contagem" || estLancTipo === "controlar";
+  const corpo = {
+    itemId: l.itemId, variacaoId: l.variacaoId,
+    tipo: contagem ? "contagem" : estLancTipo,
+    obs: $("estLancObs").value || (estLancTipo === "controlar" ? "Controle ativado" : ""),
+  };
+  if (contagem) corpo.contado = valor; else corpo.quantidade = valor;
+
+  const btn = $("btnEstLancConfirmar");
+  btn.disabled = true;
+  const r = await api("POST", "/api/estoque/movimentos", corpo);
+  btn.disabled = false;
+  if (!r) return;
+  const dados = await r.json().catch(() => ({}));
+  if (!r.ok) { toast(dados.erro || "Não foi possível registrar.", "erro"); return; }
+
+  // "Começar a controlar" pode trazer o mínimo junto: é o mesmo gesto para o dono.
+  const min = parseFloat(String($("estLancMin").value || "").replace(",", "."));
+  if (estLancTipo === "controlar" && Number.isFinite(min)) {
+    const rm = await api("POST", "/api/estoque/minimo", { itemId: l.itemId, variacaoId: l.variacaoId, minimo: min });
+    if (rm && rm.ok) l.minimo = min;
+  }
+  estAplicarSaldoNovo(dados.quantidade);
+  estFecharLancamento();
+  toast(estLancTipoMensagem(corpo.tipo));
+  estCarregarExtrato(true);
+}
+
+function estLancTipoMensagem(tipo) {
+  if (tipo === "entrada") return "Entrada registrada.";
+  if (tipo === "perda") return "Perda registrada.";
+  return "Contagem registrada.";
+}
+
+async function estSalvarMinimo(e) {
+  e.preventDefault();
+  const l = estGavetaLinha;
+  if (!l) return;
+  const min = parseFloat(String($("estMinimo").value || "").replace(",", "."));
+  if (!Number.isFinite(min) || min < 0) { toast("Informe um mínimo válido.", "erro"); return; }
+  const btn = $("btnEstMinimo");
+  btn.disabled = true;
+  const r = await api("POST", "/api/estoque/minimo", { itemId: l.itemId, variacaoId: l.variacaoId, minimo: min });
+  btn.disabled = false;
+  if (!r) return;
+  if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.erro || "Não foi possível salvar o mínimo.", "erro"); return; }
+  l.minimo = min;
+  l.baixo = l.quantidade > 0 && min > 0 && l.quantidade <= min;
+  estRecalcularContadores();
+  estPintarSaldo();
+  renderEstoque();
+  toast("Mínimo salvo.");
+}
+
+function estGavetaEsc(e) {
+  if (e.key !== "Escape") return;
+  if (!$("estGaveta").classList.contains("aberto")) return;
+  e.preventDefault();
+  estFecharGaveta();
+}
+
+function estFecharGaveta() {
+  document.removeEventListener("keydown", estGavetaEsc);
+  $("estGaveta").classList.remove("aberto");
+  $("estGavetaOverlay").classList.remove("visivel");
+  estFecharLancamento();
+  estGavetaLinha = null;
+  estMovs = [];
+  const volta = estFocoVolta;
+  estFocoVolta = null;
+  // Devolve o foco à linha de origem; se ela sumiu no re-render, volta pra busca.
+  // No PRÓXIMO quadro de propósito: o `a11y.js` observa a mudança de classe da
+  // gaveta e agenda o foco dele num rAF. Fechando pelo Esc com o foco FORA da
+  // gaveta (na linha da lista), o foco dele cairia dentro da gaveta que já está
+  // saindo e acabaria no <body>. Agendando depois, o nosso é o último a falar.
+  const alvo = (volta && document.contains(volta)) ? volta : $("estBusca");
+  if (!alvo) return;
+  const devolver = () => { try { alvo.focus(); } catch (_) {} };
+  if (window.requestAnimationFrame) requestAnimationFrame(devolver);
+  else setTimeout(devolver, 0);
+}
+
+if ($("estGavetaFechar")) $("estGavetaFechar").addEventListener("click", estFecharGaveta);
+if ($("estGavetaOverlay")) $("estGavetaOverlay").addEventListener("click", estFecharGaveta);
+if ($("btnEstLancCancelar")) $("btnEstLancCancelar").addEventListener("click", estFecharLancamento);
+if ($("formEstLanc")) $("formEstLanc").addEventListener("submit", estEnviarLancamento);
+if ($("formEstMinimo")) $("formEstMinimo").addEventListener("submit", estSalvarMinimo);
+if ($("estLancQtd")) $("estLancQtd").addEventListener("input", estAtualizarDiferenca);
+if ($("btnEstMais")) $("btnEstMais").addEventListener("click", () => estCarregarExtrato(false));
 
 if ($("estBusca")) $("estBusca").addEventListener("input", (e) => {
   estTermoBusca = e.target.value || "";

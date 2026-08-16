@@ -6376,3 +6376,121 @@ button.est-acao:hover { border-color: var(--accent-fg); }
   .est-sub { padding-left: var(--space-8); }
   .est-sub::before { left: var(--space-3); }
 }
+
+/* ---- Gaveta do produto (Controle de estoque) ----
+   Reusa a gaveta única do painel (.gaveta*); daqui pra baixo é só o miolo. */
+.est-clicavel { cursor: pointer; }
+.est-g-saldo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.est-g-saldo-rot {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+.est-g-saldo-num {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+.est-g-saldo-num .est-un { font-size: 15px; }
+
+/* Ritmo vertical da gaveta do estoque, na escala do painel: sem isto os blocos
+   (saldo, mínimo, ações, resumo, extrato) encostam uns nos outros. */
+#estGaveta .gaveta-conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Rótulo + campo na primeira coluna, "Salvar" alinhado ao input, e a nota
+   ocupando a linha inteira embaixo (senão ela empurrava o botão para baixo). */
+.est-g-min {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+.est-g-min .campo { margin: 0; }
+.est-g-min .campo-nota { grid-column: 1 / -1; margin: 0; }
+.est-g-min input { font-variant-numeric: tabular-nums; }
+
+.est-g-acoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.est-g-acoes:has(> :only-child) { grid-template-columns: 1fr; }
+.est-g-acao {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+}
+.est-g-acao svg { width: 18px; height: 18px; }
+
+.est-g-lanc { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.est-g-lanc h3 { margin: 0; font-size: 13px; }
+.est-g-lanc .campo { margin: 0; }
+.est-g-lanc input { font-variant-numeric: tabular-nums; }
+.est-g-lanc-acoes { display: flex; gap: var(--space-2); justify-content: flex-end; }
+/* A conta da contagem aparece ANTES de gravar: é o que evita o susto. */
+.est-g-diferenca {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+}
+.est-g-diferenca.menos { background: var(--error-subtle); color: var(--error-fg); }
+.est-g-diferenca.mais { background: var(--success-subtle); color: var(--success); }
+.est-g-diferenca.igual { background: var(--bg-elevated); color: var(--text-secondary); }
+
+.est-g-bloco h3 { margin-bottom: var(--space-3); }
+.est-g-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.est-g-resumo-item {
+  padding: var(--space-3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.est-g-resumo-item span { display: block; font-size: 12px; color: var(--text-secondary); }
+.est-g-resumo-item strong { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.est-g-resumo-item small { font-size: 12px; color: var(--text-secondary); margin-left: 3px; }
+
+.est-g-mov {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.est-g-mov:last-child { border-bottom: 0; }
+.est-g-mov-tipo { display: flex; align-items: center; gap: var(--space-2); font-size: 13px; font-weight: 600; }
+.est-g-mov-quando { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.est-g-mov-num { text-align: right; font-variant-numeric: tabular-nums; }
+.est-g-mov-delta { font-size: 15px; font-weight: 700; }
+.est-g-mov-delta.mais { color: var(--success); }
+.est-g-mov-delta.menos { color: var(--error-fg); }
+.est-g-mov-ficou { font-size: 12px; color: var(--text-secondary); }
+.est-g-pedido {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-elevated);
+  color: var(--secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.est-g-pedido:hover { border-color: var(--secondary); background: var(--secondary-subtle); }
+.est-g-mais { width: 100%; margin-top: var(--space-3); }

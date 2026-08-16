@@ -1440,6 +1440,77 @@
         </div>
       </aside>
 
+  <!-- Gaveta do Controle de estoque: saldo, mínimo, lançamentos e extrato de UM
+       saldo (produto ou variação). Fica FORA da aba, como a gaveta do grupo:
+       seção .aba inativa é display:none e engoliria a gaveta. -->
+      <div class="gaveta-overlay" id="estGavetaOverlay"></div>
+      <aside class="gaveta" id="estGaveta" role="dialog" aria-modal="true" aria-labelledby="estGavetaTitulo">
+        <div class="gaveta-topo">
+          <button type="button" class="gaveta-fechar" id="estGavetaFechar" aria-label="Fechar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div class="gaveta-titulo">
+            <h2 id="estGavetaTitulo">Produto</h2>
+            <p class="gaveta-sub" id="estGavetaSub"></p>
+          </div>
+        </div>
+
+        <div class="gaveta-conteudo">
+          <div class="est-g-saldo">
+            <div>
+              <span class="est-g-saldo-rot">Saldo atual</span>
+              <div class="est-g-saldo-num">
+                <span id="estGavetaSaldo">—</span><span class="est-un" id="estGavetaUn">un</span>
+              </div>
+            </div>
+            <span class="selo-pag" id="estGavetaSelo" hidden></span>
+          </div>
+
+          <form class="est-g-min" id="formEstMinimo" autocomplete="off">
+            <div class="campo">
+              <label for="estMinimo">Estoque mínimo</label>
+              <input type="text" inputmode="decimal" id="estMinimo" />
+            </div>
+            <button type="submit" class="secundario" id="btnEstMinimo">Salvar</button>
+            <p class="campo-nota">Abaixo disso o produto entra no contador "Abaixo do mínimo".</p>
+          </form>
+
+          <div class="est-g-acoes" id="estGavetaAcoes" role="group" aria-label="Registrar movimento"></div>
+
+          <form class="est-g-lanc card" id="formEstLanc" hidden autocomplete="off">
+            <h3 id="estLancTitulo">Registrar entrada</h3>
+            <div class="campo">
+              <label for="estLancQtd" id="estLancLabel">Quantidade que entrou</label>
+              <input type="text" inputmode="decimal" id="estLancQtd" />
+            </div>
+            <p class="est-g-diferenca" id="estLancDiferenca" hidden></p>
+            <div class="campo" id="estLancMinWrap" hidden>
+              <label for="estLancMin">Estoque mínimo (opcional)</label>
+              <input type="text" inputmode="decimal" id="estLancMin" />
+            </div>
+            <div class="campo">
+              <label for="estLancObs">Observação (opcional)</label>
+              <input type="text" id="estLancObs" maxlength="200" placeholder="Ex.: chegou do fornecedor" />
+            </div>
+            <div class="est-g-lanc-acoes">
+              <button type="button" class="secundario" id="btnEstLancCancelar">Cancelar</button>
+              <button type="submit" class="primario" id="btnEstLancConfirmar">Registrar entrada</button>
+            </div>
+          </form>
+
+          <div class="est-g-bloco">
+            <h3>Últimos 30 dias</h3>
+            <div class="est-g-resumo" id="estResumo"></div>
+          </div>
+
+          <div class="est-g-bloco">
+            <h3>Movimentação</h3>
+            <div id="estExtrato"></div>
+            <button type="button" class="secundario est-g-mais" id="btnEstMais" hidden>Carregar mais</button>
+          </div>
+        </div>
+      </aside>
+
   <!-- Vincular grupo da biblioteca ao produto -->
   <div id="vincularOverlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="vincularTitulo">
     <div class="modal-caixa">
