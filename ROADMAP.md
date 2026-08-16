@@ -130,11 +130,12 @@ restaurante.
     > **implementado** a pedido do dono como controle **anti-fraude** (CHANGELOG 0.60.0): cancelar um
     > pedido pago deduz no caixa **mantendo o rastro** (movimento `cancelamento`, não apaga o recebimento),
     > aparece no extrato e no relatório de fechamento. Estoque, fiado e fiscal seguem fora.
-    > **Atualização (2026-08-14):** o **controle de estoque** também saiu do "fora de escopo". A frase
-    > acima nasceu no contexto do caixa (o caixa não controla estoque) e passou a contradizer o
-    > produto: estoque por item existe desde a v0.20, e a etapa **3/4 do split de Produtos** dá a
-    > visão consolidada, o histórico de movimentação e a devolução no cancelamento. Ver
-    > [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md).
+    > **Atualização (2026-08-15):** o **controle de estoque** saiu do "fora de escopo" e está
+    > **entregue** (v0.92.0). A frase acima nasceu no contexto do caixa (o caixa não controla
+    > estoque) e passou a contradizer o produto: estoque por item existe desde a v0.20, e a etapa
+    > **3/4 do split de Produtos** entregou a visão consolidada, o histórico de movimentação e a
+    > devolução no cancelamento. Ver [docs/modelo-dados.md](docs/modelo-dados.md) (modelo e regras)
+    > e [docs/planos-e-frete.md](docs/planos-e-frete.md) (o que a tela faz e o gate de plano).
     > **Fiscal (NFC-e/SAT) e fiado seguem fora**, e o fiado foi inclusive removido do produto.
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
     Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
@@ -165,12 +166,14 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 
 - [ ] **Split de Produtos em 4 cadastros** (M, em andamento) — "Produtos" deixa de ser uma tela só e
   vira os cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅ (v0.89.0) e
-  **2/4 Complementos** ✅ (biblioteca de grupos reutilizáveis, v0.90.0/0.91.0) entregues;
-  **3/4 Controle de estoque** em construção (desenho e plano em
+  **2/4 Complementos** ✅ (biblioteca de grupos reutilizáveis, v0.90.0/0.91.0) e
+  **3/4 Controle de estoque** ✅ (v0.92.0: tela com lista e gaveta de extrato, trilha em
+  `estoque_movimentos` e cancelamento devolvendo ao estoque; desenho e plano em
   [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md)
-  e [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md);
-  andamento no `PROGRESSO.md`) e **4/4 Insumos** em aberto.
-  O **`id` estável de opção**, criado na 2/4, é a âncora das duas telas restantes.
+  e [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md))
+  entregues; **4/4 Insumos** em aberto.
+  O **`id` estável de opção**, criado na 2/4, é a âncora da tela restante, e a trilha de
+  movimentação da 3/4 é a base da baixa por ingrediente que a 4/4 vai precisar.
 - [ ] **(decisão pendente) Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca
   é atualizada; faltariam transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
   **Contradiz a decisão "fora de escopo" acima**, que tirou o ciclo do pedido do produto por premissa, e a
@@ -191,7 +194,7 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
 ### Fase 1 — Operação de loja (cabe na stack; tempo real começa com polling)
 
 - [ ] **KDS / tela de cozinha** (M) — depende do status; polling no início, pub-sub ao escalar.
-- [x] **Estoque simples** — ✅ **entregue**: campos estoque/estoque mínimo no item (jsonb, sem migração pesada), **baixa atômica no pedido** (cardápio web + PDV via `store.baixarEstoqueTx` com `FOR UPDATE`) e selos **Esgotado/Baixo**. Estendido com **estoque por VARIAÇÃO** (opções com estoque próprio — ver `CHANGELOG.md` 0.53.0). Ver também a etapa "estoque ativo (3a)" no `CHANGELOG.md`.
+- [x] **Estoque simples** — ✅ **entregue**: campos estoque/estoque mínimo no item (jsonb, sem migração pesada), **baixa atômica no pedido** (cardápio web + PDV via `store.baixarEstoqueTx` com `FOR UPDATE`) e selos **Esgotado/Baixo**. Estendido com **estoque por VARIAÇÃO** (opções com estoque próprio — ver `CHANGELOG.md` 0.53.0). Ver também a etapa "estoque ativo (3a)" no `CHANGELOG.md`. **Superado pela 3/4 do split de Produtos** (v0.92.0), que deu a esse estoque a tela consolidada, o histórico de movimentação e a devolução no cancelamento.
 - [x] **Caixa / fechamento** — ✅ **entregue** (Plano Completo): abrir caixa com fundo de troco,
   **recebimento por pedido** (estornável), sangria/suprimento, e **fechamento com conferência de
   dinheiro físico** (esperado em espécie × contado → diferença). Tabelas `caixas`/`caixa_movimentos`

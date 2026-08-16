@@ -28,6 +28,7 @@
 | 8 | Recuperação de senha | e-mail, token (hash) | Dono do restaurante | Redefinir o acesso com segurança | Execução de contrato / legítimo interesse | Token expira em 1 hora | `password_resets` |
 | 9 | Trilha de auditoria | evento, slug, data/hora (sem PII no detalhe) | — (metadado) | Prestação de contas (Art. 37) | Obrigação legal / legítimo interesse | A definir (sugerido: 24 meses) | `src/auditoria.js` |
 | — | Imagens do cardápio | fotos de **produtos** (não pessoais) | — | Exibir o cardápio | — | Enquanto a conta existir | Supabase Storage |
+| — | Trilha de estoque | produto, quantidade, saldo e o **número do pedido** que originou a baixa (sem nome, telefone ou endereço) | — | Explicar toda mudança de saldo do estoque | — | **Apagada após 12 meses** | `src/estoque-db.js` (`estoque_movimentos`) |
 
 ## Direitos dos titulares (como são atendidos)
 

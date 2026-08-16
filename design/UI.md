@@ -134,6 +134,25 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 - **Limites:** sem console de dev (variaveis de contexto, JSON, latencia, "Conectar API",
   "Status da Entrega") — o usuario e dono de restaurante.
 
+### 10. Controle de estoque — CONCLUIDO (Plano Completo)
+- **Feito:** Cadastros → Produtos → Controle de estoque. Faixa de tres contadores que tambem
+  filtram (Esgotados, Abaixo do minimo, Controlados), busca e chips (So controlados / Todos /
+  Esgotados / Baixo). Lista com **uma linha por SALDO**, nao por produto: item com variacoes vira
+  linha-mae sem numero ("3 tamanhos") e cada tamanho entra recuado com barra a esquerda. Produto
+  sem controle aparece apagado, com o botao **Controlar**. Gaveta do produto (componente `.gaveta`
+  unico do painel) com saldo em destaque + selo, minimo editavel, os tres lancamentos, resumo dos
+  ultimos 30 dias e extrato paginado por cursor.
+- **Regra que a tela precisa dizer:** Entrada **soma**, Perda **subtrai** (trava em zero) e
+  Contagem **substitui** o saldo pelo contado. Os tres mostram o resultado antes de gravar
+  ("Voce tem 4. Vai ficar com 14."), e o botao do lancamento aberto fica preenchido.
+- **Dados/rotas:** `GET/POST /api/estoque*` no gate `exigePdv`; saldo no jsonb do cardapio e
+  trilha em `estoque_movimentos`. Detalhe em `docs/modelo-dados.md`.
+- **Limites (nao construir aqui):** extrato **geral** do restaurante (o extrato e por produto),
+  contagem em lote para inventario, compra/fornecedor (entrada e um numero com observacao, nao um
+  documento), alerta ativo por e-mail/WhatsApp, e estoque por opcao de complemento (fica com
+  Insumos, etapa 4/4). Quantidade **nao e dinheiro**: sem mascara monetaria, `Estoque.formatarQtd`.
+- **No celular:** as tres acoes saem da linha e ficam na gaveta, que ocupa a tela inteira.
+
 ---
 
 ## Status e ordem
