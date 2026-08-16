@@ -912,11 +912,14 @@ const EST_TIPO_ROTULO = {
   venda: "Venda", devolucao: "Devolução", entrada: "Entrada",
   perda: "Perda", contagem: "Contagem", ajuste: "Ajuste",
 };
+// Entrada e perda MEXEM no saldo (somam e subtraem); contagem SUBSTITUI o saldo
+// pelo que foi contado. A `nota` diz isso no campo, e a frase de conferência
+// (estAtualizarPrevia) mostra o resultado antes de gravar, nos três.
 const EST_LANC_TEXTO = {
-  entrada: { titulo: "Registrar entrada", label: "Quantidade que entrou", botao: "Registrar entrada", dica: "Ex.: chegou do fornecedor" },
-  perda: { titulo: "Registrar perda", label: "Quantidade perdida", botao: "Registrar perda", dica: "Ex.: quebrou na cozinha" },
-  contagem: { titulo: "Registrar contagem", label: "Quantidade contada", botao: "Registrar contagem", dica: "Ex.: conferência do fim do dia" },
-  controlar: { titulo: "Começar a controlar", label: "Quantidade que você tem hoje", botao: "Começar a controlar", dica: "Ex.: contagem inicial" },
+  entrada: { titulo: "Registrar entrada", label: "Quantidade que chegou", botao: "Registrar entrada", dica: "Ex.: chegou do fornecedor", nota: "Soma ao que já existe." },
+  perda: { titulo: "Registrar perda", label: "Quantidade perdida", botao: "Registrar perda", dica: "Ex.: quebrou na cozinha", nota: "Subtrai do que existe hoje." },
+  contagem: { titulo: "Registrar contagem", label: "Quantidade que você contou", botao: "Registrar contagem", dica: "Ex.: conferência do fim do dia", nota: "Substitui o saldo pelo que você contou." },
+  controlar: { titulo: "Começar a controlar", label: "Quantidade que você tem hoje", botao: "Começar a controlar", dica: "Ex.: contagem inicial", nota: "É a contagem inicial: o saldo começa neste número." },
 };
 
 function estLinhaPorChave(chave) {
@@ -989,9 +992,9 @@ function estAbrirLancamento(tipo) {
   const t = EST_LANC_TEXTO[tipo];
   if (!t) return;
   estLancTipo = tipo;
-  const l = estGavetaLinha;
   $("estLancTitulo").textContent = t.titulo;
   $("estLancLabel").textContent = t.label;
+  $("estLancNota").textContent = t.nota;
   $("btnEstLancConfirmar").textContent = t.botao;
   $("estLancObs").placeholder = t.dica;
   $("estLancQtd").value = "";
@@ -1000,11 +1003,9 @@ function estAbrirLancamento(tipo) {
   $("estLancMinWrap").hidden = tipo !== "controlar";
   $("estLancDiferenca").hidden = true;
   $("formEstLanc").hidden = false;
-  // Contagem é a única que mostra a conta antes de gravar: o dono digita o que
-  // contou, não a diferença, então a diferença é responsabilidade da tela.
-  estAtualizarDiferenca();
+  // O campo nasce vazio, então a frase só aparece quando o dono digita.
+  estAtualizarPrevia();
   try { $("estLancQtd").focus(); } catch (_) {}
-  if (l && !l.controlado) $("estLancDiferenca").hidden = true;
 }
 
 function estFecharLancamento() {
@@ -1013,23 +1014,46 @@ function estFecharLancamento() {
   $("estLancDiferenca").hidden = true;
 }
 
-function estAtualizarDiferenca() {
+// Frase de conferência ANTES de gravar, nos três lançamentos. Sem ela, entrada e
+// perda eram digitadas no escuro e só se descobria o resultado depois: é a
+// diferença entre "somei" e "troquei o saldo", a dúvida clássica de estoque.
+function estAtualizarPrevia() {
   const el = $("estLancDiferenca");
   const l = estGavetaLinha;
-  if (estLancTipo !== "contagem" || !l) { el.hidden = true; return; }
-  const contado = parseFloat(String($("estLancQtd").value || "").replace(",", "."));
-  if (!Number.isFinite(contado)) { el.hidden = true; return; }
-  const delta = Math.round((contado - l.quantidade) * 1000) / 1000;
+  if (!l || !estLancTipo) { el.hidden = true; return; }
+  const valor = parseFloat(String($("estLancQtd").value || "").replace(",", "."));
+  if (!Number.isFinite(valor)) { el.hidden = true; return; }
   const un = l.unidade === "kg" ? " kg" : "";
-  if (delta === 0) {
-    el.textContent = "Você contou " + Estoque.formatarQtd(contado, l.unidade) + un + " e o sistema também tinha isso. Nada muda.";
-    el.className = "est-g-diferenca igual";
+  const q = (n) => Estoque.formatarQtd(n, l.unidade) + un;
+  const tinha = l.controlado ? l.quantidade : 0;
+  let texto, classe;
+
+  if (estLancTipo === "controlar") {
+    texto = "O saldo vai começar em " + q(valor) + ".";
+    classe = "mais";
+  } else if (estLancTipo === "entrada") {
+    texto = "Você tem " + q(tinha) + ". Vai ficar com " + q(tinha + valor) + ".";
+    classe = "mais";
+  } else if (estLancTipo === "perda") {
+    // O servidor trava o saldo em zero e registra o que foi de fato aplicado.
+    const fica = Math.max(0, tinha - valor);
+    texto = valor > tinha
+      ? "Você tem " + q(tinha) + " e está perdendo " + q(valor) + ". O saldo trava em " + q(0) + "."
+      : "Você tem " + q(tinha) + ". Vai ficar com " + q(fica) + ".";
+    classe = "menos";
   } else {
-    el.textContent = "Você contou " + Estoque.formatarQtd(contado, l.unidade) + un +
-      " e o sistema tinha " + Estoque.formatarQtd(l.quantidade, l.unidade) + un +
-      ". Vai registrar " + (delta > 0 ? "mais " : "menos ") + Estoque.formatarQtd(Math.abs(delta), l.unidade) + un + ".";
-    el.className = "est-g-diferenca " + (delta > 0 ? "mais" : "menos");
+    const delta = Math.round((valor - tinha) * 1000) / 1000;
+    if (delta === 0) {
+      texto = "Você contou " + q(valor) + " e o sistema também tinha isso. Nada muda.";
+      classe = "igual";
+    } else {
+      texto = "Você contou " + q(valor) + " e o sistema tinha " + q(tinha) +
+        ". Vai registrar " + (delta > 0 ? "mais " : "menos ") + q(Math.abs(delta)) + ".";
+      classe = delta > 0 ? "mais" : "menos";
+    }
   }
+  el.textContent = texto;
+  el.className = "est-g-diferenca " + classe;
   el.hidden = false;
 }
 
@@ -1229,7 +1253,7 @@ if ($("estGavetaOverlay")) $("estGavetaOverlay").addEventListener("click", estFe
 if ($("btnEstLancCancelar")) $("btnEstLancCancelar").addEventListener("click", estFecharLancamento);
 if ($("formEstLanc")) $("formEstLanc").addEventListener("submit", estEnviarLancamento);
 if ($("formEstMinimo")) $("formEstMinimo").addEventListener("submit", estSalvarMinimo);
-if ($("estLancQtd")) $("estLancQtd").addEventListener("input", estAtualizarDiferenca);
+if ($("estLancQtd")) $("estLancQtd").addEventListener("input", estAtualizarPrevia);
 if ($("btnEstMais")) $("btnEstMais").addEventListener("click", () => estCarregarExtrato(false));
 
 if ($("estBusca")) $("estBusca").addEventListener("input", (e) => {
