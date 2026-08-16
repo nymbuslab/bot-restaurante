@@ -330,3 +330,48 @@ mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/p
 - **Conferência cega, justificativa de diferença, limite de gaveta, comprovante de sangria/suprimento,
   tolerância de divergência, múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.
 - Gaveta física, corte ESC/POS fino, TEF — dependem do **agente local** (ver ROADMAP).
+
+---
+
+## 4º benefício do Completo — Controle de estoque com histórico
+
+**Gate:** as quatro rotas usam `exigeAuth` + **`exigePdv`** (o mesmo gate de Plano Completo que PDV
+e Mesas reusam; a mensagem dele, "Recurso do Plano Completo", é genérica e serve). No front, a aba
+mostra o convite de plano quando a rota responde **403**, no padrão do `caixa-lock`.
+
+**Onde:** Cadastros → Produtos → **Controle de estoque** (o slot que era "Em breve").
+
+**O que a tela resolve.** O estoque existia desde a v0.20 (`item.estoque` no jsonb), mas só dava
+para enxergar e ajustar **um item por vez**, dentro do editor do Cardápio. Faltavam três coisas:
+visão de conjunto ("o que está acabando"), histórico ("sumiu quantidade, foi venda ou perda?") e
+devolução no cancelamento (a venda dava baixa, nenhum dos cinco caminhos de cancelamento devolvia).
+
+- **Lista:** uma linha por **saldo**, não por produto. Produto com variações não tem número só dele,
+  então cada variação entra recuada sob ele. Três contadores no topo (Esgotados, Abaixo do mínimo,
+  Controlados) que também **filtram**, mais busca e os chips Só controlados / Todos / Esgotados /
+  Baixo. Produto sem controle aparece apagado, com um botão **Controlar** que liga o controle ali
+  mesmo, sem abrir o editor do Cardápio.
+- **Gaveta do produto:** saldo em destaque, mínimo editável, os três lançamentos, resumo dos últimos
+  30 dias (entrou, vendeu, perdeu, devolveu) e o extrato paginado por cursor de data. Movimento de
+  venda leva o número do pedido, que abre a aba Pedidos filtrada nele.
+- **O motivo é declarado no gesto:** botões Entrada, Perda e Contagem, em vez de editar o número e
+  explicar depois. O extrato nasce legível. A regra de cada um (soma, subtrai, substitui) e a frase
+  de conferência antes de gravar estão em [modelo-dados.md](modelo-dados.md).
+- **Cancelamento devolve ao estoque** nos cinco caminhos (pedido inteiro, item do pedido, mesa, item
+  da comanda e pedido já pago), com a caixinha "devolver ao estoque" **marcada por padrão**.
+  Desmarcar não devolve e não gera movimento: prato feito e descartado é perda, não devolução.
+- **No celular** as três ações saem da linha e ficam dentro da gaveta, que ocupa a tela inteira.
+
+**Onde mora o código:** `src/estoque-db.js` (único ponto que fala com a tabela), `public/estoque.js`
+(cálculo puro, dual-mode), `src/store.js` (`baixarEstoqueTx`/`devolverEstoqueTx`/`ajustarEstoqueTx`),
+rotas em `src/servidor.js`, tela em `public/app.js` (`carregarEstoque`/`renderEstoque`/`estAbrirGaveta`).
+Tabela `estoque_movimentos` (migration `20260813120000`), retenção de 12 meses no `index.js`.
+
+### Fora do escopo desta etapa (futuro)
+
+- **Estoque por opção de complemento** (o "Bacon" que acaba e some da opção): entra com Insumos.
+- **Insumos e ficha técnica** (etapa 4/4 do split de Produtos).
+- **Extrato geral do restaurante** (todos os movimentos numa lista): hoje o extrato é por produto.
+- **Modo contagem em lote** para inventário de fim de mês.
+- **Compra e fornecedor:** entrada aqui é um número com observação, não um documento de compra.
+- **Alerta ativo** (e-mail/WhatsApp avisando que acabou): a tela mostra, ninguém é notificado.

@@ -898,3 +898,23 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   aparecer sozinhas, e o cliente comprava algo que você achava que tinha removido.
 - Menu lateral mais curto: Produtos, Clientes e Fornecedores saíram de dentro de
   "Cadastros" e foram para o primeiro nível.
+
+## [0.92.0] — Controle de estoque com histórico
+
+- Nova tela **Controle de estoque** (Cadastros → Produtos): veja numa lista só o que está
+  esgotado, o que está abaixo do mínimo e quanto tem de cada produto. Acabou a conferência
+  abrindo item por item no cardápio.
+- Registre o que aconteceu **pelo motivo**: Entrada quando chega mercadoria, Perda quando
+  quebra ou vence, Contagem quando você conta a prateleira. A tela mostra o resultado antes
+  de gravar, então dá para conferir sem medo de errar o número.
+- Todo produto tem **extrato**: cada venda, entrada, perda e devolução com a data, quanto
+  mudou e quanto ficou. Quando sumir quantidade, dá para ver por quê. A venda leva o número
+  do pedido junto.
+- **Cancelar pedido agora devolve ao estoque.** Vale nos cinco caminhos (pedido inteiro, item
+  do pedido, mesa, item da comanda e pedido já pago), com a opção de não devolver quando o
+  prato já foi feito e descartado.
+- Produto que ainda não tem controle aparece na lista e pode ser controlado ali mesmo, sem
+  abrir o cadastro.
+- No celular a lista mostra o essencial e as ações ficam na ficha do produto.
+- Disponível no **Plano Completo**. O campo de estoque no cadastro do produto continua nos
+  dois planos, e quem está no Essencial não perde nada do que já tinha.
