@@ -12,6 +12,40 @@ const store = require("./store"); // devolverEstoqueTx/sincronizarCardapio (canc
 const slugDe = (dir) => path.basename(dir);
 const idCache = {};
 
+// ---- Fronteira de sessão da mesa -------------------------------------------
+// Uma mesa é reusada por clientes diferentes o dia inteiro. Fechar ou cancelar
+// zera `aberta_em`, e abrir grava `now()` de novo — é ESSA data que separa uma
+// sessão da seguinte.
+//
+// Sem o recorte, um pedido que ficou sem receber numa sessão antiga (fechamento
+// interrompido, falha no meio da transação) segue grudado na mesa para sempre:
+// aparece na conta do próximo cliente, entra no total consumido e, pior, o
+// `lancarItens` ACUMULA a rodada nova dentro dele, herdando número e valor.
+//
+// `recebidoDaMesa` já cortava por `aberta_em` (o caixa não tem `recebido_em`), e
+// era a única metade da conta que fazia isso. Agora as duas usam a mesma régua.
+//
+// Invariante que sustenta o corte: pedido de mesa só nasce com a mesa aberta (a
+// rota recusa mesa livre), então `criado_em >= aberta_em` sempre. A exceção é a
+// TRANSFERÊNCIA, que pode mover pedido antigo para mesa aberta agora — por isso
+// `transferir` recua o `aberta_em` do destino (ver lá).
+//
+// Mesa livre tem `aberta_em` nulo: o predicado é falso e nada aparece, que é o
+// resultado certo. Pedido órfão não some do sistema, continua na aba Pedidos
+// como "a receber" para o dono resolver.
+const DA_SESSAO = "p.recebido_em IS NULL AND p.status <> 'cancelado' AND m.aberta_em IS NOT NULL AND p.criado_em >= m.aberta_em";
+
+// Recalcula `mesas.total_consumido` a partir dos pedidos da SESSÃO. Era a mesma SQL
+// copiada em três lugares (vincular, lançar, transferir), que é como os critérios
+// divergiram em primeiro lugar. Recebe `exec` para rodar dentro da transação de quem
+// chamou, ou solto quando não houver uma.
+function recalcularConsumoSql() {
+  return `UPDATE mesas m SET total_consumido = (
+            SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
+             WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND ${DA_SESSAO})
+           WHERE m.empresa_id = $1 AND m.id = $2`;
+}
+
 async function empresaId(dir) {
   const slug = slugDe(dir);
   if (idCache[slug]) return idCache[slug];
@@ -41,11 +75,12 @@ function mapRow(r) {
 
 async function listar(dir) {
   const empId = await empresaId(dir);
-  // ultimo_pedido_em = data do último pedido não-cancelado da mesa (p/ alerta de mesa parada).
+  // ultimo_pedido_em = data do último pedido DA SESSÃO (p/ alerta de mesa parada).
+  // Sem o recorte, uma sobra antiga datava o alerta e a mesa nunca aparecia parada.
   const r = await db.query(
     `SELECT m.*, (
         SELECT MAX(p.criado_em) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL
+         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND ${DA_SESSAO}
        ) AS ultimo_pedido_em
        FROM mesas m WHERE m.empresa_id = $1 ORDER BY m.ordem, m.id`,
     [empId]
@@ -147,19 +182,15 @@ async function reabrir(dir, id) {
 async function vincularPedido(dir, mesaId, pedidoId, client) {
   const empId = await empresaId(dir);
   const exec = client ? (s, p) => client.query(s, p) : (s, p) => db.query(s, p);
-  await exec(
-    `UPDATE mesas m SET total_consumido = (
-        SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
-       WHERE m.empresa_id = $1 AND m.id = $2`,
-    [empId, mesaId]
-  );
+  await exec(recalcularConsumoSql(), [empId, mesaId]);
 }
 
 async function pedidosDaMesa(dir, mesaId) {
   const empId = await empresaId(dir);
   const r = await db.query(
-    "SELECT id, numero, status, itens, total, observacao, criado_em FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL ORDER BY id ASC",
+    `SELECT p.id, p.numero, p.status, p.itens, p.total, p.observacao, p.criado_em
+       FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+      WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND ${DA_SESSAO} ORDER BY p.id ASC`,
     [empId, mesaId]
   );
   return r.rows.map((p) => ({
@@ -263,9 +294,15 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
       );
       resumo = fq.rows.map((x) => (x.forma || "Outros") + " R$ " + (Number(x.total) || 0).toFixed(2).replace(".", ",")).join(" · ");
     }
+    // Quita só o que ESTA sessão consumiu. Marcar sobra antiga como recebida aqui
+    // inflaria o faturamento com dinheiro que nunca entrou; ela fica na aba Pedidos
+    // como "a receber", que é onde o dono resolve. `-infinity` mantém o
+    // comportamento antigo se `aberta_em` vier nulo (não deveria: a mesa não está livre).
     await client.query(
-      "UPDATE pedidos SET recebido_em = now(), pagamento = COALESCE(NULLIF($3,''), pagamento) WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL",
-      [empId, mesaId, resumo]
+      `UPDATE pedidos SET recebido_em = now(), pagamento = COALESCE(NULLIF($3,''), pagamento)
+        WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL
+          AND criado_em >= COALESCE($4::timestamptz, '-infinity'::timestamptz)`,
+      [empId, mesaId, resumo, abertaEm]
     );
     const r = await client.query(
       `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
@@ -294,10 +331,14 @@ async function cancelar(dir, id, { devolver = true } = {}) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    // Só os desta sessão: cancelar a mesa não pode devolver ao estoque item de um
+    // cliente anterior. `FOR UPDATE OF p` porque o JOIN traz `mesas` junto e a trava
+    // é dos pedidos.
     const abertos = await client.query(
-      `SELECT id, numero, itens FROM pedidos
-        WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL AND status <> 'cancelado'
-        ORDER BY id ASC FOR UPDATE`,
+      `SELECT p.id, p.numero, p.itens FROM pedidos p
+         JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+        WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND ${DA_SESSAO}
+        ORDER BY p.id ASC FOR UPDATE OF p`,
       [empId, id]
     );
     let cardapioNovo = null;
@@ -359,17 +400,28 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
     // Pedidos ativos da origem a mover (comanda). Filtro opcional por ids.
     const filtroIds = Array.isArray(pedidoIds) && pedidoIds.length;
     const movParams = [empId, origemId];
-    let movCond = "empresa_id = $1 AND mesa_id = $2 AND status <> 'cancelado' AND recebido_em IS NULL";
-    if (filtroIds) { movParams.push(pedidoIds); movCond += " AND id = ANY($3::bigint[])"; }
+    let movCond = `p.empresa_id = $1 AND p.mesa_id = $2 AND ${DA_SESSAO}`;
+    if (filtroIds) { movParams.push(pedidoIds); movCond += " AND p.id = ANY($3::bigint[])"; }
     const mov = await client.query(
-      `SELECT id, itens, total FROM pedidos WHERE ${movCond} ORDER BY id ASC`,
+      `SELECT p.id, p.itens, p.total, p.criado_em
+         FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+        WHERE ${movCond} ORDER BY p.id ASC`,
       movParams
     );
     const movIds = mov.rows.map((p) => p.id);
+    // O pedido movido guarda o `criado_em` original. Se o destino abrir agora, ele
+    // ficaria mais VELHO que a abertura e sumiria pelo recorte de sessão — por isso
+    // a abertura do destino recua até aqui (ver o UPDATE lá embaixo).
+    const maisAntigoMovido = mov.rows.reduce(
+      (min, p) => (min === null || p.criado_em < min ? p.criado_em : min), null
+    );
 
     // Comanda aberta do destino (alvo do merge quando o destino já está ocupado).
     const alvo = await client.query(
-      "SELECT id, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' AND recebido_em IS NULL ORDER BY id ASC LIMIT 1",
+      `SELECT p.id, p.itens, p.total
+         FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+        WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND p.status = 'novo' AND ${DA_SESSAO}
+        ORDER BY p.id ASC LIMIT 1`,
       [empId, destinoId]
     );
     const alvoRow = alvo.rows[0];
@@ -393,25 +445,26 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
         [destinoId, "Mesa " + destinoNome, empId, movIds]
       );
     }
+    // ORDEM IMPORTA: abrir o destino ANTES de recalcular. O total agora sai do
+    // recorte de sessão, e mesa ainda livre tem `aberta_em` nulo — recalcular antes
+    // gravaria zero numa mesa que acabou de receber a comanda inteira.
+    // A abertura recua até o pedido mais antigo movido, senão ele nasce fora da sessão.
+    await client.query(
+      `UPDATE mesas SET status = 'ocupada',
+              aberta_em = COALESCE(aberta_em, LEAST(now(), COALESCE($3::timestamptz, now())))
+        WHERE empresa_id = $1 AND id = $2 AND status = 'livre'`,
+      [empId, destinoId, maisAntigoMovido]
+    );
     // Recalcula totais das duas mesas.
     for (const mid of [origemId, destinoId]) {
-      await client.query(
-        `UPDATE mesas m SET total_consumido = (
-            SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-             WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
-           WHERE m.empresa_id = $1 AND m.id = $2`,
-        [empId, mid]
-      );
+      await client.query(recalcularConsumoSql(), [empId, mid]);
     }
-    // Destino: abre se estava livre. Origem: libera se ficou sem pedidos abertos.
+    // Origem: libera se ficou sem pedidos DA SESSÃO (sobra antiga não segura a mesa).
     await client.query(
-      "UPDATE mesas SET status = 'ocupada', aberta_em = COALESCE(aberta_em, now()) WHERE empresa_id = $1 AND id = $2 AND status = 'livre'",
-      [empId, destinoId]
-    );
-    await client.query(
-      `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
-         WHERE empresa_id = $1 AND id = $2 AND NOT EXISTS (
-           SELECT 1 FROM pedidos p WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND p.status <> 'cancelado' AND p.recebido_em IS NULL)`,
+      `UPDATE mesas mo SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL
+         WHERE mo.empresa_id = $1 AND mo.id = $2 AND NOT EXISTS (
+           SELECT 1 FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+            WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND ${DA_SESSAO})`,
       [empId, origemId]
     );
     await client.query("COMMIT");
@@ -438,8 +491,13 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
   const empId = await empresaId(dir);
   const exec = client ? (s, p) => client.query(s, p) : (s, p) => db.query(s, p);
 
+  // Reusa o pedido aberto DESTA sessão. Sem o recorte, uma sobra de sessão antiga
+  // era escolhida aqui e a rodada nova ia parar dentro dela, herdando número e total.
   const existing = await exec(
-    "SELECT id, numero, itens, total FROM pedidos WHERE empresa_id = $1 AND mesa_id = $2 AND status = 'novo' AND recebido_em IS NULL ORDER BY id ASC LIMIT 1",
+    `SELECT p.id, p.numero, p.itens, p.total
+       FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+      WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND p.status = 'novo' AND ${DA_SESSAO}
+      ORDER BY p.id ASC LIMIT 1`,
     [empId, mesaId]
   );
 
@@ -467,13 +525,7 @@ async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, c
   }
 
   // Recalcula total_consumido da mesa
-  await exec(
-    `UPDATE mesas m SET total_consumido = (
-        SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-         WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
-       WHERE m.empresa_id = $1 AND m.id = $2`,
-    [empId, mesaId]
-  );
+  await exec(recalcularConsumoSql(), [empId, mesaId]);
 
   return pedido;
 }
@@ -521,13 +573,7 @@ async function cancelarItem(dir, mesaId, pedidoId, itemIdx, { devolver = true } 
     // Mantém o total_consumido da mesa em dia (senão o card da grade e o resumo "Em aberto"
     // seguem mostrando o valor antigo até o próximo lançamento). Mesma soma do lancarItens.
     // Via `client` (mesma transação): ainda não commitou o status/total acima.
-    await client.query(
-      `UPDATE mesas m SET total_consumido = (
-          SELECT COALESCE(SUM(p.total), 0) FROM pedidos p
-           WHERE p.empresa_id = m.empresa_id AND p.mesa_id = m.id AND p.status <> 'cancelado' AND p.recebido_em IS NULL)
-         WHERE m.empresa_id = $1 AND m.id = $2`,
-      [empId, mesaId]
-    );
+    await client.query(recalcularConsumoSql(), [empId, mesaId]);
     await client.query("COMMIT");
     if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
   } catch (e) {
