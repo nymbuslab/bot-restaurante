@@ -7205,6 +7205,21 @@ async function mesaAtualizarLista() {
 }
 
 /* ---- Modo PDV para mesa ---- */
+
+// A tela do PDV é reusada para lançar na mesa, então o cabeçalho tem que trocar
+// junto com a tarja. Textos aqui e não no HTML porque o HTML é o estado de balcão,
+// que é para onde a tela volta ao sair do modo.
+function pdvTituloModoMesa(ligado) {
+  var h = $("pdvTitulo");
+  var s = $("pdvSubtitulo");
+  if (h) h.textContent = ligado ? "Lançar na mesa" : "Venda no balcão";
+  if (s) {
+    s.textContent = ligado
+      ? "Monte a rodada e envie para a conta. A cobrança fica para o fechamento da mesa."
+      : "Monte o pedido, cobre e a venda entra no caixa.";
+  }
+}
+
 function ativarMesaModoPdv() {
   var d = mesaState.detalhe;
   if (!d || d.status === "livre") { toast("Abra a mesa antes de lançar.", "aviso"); mesaMudarAba("itens"); return; }
@@ -7227,6 +7242,10 @@ function ativarMesaModoPdv() {
   }
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Enviar para Mesa";
+  // O cabeçalho é do balcão e prometia "cobre e a venda entra no caixa", que é
+  // justamente o que NÃO acontece aqui: a rodada vai para a conta e só é cobrada
+  // no fechamento da mesa.
+  pdvTituloModoMesa(true);
   pdvCart = []; pdvDesconto = null; renderPdvCarrinho();
   pdvLimparBusca(); // contexto novo: não herda o filtro da venda anterior do PDV
   fecharMesaPainel();
@@ -7244,6 +7263,7 @@ function desativarMesaModoPdv(voltarParaMesa) {
   if (banner) banner.remove();
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Cobrar";
+  pdvTituloModoMesa(false);
   renderPdvCarrinho();
   if (voltarParaMesa !== false && idMesa) {
     var mesaNavBtn = document.querySelector("nav button[data-aba='mesas']");
@@ -7526,7 +7546,10 @@ function abrirMesaPagar(modo, preservar) {
       '<div class="pdv-pg-lista" id="mesaPgLista"></div>' +
       '<div class="mesa-pagar-resumo" style="margin-top:10px">' +
         '<div class="mesa-pagar-linha"><span>Pago</span><span id="mesaPgPago">R$ 0,00</span></div>' +
-        '<div class="mesa-pagar-linha falta"><span>' + (mesaPagarModo === "parcial" ? "Restante" : "Falta") + '</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
+        // "Restante" nos dois modos: o "Falta" lá de cima é o que a MESA ainda deve,
+        // este é o que sobra depois dos pagamentos lançados aqui. Mesmo rótulo com
+        // números diferentes na mesma tela fazia o operador duvidar dos dois.
+        '<div class="mesa-pagar-linha falta"><span>Restante</span><span id="mesaPgRestante">' + pdvMoney(falta) + "</span></div>" +
         '<div class="mesa-pagar-linha"><span>Troco</span><span id="mesaPgTroco">R$ 0,00</span></div>' +
       "</div>" +
     "</div>" +
