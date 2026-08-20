@@ -86,3 +86,44 @@ test("dentro do teto nada muda: a paridade não altera o caso comum", () => {
   assert.equal(baixa.movimentos[0].quantidade, -3);
   assert.equal(saldo(baixa.cardapio, 2), 197);
 });
+
+// ---------------------------------------------------------------------------
+// A validação segue a mesma régua da baixa.
+//
+// `validarEstoque` rodava sobre o payload CRU enquanto a baixa já usava o
+// recalculado. Isso nunca perdeu estoque (validava mais do que tirava), mas
+// recusava venda que cabia: pedido de 60 com saldo 55 morria na validação,
+// embora o recálculo limitasse a 50 e o estoque comportasse os 50.
+// ---------------------------------------------------------------------------
+
+const cardapioApertado = {
+  categorias: [{ nome: "Bebidas", itens: [
+    { id: 2, nome: "Coca", preco: 3, unidade: "un", estoque: 55 },
+  ] }],
+  grupos: [],
+};
+
+test("saldo entre o teto e o pedido: valida pelo recalculado e a venda passa", () => {
+  const cru = [{ id: 2, qtd: 60 }];
+  assert.equal(Estoque.validarEstoque(cardapioApertado, cru).ok, false); // o que acontecia antes
+
+  const r = cw.recalcularItens(cardapioApertado, cru);
+  assert.equal(r.itens[0].qtd, 50);
+  assert.equal(Estoque.validarEstoque(cardapioApertado, r.itens).ok, true);
+});
+
+test("estoque insuficiente de verdade continua barrando", () => {
+  const magro = { categorias: [{ itens: [{ id: 2, nome: "Coca", preco: 3, unidade: "un", estoque: 10 }] }], grupos: [] };
+  const r = cw.recalcularItens(magro, [{ id: 2, qtd: 60 }]);
+  assert.equal(r.itens[0].qtd, 50);
+  const check = Estoque.validarEstoque(magro, r.itens);
+  assert.equal(check.ok, false); // 50 não cabe em 10
+  assert.match(check.erro, /Coca/);
+});
+
+test("PDV: mesma régua com o teto de 99", () => {
+  const card = { categorias: [{ itens: [{ id: 2, nome: "Coca", preco: 3, unidade: "un", estoque: 100 }] }], grupos: [] };
+  assert.equal(Estoque.validarEstoque(card, [{ id: 2, qtd: 150 }]).ok, false);
+  const r = pdv.recalcularVenda(card, [{ id: 2, qtd: 150 }]);
+  assert.equal(Estoque.validarEstoque(card, r.itens).ok, true); // 99 cabe em 100
+});

@@ -884,7 +884,10 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     }
 
     // Estoque ativo: rejeita esgotado / pedido maior que o disponível (fonte de verdade).
-    const estCheck = estoque.validarEstoque(store.getCardapio(dir), b.itens);
+    // Valida os itens RECALCULADOS, que é o que a baixa vai tirar. Validar o payload
+    // cru recusava venda que cabe: pedido de 60 com saldo 55 morria aqui, mesmo o
+    // recálculo limitando a 50 e o estoque comportando os 50.
+    const estCheck = estoque.validarEstoque(store.getCardapio(dir), recalc.itens);
     if (!estCheck.ok) return res.status(400).json({ erro: estCheck.erro });
 
     // Frete: o servidor é a fonte de verdade. Fixo = taxa única; Raio = recalcula
@@ -2157,8 +2160,14 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     await store.ensure(req.tenantDir);
     const cardapio = store.getCardapio(req.tenantDir);
 
+    // Recalcula ANTES de validar: o estoque é conferido sobre o que a venda vai
+    // realmente tirar, não sobre o payload cru (ver o porquê no cardápio web).
+    // `recalcularVenda` é puro e lança em escolha inválida, então o erro de grupo
+    // obrigatório passa a vir antes do erro de estoque quando os dois existem.
+    const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+
     // Estoque (fonte de verdade no servidor) antes de gravar.
-    const estCheck = estoque.validarEstoque(cardapio, b.itens);
+    const estCheck = estoque.validarEstoque(cardapio, itens);
     if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
 
     // Tipo da venda + frete (servidor é a fonte de verdade do frete).
@@ -2178,8 +2187,8 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     }
     if (tipoEntrega !== "Balcão") telefone = String(b.telefone || "").replace(/[^\d]/g, "").slice(0, 20);
 
-    // Recalcula itens/subtotal pelo cardápio; nunca confia no preço do cliente.
-    const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+    // `itens`/`subtotal` já vieram do recálculo lá em cima (nunca confia no preço
+    // do cliente); recalcular de novo aqui daria o mesmo resultado por duas vezes.
     const { desconto, total: totalSemFrete } = pdv.aplicarDesconto(subtotal, b.desconto);
     const total = pdv.totalComFrete(totalSemFrete, taxaEntrega);
     const obs = String(b.observacao || "").slice(0, 200);
@@ -2388,9 +2397,11 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
     }
     await store.ensure(req.tenantDir);
     const cardapio = store.getCardapio(req.tenantDir);
-    const estCheck = estoque.validarEstoque(cardapio, b.itens);
-    if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
+    // Recalcula antes de validar: o estoque é conferido sobre o que a rodada vai
+    // realmente tirar (ver o porquê no cardápio web).
     const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+    const estCheck = estoque.validarEstoque(cardapio, itens);
+    if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
 
     const client = await db.pool.connect();
     try {
