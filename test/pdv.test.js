@@ -157,13 +157,13 @@ const cardapioBiblioteca = {
 test("recalcularVenda: soma a opção paga vinda da biblioteca", () => {
   const r = recalcularVenda(cardapioBiblioteca, [{ id: "b1", qtd: 2, grupos: [{ grupo: "g1", opcoes: ["o1"] }] }]);
   assert.equal(r.subtotal, 23); // (8 + 3,50) x 2
-  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3.5, qtd: 1 }]);
+  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3.5, qtd: 1, id: "o1" }]);
 });
 
 test("recalcularVenda: opção sem custo vai para composicao sem mexer no total", () => {
   const r = recalcularVenda(cardapioBiblioteca, [{ id: "b2", qtd: 1, grupos: [{ grupo: "g2", opcoes: ["o3"] }] }]);
   assert.equal(r.subtotal, 18);
-  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Proteínas", itens: ["Carne"] }]);
+  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Proteínas", itens: ["Carne"], ids: ["o3"] }]);
 });
 
 test("recalcularVenda: grupo obrigatório sem escolha barra a venda", () => {

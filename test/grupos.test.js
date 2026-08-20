@@ -102,8 +102,8 @@ test("avaliarEscolhas: separa sem custo em composicao e pago em opcionais", () =
   ]);
   assert.equal(r.valido, true);
   assert.equal(r.addUnit, 3);
-  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"] }]);
-  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"], ids: ["o1", "o2"] }]);
+  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 1, id: "o4" }]);
 });
 
 test("avaliarEscolhas: abaixo do mínimo gera pendência e invalida", () => {
@@ -132,7 +132,7 @@ test("avaliarEscolhas: opção de outro grupo, id inexistente e duplicata são d
     { grupo: "g1", opcoes: ["o1", "o1", "o4", "xx", "o2"] },
   ]);
   assert.equal(r.valido, true);
-  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"] }]);
+  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"], ids: ["o1", "o2"] }]);
   assert.equal(r.addUnit, 0);
 });
 
@@ -152,8 +152,8 @@ test("avaliarEscolhas: complemento aceita quantidade e multiplica o preço", () 
   assert.equal(r.valido, true);
   assert.equal(r.addUnit, 12); // 2x3 + 3x2
   assert.deepEqual(r.opcionais, [
-    { nome: "Bacon", preco: 3, qtd: 2 },
-    { nome: "Ovo", preco: 2, qtd: 3 },
+    { nome: "Bacon", preco: 3, qtd: 2, id: "o4" },
+    { nome: "Ovo", preco: 2, qtd: 3, id: "o5" },
   ]);
 });
 
@@ -162,7 +162,7 @@ test("avaliarEscolhas: composição ignora quantidade (é escolha, não acrésci
     { grupo: "g1", opcoes: [{ id: "o1", qtd: 5 }, { id: "o2", qtd: 2 }] },
   ]);
   assert.equal(r.valido, true);
-  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"] }]);
+  assert.deepEqual(r.composicao, [{ grupo: "Guarnições", itens: ["Farofa", "Vinagrete"], ids: ["o1", "o2"] }]);
 });
 
 test("avaliarEscolhas: no complemento o máximo conta UNIDADES, não opções", () => {
@@ -179,7 +179,7 @@ test("avaliarEscolhas: sem tipo declarado, opção paga não cai na composição
     opcoes: [{ id: "b", nome: "Bacon", preco: 3 }] }];
   const r = avaliarEscolhas(g, [{ grupo: "gy", opcoes: ["b"] }]);
   assert.equal(r.addUnit, 3);
-  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 1, id: "b" }]);
   assert.deepEqual(r.composicao, []);
 });
 
@@ -288,4 +288,48 @@ test("converterCardapio: sem categorias devolve categorias null", () => {
   const r = converterCardapio({ itens: [{ id: 1, nome: "A", opcionais: "Bacon | 3.00" }] }, idFake());
   assert.equal(r.categorias, null);
   assert.equal(r.itens.length, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Ids da escolha na saída (Fase 1 de Insumos).
+//
+// A saída de `avaliarEscolhas` é o formato LEGADO, que só carrega NOMES. Isso
+// funciona para imprimir e faturar, mas não para descobrir o que a opção consome:
+// nome não é chave (dois grupos podem ter "Frango", e renomear quebraria o
+// vínculo). O `id` estável de opção, criado na 2/4 justamente para isso, passa a
+// viajar junto — em arrays PARALELOS, para não mexer no formato que comanda,
+// relatórios e `itens_venda` já leem.
+//
+// Ninguém consome esses ids ainda: eles precisam estar em produção ANTES da baixa
+// de insumo, senão o pedido criado nessa janela consome e não devolve no
+// cancelamento (a devolução lê `pedidos.itens`, que só tem o que foi gravado).
+// ---------------------------------------------------------------------------
+
+test("avaliarEscolhas: o opcional carrega o id da opção escolhida", () => {
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g2", opcoes: [{ id: "o4", qtd: 2 }] }]);
+  assert.deepEqual(r.opcionais, [{ nome: "Bacon", preco: 3, qtd: 2, id: "o4" }]);
+});
+
+test("avaliarEscolhas: a composição carrega os ids na mesma ordem dos nomes", () => {
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g1", opcoes: ["o2", "o1"] }]);
+  assert.deepEqual(r.composicao, [
+    { grupo: "Guarnições", itens: ["Vinagrete", "Farofa"], ids: ["o2", "o1"] },
+  ]);
+});
+
+test("avaliarEscolhas: itens e ids ficam pareados mesmo descartando escolha inválida", () => {
+  // "o9" não existe e "o1" vem repetido: os dois são descartados. Se os ids fossem
+  // montados numa passada separada da dos nomes, os arrays sairiam de tamanhos
+  // diferentes e o consumo seria atribuído à opção errada.
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g1", opcoes: ["o1", "o9", "o1", "o3"] }]);
+  const c = r.composicao[0];
+  assert.deepEqual(c.itens, ["Farofa", "Purê"]);
+  assert.deepEqual(c.ids, ["o1", "o3"]);
+  assert.equal(c.itens.length, c.ids.length);
+});
+
+test("avaliarEscolhas: grupo sem escolha válida não entra na composição", () => {
+  const r = avaliarEscolhas(resolvidos, [{ grupo: "g2", opcoes: [] }]);
+  assert.deepEqual(r.composicao, []);
+  assert.deepEqual(r.opcionais, []);
 });

@@ -285,7 +285,8 @@ test("recalcularItens: soma o preço da opção escolhida pela biblioteca", () =
     { id: 1, qtd: 1, grupos: [{ grupo: "g1", opcoes: ["o1"] }] },
   ]);
   assert.equal(r.subtotal, 13);
-  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3, qtd: 1 }]);
+  // o `id` chega ao payload que o servidor grava: é ele que a baixa de insumo vai ler
+  assert.deepEqual(r.itens[0].opcionais, [{ nome: "Bacon", preco: 3, qtd: 1, id: "o1" }]);
 });
 
 test("recalcularItens: opção sem custo entra em composicao e não muda o total", () => {
@@ -293,7 +294,7 @@ test("recalcularItens: opção sem custo entra em composicao e não muda o total
     { id: 2, qtd: 1, grupos: [{ grupo: "g2", opcoes: ["o3"] }] },
   ]);
   assert.equal(r.subtotal, 20);
-  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Ponto da carne", itens: ["Bem passada"] }]);
+  assert.deepEqual(r.itens[0].composicao, [{ grupo: "Ponto da carne", itens: ["Bem passada"], ids: ["o3"] }]);
   assert.deepEqual(r.itens[0].opcionais, []);
 });
 

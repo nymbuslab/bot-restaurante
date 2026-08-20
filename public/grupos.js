@@ -165,13 +165,23 @@
         pendencias.push(g.nome + ": no máximo " + max + (ehComplemento ? (max === 1 ? " unidade" : " unidades") : ""));
         return;
       }
+      // O `id` da opção viaja junto com o nome. Nome não serve de chave para achar
+      // o que a opção consome: dois grupos podem ter "Frango", e renomear quebraria
+      // o vínculo. `itens` e `ids` saem do MESMO `validas`, então não têm como
+      // divergir de tamanho nem de ordem — se divergissem, o consumo seria atribuído
+      // à opção errada. Chave nova, formato antigo intacto: comanda, relatórios e
+      // `itens_venda` ignoram o que não conhecem.
       if (ehComplemento) {
         validas.forEach(function (v) {
-          opcionais.push({ nome: v.opcao.nome, preco: v.opcao.preco, qtd: v.qtd });
+          opcionais.push({ nome: v.opcao.nome, preco: v.opcao.preco, qtd: v.qtd, id: v.opcao.id });
           addUnit += v.opcao.preco * v.qtd;
         });
       } else if (validas.length) {
-        composicao.push({ grupo: g.nome, itens: validas.map(function (v) { return v.opcao.nome; }) });
+        composicao.push({
+          grupo: g.nome,
+          itens: validas.map(function (v) { return v.opcao.nome; }),
+          ids: validas.map(function (v) { return v.opcao.id; }),
+        });
       }
     });
     return {
