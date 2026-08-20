@@ -924,7 +924,12 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     const clientTx = await db.pool.connect();
     try {
       await clientTx.query("BEGIN");
-      const baixa = await store.baixarEstoqueTx(clientTx, dir, b.itens);
+      // Baixa pelos itens RECALCULADOS, os mesmos que o pedido grava. O payload cru
+      // não passou pelos limites do recálculo (aqui o teto de 50 por item), e a
+      // agregação da baixa só garante >= 1 — então `qtd: 60` gravava pedido de 50 e
+      // tirava 60 do estoque. Pior: o cancelamento devolve pelo que foi GRAVADO,
+      // então voltavam 50 e a diferença sumia para sempre, sem rastro.
+      const baixa = await store.baixarEstoqueTx(clientTx, dir, recalc.itens);
       novoCardapio = baixa.cardapio;
       pedido = await pedidos.salvarPedido(dir, {
         cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
@@ -2205,7 +2210,8 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       const clientTx = await db.pool.connect();
       try {
         await clientTx.query("BEGIN");
-        const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(clientTx, req.tenantDir, b.itens);
+        // Mesmos itens que o pedido grava (ver o porquê na baixa do cardápio web).
+        const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(clientTx, req.tenantDir, itens);
         pedido = await pedidos.salvarPedido(req.tenantDir, {
           cliente: b.cliente || "", telefone, tipoEntrega, endereco,
           pagamento: "", taxaEntrega, itens, total, observacao: obs,
@@ -2389,7 +2395,8 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
     const client = await db.pool.connect();
     try {
       await client.query("BEGIN");
-      const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, req.tenantDir, b.itens);
+      // Mesmos itens que a rodada grava (ver o porquê na baixa do cardápio web).
+      const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, req.tenantDir, itens);
       const pedidoMesa = await mesasDb.lancarItens(req.tenantDir, mesaId, {
         itens,
         total: subtotal,
