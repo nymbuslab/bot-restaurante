@@ -299,8 +299,13 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
     // como "a receber", que é onde o dono resolve. `-infinity` mantém o
     // comportamento antigo se `aberta_em` vier nulo (não deveria: a mesa não está livre).
     await client.query(
+      // `status <> 'cancelado'` porque pedido cancelado também tem `recebido_em`
+      // nulo: sem isso, o item que o cliente desistiu entrava no faturamento com
+      // resumo de pagamento, sem dinheiro ter entrado. E o estorno se recusa a
+      // consertar depois, porque enxerga um pedido cancelado.
       `UPDATE pedidos SET recebido_em = now(), pagamento = COALESCE(NULLIF($3,''), pagamento)
         WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL
+          AND status <> 'cancelado'
           AND criado_em >= COALESCE($4::timestamptz, '-infinity'::timestamptz)`,
       [empId, mesaId, resumo, abertaEm]
     );
@@ -501,6 +506,21 @@ async function salvarQrToken(dir, mesaId, token) {
 async function lancarItens(dir, mesaId, { itens, total, cliente, observacao }, client) {
   const empId = await empresaId(dir);
   const exec = client ? (s, p) => client.query(s, p) : (s, p) => db.query(s, p);
+
+  // Trava a mesa e reconfere o status DENTRO da transação. A rota já checou, mas
+  // entre a checagem dela e o INSERT daqui cabe um `finalizarFechamento` inteiro:
+  // a rodada nasceria presa a uma mesa que já voltou a livre, invisível no painel,
+  // fora de qualquer conta e nunca recebida — levando junto a baixa de estoque que
+  // a rota já fez. Como `finalizarFechamento` e `cancelar` travam a mesma linha,
+  // uma das duas espera a outra e a perdedora vê o status verdadeiro.
+  const m = await exec(
+    "SELECT status FROM mesas WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+    [empId, mesaId]
+  );
+  if (!m.rows[0]) throw new Error("Mesa não encontrada.");
+  if (m.rows[0].status !== "ocupada") {
+    throw new Error("A mesa não está mais aberta. Recarregue a tela antes de lançar.");
+  }
 
   // Reusa o pedido aberto DESTA sessão. Sem o recorte, uma sobra de sessão antiga
   // era escolhida aqui e a rodada nova ia parar dentro dela, herdando número e total.

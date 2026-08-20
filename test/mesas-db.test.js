@@ -24,6 +24,7 @@ function fakeClient(respostas) {
 
 test("lancarItens: mesa com pedido aberto acumula os itens e devolve o id/numero existentes", async () => {
   const c = fakeClient([
+    [/SELECT status FROM mesas/i, { rows: [{ status: "ocupada" }] }],
     [/SELECT p.id, p.numero, p.itens, p.total/i, { rows: [{ id: 42, numero: 7, itens: [{ nome: "Espeto" }], total: 20 }] }],
   ]);
   const pedido = await mesasDb.lancarItens(
@@ -32,14 +33,18 @@ test("lancarItens: mesa com pedido aberto acumula os itens e devolve o id/numero
     c
   );
   assert.deepEqual(pedido, { id: 42, numero: 7 }); // pedido JÁ existente, não um novo
-  assert.match(c.calls[0].sql, /SELECT p\.id, p\.numero, p\.itens, p\.total/i);
-  assert.match(c.calls[1].sql, /UPDATE pedidos SET itens/i); // acumula na mesma linha
-  assert.equal(c.calls[1].params[2], 42); // WHERE id = <pedido existente>
+  // Busca por conteúdo, não por índice: a função ganhou uma trava na frente e
+  // asserção por posição quebra a cada pré-condição nova.
+  assert.ok(c.calls.find((q) => /SELECT p\.id, p\.numero, p\.itens, p\.total/i.test(q.sql)));
+  const acumulou = c.calls.find((q) => /UPDATE pedidos SET itens/i.test(q.sql));
+  assert.ok(acumulou, "acumula na mesma linha");
+  assert.equal(acumulou.params[2], 42); // WHERE id = <pedido existente>
   assert.equal(c.calls.filter((q) => /INSERT INTO pedidos/i.test(q.sql)).length, 0);
 });
 
 test("lancarItens: mesa sem pedido aberto insere um novo e devolve o id/numero gerados", async () => {
   const c = fakeClient([
+    [/SELECT status FROM mesas/i, { rows: [{ status: "ocupada" }] }],
     [/SELECT p.id, p.numero, p.itens, p.total/i, { rows: [] }], // nenhum pedido aberto
     [/INSERT INTO pedidos/i, { rows: [{ id: 55, numero: 3 }] }],
   ]);
@@ -49,7 +54,7 @@ test("lancarItens: mesa sem pedido aberto insere um novo e devolve o id/numero g
     c
   );
   assert.deepEqual(pedido, { id: 55, numero: 3 }); // pedido NOVO
-  assert.match(c.calls[1].sql, /INSERT INTO pedidos[\s\S]*RETURNING id, numero/i);
+  assert.ok(c.calls.find((q) => /INSERT INTO pedidos[\s\S]*RETURNING id, numero/i.test(q.sql)));
 });
 
 // ---------------------------------------------------------------------------
@@ -95,14 +100,17 @@ test("listar: o alerta de mesa parada se data pela sessão, não por sobra antig
 });
 
 test("lancarItens: a rodada nova nunca é acumulada num pedido de sessão anterior", async () => {
-  const c = fakeClient([[/SELECT p\.id, p\.numero, p\.itens, p\.total/i, { rows: [] }],
+  const c = fakeClient([[/SELECT status FROM mesas/i, { rows: [{ status: "ocupada" }] }],
+                        [/SELECT p\.id, p\.numero, p\.itens, p\.total/i, { rows: [] }],
                         [/INSERT INTO pedidos/i, { rows: [{ id: 9, numero: 1 }] }]]);
   await mesasDb.lancarItens("/x/slug-sessao-3", 16, { itens: [{ nome: "Coca" }], total: 3, cliente: "Mesa 01" }, c);
-  assert.match(c.calls[0].sql, RECORTE);       // a busca do pedido a reusar é recortada
+  const busca = c.calls.find((q) => /SELECT p\.id, p\.numero, p\.itens, p\.total/i.test(q.sql));
+  assert.match(busca.sql, RECORTE);           // a busca do pedido a reusar é recortada
 });
 
 test("lancarItens: o consumo da mesa soma só a sessão atual", async () => {
-  const c = fakeClient([[/SELECT p\.id, p\.numero, p\.itens, p\.total/i, { rows: [] }],
+  const c = fakeClient([[/SELECT status FROM mesas/i, { rows: [{ status: "ocupada" }] }],
+                        [/SELECT p\.id, p\.numero, p\.itens, p\.total/i, { rows: [] }],
                         [/INSERT INTO pedidos/i, { rows: [{ id: 9, numero: 1 }] }]]);
   await mesasDb.lancarItens("/x/slug-sessao-4", 16, { itens: [{ nome: "Coca" }], total: 3, cliente: "Mesa 01" }, c);
   const rec = c.calls.find((q) => /UPDATE mesas m SET total_consumido/i.test(q.sql));
@@ -166,4 +174,61 @@ test("transferir: no merge nao recua a abertura do destino", async () => {
     // Recuar no merge so ampliaria a janela e poderia ressuscitar sobra antiga.
     assert.equal(up.params[2], null);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Fechar a conta não pode quitar pedido CANCELADO.
+//
+// O UPDATE filtrava só por `recebido_em IS NULL`, e pedido cancelado também tem
+// esse campo nulo. Resultado: um item cancelado durante a sessão (o cliente
+// desistiu, veio errado da cozinha) ganhava `recebido_em` e o resumo de
+// pagamento no fechamento, entrando no faturamento sem dinheiro ter entrado. E o
+// `estornarRecebimento` se recusa a consertar depois, porque enxerga um pedido
+// cancelado — o número errado fica no relatório para sempre.
+// ---------------------------------------------------------------------------
+
+test("finalizarFechamento: não marca pedido cancelado como recebido", async () => {
+  await comPoolFake([
+    [/SELECT id, status, aberta_em FROM mesas/i, { rows: [{ id: 1, status: "ocupada", aberta_em: new Date("2026-08-20T18:00:00.000Z") }] }],
+    [/SELECT forma_pagamento AS forma/i, { rows: [{ forma: "PIX", total: 30 }] }],
+    [/UPDATE mesas SET status = 'livre'/i, { rows: [{ id: 1, nome: "01", status: "livre", taxa_servico: 0, pessoas: 1, total_consumido: 0 }] }],
+  ], async (c) => {
+    await mesasDb.finalizarFechamento("/x/slug-fech", 1, [{ forma: "PIX", valor: 30 }], "01");
+    const up = c.calls.find((q) => /UPDATE pedidos SET recebido_em/i.test(q.sql));
+    assert.ok(up, "o fechamento precisa quitar os pedidos da sessão");
+    assert.match(up.sql, /status <> 'cancelado'/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lançar rodada tem que travar a mesa e reconferir o status.
+//
+// A rota checa o status ANTES de abrir a transação, e `lancarItens` não travava
+// nem reconferia. Entre a checagem e o INSERT cabe um `finalizarFechamento`
+// inteiro: a rodada nasce presa a uma mesa que já voltou a livre, com
+// `criado_em` posterior ao `aberta_em` que foi zerado. O pedido não aparece no
+// painel da mesa, não entra em conta nenhuma e nunca é recebido — some do
+// sistema levando junto a baixa de estoque que a rota já fez.
+// ---------------------------------------------------------------------------
+
+test("lancarItens: trava a mesa e recusa quando ela já não está ocupada", async () => {
+  const c = fakeClient([
+    [/SELECT status FROM mesas[\s\S]*FOR UPDATE/i, { rows: [{ status: "livre" }] }],
+  ]);
+  await assert.rejects(
+    () => mesasDb.lancarItens("/x/slug-corrida", 1, { itens: [{ nome: "Coca" }], total: 3, cliente: "Mesa 1" }, c),
+    /fechad|livre|não está/i
+  );
+  assert.match(c.calls[0].sql, /FOR UPDATE/i);
+  assert.equal(c.calls.filter((q) => /INSERT INTO pedidos/i.test(q.sql)).length, 0);
+});
+
+test("lancarItens: mesa ocupada segue lançando normalmente", async () => {
+  const c = fakeClient([
+    [/SELECT status FROM mesas[\s\S]*FOR UPDATE/i, { rows: [{ status: "ocupada" }] }],
+    [/SELECT p\.id, p\.numero, p\.itens, p\.total/i, { rows: [] }],
+    [/INSERT INTO pedidos/i, { rows: [{ id: 77, numero: 4 }] }],
+  ]);
+  const pedido = await mesasDb.lancarItens("/x/slug-ok", 1, { itens: [{ nome: "Coca" }], total: 3, cliente: "Mesa 1" }, c);
+  assert.deepEqual(pedido, { id: 77, numero: 4 });
 });
