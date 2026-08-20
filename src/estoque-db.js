@@ -72,13 +72,24 @@ function mapRow(r) {
 
 // Extrato de UM saldo, mais recente primeiro. `antes` é cursor por data (ISO):
 // devolve o que for anterior a ele (paginação sem OFFSET).
-async function listar(dir, { itemId, variacaoId = null, limite = 30, antes = null } = {}) {
+async function listar(dir, { itemId, variacaoId = null, limite = 30, antes = null, antesId = null } = {}) {
   const empId = await empresaId(dir);
   const lim = Math.min(Math.max(parseInt(limite, 10) || 30, 1), 100);
   const params = [empId, String(itemId), variacaoId == null ? null : String(variacaoId)];
   let sql = `SELECT * FROM estoque_movimentos
               WHERE empresa_id = $1 AND item_id = $2 AND variacao_id IS NOT DISTINCT FROM $3`;
-  if (antes) { params.push(antes); sql += ` AND criado_em < $${params.length}`; }
+  // Cursor pelo MESMO par da ordenação. Só `criado_em` perdia linha: o carimbo
+  // vem de `new Date()` (milissegundo) e uma venda grava vários movimentos no
+  // mesmo laço, então empate na borda da página é rotina — e o que empatava com
+  // o cursor sumia do extrato. `antesId` é opcional para não quebrar chamador
+  // antigo; sem ele, o comportamento é o de antes.
+  if (antes && antesId != null) {
+    params.push(antes, parseInt(antesId, 10));
+    sql += ` AND (criado_em, id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+  } else if (antes) {
+    params.push(antes);
+    sql += ` AND criado_em < $${params.length}`;
+  }
   params.push(lim);
   sql += ` ORDER BY criado_em DESC, id DESC LIMIT $${params.length}`;
   const r = await db.query(sql, params);

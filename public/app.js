@@ -1083,7 +1083,9 @@ async function estCarregarExtrato(reset) {
   let url = "/api/estoque/movimentos?itemId=" + encodeURIComponent(l.itemId) + "&limite=20";
   if (l.variacaoId != null) url += "&variacaoId=" + encodeURIComponent(l.variacaoId);
   const ultimo = estMovs[estMovs.length - 1];
-  if (!reset && ultimo) url += "&antes=" + encodeURIComponent(ultimo.criadoEm);
+  // Manda a data E o id: o cursor do servidor desempata pelo par, senão os
+  // movimentos que dividem o carimbo com a borda da página somem do extrato.
+  if (!reset && ultimo) url += "&antes=" + encodeURIComponent(ultimo.criadoEm) + "&antesId=" + encodeURIComponent(ultimo.id);
   const r = await api("GET", url);
   if (!r) return;
   if (!r.ok) {

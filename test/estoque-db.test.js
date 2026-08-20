@@ -87,3 +87,30 @@ test("esquecer: limpa o cache de empresa_id para o slug", async () => {
     db.query = origQuery;
   }
 });
+
+// ---------------------------------------------------------------------------
+// Cursor da paginação: `criado_em` sozinho perde linha.
+//
+// A ordenação é `criado_em DESC, id DESC`, mas o cursor comparava só a data.
+// `registrarTx` carimba `new Date()` (milissegundo) e uma venda grava vários
+// movimentos no mesmo laço, então empate de carimbo é rotina: os movimentos que
+// dividem o carimbo da borda da página somem do extrato. O cursor tem que
+// desempatar pelo mesmo critério da ordenação.
+// ---------------------------------------------------------------------------
+
+test("listar: o cursor desempata por id, igual à ordenação", async () => {
+  const chamadas = [];
+  const antes = db.query;
+  db.query = async (sql, params) => {
+    chamadas.push({ sql, params });
+    if (/FROM empresas/i.test(sql)) return { rows: [{ id: "emp-uuid" }] };
+    return { rows: [] };
+  };
+  try {
+    await estoqueDb.listar("/x/slug-cursor", { itemId: "a1", antes: "2026-08-20T12:00:00.000Z", antesId: 500 });
+    const q = chamadas.find((c) => /FROM estoque_movimentos/i.test(c.sql));
+    assert.match(q.sql, /ORDER BY criado_em DESC, id DESC/i);
+    // O par (criado_em, id) tem que ser comparado junto, senão empate na borda some.
+    assert.match(q.sql, /\(criado_em, id\) <|criado_em < \$\d+ OR \(criado_em = \$\d+ AND id </i);
+  } finally { db.query = antes; }
+});
