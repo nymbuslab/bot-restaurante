@@ -116,3 +116,54 @@ test("vincularPedido: o recálculo do consumo usa o mesmo recorte", async () => 
   assert.match(c.calls[0].sql, /UPDATE mesas m SET total_consumido/i);
   assert.match(c.calls[0].sql, RECORTE);
 });
+
+// ---------------------------------------------------------------------------
+// Transferir para mesa OCUPADA sem comanda aberta.
+//
+// Regressão introduzida junto com a fronteira de sessão: o recuo do `aberta_em`
+// do destino estava preso a `status = 'livre'`. Mesa aberta às 21h que ainda não
+// pediu nada não é "livre", então o recuo não acontecia; os pedidos movidos,
+// criados às 20h na origem, caíam FORA da janela do destino e a conta inteira
+// sumia — `total_consumido` zerava, o painel não listava nada e a origem era
+// liberada. Cliente trocando de mesa perdia o consumo.
+// ---------------------------------------------------------------------------
+
+// `transferir` abre a própria conexão (db.pool.connect), então o client fake tem
+// que entrar por aí — passar como argumento não alcança. Sem este stub o teste
+// sai falando com o banco de PRODUÇÃO, que é o que o .env local aponta.
+function comPoolFake(respostas, fn) {
+  const c = fakeClient(respostas);
+  const antes = db.pool;
+  db.pool = { connect: async () => Object.assign(c, { release() {} }) };
+  return fn(c).finally(() => { db.pool = antes; });
+}
+
+test("transferir: o destino recua a abertura mesmo estando ocupado", async () => {
+  const antigo = new Date("2026-08-20T20:00:00.000Z");
+  await comPoolFake([
+    [/SELECT nome FROM mesas/i, { rows: [{ nome: "05" }] }],
+    [/SELECT p\.id, p\.itens, p\.total, p\.criado_em/i, { rows: [{ id: 7, itens: [], total: 30, criado_em: antigo }] }],
+  ], async (c) => {
+    await mesasDb.transferir("/x/slug-transf", 1, 2, []);
+    const up = c.calls.find((q) => /UPDATE mesas SET[\s\S]*aberta_em/i.test(q.sql) && /LEAST/i.test(q.sql));
+    assert.ok(up, "o destino precisa ter o UPDATE que recua a abertura");
+    // O filtro do WHERE era o bug; o CASE no SET e o comportamento desejado.
+    assert.doesNotMatch(up.sql.split(/WHERE/i)[1], /status/i);
+    assert.equal(up.params[2], antigo);                 // recua ate o pedido mais antigo movido
+    assert.match(up.sql, /CASE WHEN status = 'livre'/i); // so promove quem estava livre
+  });
+});
+
+test("transferir: no merge nao recua a abertura do destino", async () => {
+  await comPoolFake([
+    [/SELECT nome FROM mesas/i, { rows: [{ nome: "05" }] }],
+    [/SELECT p\.id, p\.itens, p\.total, p\.criado_em/i, { rows: [{ id: 7, itens: [], total: 30, criado_em: new Date("2026-08-20T20:00:00.000Z") }] }],
+    // destino JA tem comanda aberta: os itens sao fundidos nela e as linhas movidas apagadas
+    [/SELECT p\.id, p\.itens, p\.total\s+FROM pedidos p/i, { rows: [{ id: 99, itens: [], total: 10 }] }],
+  ], async (c) => {
+    await mesasDb.transferir("/x/slug-merge", 1, 2, []);
+    const up = c.calls.find((q) => /UPDATE mesas SET[\s\S]*aberta_em/i.test(q.sql) && /LEAST/i.test(q.sql));
+    // Recuar no merge so ampliaria a janela e poderia ressuscitar sobra antiga.
+    assert.equal(up.params[2], null);
+  });
+});

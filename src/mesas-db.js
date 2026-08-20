@@ -445,16 +445,27 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
         [destinoId, "Mesa " + destinoNome, empId, movIds]
       );
     }
-    // ORDEM IMPORTA: abrir o destino ANTES de recalcular. O total agora sai do
-    // recorte de sessão, e mesa ainda livre tem `aberta_em` nulo — recalcular antes
-    // gravaria zero numa mesa que acabou de receber a comanda inteira.
-    // A abertura recua até o pedido mais antigo movido, senão ele nasce fora da sessão.
-    await client.query(
-      `UPDATE mesas SET status = 'ocupada',
-              aberta_em = COALESCE(aberta_em, LEAST(now(), COALESCE($3::timestamptz, now())))
-        WHERE empresa_id = $1 AND id = $2 AND status = 'livre'`,
-      [empId, destinoId, maisAntigoMovido]
-    );
+    // ORDEM IMPORTA: ajustar o destino ANTES de recalcular. O total sai do recorte
+    // de sessão, e mesa ainda livre tem `aberta_em` nulo — recalcular antes gravaria
+    // zero numa mesa que acabou de receber a comanda inteira.
+    //
+    // O recuo NÃO pode ficar preso a `status = 'livre'`: mesa aberta há pouco e que
+    // ainda não pediu nada está 'ocupada', e sem recuar os pedidos movidos (mais
+    // velhos) caem fora da janela e a conta inteira some.
+    //
+    // Só recua no MOVE. No MERGE os pedidos movidos são apagados e os itens entram
+    // na comanda do destino, que já nasceu dentro da sessão dele: recuar ali só
+    // ampliaria a janela e poderia ressuscitar sobra antiga do próprio destino.
+    if (movIds.length) {
+      const recuarAte = alvoRow ? null : maisAntigoMovido;
+      await client.query(
+        `UPDATE mesas SET
+                status = CASE WHEN status = 'livre' THEN 'ocupada' ELSE status END,
+                aberta_em = LEAST(COALESCE(aberta_em, now()), COALESCE($3::timestamptz, now()))
+          WHERE empresa_id = $1 AND id = $2`,
+        [empId, destinoId, recuarAte]
+      );
+    }
     // Recalcula totais das duas mesas.
     for (const mid of [origemId, destinoId]) {
       await client.query(recalcularConsumoSql(), [empId, mid]);
