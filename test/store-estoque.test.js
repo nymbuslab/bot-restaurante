@@ -263,3 +263,74 @@ test("amarrarPedidoTx: carimba só os ids desta transação, nunca um órfão de
   assert.doesNotMatch(q.sql, /empresa_id/i);      // não filtra mais por tenant
   assert.doesNotMatch(q.sql, /pedido_id IS NULL/i); // nem por "qualquer órfão"
 });
+
+// ---------------------------------------------------------------------------
+// Mínimo de estoque sob a mesma trava do resto.
+//
+// A rota lia o cardápio do CACHE, aplicava o mínimo e regravava o jsonb inteiro.
+// Uma baixa que commitasse entre a leitura e a escrita era sobrescrita: o saldo
+// voltava ao valor antigo. E como `setCardapio` roda `diffEstoque`, a diferença
+// ainda virava movimento de "ajuste" com observação "Editor do produto" — o
+// estoque sumia e a trilha mentia sobre o motivo.
+// ---------------------------------------------------------------------------
+
+test("definirMinimoTx: trava a linha e grava sobre o cardápio FRESCO do banco", async () => {
+  // O cardápio do banco tem saldo 1 (uma venda commitou depois de o cache ser lido).
+  const doBanco = clone();
+  doBanco.categorias[0].itens[0].estoque = 1;
+  const c = fakeClient(doBanco);
+
+  const r = await store.definirMinimoTx(c, "/x/slug-teste", { itemId: "a1", minimo: 2 });
+
+  assert.match(c.calls[0].sql, /SELECT id, cardapio[\s\S]*FOR UPDATE/i);
+  assert.match(c.calls[1].sql, /UPDATE empresas SET cardapio/i);
+  const it = r.cardapio.categorias[0].itens[0];
+  assert.equal(it.estoqueMinimo, 2); // o mínimo entrou
+  assert.equal(it.estoque, 1);       // e o saldo do banco foi PRESERVADO, não sobrescrito
+});
+
+test("definirMinimoTx: produto inexistente não grava nada", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(
+    () => store.definirMinimoTx(c, "/x/slug-teste", { itemId: "naoexiste", minimo: 1 }),
+    /não encontrado/i
+  );
+  assert.equal(c.calls.filter((q) => /UPDATE empresas/i.test(q.sql)).length, 0);
+});
+
+test("definirMinimoTx: alcança a variação", async () => {
+  const c = fakeClient(clone());
+  const r = await store.definirMinimoTx(c, "/x/slug-teste", { itemId: "a4", variacaoId: "v1", minimo: 3 });
+  assert.equal(r.cardapio.categorias[0].itens[3].variacoes[0].estoqueMinimo, 3);
+});
+
+// ---------------------------------------------------------------------------
+// Contagem no PAI de item com variações.
+//
+// A tela não oferece, a API aceitava. Ligava `estoque` no pai, o que faz
+// `validarEstoque` bloquear o produto inteiro como esgotado; e a próxima salvada
+// do cardápio apaga esse campo em silêncio (`PUT /api/cardapio` remove estoque do
+// pai quando há variações), deixando movimento órfão apontando para um saldo que
+// não existe mais.
+// ---------------------------------------------------------------------------
+
+test("ajustarEstoqueTx: recusa contagem no pai de item com variações", async () => {
+  const c = fakeClient(clone());
+  await assert.rejects(
+    () => store.ajustarEstoqueTx(c, "/x/slug-teste", { itemId: "a4", tipo: "contagem", contado: 10 }),
+    /variaç/i
+  );
+  assert.equal(c.calls.filter((q) => /UPDATE empresas/i.test(q.sql)).length, 0);
+});
+
+test("ajustarEstoqueTx: a contagem na VARIAÇÃO do mesmo item continua valendo", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug-teste", { itemId: "a4", variacaoId: "v1", tipo: "contagem", contado: 10 });
+  assert.equal(r.movimento.saldoDepois, 10);
+});
+
+test("ajustarEstoqueTx: item sem variações segue aceitando contagem no pai", async () => {
+  const c = fakeClient(clone());
+  const r = await store.ajustarEstoqueTx(c, "/x/slug-teste", { itemId: "a1", tipo: "contagem", contado: 9 });
+  assert.equal(r.movimento.saldoDepois, 9);
+});

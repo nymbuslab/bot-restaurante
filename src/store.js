@@ -69,7 +69,10 @@ async function setCardapio(dir, dados) {
     await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, { tipo: "ajuste", obs: "Editor do produto" });
     await client.query("COMMIT");
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: se a conexão já caiu (às vezes o próprio motivo do
+    // catch), a rejeição do ROLLBACK mascararia o erro original. Mesmo padrão
+    // de servidor.js, pedidos.js e mesas-db.js.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -151,6 +154,34 @@ async function devolverEstoqueTx(client, dir, itensPayload, ctx = {}) {
 // do chamador — o erro deixa isso explícito em vez de fingir que aplicou.
 // `contagem` exige `contado` numérico: `Number(undefined)`/`Number("abc")` são
 // NaN e não podem vazar pra aritmética do delta.
+// O item tem variações? Quem tem, controla estoque por opção, não no pai.
+function _temVariacoes(cardapio, itemId) {
+  const alvo = String(itemId);
+  let tem = false;
+  ((cardapio && cardapio.categorias) || []).forEach(function (c) {
+    ((c && c.itens) || []).forEach(function (it) {
+      if (it && String(it.id) === alvo && Array.isArray(it.variacoes) && it.variacoes.length) tem = true;
+    });
+  });
+  return tem;
+}
+
+// Mínimo de estoque sob a MESMA trava do resto. Não mexe em saldo, mas grava o
+// jsonb inteiro, então precisa ler a versão fresca do banco: lendo do cache, uma
+// baixa que commitasse no meio era sobrescrita e o `diffEstoque` do setCardapio
+// ainda registrava a diferença como "ajuste" do editor — estoque sumia e a
+// trilha mentia sobre o motivo. Não gera movimento: mínimo é alerta, não saldo.
+async function definirMinimoTx(client, dir, { itemId, variacaoId = null, minimo } = {}) {
+  const slug = slugDe(dir);
+  const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+  if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+  const cardapio = r.rows[0].cardapio || { categorias: [] };
+  const novo = Estoque.definirMinimo(cardapio, itemId, variacaoId, minimo);
+  if (!novo) throw new Error("Produto não encontrado no cardápio.");
+  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
+  return { cardapio: novo };
+}
+
 async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, quantidade, contado, obs } = {}) {
   const slug = slugDe(dir);
   const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
@@ -158,6 +189,16 @@ async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, 
   const cardapio = r.rows[0].cardapio || { categorias: [] };
   const alvo = Estoque.acharSaldo(cardapio, itemId, variacaoId);
   if (!alvo) throw new Error("Produto não encontrado no cardápio.");
+
+  // Item com variações não tem saldo próprio: quem controla é cada opção. Ligar
+  // `estoque` no pai faria `validarEstoque` barrar o produto inteiro como
+  // esgotado, e a próxima salvada do cardápio apagaria o campo em silêncio
+  // (PUT /api/cardapio remove estoque do pai quando há variações), deixando
+  // movimento órfão apontando para um saldo que não existe mais. A tela não
+  // oferece esse caminho; a API aceitava.
+  if (variacaoId == null && _temVariacoes(cardapio, itemId)) {
+    throw new Error("Este produto controla estoque por variação. Escolha a variação para lançar o movimento.");
+  }
 
   let delta;
   if (tipo === "contagem") {
@@ -226,4 +267,4 @@ function esquecer(slug) {
   delete cache[slug];
 }
 
-module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, devolverEstoqueTx, ajustarEstoqueTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };
+module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, devolverEstoqueTx, ajustarEstoqueTx, definirMinimoTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };

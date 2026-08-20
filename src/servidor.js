@@ -1811,7 +1811,7 @@ app.get("/api/estoque/movimentos", exigeAuth, async (req, res) => {
   const variacaoId = req.query.variacaoId ? String(req.query.variacaoId) : null;
   try {
     const [movimentos, resumo] = await Promise.all([
-      estoqueDb.listar(req.tenantDir, { itemId, variacaoId, limite: req.query.limite, antes: req.query.antes || null }),
+      estoqueDb.listar(req.tenantDir, { itemId, variacaoId, limite: req.query.limite, antes: req.query.antes || null, antesId: req.query.antesId || null }),
       estoqueDb.resumo(req.tenantDir, { itemId, variacaoId, dias: 30 }),
     ]);
     res.json({ movimentos, resumo });
@@ -1857,7 +1857,16 @@ app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
     });
     await client.query("COMMIT");
     store.sincronizarCardapio(req.tenantDir, r.cardapio);
-    res.json({ ok: true, movimento: r.movimento, quantidade: r.movimento ? r.movimento.saldoDepois : null });
+    // `quantidade` sai do SALDO resultante, não do movimento. Contagem que liga o
+    // controle em zero não gera movimento (delta zero), mas o produto passou a ser
+    // controlado e esgotado: devolvendo null, a tela saía cedo e seguia mostrando
+    // "Sem controle" até um F5, enquanto o servidor já bloqueava a venda.
+    const saldoAgora = estoque.acharSaldo(r.cardapio, itemId, b.variacaoId ? String(b.variacaoId) : null);
+    res.json({
+      ok: true,
+      movimento: r.movimento,
+      quantidade: saldoAgora && saldoAgora.controlado ? saldoAgora.quantidade : null,
+    });
   } catch (e) {
     // ROLLBACK guardado: se a conexão já caiu (o próprio motivo do catch, às
     // vezes), a rejeição do ROLLBACK não pode escapar do handler e deixar a
@@ -1882,15 +1891,25 @@ app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
   if (!Number.isFinite(minimo)) {
     return res.status(400).json({ erro: "Informe um mínimo numérico válido." });
   }
+  // Sob a mesma trava dos movimentos: lê a versão FRESCA do banco em vez do cache.
+  // Lendo do cache, uma baixa que commitasse entre a leitura e a escrita era
+  // sobrescrita, e o `diffEstoque` do setCardapio ainda gravava a diferença como
+  // "ajuste" do editor — o estoque sumia e a trilha apontava o motivo errado.
+  const client = await db.pool.connect();
   try {
-    await store.ensure(req.tenantDir);
-    const atual = store.getCardapio(req.tenantDir);
-    const novo = estoque.definirMinimo(atual, itemId, b.variacaoId ? String(b.variacaoId) : null, minimo);
-    if (!novo) return res.status(404).json({ erro: "Produto não encontrado." });
-    await store.setCardapio(req.tenantDir, novo);
+    await client.query("BEGIN");
+    const r = await store.definirMinimoTx(client, req.tenantDir, {
+      itemId, variacaoId: b.variacaoId ? String(b.variacaoId) : null, minimo,
+    });
+    await client.query("COMMIT");
+    store.sincronizarCardapio(req.tenantDir, r.cardapio);
     res.json({ ok: true });
   } catch (e) {
-    res.status(400).json({ erro: e.message || "Não foi possível salvar o mínimo." });
+    await client.query("ROLLBACK").catch(() => {});
+    const naoAchou = /não encontrado/i.test(e.message || "");
+    res.status(naoAchou ? 404 : 400).json({ erro: e.message || "Não foi possível salvar o mínimo." });
+  } finally {
+    client.release();
   }
 });
 
