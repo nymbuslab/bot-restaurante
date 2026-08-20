@@ -318,3 +318,52 @@ test("recalcularItens: apagar o grupo da biblioteca tira a opção do pedido", (
   assert.deepEqual(r.itens[0].opcionais, []);
   assert.deepEqual(r.itens[0].composicao, []);
 });
+
+// ---------------------------------------------------------------------------
+// Excedente de quantidade (mesma regra do PDV, teto de 50 no cardápio web).
+// O carrinho do cliente não trava o "+", então dá para chegar a 60 clicando.
+// Cortar calado grava 50 e cobra 50 sem avisar; o excedente existe para o
+// servidor poder recusar e dizer o porquê.
+// ---------------------------------------------------------------------------
+
+test("recalcularItens: acima de 50 reporta o excedente", () => {
+  const card = { categorias: [{ nome: "B", itens: [{ id: 1, nome: "Coca", preco: 3 }] }], grupos: [] };
+  const r = cw.recalcularItens(card, [{ id: 1, qtd: 60 }]);
+  assert.equal(r.itens[0].qtd, 50);
+  assert.deepEqual(r.excedentes, [{ nome: "Coca", pedido: 60, limite: 50, unidade: "un" }]);
+});
+
+test("recalcularItens: dentro do limite não reporta excedente", () => {
+  const card = { categorias: [{ nome: "B", itens: [{ id: 1, nome: "Coca", preco: 3 }] }], grupos: [] };
+  assert.deepEqual(cw.recalcularItens(card, [{ id: 1, qtd: 5 }]).excedentes, []);
+});
+
+test("mensagemExcedente: nomeia o item, o limite e o que foi pedido", () => {
+  const m = cw.mensagemExcedente([{ nome: "Coca", pedido: 60, limite: 50, unidade: "un" }]);
+  assert.equal(m, "O máximo é 50 unidades de Coca por pedido. Você pediu 60. Ajuste a quantidade e tente de novo.");
+});
+
+test("mensagemExcedente: peso sai em kg com vírgula", () => {
+  const m = cw.mensagemExcedente([{ nome: "Picanha", pedido: 250.5, limite: 100, unidade: "kg" }]);
+  assert.equal(m, "O máximo é 100 kg de Picanha por pedido. Você pediu 250,5 kg. Ajuste a quantidade e tente de novo.");
+});
+
+test("mensagemExcedente: limite de 1 unidade não vira plural", () => {
+  const m = cw.mensagemExcedente([{ nome: "Brinde", pedido: 3, limite: 1, unidade: "un" }]);
+  assert.match(m, /O máximo é 1 unidade de Brinde/);
+});
+
+test("mensagemExcedente: com mais de um item, lista todos", () => {
+  const m = cw.mensagemExcedente([
+    { nome: "Coca", pedido: 60, limite: 50, unidade: "un" },
+    { nome: "Guaraná", pedido: 80, limite: 50, unidade: "un" },
+  ]);
+  assert.match(m, /Coca/);
+  assert.match(m, /Guaraná/);
+  assert.match(m, /Ajuste as quantidades/);
+});
+
+test("mensagemExcedente: lista vazia não gera mensagem", () => {
+  assert.equal(cw.mensagemExcedente([]), "");
+  assert.equal(cw.mensagemExcedente(null), "");
+});

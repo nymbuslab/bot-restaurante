@@ -180,3 +180,33 @@ test("recalcularVenda: vínculo órfão (grupo apagado da biblioteca) não vende
   assert.equal(r.subtotal, 10);
   assert.deepEqual(r.itens[0].opcionais, []);
 });
+
+// ---------------------------------------------------------------------------
+// Excedente de quantidade: o teto tem que ser DITO, não aplicado calado.
+//
+// O recálculo limita a 99 unidades (100 kg por peso). Enquanto o corte era
+// silencioso, o cliente pedia 150, o pedido gravava 99 e cobrava 99 sem uma
+// linha explicando as 51 que sumiram. Quem corta é quem sabe do corte, então o
+// excedente sai daqui e não de uma segunda checagem que duplicaria o número.
+// ---------------------------------------------------------------------------
+
+test("recalcularVenda: acima de 99 unidades reporta o excedente", () => {
+  const r = recalcularVenda(cardapio, [{ id: "a1", qtd: 150 }]);
+  assert.equal(r.itens[0].qtd, 99);
+  assert.deepEqual(r.excedentes, [
+    { nome: "Espeto de carne", pedido: 150, limite: 99, unidade: "un" },
+  ]);
+});
+
+test("recalcularVenda: peso acima de 100 kg reporta o excedente", () => {
+  const r = recalcularVenda(cardapio, [{ id: "a2", qtd: "250,5" }]);
+  assert.equal(r.itens[0].qtd, 100);
+  assert.deepEqual(r.excedentes, [
+    { nome: "Picanha (kg)", pedido: 250.5, limite: 100, unidade: "kg" },
+  ]);
+});
+
+test("recalcularVenda: dentro do limite não reporta excedente", () => {
+  const r = recalcularVenda(cardapio, [{ id: "a1", qtd: 3 }, { id: "a2", qtd: "1,5" }]);
+  assert.deepEqual(r.excedentes, []);
+});

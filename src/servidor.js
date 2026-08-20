@@ -875,6 +875,13 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     }
     if (!recalc.itens.length) return res.status(400).json({ erro: "Carrinho vazio." });
 
+    // Teto de quantidade: recusa dizendo qual é, em vez de cortar em silêncio.
+    // O carrinho do cliente não trava o "+", então dá para chegar a 60 clicando —
+    // e gravar 50 cobrando 50 mandaria menos comida sem nenhum aviso.
+    if (recalc.excedentes.length) {
+      return res.status(400).json({ erro: cardapioWeb.mensagemExcedente(recalc.excedentes) });
+    }
+
     // Item "só no local" não sai para entrega (defesa real — o front também barra).
     if (tipoEntrega === "Entrega") {
       const soLocal = cardapioWeb.itensSoLocal(store.getCardapio(dir), b.itens);
@@ -2164,7 +2171,11 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     // realmente tirar, não sobre o payload cru (ver o porquê no cardápio web).
     // `recalcularVenda` é puro e lança em escolha inválida, então o erro de grupo
     // obrigatório passa a vir antes do erro de estoque quando os dois existem.
-    const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+    const recalcPdv = pdv.recalcularVenda(cardapio, b.itens);
+    const { itens, subtotal } = recalcPdv;
+    if (recalcPdv.excedentes.length) {
+      return res.status(400).json({ erro: cardapioWeb.mensagemExcedente(recalcPdv.excedentes) });
+    }
 
     // Estoque (fonte de verdade no servidor) antes de gravar.
     const estCheck = estoque.validarEstoque(cardapio, itens);
@@ -2399,7 +2410,11 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
     const cardapio = store.getCardapio(req.tenantDir);
     // Recalcula antes de validar: o estoque é conferido sobre o que a rodada vai
     // realmente tirar (ver o porquê no cardápio web).
-    const { itens, subtotal } = pdv.recalcularVenda(cardapio, b.itens);
+    const recalcMesa = pdv.recalcularVenda(cardapio, b.itens);
+    const { itens, subtotal } = recalcMesa;
+    if (recalcMesa.excedentes.length) {
+      return res.status(400).json({ erro: cardapioWeb.mensagemExcedente(recalcMesa.excedentes) });
+    }
     const estCheck = estoque.validarEstoque(cardapio, itens);
     if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
 

@@ -12,6 +12,10 @@ const variacoes = require("../public/variacoes"); // variações (opções com p
 
 // Validade do link enviado pelo bot (liga o pedido feito na web ao chatId).
 const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+// Teto de unidades por linha do pedido. Trava anti-abuso, não regra de negócio:
+// o cliente não conhece esse número, então o servidor RECUSA e diz qual é, em vez
+// de cortar em silêncio. Mora aqui porque é aqui que o corte acontece.
+const LIMITE_QTD = 50;
 
 // Opcionais do item são guardados como texto ("Nome | preco" por linha).
 // Converte para [{ nome, preco }] — mesma regra usada pelo bot (fluxo.js importa daqui).
@@ -80,11 +84,19 @@ function recalcularItens(cardapio, itensPayload) {
     });
   });
   const itens = [];
+  // Linhas que o teto cortou. Quem corta é quem reporta: uma segunda checagem em
+  // outro lugar duplicaria o número do limite e sairia de sincronia no primeiro
+  // dia em que ele mudasse. O servidor recusa o pedido em vez de cortar calado,
+  // porque o carrinho do cliente não trava o "+" e gravar 50 de um pedido de 60
+  // cobra a menos sem avisar ninguém.
+  const excedentes = [];
   let subtotal = 0;
   (itensPayload || []).forEach(function (p) {
     const base = mapa[p && p.id];
     if (!base) throw new Error("Item indisponível no cardápio.");
-    const qtd = Math.max(1, Math.min(50, parseInt(p.qtd, 10) || 1));
+    const pedido = Math.max(1, parseInt(p.qtd, 10) || 1);
+    const qtd = Math.min(LIMITE_QTD, pedido);
+    if (pedido > qtd) excedentes.push({ nome: base.nome, pedido: pedido, limite: LIMITE_QTD, unidade: "un" });
     // Só a biblioteca vale. Item sem vínculo não aceita opção nenhuma, mesmo que o
     // cliente mande: o que não está configurado hoje não pode entrar no pedido.
     const resolvidos = grupos.resolverGrupos(base, cardapio && cardapio.grupos);
@@ -107,7 +119,25 @@ function recalcularItens(cardapio, itensPayload) {
   });
   // Arredonda a centavos (paridade com pdv.recalcularVenda) — evita 10.30000000001 no
   // objeto em memória e em qualquer consumidor futuro do valor bruto.
-  return { itens: itens, subtotal: Math.round(subtotal * 100) / 100 };
+  return { itens: itens, subtotal: Math.round(subtotal * 100) / 100, excedentes: excedentes };
+}
+
+// Mensagem de recusa quando o teto cortou alguma linha. O cliente não conhece o
+// limite, então a mensagem diz qual é, quanto ele pediu e o que fazer. Sem isso
+// a alternativa era cortar calado e cobrar a menos sem avisar.
+function mensagemExcedente(excedentes) {
+  const lista = Array.isArray(excedentes) ? excedentes : [];
+  if (!lista.length) return "";
+  const num = function (n) { return String(n).replace(".", ","); };
+  const trecho = function (e) {
+    const unid = e.unidade === "kg"
+      ? e.limite + " kg"
+      : e.limite + (e.limite === 1 ? " unidade" : " unidades");
+    const pediu = e.unidade === "kg" ? num(e.pedido) + " kg" : num(e.pedido);
+    return "O máximo é " + unid + " de " + e.nome + " por pedido. Você pediu " + pediu + ".";
+  };
+  if (lista.length === 1) return trecho(lista[0]) + " Ajuste a quantidade e tente de novo.";
+  return lista.map(trecho).join(" ") + " Ajuste as quantidades e tente de novo.";
 }
 
 // Nomes (sem repetição) dos itens do payload que são "só no local" (apenasLocal).
@@ -155,4 +185,4 @@ function verificarToken(secret, token, slug, agoraMs) {
   return { chatId: dados.chatId };
 }
 
-module.exports = { parseOpcionais, projetarCardapio, recalcularItens, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS };
+module.exports = { parseOpcionais, projetarCardapio, recalcularItens, mensagemExcedente, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS, LIMITE_QTD };

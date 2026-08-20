@@ -13,6 +13,12 @@ const variacoes = require("../public/variacoes"); // variações (opções com p
 const cent = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const mil = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
 
+// Tetos por linha da venda. Trava anti-erro de digitação, não regra de negócio:
+// o operador não conhece esses números, então a venda é RECUSADA com o limite
+// dito, em vez de sair cortada em silêncio.
+const LIMITE_QTD = 99;
+const LIMITE_KG = 100;
+
 // Mapa id->item dos itens vendáveis (disponível e não arquivado). Inclui itens
 // "só no local" e por kg — o PDV é venda de balcão.
 function _mapaItens(cardapio) {
@@ -31,6 +37,10 @@ function _mapaItens(cardapio) {
 function recalcularVenda(cardapio, itensPayload) {
   const mapa = _mapaItens(cardapio);
   const itens = [];
+  // Linhas que o teto cortou — quem corta é quem reporta (mesma regra do cardápio
+  // web). O operador que digita 150 precisa ouvir que o máximo é 99, senão a venda
+  // sai por 99 e ninguém percebe até a conferência do caixa não fechar.
+  const excedentes = [];
   let subtotal = 0;
   (itensPayload || []).forEach((p) => {
     const base = mapa[p && p.id];
@@ -38,11 +48,14 @@ function recalcularVenda(cardapio, itensPayload) {
     const ehKg = base.unidade === "kg";
     let qtd;
     if (ehKg) {
-      qtd = mil(parseFloat(String(p && p.qtd).replace(",", ".")) || 0);
-      if (!(qtd > 0)) throw new Error("Peso inválido para " + base.nome + ".");
-      if (qtd > 100) qtd = 100; // teto de sanidade (kg)
+      const pedido = mil(parseFloat(String(p && p.qtd).replace(",", ".")) || 0);
+      if (!(pedido > 0)) throw new Error("Peso inválido para " + base.nome + ".");
+      qtd = Math.min(LIMITE_KG, pedido); // teto de sanidade (kg)
+      if (pedido > qtd) excedentes.push({ nome: base.nome, pedido, limite: LIMITE_KG, unidade: "kg" });
     } else {
-      qtd = Math.max(1, Math.min(99, parseInt(p && p.qtd, 10) || 1));
+      const pedido = Math.max(1, parseInt(p && p.qtd, 10) || 1);
+      qtd = Math.min(LIMITE_QTD, pedido);
+      if (pedido > qtd) excedentes.push({ nome: base.nome, pedido, limite: LIMITE_QTD, unidade: "un" });
     }
     // Só a biblioteca vale. Item sem vínculo não aceita opção nenhuma, mesmo que o
     // cliente mande: o que não está configurado hoje não pode entrar na venda.
@@ -65,7 +78,7 @@ function recalcularVenda(cardapio, itensPayload) {
       observacao: String((p && p.observacao) || "").slice(0, 200),
     });
   });
-  return { itens, subtotal: cent(subtotal) };
+  return { itens, subtotal: cent(subtotal), excedentes };
 }
 
 // Aplica o desconto ao subtotal. `desconto` = { tipo: 'valor'|'pct', valor }.
@@ -148,4 +161,4 @@ function resumoPagamento(pagamentos) {
     .join(" · ");
 }
 
-module.exports = { recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete };
+module.exports = { LIMITE_QTD, LIMITE_KG, recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete };
