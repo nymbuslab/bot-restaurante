@@ -26,6 +26,34 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl });
 
 pool.on("error", (err) => console.error("Erro inesperado no pool Postgres:", err.message));
 
-const query = (text, params) => pool.query(text, params);
+// ---- Trava de teste ---------------------------------------------------------
+// O `.env` local aponta para o MESMO Supabase de produção, então um teste que
+// esqueça de stubar sai gravando em dado real. Aconteceu: um teste de mesa
+// chamava `db.pool.connect()` por dentro da função e abriu conexão de verdade;
+// só não escreveu porque a transação abortou na primeira query.
+//
+// O runner do Node marca os processos de teste com NODE_TEST_CONTEXT, então dá
+// para fechar o portão único aqui em vez de confiar que cada teste lembre. Quem
+// precisar do banco de propósito (script de auditoria, verificação de migração)
+// roda fora do runner ou liga PERMITIR_BANCO_EM_TESTE=1 conscientemente.
+const EM_TESTE = !!process.env.NODE_TEST_CONTEXT && process.env.PERMITIR_BANCO_EM_TESTE !== "1";
+const barrar = (o) => {
+  throw new Error(
+    "Teste tentou " + o + " no banco REAL. O .env local aponta para produção. " +
+    "Stube `db.query` e/ou `db.pool.connect` no teste, ou rode com PERMITIR_BANCO_EM_TESTE=1 se for proposital."
+  );
+};
 
-module.exports = { pool, query };
+// Em teste o pool exposto é um dublê que só sabe recusar. Clonar o Pool de
+// verdade trocando `connect` deixaria `query` resolvendo pelo protótipo e ainda
+// abrindo conexão; aqui não há caminho nenhum para o banco.
+const query = EM_TESTE ? () => barrar("consultar") : (text, params) => pool.query(text, params);
+const poolExposto = EM_TESTE
+  ? {
+      connect: () => barrar("abrir conexão"),
+      query: () => barrar("consultar"),
+      end: async () => {},
+    }
+  : pool;
+
+module.exports = { pool: poolExposto, query };
