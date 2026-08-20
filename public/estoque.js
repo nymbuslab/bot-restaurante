@@ -54,14 +54,27 @@
   }
   // Variações têm estoque próprio. Chave = id_item + "::" + id_variacao. Sempre "un".
   function _chaveVar(idItem, idVar) { return String(idItem) + "::" + String(idVar); }
-  function _agregarVariacoes(itensPayload) {
+  // A quantidade da variação é POR LINHA do pedido, então multiplica pela
+  // quantidade da linha — é o que o preço faz: `(base + variações) * qtd`. Somar
+  // só o `qtd` da variação cobrava 3 e baixava 1, e a validação (que usa esta
+  // mesma agregação) aceitava vender 3 tendo 2 em estoque.
+  //
+  // `mapa` entra para o multiplicador seguir a mesma regra do `_agregar`: peso
+  // decimal em item por kg, inteiro >= 1 nos demais. Variação em item por kg não
+  // é combinação suportada pela tela; o multiplicador vale mesmo assim, para o
+  // estoque nunca ficar abaixo do que foi cobrado.
+  function _agregarVariacoes(itensPayload, mapa) {
     const pedV = {};
     (itensPayload || []).forEach(function (p) {
       if (!p || p.id == null || !Array.isArray(p.variacoes)) return;
+      const base = mapa && mapa[p.id];
+      const linha = base && base.unidade === "kg"
+        ? Math.max(0, parseFloat(String(p.qtd).replace(",", ".")) || 0)
+        : Math.max(1, parseInt(p.qtd, 10) || 1);
       p.variacoes.forEach(function (v) {
         if (!v || v.id == null) return;
         const k = _chaveVar(p.id, v.id);
-        pedV[k] = (pedV[k] || 0) + Math.max(1, parseInt(v.qtd, 10) || 1);
+        pedV[k] = (pedV[k] || 0) + Math.max(1, parseInt(v.qtd, 10) || 1) * linha;
       });
     });
     return pedV;
@@ -96,7 +109,7 @@
     }
     // estoque por variação (cada opção do item tem o seu) — sempre "un"
     const mapaV = _mapaVariacoes(cardapio);
-    const pedV = _agregarVariacoes(itensPayload);
+    const pedV = _agregarVariacoes(itensPayload, mapa);
     for (const k in pedV) {
       const ref = mapaV[k];
       if (!ref) continue;
@@ -118,7 +131,7 @@
   function _movimentar(cardapio, itensPayload, sinal) {
     const mapa = _mapaItens(cardapio);
     const ped = _agregar(itensPayload, mapa);
-    const pedV = _agregarVariacoes(itensPayload);
+    const pedV = _agregarVariacoes(itensPayload, mapa);
     const movimentos = [];
     function aplicar(alvo, pedido, ehKg, itemId, variacaoId, descricao) {
       const atual = Math.max(0, ehKg

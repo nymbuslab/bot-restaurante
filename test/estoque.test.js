@@ -343,3 +343,72 @@ test("definirMinimo: grava no item e na variação, e devolve null para id inexi
   assert.equal(E.definirMinimo(c, "zzz", null, 1), null);
   assert.equal(c.categorias[0].itens[0].estoqueMinimo, 1); // não mutou
 });
+
+// ---------------------------------------------------------------------------
+// Variação: a baixa tem que multiplicar pela quantidade da LINHA.
+//
+// O preço faz `(base + variações) * qtd`, mas a agregação do estoque somava só o
+// `qtd` da variação. Uma linha de 3 açaís de 300ml cobrava 3 e tirava 1 — e a
+// validação, que usa a mesma agregação, aceitava vender 3 tendo 2 em estoque.
+//
+// Vivo em produção quando isto foi escrito: o Sabor D' Casa controla estoque em
+// duas variações de "Refrigerante 2 Litros", uma delas com 2 unidades. Nunca
+// disparou porque as 14 vendas do histórico tinham quantidade 1 na linha.
+// ---------------------------------------------------------------------------
+
+const cardVar = {
+  categorias: [{ nome: "Açaí", itens: [
+    { id: "a1", nome: "Açaí", preco: 0, unidade: "un", variacoes: [
+      { id: "v300", nome: "300ml", preco: 12, estoque: 10 },
+      { id: "v500", nome: "500ml", preco: 18, estoque: 4 },
+    ] },
+  ] }],
+  grupos: [],
+};
+
+function saldoVar(card, itemId, varId) {
+  let s = null;
+  (card.categorias || []).forEach((c) => (c.itens || []).forEach((i) => {
+    if (i.id !== itemId) return;
+    (i.variacoes || []).forEach((v) => { if (v.id === varId) s = v.estoque; });
+  }));
+  return s;
+}
+
+test("calcularBaixa: quantidade da linha multiplica a variação escolhida", () => {
+  const r = E.calcularBaixa(cardVar, [{ id: "a1", qtd: 3, variacoes: [{ id: "v300", qtd: 1 }] }]);
+  assert.equal(saldoVar(r.cardapio, "a1", "v300"), 7); // 10 - 3, não 10 - 1
+});
+
+test("calcularBaixa: multiplica linha por variação (2 linhas de 2 unidades = 4)", () => {
+  const r = E.calcularBaixa(cardVar, [{ id: "a1", qtd: 2, variacoes: [{ id: "v300", qtd: 2 }] }]);
+  assert.equal(saldoVar(r.cardapio, "a1", "v300"), 6);
+});
+
+test("validarEstoque: não deixa vender 3 tendo 2 da variação", () => {
+  const magro = JSON.parse(JSON.stringify(cardVar));
+  magro.categorias[0].itens[0].variacoes[0].estoque = 2;
+  const check = E.validarEstoque(magro, [{ id: "a1", qtd: 3, variacoes: [{ id: "v300", qtd: 1 }] }]);
+  assert.equal(check.ok, false);
+  assert.match(check.erro, /300ml/);
+});
+
+test("calcularDevolucao: devolve exatamente o que a baixa tirou", () => {
+  const linha = [{ id: "a1", qtd: 3, variacoes: [{ id: "v300", qtd: 2 }] }];
+  const depoisVenda = E.calcularBaixa(cardVar, linha).cardapio;
+  const depoisCancel = E.calcularDevolucao(depoisVenda, linha).cardapio;
+  assert.equal(saldoVar(depoisCancel, "a1", "v300"), saldoVar(cardVar, "a1", "v300"));
+});
+
+test("calcularBaixa: linha de quantidade 1 continua igual (caso comum não muda)", () => {
+  const r = E.calcularBaixa(cardVar, [{ id: "a1", qtd: 1, variacoes: [{ id: "v500", qtd: 1 }] }]);
+  assert.equal(saldoVar(r.cardapio, "a1", "v500"), 3);
+});
+
+test("calcularBaixa: duas variações na mesma linha cada uma multiplica", () => {
+  const r = E.calcularBaixa(cardVar, [
+    { id: "a1", qtd: 2, variacoes: [{ id: "v300", qtd: 1 }, { id: "v500", qtd: 1 }] },
+  ]);
+  assert.equal(saldoVar(r.cardapio, "a1", "v300"), 8);
+  assert.equal(saldoVar(r.cardapio, "a1", "v500"), 2);
+});
