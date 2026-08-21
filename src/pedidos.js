@@ -152,9 +152,16 @@ async function avisarPedido(dir, id) {
 
 // Pedidos do CARDÁPIO WEB ainda não impressos pelo agente desktop: `origem = 'web'`
 // (PDV e Mesa têm o próprio caminho de impressão via fila genérica — não entram aqui,
-// senão imprimiriam em duplicidade; PDV Entrega/Retirada nascem "a receber" e cairiam
-// neste filtro se fosse só por recebido_em) E não impressos (impresso_em nulo) E ainda
-// não recebidos. Ordena por numero (imprime na ordem que caíram).
+// senão imprimiriam em duplicidade) E não impressos (impresso_em nulo) E não
+// cancelados. Ordena por numero (imprime na ordem que caíram).
+//
+// NÃO filtra por `recebido_em`: `origem = 'web'` já exclui o PDV sozinho, então
+// aquela condição era redundante e derrubava um caso real — com o agente
+// desligado os pedidos se acumulam, e se o dono recebesse o pagamento de algum
+// antes de religar, a comanda daquele sumia da fila e nunca saía.
+//
+// Cancelado fica de fora: imprimir mandaria a cozinha preparar comida de um
+// pedido que não existe mais.
 async function pendentes(dir, agenteId) {
   const empId = await empresaId(dir);
   const ag = String(agenteId || "").slice(0, 64) || "sem-id";
@@ -165,7 +172,7 @@ async function pendentes(dir, agenteId) {
     `UPDATE pedidos SET reservado_em = now(), reservado_por = $2
       WHERE id IN (
         SELECT id FROM pedidos
-         WHERE empresa_id = $1 AND impresso_em IS NULL AND recebido_em IS NULL AND origem = 'web'
+         WHERE empresa_id = $1 AND impresso_em IS NULL AND status <> 'cancelado' AND origem = 'web'
            AND (reservado_em IS NULL OR reservado_em < now() - interval '30 seconds' OR reservado_por = $2)
          ORDER BY numero ASC
          LIMIT 50
@@ -400,14 +407,25 @@ async function dashboardRaw(dir) {
          FROM pedidos
         WHERE empresa_id = $1 AND status <> 'cancelado' AND criado_em >= ${INICIO_MES_BR}
         GROUP BY canal`, P),
-    // Formas de pagamento informadas no mês (contagem).
+    // Formas de pagamento do mês (contagem de recebimentos por forma).
+    // Sai de `caixa_movimentos.forma_pagamento`, que é a forma NORMALIZADA (a
+    // mesma que a tela do caixa usa). Antes agrupava por `trim(pedidos.pagamento)`,
+    // mas aquela coluna guarda o resumo COM o valor ("PIX R$ 10,00 · Dinheiro
+    // R$ 13,50"): cada venda virava um grupo de um e a "forma mais usada" exibia
+    // a string de um pedido só, com percentual perto de zero.
+    //
+    // Split conta duas vezes de propósito: pagar metade em PIX e metade em
+    // dinheiro é usar as duas formas. `pedido_id` é nulo no fechamento de mesa,
+    // por isso LEFT JOIN — sem ele a receita de mesa sumia do indicador.
     db.query(
-      `SELECT trim(pagamento) AS forma, COUNT(*)::int AS qtd
-         FROM pedidos
-        WHERE empresa_id = $1 AND status <> 'cancelado'
-          AND pagamento IS NOT NULL AND trim(pagamento) <> ''
-          AND criado_em >= ${INICIO_MES_BR}
-        GROUP BY trim(pagamento)`, P),
+      `SELECT m.forma_pagamento AS forma, COUNT(*)::int AS qtd
+         FROM caixa_movimentos m
+         LEFT JOIN pedidos p ON p.id = m.pedido_id
+        WHERE m.empresa_id = $1 AND m.tipo = 'recebimento'
+          AND m.forma_pagamento IS NOT NULL AND trim(m.forma_pagamento) <> ''
+          AND (p.id IS NULL OR p.status <> 'cancelado')
+          AND m.criado_em >= ${INICIO_MES_BR}
+        GROUP BY m.forma_pagamento`, P),
     // Itens vendidos no mês (para Top 10 e ranking de grupos), excluindo cancelados.
     db.query(
       `SELECT iv.item_id, iv.descricao,
