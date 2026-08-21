@@ -2522,6 +2522,12 @@ async function salvarEditorItem() {
   if (estoqueRaw !== "") novoItem.estoque = Math.max(0, parseEst(estoqueRaw));
   if (estoqueMinRaw !== "") novoItem.estoqueMinimo = Math.max(0, parseEst(estoqueMinRaw));
   if (varsNorm.length) novoItem.variacoes = varsNorm;
+  // Marca ESTE item como o único cujo saldo veio da tela. O salvamento manda o
+  // cardápio inteiro, e os demais produtos carregam a cópia que o navegador
+  // pegou ao abrir o painel — sem a marca, uma venda que caia nesse meio-tempo
+  // seria desfeita. O servidor devolve o saldo do banco para todo o resto e
+  // descarta esta chave antes de gravar (Estoque.preservarSaldos).
+  novoItem[Estoque.MARCA_ESTOQUE] = true;
 
   if (editorIi === -1) {
     cardapioAtual.categorias[novoCi].itens.push(novoItem);

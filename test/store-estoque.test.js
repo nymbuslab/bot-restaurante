@@ -1,6 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const store = require("../src/store");
+const Estoque = require("../public/estoque");
 
 // Client fake: registra as queries e devolve respostas canned (sem tocar o banco).
 function fakeClient(cardapio) {
@@ -243,11 +244,44 @@ test("setCardapio: mudança de estoque pelo editor vira movimento de ajuste", as
   try {
     const novo = clone();
     novo.categorias[0].itens[0].estoque = 10; // era 3
+    // A marca é o que o editor passou a enviar: diz que ESTE saldo veio da tela.
+    // Sem ela o servidor devolve o saldo do banco (protegendo venda concorrente),
+    // e é isso que o teste seguinte cobre.
+    novo.categorias[0].itens[0][Estoque.MARCA_ESTOQUE] = true;
     await store.setCardapio("/x/slug", novo);
     const ins = chamadas.find((q) => /INSERT INTO estoque_movimentos/i.test(q.sql));
     assert.ok(ins, "deveria gravar o ajuste");
     assert.equal(ins.params[3], "ajuste");
     assert.equal(ins.params[4], 7);
+  } finally { dbMod.pool = original; }
+});
+
+test("setCardapio: saldo de item NÃO editado não é sobrescrito pelo payload", async () => {
+  const chamadas = [];
+  const fakePool = { connect: async () => ({
+    query: async (sql, params) => {
+      chamadas.push({ sql, params });
+      // No banco o saldo já caiu para 1 (uma venda entrou enquanto o dono editava).
+      if (/SELECT id, cardapio/i.test(sql)) {
+        const doBanco = clone();
+        doBanco.categorias[0].itens[0].estoque = 1;
+        return { rows: [{ id: "emp-uuid", cardapio: doBanco }] };
+      }
+      return { rows: [] };
+    },
+    release() {},
+  }) };
+  const dbMod = require("../src/db");
+  const original = dbMod.pool;
+  dbMod.pool = fakePool;
+  try {
+    const novo = clone(); // o navegador ainda acha que são 3, e não marca nada
+    await store.setCardapio("/x/slug", novo);
+    const upd = chamadas.find((q) => /UPDATE empresas SET cardapio/i.test(q.sql));
+    const gravado = JSON.parse(upd.params[0]);
+    assert.equal(gravado.categorias[0].itens[0].estoque, 1, "a venda não pode ser desfeita ao salvar o cardápio");
+    const ins = chamadas.find((q) => /INSERT INTO estoque_movimentos/i.test(q.sql));
+    assert.equal(ins, undefined, "sem mudança real de saldo, não há ajuste a registrar");
   } finally { dbMod.pool = original; }
 });
 

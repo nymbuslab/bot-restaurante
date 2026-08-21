@@ -64,8 +64,15 @@ async function setCardapio(dir, dados) {
     await client.query("BEGIN");
     const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
     if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+    const doBanco = r.rows[0].cardapio || { categorias: [] };
+    // O payload é o cardápio INTEIRO vindo do navegador, carregado quando o
+    // painel abriu. Sem isto, uma venda que caísse enquanto o dono editava um
+    // produto era desfeita ao salvar — e o `diffEstoque` logo abaixo registrava
+    // como "ajuste / Editor do produto", com número errado e motivo enganoso.
+    // Só o item que o dono editou traz saldo próprio; o resto volta ao do banco.
+    dados = Estoque.preservarSaldos(doBanco, dados);
     await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(dados), slug]);
-    const movimentos = Estoque.diffEstoque(r.rows[0].cardapio || { categorias: [] }, dados);
+    const movimentos = Estoque.diffEstoque(doBanco, dados);
     await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, { tipo: "ajuste", obs: "Editor do produto" });
     await client.query("COMMIT");
   } catch (e) {

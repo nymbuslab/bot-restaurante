@@ -121,6 +121,67 @@
     }
     return { ok: true, erro: "" };
   }
+  // ---- Salvar cardápio sem desfazer venda ----------------------------------
+  // O editor manda o cardápio INTEIRO, incluindo produtos que o dono nem abriu:
+  // é a cópia que o navegador carregou quando o painel foi aberto. Uma venda que
+  // caia nesse meio-tempo era desfeita ao salvar, e o `diffEstoque` ainda
+  // registrava como "ajuste / Editor do produto" — número errado com explicação
+  // enganosa.
+  //
+  // Ignorar o estoque do payload não serve: o editor edita saldo de verdade, do
+  // produto e de cada variação. A régua é a INTENÇÃO. Vale o que veio só para o
+  // item que o dono editou (marcado com `_estoqueEditado` no envio); todo o resto
+  // recebe de volta o saldo do banco, que é a versão que as vendas atualizaram.
+  //
+  // Produto novo (sem par no banco) entra com o que veio. O marcador é transitório
+  // e nunca é persistido.
+  const MARCA_ESTOQUE = "_estoqueEditado";
+
+  function _saldoDoBanco(alvo, base) {
+    const out = Object.assign({}, alvo);
+    delete out[MARCA_ESTOQUE];
+    delete out.estoque;
+    delete out.estoqueMinimo;
+    if (base && base.estoque !== undefined) out.estoque = base.estoque;
+    if (base && base.estoqueMinimo !== undefined) out.estoqueMinimo = base.estoqueMinimo;
+    return out;
+  }
+
+  function preservarSaldos(cardapioBanco, cardapioNovo) {
+    if (!cardapioNovo) return cardapioNovo;
+    const doBanco = {};
+    ((cardapioBanco && cardapioBanco.categorias) || []).forEach(function (c) {
+      ((c && c.itens) || []).forEach(function (it) { if (it && it.id != null) doBanco[it.id] = it; });
+    });
+    const categorias = ((cardapioNovo.categorias) || []).map(function (c) {
+      if (!c) return c;
+      return Object.assign({}, c, {
+        itens: ((c.itens) || []).map(function (it) {
+          if (!it) return it;
+          const base = doBanco[it.id];
+          // Sem par no banco = produto novo: nada a preservar.
+          if (!base) { const novo = Object.assign({}, it); delete novo[MARCA_ESTOQUE]; return novo; }
+          const editado = !!it[MARCA_ESTOQUE];
+          const item = editado ? (function () { const o = Object.assign({}, it); delete o[MARCA_ESTOQUE]; return o; })()
+                               : _saldoDoBanco(it, base);
+          if (Array.isArray(it.variacoes) && it.variacoes.length) {
+            const varsBanco = {};
+            ((base.variacoes) || []).forEach(function (v) { if (v && v.id != null) varsBanco[v.id] = v; });
+            // A variação segue a marca do ITEM: o editor abre o produto inteiro,
+            // com os campos de saldo de todas as opções na mesma tela.
+            item.variacoes = it.variacoes.map(function (v) {
+              if (!v) return v;
+              const vb = varsBanco[v.id];
+              return (editado || !vb) ? v : _saldoDoBanco(v, vb);
+            });
+          }
+          return item;
+        }),
+      });
+    });
+    return Object.assign({}, cardapioNovo, { categorias: categorias });
+  }
+
   // Arredonda respeitando a unidade (kg tem 3 casas; un é inteiro).
   function _round(n, ehKg) {
     return ehKg ? Math.round(n * 1000) / 1000 : Math.round(n);
@@ -382,6 +443,6 @@
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
     acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste, linhasDeEstoque: linhasDeEstoque,
-    definirMinimo: definirMinimo,
+    definirMinimo: definirMinimo, preservarSaldos: preservarSaldos, MARCA_ESTOQUE: MARCA_ESTOQUE,
   };
 });
