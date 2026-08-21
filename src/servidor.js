@@ -126,17 +126,26 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async
   } catch (e) {
     return res.status(400).send(`Assinatura do webhook inválida: ${e.message}`);
   }
-  if (event.id) {
-    if (stripeEventsVistos.has(event.id)) return res.json({ received: true, duplicado: true });
-    stripeEventsVistos.add(event.id);
-    if (stripeEventsVistos.size > 2000) { // poda: mantém os ~1000 mais recentes
-      const recentes = [...stripeEventsVistos].slice(-1000);
-      stripeEventsVistos.clear();
-      recentes.forEach((id) => stripeEventsVistos.add(id));
-    }
+  if (event.id && stripeEventsVistos.has(event.id)) {
+    return res.json({ received: true, duplicado: true });
   }
   try {
     await stripeBilling.tratarEvento(event);
+    // Marca DEPOIS de processar. Marcar antes desarmava a única rede de proteção
+    // que existe aqui: se `tratarEvento` falhasse, a rota respondia 500, o Stripe
+    // re-entregava, e a re-entrega batia no dedup e voltava 200 "duplicado" — o
+    // Stripe dava o evento por concluído e a cobrança, o cancelamento ou a troca
+    // de plano se perdiam para sempre, em silêncio, com o tenant na assinatura
+    // errada. Entrega concorrente do mesmo evento pode processar duas vezes, e
+    // tudo bem: `tratarEvento` é idempotente (o dedup é economia, não correção).
+    if (event.id) {
+      stripeEventsVistos.add(event.id);
+      if (stripeEventsVistos.size > 2000) { // poda: mantém os ~1000 mais recentes
+        const recentes = [...stripeEventsVistos].slice(-1000);
+        stripeEventsVistos.clear();
+        recentes.forEach((id) => stripeEventsVistos.add(id));
+      }
+    }
     res.json({ received: true });
   } catch (e) {
     console.error("Erro ao tratar evento Stripe:", e.message);
