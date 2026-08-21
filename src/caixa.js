@@ -63,6 +63,25 @@ async function caixaAberto(dir) {
   return r.rows[0] || null;
 }
 
+// Relê o caixa aberto TRAVANDO a linha, dentro da transação do chamador. Ler
+// antes do BEGIN e carregar o id até o fim deixa uma janela onde `fecharCaixa`
+// passa no meio: o movimento entra num turno já conferido, já relatado e já
+// impresso, e o relatório guardado passa a divergir do banco. Também serializa
+// quem depende do saldo (a sangria lê o teto DEPOIS desta trava, então duas
+// sangrias simultâneas viram uma fila em vez de passarem as duas).
+async function _travarCaixaAberto(client, empId) {
+  const r = await client.query(
+    `SELECT *,
+            (aberto_em AT TIME ZONE 'America/Sao_Paulo')::date
+              < (now() AT TIME ZONE 'America/Sao_Paulo')::date AS vencido
+       FROM caixas WHERE empresa_id = $1 AND status = 'aberto'
+       ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+    [empId]
+  );
+  if (!r.rows[0]) throw new Error("O caixa foi fechado. Abra um novo caixa antes de continuar.");
+  return r.rows[0];
+}
+
 // Data DD/MM (fuso BR) de um timestamp — usada em mensagens ("caixa de 23/06").
 function _dataBR(ts) {
   return new Date(ts).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
@@ -102,13 +121,15 @@ async function receberPedido(dir, pedidoId, opts) {
   const pagamentos = pdv.normalizarPagamentos(raw).filter((p) => p.valor > 0);
   if (!pagamentos.length) throw new Error("Valor deve ser positivo.");
   const soma = Math.round(pagamentos.reduce((s, p) => s + p.valor, 0) * 100) / 100;
-  const caixa = await caixaAberto(dir);
-  if (!caixa) throw new Error("Abra o caixa antes de receber.");
+  // Confere cedo para dar erro claro antes de abrir conexão; a decisão que vale
+  // é a releitura travada lá dentro.
+  if (!(await caixaAberto(dir))) throw new Error("Abra o caixa antes de receber.");
   // Transação + FOR UPDATE: evita duplo recebimento em caso de corrida/falha
   // (os INSERTs dos movimentos e o UPDATE do pedido viram tudo-ou-nada).
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    const caixa = await _travarCaixaAberto(client, empId);
     const ped = await client.query(
       "SELECT id, recebido_em, total, origem FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
@@ -137,7 +158,8 @@ async function receberPedido(dir, pedidoId, opts) {
     await client.query("COMMIT");
     return { ok: true };
   } catch (e) {
-    await client.query("ROLLBACK");
+    // ROLLBACK guardado: conexão caída não pode mascarar o erro original.
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -356,22 +378,40 @@ async function registrarMovimento(dir, { tipo, valor, descricao }) {
   if (tipo !== "sangria" && tipo !== "suprimento") throw new Error("Tipo inválido.");
   const v = Number(valor) || 0;
   if (v <= 0) throw new Error("Valor deve ser positivo.");
-  const caixa = await caixaAberto(dir);
-  if (!caixa) throw new Error("Abra o caixa primeiro.");
-  // Sangria não pode tirar mais do que o dinheiro em gaveta (senão o esperado em
-  // espécie fica negativo — impossível na conferência do fechamento).
-  if (tipo === "sangria") {
-    const emCaixa = calc.resumoCaixa(caixa, await _movimentos(caixa.id)).esperadoEspecie;
-    if (v > emCaixa + 0.001) {
-      throw new Error("Sangria (R$ " + v.toFixed(2) + ") maior que o dinheiro em caixa (R$ " + (Number(emCaixa) || 0).toFixed(2) + ").");
+  if (!(await caixaAberto(dir))) throw new Error("Abra o caixa primeiro.");
+  // Transação de propósito: o teto da sangria depende do saldo, e ler o saldo
+  // fora de transação deixava duas sangrias simultâneas lerem o mesmo número e
+  // passarem as duas, zerando ou negativando a gaveta. Com a trava do caixa
+  // antes da leitura, a segunda espera a primeira e enxerga o saldo já reduzido.
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const caixa = await _travarCaixaAberto(client, empId);
+    // Sangria não pode tirar mais do que o dinheiro em gaveta (senão o esperado em
+    // espécie fica negativo — impossível na conferência do fechamento).
+    if (tipo === "sangria") {
+      const movs = await client.query(
+        "SELECT * FROM caixa_movimentos WHERE caixa_id = $1 ORDER BY id ASC",
+        [caixa.id]
+      );
+      const emCaixa = calc.resumoCaixa(caixa, movs.rows).esperadoEspecie;
+      if (v > emCaixa + 0.001) {
+        throw new Error("Sangria (R$ " + v.toFixed(2) + ") maior que o dinheiro em caixa (R$ " + (Number(emCaixa) || 0).toFixed(2) + ").");
+      }
     }
+    const r = await client.query(
+      `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, valor, descricao)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [caixa.id, empId, tipo, v, descricao || ""]
+    );
+    await client.query("COMMIT");
+    return r.rows[0];
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
-  const r = await db.query(
-    `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, valor, descricao)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [caixa.id, empId, tipo, v, descricao || ""]
-  );
-  return r.rows[0];
 }
 
 async function _movimentos(caixaId) {
