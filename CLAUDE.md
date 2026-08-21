@@ -83,7 +83,10 @@ Depois faça login e, na aba **Conexão**, clique em "Conectar ao WhatsApp".
 
 **Testes:** `npm test` (runner nativo `node:test`, sem dep — testa a lógica pura crítica em
 `test/`: validação de payload, magic bytes, slug, planos e frete por raio) e `npm run check`
-(varredura de sintaxe). Os testes usam **env dummy** → rodam sem segredos (e no CI, ver
+(varredura de sintaxe). **`src/db.js` recusa acesso ao banco dentro do runner** (detecta
+`NODE_TEST_CONTEXT`): o `.env` local aponta para produção, e um teste que esqueça de stubar
+sairia gravando em dado real. Stube `db.query`/`db.pool.connect`; `PERMITIR_BANCO_EM_TESTE=1`
+é a saída consciente. Os testes usam **env dummy** → rodam sem segredos (e no CI, ver
 `.github/workflows/test.yml`). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
 ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
@@ -96,7 +99,7 @@ src/
   supabase.js         -> clients do Supabase (Auth admin/anon + Storage)
   stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas, trocaPlano (upgrade/downgrade)
   planos.js           -> mapa PURO de planos (Essencial/Completo): PLANO_INFO + planoDoPrice (price→plano)
-  pagamentos.js       -> formas de pagamento PURO: vocabulário FIXO (FORMAS_PAGAMENTO: Dinheiro/PIX/Crédito/Débito) + normalizarFormasPagamento (whitelist/migra strings legadas). `config.pagamentos` só aceita canônicos (whitelist ao salvar + normaliza na leitura do painel)
+  pagamentos.js       -> formas de pagamento PURO: vocabulário FIXO (FORMAS_PAGAMENTO: Dinheiro/PIX/Crédito/Débito) + normalizarFormasPagamento (whitelist/migra strings legadas) + formaPermitida (a venda valida contra a lista NORMALIZADA, que é a que a tela mostrou — comparar com a crua recusava cartão em tenant legado). `config.pagamentos` só aceita canônicos (whitelist ao salvar + normaliza na leitura do painel)
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
   incidentes.js       -> histórico de incidentes (tabela incidentes): registrar (agrupa rajadas em janela de 5min) / listar / limparAntigos; alimenta a aba Monitoramento do master (GET /api/admin/incidentes)
   servidor.js         -> Express: API REST multi-tenant + serve /public + cardápio web (GET /c/:slug, GET/POST /api/c/:slug, POST /api/c/:slug/frete) + PDV (POST /api/pdv/vender, gate exigePdv) + agente de impressão (/api/agente/login·refresh·pendentes·:numero/impresso + FILA genérica /api/agente/fila·:id/impresso) + reimprimir (POST /api/pedidos/:id/reimprimir) + download do agente (GET /downloads/nymbus-impressora.exe) + controle de estoque (GET /api/estoque, GET /api/estoque/movimentos, POST /api/estoque/movimentos, POST /api/estoque/minimo — todas no gate exigePdv do Plano Completo)
@@ -133,7 +136,7 @@ public/
   relatorio-caixa.js  -> PURO (dual-mode Node/browser): monta o relatório de fechamento de caixa 80mm — usado NO SERVIDOR por src/caixa.js — testado em test/relatorio-caixa.test.js
   comanda.js          -> PURO (dual-mode Node/browser): monta as 2 vias (cozinha sem preços / cupom com cabeçalho da marca + rodapé de marketing) — testado em test/comanda.test.js
   grupos.js           -> PURO (dual-mode Node/browser): **biblioteca de complementos** — grupos reutilizáveis por empresa (`cardapio.grupos`, opção com id estável e preço) + vínculo por produto (`item.grupos`, regra efetiva sobrescrevível): normalizarBiblioteca/resolverGrupos/avaliarEscolhas + converterCardapio (migração). **`grupo.tipo` (`composicao`|`complemento`) decide a regra, não o preço da opção**: composição é ESCOLHA (sem preço, min/máx contam escolhas → sai em `composicao`); complemento é ACRÉSCIMO (com preço, máx conta unidades → sai em `opcionais` com `qtd`). **Sem fallback:** item sem vínculo resolvido não tem opção nenhuma; `composicao`/`opcionais` do formato antigo não são mais lidos. Usado por src/cardapio-web.js e src/pdv.js — testado em test/grupos.test.js
-  estoque.js          -> PURO (dual-mode Node/browser): cálculo do estoque — baixa e devolução da venda, diff entre dois cardápios (vira movimento de `ajuste`), ajuste manual (entrada SOMA, perda SUBTRAI, contagem SUBSTITUI o saldo), mínimo, formatarQtd (un inteiro, kg com vírgula) e linhasDeEstoque (uma linha por saldo, para a tela) — testado em test/estoque.test.js
+  estoque.js          -> PURO (dual-mode Node/browser): cálculo do estoque — baixa e devolução da venda, diff entre dois cardápios (vira movimento de `ajuste`), ajuste manual (entrada SOMA, perda SUBTRAI, contagem SUBSTITUI o saldo), mínimo, formatarQtd (un inteiro, kg com vírgula), linhasDeEstoque (uma linha por saldo, para a tela) e preservarSaldos (salvar o cardápio NÃO desfaz venda concorrente: só o item marcado como editado traz saldo próprio, o resto volta ao do banco) — testado em test/estoque.test.js
   variacoes.js        -> PURO (dual-mode): variações do item — opções com preço E estoque próprios ("a partir de R$ X"); normaliza/valida (≥1) + precoAPartir + todasEsgotadas; estoque por opção (item.id::variacao.id) baixado por public/estoque.js; usado por src/cardapio-web.js e src/pdv.js — testado em test/variacoes.test.js
   serial-escpos.js    -> PURO (dual-mode): encoder ESC/POS (init+CP850+avanço+corte legado ESC m/ESC i p/ Daruma) — usado NO AGENTE (vendor) — testado em test/serial-escpos.test.js
   cardapio.html/.js/.css -> cardápio web público (/c/:slug): cards premium + vitrine de Destaques em carrossel; monta o pedido (carrinho/checkout) e envia ao backend

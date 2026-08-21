@@ -272,6 +272,40 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
   `recalcularItens`, `assinarToken`/`verificarToken`).
 - Página vanilla `public/cardapio.{html,js,css}` (CSP-safe, reusa `dinheiro.js`/`endereco-cep.js`).
 
+## Mesas — a fronteira de sessão (`aberta_em`)
+
+Uma mesa é reusada por clientes diferentes o dia inteiro, e **`mesas.aberta_em` é o que
+separa uma sessão da seguinte**. Abrir grava `now()`; fechar ou cancelar zera. Mesa livre
+tem `aberta_em` nulo.
+
+**A regra:** pedido só pertence à mesa se `recebido_em IS NULL`, `status <> 'cancelado'`,
+`aberta_em IS NOT NULL` e `criado_em >= aberta_em`. Vive numa constante única
+(`DA_SESSAO`, em `src/mesas-db.js`) usada na leitura da conta, na busca do pedido a
+reusar, no alerta de mesa parada, nos recálculos de `total_consumido` e nas escritas de
+fechar e cancelar.
+
+**Por que existe.** Metade dessa conta já cortava por `aberta_em` (o dinheiro recebido, em
+`recebidoDaMesa`) e a outra metade não. Com critérios divergentes, um pedido que ficasse
+sem receber numa sessão antiga — fechamento interrompido, falha no meio da transação —
+seguia grudado na mesa para sempre: aparecia na conta do próximo cliente, entrava no total
+consumido e, pior, o `lancarItens` **acumulava a rodada nova dentro dele**, herdando número
+e valor. O pedido do cliente novo nascia com o consumo de outra pessoa.
+
+**Pedido órfão não some do sistema:** ele deixa de pertencer à mesa e continua na aba
+Pedidos como "a receber", que é onde o dono recebe ou cancela.
+
+**A exceção é a transferência.** Mover a comanda para outra mesa leva pedidos com
+`criado_em` antigo. Por isso `transferir` **recua o `aberta_em` do destino** até o pedido
+mais antigo movido — sem isso a conta inteira cairia fora da janela e sumiria. O recuo vale
+mesmo com o destino já ocupado (mesa aberta há pouco que ainda não pediu nada não é
+"livre"), e acontece só no MOVE: no MERGE os pedidos movidos são apagados e os itens entram
+na comanda do destino, que já nasceu dentro da sessão dele.
+
+**Corridas.** `lancarItens` trava a mesa (`FOR UPDATE`) e reconfere o status dentro da
+transação: entre a checagem da rota e o INSERT cabe um `finalizarFechamento` inteiro, e a
+rodada nasceria presa a uma mesa já livre — invisível no painel, fora de qualquer conta e
+nunca recebida.
+
 ## PDV — vendas no local (Plano Completo)
 
 - `POST /api/pdv/vender` (`exigeAuth` + `exigePdv`): registra uma **venda de balcão**. Fluxo

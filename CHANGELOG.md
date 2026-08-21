@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-08-16
+atualizado: 2026-08-21
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -928,3 +928,17 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   número grande do dashboard e nos títulos da página de apresentação.
 - Nada muda de lugar nem de função. É acabamento: telas do mesmo produto passam a parecer
   do mesmo produto.
+
+## [0.93.0] — Correções de integridade em estoque, caixa e sessão
+
+- Duas telas (Dashboard e Mesas) davam erro na primeira vez que eram abertas depois de
+  cada atualização do sistema. Bastava recarregar, mas não devia acontecer.
+- O estoque não deixa mais vender acima do que existe quando o produto tem tamanhos, e a
+  baixa passou a ser exatamente a quantidade cobrada.
+- Mesa que voltou a ficar livre não carrega mais o consumo do cliente anterior, e a rodada
+  lançada no momento do fechamento não se perde mais.
+- Sair do sistema agora encerra a sessão de verdade, e redefinir a senha desconecta quem
+  estivesse usando a conta.
+- Salvar um produto não desfaz mais uma venda que entrou no mesmo momento.
+- No painel, a forma de pagamento mais usada volta a mostrar a forma (Dinheiro, PIX,
+  cartão) em vez de um texto com valor colado.

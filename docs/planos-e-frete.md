@@ -37,7 +37,11 @@ Decisões de produto (já tomadas):
 - **Porteiro de features** em `src/empresas.js`:
   - `planoDe(emp)` → `emp.plano || "essencial"`.
   - `temFreteRaio(emp)` → `acessoLiberado(emp) && planoDe(emp) === "completo"`.
-  - **Toda** decisão de feature por plano passa por `temFreteRaio` (fonte única).
+  - Um porteiro por feature, **todos com a mesma regra**: `temFreteRaio`, `temCaixa`,
+    `temPdv` e `temImpressao` (impressão térmica pelo agente). Separados de propósito:
+    são features distintas nos planos, e reusar o porteiro do vizinho esconderia a
+    decisão no dia em que uma mudar sem a outra. A decisão de plano de uma feature
+    passa **sempre** pelo porteiro dela, nunca por comparação solta de `planoDe`.
 - **Nome/valor do plano dinâmicos:** um mapa único `PLANO_INFO = { essencial: { nome: "Plano
   Essencial", valorMes: 79 }, completo: { nome: "Plano Completo", valorMes: 99 } }`.
   `GET /api/assinatura` passa a devolver `plano`, `planoNome`, `valorMes`. O painel

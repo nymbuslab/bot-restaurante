@@ -4,7 +4,7 @@ titulo: Roadmap
 proposito: Direção futura do produto, por prioridade.
 distincao: Futuro aqui; presente no PROGRESSO.md; entregue no CHANGELOG.md.
 manutencao: Revisar ao fim de uma fase ou antes de etapa grande. Não lista o que já foi entregue.
-atualizado: 2026-07-07
+atualizado: 2026-08-21
 relacionados: [PROGRESSO.md, CHANGELOG.md]
 ---
 
@@ -171,7 +171,11 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   `estoque_movimentos` e cancelamento devolvendo ao estoque; desenho e plano em
   [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md)
   e [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md))
-  entregues; **4/4 Insumos** em aberto.
+  entregues; **4/4 Insumos** em curso — 3 de 6 fases entregues (módulo puro e tabela
+  `insumos`; os ids da escolha viajando no pedido; a baixa lendo os itens recalculados em vez
+  do payload cru). As três são inertes: **nada baixa ingrediente ainda**, e a próxima é o
+  cadastro com a ficha técnica na tela. Desenho em
+  [docs/superpowers/specs/2026-08-16-insumos-design.md](docs/superpowers/specs/2026-08-16-insumos-design.md).
   O **`id` estável de opção**, criado na 2/4, é a âncora da tela restante, e a trilha de
   movimentação da 3/4 é a base da baixa por ingrediente que a 4/4 vai precisar.
 - [ ] **(decisão pendente) Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca
