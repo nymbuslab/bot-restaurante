@@ -245,7 +245,7 @@ async function receberParcial(dir, mesaId, pagamentos, nomeMesa) {
     }
     await client.query("COMMIT");
   } catch (e) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -317,7 +317,7 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
     await client.query("COMMIT");
     return mapRow(r.rows[0]);
   } catch (e) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -486,7 +486,7 @@ async function transferir(dir, origemId, destinoId, pedidoIds) {
     await client.query("COMMIT");
     return { ok: true, juntou: !!alvoRow };
   } catch (e) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();

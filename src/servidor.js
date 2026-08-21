@@ -2462,7 +2462,7 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
       } catch (e) { console.error("enfileirar impressão mesa:", e.message); }
       res.json({ ok: true });
     } catch (e) {
-      await client.query("ROLLBACK");
+      await client.query("ROLLBACK").catch(() => {});
       throw e;
     } finally {
       client.release();

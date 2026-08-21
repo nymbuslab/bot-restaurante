@@ -243,7 +243,7 @@ async function venderLocal(dir, venda) {
       recebidoEm: new Date(row.recebido_em).toISOString(),
     };
   } catch (e) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -299,7 +299,7 @@ async function estornarRecebimento(dir, pedidoId) {
     await client.query("COMMIT");
     return { ok: true };
   } catch (e) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
@@ -606,7 +606,7 @@ async function fecharCaixa(dir, { contado, contagem, eletronico }) {
     await client.query("COMMIT");
     return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico, relatorio };
   } catch (e) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw e;
   } finally {
     client.release();
