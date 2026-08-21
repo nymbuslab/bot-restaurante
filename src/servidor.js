@@ -202,6 +202,22 @@ async function exigeAuth(req, res, next) {
   if (!emp || !emp.ativo) return res.status(401).json({ erro: "Não autorizado" });
   req.slug = emp.slug;
   req.tenantDir = empresas.tenantDir(emp.slug);
+  // Aquece o cache de config/cardápio ANTES de liberar a rota. `getConfig` e
+  // `getCardapio` são síncronos e LANÇAM com o cache frio, e o cache é por
+  // processo: depois de todo deploy, a primeira requisição de cada tenant
+  // estourava. `GET /api/dashboard` e `GET /api/mesas` devolviam 500 (confirmado
+  // rodando) — o dono via erro, recarregava, funcionava, e ninguém ligava uma
+  // coisa à outra. Deixar cada rota lembrar do `ensure` não funcionou: eram 29
+  // leituras do cache para 16 chamadas.
+  //
+  // Idempotente: só custa um SELECT na primeira requisição de cada tenant.
+  try {
+    await store.ensure(req.tenantDir);
+  } catch (e) {
+    console.error("exigeAuth: falha ao carregar o tenant —", e.message);
+    incidentes.registrar("tenant_load", e.message);
+    return res.status(500).json({ erro: "Falha ao carregar os dados do restaurante." });
+  }
   next();
 }
 
