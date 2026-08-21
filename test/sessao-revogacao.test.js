@@ -75,3 +75,54 @@ test("logout invalida o refresh token, não só o cookie", () => {
   assert.match(c, /signOut/i);
   assert.match(c, /limparSessaoCookies/); // continua limpando o cookie também
 });
+
+// ---------------------------------------------------------------------------
+// Gate de plano na impressão térmica.
+//
+// `/api/agente/pendentes`, `/api/agente/fila` e `/api/pedidos/:id/reimprimir`
+// tinham só `exigeAuth`. Um tenant do Essencial que instalasse o agente ganhava
+// impressão automática de graça — a documentação lista impressão térmica como
+// feature do Plano Completo, e Caixa e PDV já eram barrados.
+//
+// As rotas que MARCAM como impresso ficam abertas de propósito: são
+// escrituração idempotente, e barrar faria o agente de um tenant que acabou de
+// cair de plano tentar para sempre o mesmo trabalho.
+// ---------------------------------------------------------------------------
+
+test("temImpressao segue a mesma regra dos outros gates do Completo", () => {
+  const completo = { plano: "completo", assinatura_status: "active", ativo: true };
+  const essencial = { plano: "essencial", assinatura_status: "active", ativo: true };
+  assert.equal(empresas.temImpressao(completo), empresas.temPdv(completo));
+  assert.equal(empresas.temImpressao(essencial), false);
+  assert.equal(empresas.temImpressao(essencial), empresas.temPdv(essencial));
+});
+
+test("temImpressao exige acesso liberado, não só o plano", () => {
+  const suspenso = { plano: "completo", assinatura_status: "active", ativo: false };
+  assert.equal(empresas.temImpressao(suspenso), false);
+});
+
+test("as rotas que buscam trabalho de impressão passam pelo gate de plano", () => {
+  ['app.get("/api/agente/pendentes"', 'app.get("/api/agente/fila"', 'app.post("/api/pedidos/:id/reimprimir"']
+    .forEach((rota) => {
+      const c = corpoDaRota(rota);
+      assert.match(c, /exigeImpressao/, rota + " precisa do gate de plano");
+    });
+});
+
+test("as rotas que marcam como impresso seguem sem gate", () => {
+  const c = corpoDaRota('app.post("/api/agente/fila/:id/impresso"');
+  assert.doesNotMatch(c, /exigeImpressao/,
+    "barrar a marcação faria o agente de um tenant rebaixado repetir o mesmo trabalho para sempre");
+});
+
+test("os gates de plano nao deixam a requisicao sem resposta", () => {
+  ["async function exigePdv", "async function exigeCaixa", "async function bloqueiaMesaSeVencido"]
+    .forEach((nome) => {
+      const i = servidor.indexOf(nome);
+      assert.ok(i > -1, nome);
+      const corpo = servidor.slice(i, servidor.indexOf("\n}", i));
+      // Chamados FORA do try das rotas: rejeição solta pendura a requisição.
+      assert.match(corpo, /catch/, nome + " precisa capturar a falha de banco");
+    });
+});

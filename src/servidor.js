@@ -402,6 +402,7 @@ app.post("/api/agente/refresh", refreshLimiter, async (req, res) => {
 
 // Pedidos novos (cardápio web) que o agente ainda não imprimiu — alvo do polling.
 app.get("/api/agente/pendentes", exigeAuth, async (req, res) => {
+  if (!(await exigeImpressao(req, res))) return;
   try {
     res.json(await pedidos.pendentes(req.tenantDir, req.query.agente)); // `agente` = id da sessão (claim)
   } catch (e) {
@@ -421,6 +422,7 @@ app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, async (req, res) => 
 
 // Fila GENÉRICA (PDV/Mesas/Caixa/reimpressão): cada item já traz o TEXTO das vias.
 app.get("/api/agente/fila", exigeAuth, async (req, res) => {
+  if (!(await exigeImpressao(req, res))) return;
   try {
     res.json(await impressaoFila.pendentes(req.tenantDir, req.query.agente)); // `agente` = id da sessão (claim)
   } catch (e) {
@@ -2081,6 +2083,7 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
 // Reimpressão manual: re-enfileira a comanda (cozinha + cupom) do pedido para o
 // agente. Substitui o antigo "Imprimir comanda" do navegador.
 app.post("/api/pedidos/:id/reimprimir", exigeAuth, async (req, res) => {
+  if (!(await exigeImpressao(req, res))) return;
   try {
     const pedido = await pedidos.lerPorId(req.tenantDir, Number(req.params.id));
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
@@ -2100,10 +2103,21 @@ app.post("/api/pedidos/:id/reimprimir", exigeAuth, async (req, res) => {
 
 // ---- Caixa (Plano Completo) ----
 // Gate: caixa é recurso de servidor → barra no backend (não só no front).
+// Os três gates abaixo falam com o banco e são chamados FORA do `try` das rotas
+// (`if (!(await exigePdv(req, res))) return;`). O Express 4 não captura rejeição
+// de handler async: se o gate estourasse, a requisição ficava SEM RESPOSTA
+// NENHUMA — a tela girava para sempre em vez de mostrar erro. Capturar aqui
+// dentro cobre os ~25 pontos de uma vez, em vez de embrulhar rota por rota.
 async function exigeCaixa(req, res) {
-  const emp = await empresas.buscarPorSlug(req.slug);
-  if (!empresas.temCaixa(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
-  return true;
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!empresas.temCaixa(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
+    return true;
+  } catch (e) {
+    console.error("exigeCaixa:", e && e.message);
+    res.status(500).json({ erro: "Falha ao verificar o seu plano. Tente de novo." });
+    return false;
+  }
 }
 
 app.get("/api/caixa", exigeAuth, async (req, res) => {
@@ -2177,10 +2191,33 @@ app.get("/api/caixa/:id", exigeAuth, async (req, res) => {
 // venda pelo cardápio (fonte de verdade), aplica desconto, valida o split, grava
 // pedido "Balcão" recebido + movimentos no caixa (caixa.venderLocal) e dá baixa
 // no estoque (best-effort, igual ao cardápio web). Devolve o pedido p/ impressão.
+// Porteiro da impressão térmica. As rotas do agente tinham só `exigeAuth`, então
+// um tenant do Essencial que instalasse o app ganhava impressão automática de
+// graça, enquanto Caixa e PDV já eram barrados. As rotas que MARCAM como
+// impresso ficam de fora de propósito: são escrituração idempotente, e barrar
+// faria o agente de um tenant recém-rebaixado repetir o mesmo trabalho sem fim.
+async function exigeImpressao(req, res) {
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!empresas.temImpressao(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
+    return true;
+  } catch (e) {
+    console.error("exigeImpressao:", e && e.message);
+    res.status(500).json({ erro: "Falha ao verificar o seu plano. Tente de novo." });
+    return false;
+  }
+}
+
 async function exigePdv(req, res) {
-  const emp = await empresas.buscarPorSlug(req.slug);
-  if (!empresas.temPdv(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
-  return true;
+  try {
+    const emp = await empresas.buscarPorSlug(req.slug);
+    if (!empresas.temPdv(emp)) { res.status(403).json({ erro: "Recurso do Plano Completo." }); return false; }
+    return true;
+  } catch (e) {
+    console.error("exigePdv:", e && e.message);
+    res.status(500).json({ erro: "Falha ao verificar o seu plano. Tente de novo." });
+    return false;
+  }
 }
 
 // Bloqueia ATIVIDADE NOVA (abrir mesa / lançar itens) quando o caixa do dia
@@ -2188,9 +2225,18 @@ async function exigePdv(req, res) {
 // liberado (modo "só fechar") — é o que quebra o deadlock caixa↔mesa. Retorna
 // true se bloqueou (já respondeu 400).
 async function bloqueiaMesaSeVencido(req, res, acao) {
-  const cx = await caixa.caixaAberto(req.tenantDir);
-  if (cx && cx.vencido) { res.status(400).json({ erro: "Feche o caixa do dia anterior para " + acao + ".", caixaVencido: true }); return true; }
-  return false;
+  try {
+    const cx = await caixa.caixaAberto(req.tenantDir);
+    if (cx && cx.vencido) { res.status(400).json({ erro: "Feche o caixa do dia anterior para " + acao + ".", caixaVencido: true }); return true; }
+    return false;
+  } catch (e) {
+    // Semântica INVERTIDA aqui: `true` = bloqueou. Em erro devolve true (com a
+    // resposta já enviada), senão a rota seguiria em frente achando que está
+    // liberada — pior que barrar.
+    console.error("bloqueiaMesaSeVencido:", e && e.message);
+    res.status(500).json({ erro: "Falha ao verificar o caixa. Tente de novo." });
+    return true;
+  }
 }
 
 // Cálculo de frete no PDV (autenticada). Front usa para o modo raio (CEP+número);

@@ -349,6 +349,14 @@ function temPdv(emp) {
   return acessoLiberado(emp) && planoDe(emp) === "completo";
 }
 
+// Porteiro da impressão térmica pelo agente (feature do Plano Completo). Mesma
+// regra. Existe separado de `temPdv` porque é feature própria na documentação e
+// nos planos: um dia uma pode mudar sem a outra, e reusar o porteiro do vizinho
+// esconde essa decisão.
+function temImpressao(emp) {
+  return acessoLiberado(emp) && planoDe(emp) === "completo";
+}
+
 // ---- Conta de acesso (e-mail/senha no Supabase Auth) ----
 // Toda troca exige a SENHA ATUAL: validamos via signInWithPassword antes de
 // aplicar a mudança (admin.updateUserById com a service_role). Assim ninguém
@@ -479,6 +487,6 @@ async function excluir(slug) {
 module.exports = {
   cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, slugBase,
-  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv,
+  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv, temImpressao,
   revogarTodasSessoes, trocarSenha, trocarEmail, conferirSenha,
 };
