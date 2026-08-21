@@ -381,6 +381,36 @@ async function _revogarOutrasSessoes(jwt) {
   catch (e) { console.error("revogar outras sessões:", e && e.message); }
 }
 
+// Revoga TODAS as sessões de um usuário, sem precisar do JWT dele.
+//
+// `_revogarOutrasSessoes` usa `auth.admin.signOut(jwt, 'others')`, que exige um
+// token de sessão em mãos — serve para quem está logado trocando a própria
+// credencial. O reset por e-mail é o caso oposto: quem redefine NÃO está logado
+// (clicou num link), então não há JWT nenhum para passar.
+//
+// A API do Supabase não expõe "derrubar as sessões deste user_id". O que existe
+// é a tabela `auth.sessions`, que a própria documentação trata como consultável
+// (ela sugere validar o `session_id` do JWT contra ela). Apagar a sessão
+// cascateia em `auth.refresh_tokens` pela FK, que é o que impede o atacante de
+// renovar. Conferido no banco: `refresh_tokens_session_id_fkey ... ON DELETE CASCADE`.
+//
+// O access token já emitido continua válido até o `exp` — limitação do JWT, não
+// desta função. O que se fecha é a renovação, que é o que dá sobrevida longa a
+// um token roubado.
+//
+// Best-effort: nunca lança. Falhar aqui não pode impedir a redefinição da senha,
+// senão o dono fica sem conseguir recuperar a conta.
+async function revogarTodasSessoes(userId) {
+  if (!userId) return 0;
+  try {
+    const r = await db.query("DELETE FROM auth.sessions WHERE user_id = $1", [userId]);
+    return r.rowCount || 0;
+  } catch (e) {
+    console.error("revogar todas as sessões:", e && e.message);
+    return 0;
+  }
+}
+
 async function trocarSenha(slug, senhaAtual, novaSenha, jwt) {
   if (!novaSenha || novaSenha.length < 6) throw new Error("A nova senha deve ter ao menos 6 caracteres.");
   const conta = await _validarSenhaAtual(slug, senhaAtual);
@@ -450,5 +480,5 @@ module.exports = {
   cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, listar,
   tenantDir, setAtivo, excluir, slugBase,
   atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv,
-  trocarSenha, trocarEmail, conferirSenha,
+  revogarTodasSessoes, trocarSenha, trocarEmail, conferirSenha,
 };

@@ -483,7 +483,22 @@ app.get("/api/agente/versao-publicada", async (req, res) => {
 });
 
 // Logout: descarta o cookie de sessão (o access token só vivia na memória do front).
-app.post("/api/logout", (req, res) => {
+// Sair de verdade: limpar o cookie só some com a chave da porta, não tranca a
+// porta. O refresh token do Supabase seguia válido por até 30 dias, então
+// "sair" num computador emprestado não tirava ninguém de lugar nenhum.
+// `signOut(jwt, 'global')` derruba todas as sessões do usuário; o access token
+// já emitido vale até o `exp` (~1h), mas sem refresh não há renovação.
+// Best-effort: o logout NUNCA pode falhar por causa disto, senão a pessoa fica
+// presa numa sessão que ela pediu para encerrar.
+app.post("/api/logout", async (req, res) => {
+  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+  if (token) {
+    try {
+      await supabaseAdmin.auth.admin.signOut(token, "global");
+    } catch (e) {
+      console.error("logout: falha ao revogar sessão —", e && e.message);
+    }
+  }
   limparSessaoCookies(req, res);
   res.json({ ok: true });
 });
@@ -745,6 +760,12 @@ app.post("/api/redefinir-senha", esqueciLimiter, async (req, res) => {
     if (!user) return res.status(400).json({ erro: "Link inválido." });
     const upd = await supabaseAdmin.auth.admin.updateUserById(user.id, { password: String(novaSenha) });
     if (upd.error) return res.status(400).json({ erro: "Não foi possível redefinir a senha." });
+    // Derruba TODAS as sessões. Redefinir senha é o que a pessoa faz depois de
+    // desconfiar que a conta foi invadida; sem isto o atacante continuava dentro,
+    // renovando o token por até 30 dias, apesar do reset feito para expulsá-lo.
+    // Trocar a senha logado já revogava (`_revogarOutrasSessoes`); este caminho
+    // ficou de fora porque quem redefine não tem JWT para passar ao signOut.
+    await empresas.revogarTodasSessoes(user.id);
     await db.query("UPDATE password_resets SET usado = true WHERE token_hash = $1", [hashToken(token)]);
     res.json({ ok: true });
   } catch (e) {
