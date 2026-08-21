@@ -42,4 +42,20 @@ function normalizarFormasPagamento(lista) {
   return out.length ? out : ["Dinheiro"];
 }
 
-module.exports = { FORMAS_PAGAMENTO, normalizarFormasPagamento };
+// A forma escolhida na venda é aceitável para este tenant?
+//
+// Compara contra a lista NORMALIZADA, que é a mesma que as telas recebem
+// (`/api/caixa` e as Configurações já servem normalizado). Comparar contra a
+// lista crua fazia um tenant com dado legado — `["Dinheiro", "Cartão"]`, de
+// quando as formas eram texto livre — ver "Cartão de Crédito" na tela e tomar
+// 400 ao vender, sem pista do motivo.
+//
+// Config vazia libera: `normalizarFormasPagamento` nunca devolve vazio, e o
+// comportamento anterior também não bloqueava quando não havia nada configurado.
+function formaPermitida(configPagamentos, forma) {
+  const permitidas = normalizarFormasPagamento(configPagamentos);
+  if (!permitidas.length) return true;
+  return permitidas.indexOf(String(forma || "")) !== -1;
+}
+
+module.exports = { FORMAS_PAGAMENTO, normalizarFormasPagamento, formaPermitida };

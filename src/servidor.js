@@ -2322,12 +2322,17 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     //    aba Pedidos (recebimento depois); baixa de estoque atômica, sem mexer no caixa.
     let pedido;
     if (tipoEntrega === "Balcão") {
-      // Normaliza valorPago/troco no SERVIDOR (não confia no cliente) e valida a forma
-      // contra as configuradas (mesma regra do cardápio web) antes de gravar no caixa.
+      // Normaliza valorPago/troco no SERVIDOR (não confia no cliente) e valida a
+      // forma contra as configuradas antes de gravar no caixa.
+      //
+      // A conferência usa a lista NORMALIZADA, que é a mesma que a tela do PDV
+      // recebeu (`/api/caixa` já serve normalizado). Comparar contra a lista crua
+      // fazia um tenant com dado legado — `["Dinheiro", "Cartão"]`, de quando as
+      // formas eram texto livre — ver "Cartão de Crédito" no PDV e tomar 400 ao
+      // vender, sem pista do motivo.
       const pagamentosNorm = pdv.normalizarPagamentos(b.pagamentos);
       const cfg = store.getConfig(req.tenantDir) || {};
-      const formasConfig = Array.isArray(cfg.pagamentos) ? cfg.pagamentos : [];
-      if (formasConfig.length && pagamentosNorm.some((p) => formasConfig.indexOf(p.forma) === -1)) {
+      if (pagamentosNorm.some((p) => !formasPag.formaPermitida(cfg.pagamentos, p.forma))) {
         return res.status(400).json({ erro: "Forma de pagamento inválida." });
       }
       pdv.validarPagamentos(total, pagamentosNorm);
