@@ -195,6 +195,10 @@ fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é im
   handler inline (`onclick=`, `onsubmit=`) no HTML (a CSP bloqueia; usar `addEventListener` em `.js`).
   Origem externa nova (CDN/API) exige liberar a diretiva correspondente no `helmet` de `src/servidor.js`.
   Rotas de autenticação/cadastro têm **rate limit** (`express-rate-limit`); `trust proxy` ligado (Fly).
+- **Sessão e rate limit — duas regras que já causaram incidente** (detalhe em [docs/gotchas.md](docs/gotchas.md)):
+  a conta do restaurante é **compartilhada** entre aparelhos, então o logout usa `"local"` (derrubar tudo
+  só no reset de senha e na troca de credencial); e todo limitador passa por `limitador()`, cuja chave é o
+  **`Fly-Client-IP`** — usar `req.ip` faz a plataforma inteira dividir o mesmo balde.
 
 ## Documentação detalhada (`docs/`)
 

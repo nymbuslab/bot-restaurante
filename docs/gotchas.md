@@ -1,5 +1,23 @@
 # Pontos de atenção (gotchas)
 
+- **A conta do restaurante é COMPARTILHADA — nunca derrube todas as sessões no logout.**
+  Um restaurante tem uma conta e vários aparelhos logados nela ao mesmo tempo: o PDV do
+  balcão, o celular do dono, o tablet do salão. Regras de segurança pensadas para conta
+  pessoal ("sair encerra tudo") **quebram a operação**: uma pessoa clicando em Sair tira a
+  loja inteira do ar no meio do movimento. `POST /api/logout` usa `signOut(token, "local")`.
+  Derrubar a credencial inteira só onde o objetivo é esse: **reset de senha**
+  (`revogarTodasSessoes`) e **troca de credencial** (`others`, que preserva quem está
+  mexendo). No **painel master** o `"global"` é correto — ali é uma pessoa só.
+  Aprendido no incidente de 2026-08-22 (ver `PROGRESSO.md`).
+- **Rate limit tem que ser por IP REAL (`Fly-Client-IP`), não por `req.ip`.** Atrás do Fly,
+  `trust proxy` sozinho não garante o IP de origem: quando o `X-Forwarded-For` não traz o hop
+  esperado, `req.ip` cai no IP interno do proxy e **a plataforma inteira divide o mesmo balde**
+  (10 logins por 15min somando todos os restaurantes). O `limitador()` de `servidor.js` usa
+  `chaveDoIp`, que prefere o cabeçalho do Fly e normaliza IPv6 com `ipKeyGenerator`. Um
+  limitador novo **precisa** passar por `limitador()`; criar um `rateLimit()` solto reintroduz
+  o balde compartilhado. Sintoma quando quebra: o login **funciona** (a sessão é criada) e
+  mesmo assim a tela diz "muitas tentativas".
+
 - **Mensagens em tempo real (anti-massa)**: ao conectar, o Baileys entrega o histórico/sync.
   O bot SÓ processa mensagens com `type === 'notify'` (recebidas ao vivo), ignorando
   `'append'` (histórico). NÃO remover esse filtro em `multi-bot.js` — é o que evita responder

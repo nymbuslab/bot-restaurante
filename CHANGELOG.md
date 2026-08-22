@@ -974,3 +974,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   sempre, sem erro e sem confirmação.
 - Ao excluir um restaurante, se a assinatura for cancelada mas a exclusão falhar em seguida,
   a mensagem diz exatamente isso, em vez de deixar você no escuro.
+
+## [0.97.0] — Correção de acesso: entrar na plataforma
+
+- Corrigido o bloqueio que impedia um restaurante de entrar na plataforma quando vários
+  aparelhos tentavam acessar ao mesmo tempo. O limite de tentativas era contado somando
+  todos os restaurantes; agora cada um tem o seu.
+- Sair do painel encerra apenas o aparelho onde você clicou. Antes desconectava todos os
+  aparelhos da mesma conta, o que tirava o balcão, o celular e o tablet do ar de uma vez.
+- Continuam desconectando todos os aparelhos, porque é o objetivo: redefinir a senha pelo
+  e-mail e trocar a senha ou o e-mail dentro do painel.
