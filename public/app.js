@@ -3051,10 +3051,25 @@ $("btnSalvarCardapio").addEventListener("click", async (e) => {
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
-  const r = await api("PUT", "/api/cardapio", cardapioAtual);
-  btn.disabled = false;
-  btn.textContent = "Salvar cardápio";
-  if (r && r.ok) toast("Cardápio salvo! Já está valendo para os clientes.");
+  try {
+    const r = await api("PUT", "/api/cardapio", cardapioAtual);
+    if (!r) return; // 401 já redirecionou para o login
+    if (r.ok) { toast("Cardápio salvo! Já está valendo para os clientes."); return; }
+    // A mensagem do servidor vai INTEIRA para o dono: "Cardápio grande demais."
+    // diz o que fazer, um "erro ao salvar" genérico não. Sem este aviso o botão
+    // só voltava ao normal, ele concluía que salvou, seguia editando — e nada
+    // persistia. Era a única ação importante do painel que falhava calada.
+    const d = await r.json().catch(() => ({}));
+    toast(d.erro || "Não foi possível salvar o cardápio. Tente de novo.", "erro");
+  } catch (_) {
+    // `api()` LANÇA quando o fetch falha (rede caindo no meio do movimento).
+    toast("Sem conexão com o servidor. O cardápio NÃO foi salvo — confira a internet e tente de novo.", "erro");
+  } finally {
+    // No `finally` porque a exceção acima pulava estas duas linhas e deixava o
+    // botão preso em "Salvando..." até recarregar a página.
+    btn.disabled = false;
+    btn.textContent = "Salvar cardápio";
+  }
 });
 
 // ============================================================

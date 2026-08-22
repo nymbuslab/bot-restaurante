@@ -984,3 +984,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   aparelhos da mesma conta, o que tirava o balcão, o celular e o tablet do ar de uma vez.
 - Continuam desconectando todos os aparelhos, porque é o objetivo: redefinir a senha pelo
   e-mail e trocar a senha ou o e-mail dentro do painel.
+
+## [0.98.0] — O cardápio avisa quando não consegue salvar
+
+- Se o cardápio não puder ser salvo, o painel agora diz o motivo na tela. Antes o botão
+  simplesmente voltava ao normal e nada indicava a falha, então dava para seguir editando
+  achando que estava salvo.
+- Quando o cardápio passa do tamanho máximo, a mensagem diz exatamente isso, em vez de
+  falhar em silêncio.
+- Se a internet cair no meio do salvamento, aparece um aviso e o botão volta a funcionar.
+  Antes ele ficava preso em "Salvando..." até recarregar a página.
