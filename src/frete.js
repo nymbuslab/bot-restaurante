@@ -76,6 +76,22 @@ function encontrarBairro(nomeCliente, faixas) {
 // Resolve o frete por bairro a partir da config normalizada + bairro do cliente.
 // `f` = freteDeConfig(config). Retorna { entrega_disponivel, valor_frete,
 // foraDaArea, bairro }. Pura.
+// Resolve o frete tentando os nomes na ORDEM dada e parando no primeiro que casa.
+// Existe por causa da ordem "CEP primeiro, digitado depois": no modo raio o
+// servidor geocodifica e o cliente não consegue mentir, mas no modo bairro ele
+// aceitava o campo de texto livre do checkout. Além de abrir a porta para
+// escolher um bairro mais barato, o match exato reprovava quem digitava uma
+// variação do nome. O fallback para o digitado é deliberado: base de CEP
+// desatualizada ou lote novo não pode tirar a entrega de quem tem direito a ela.
+function resolverFreteBairroEntre(f, candidatos) {
+  const lista = Array.isArray(candidatos) ? candidatos : [];
+  for (const nome of lista) {
+    const r = resolverFreteBairro(f, nome);
+    if (r.entrega_disponivel) return r;
+  }
+  return resolverFreteBairro(f, null); // nenhum casou: devolve a recusa com a política correta
+}
+
 function resolverFreteBairro(f, bairroCliente) {
   const bloco = (f && f.bairro) || {};
   const foraDaArea = bloco.foraDaArea === "bloqueia" ? "bloqueia" : "retirada";
@@ -172,5 +188,5 @@ async function geocodificar(enderecoCompleto) {
 module.exports = {
   calcularDistanciaKm, encontrarFaixa, montarEnderecoCompleto, normalizar,
   freteDeConfig, calcularFreteRaio, geocodificar,
-  normalizarNome, encontrarBairro, resolverFreteBairro,
+  normalizarNome, encontrarBairro, resolverFreteBairro, resolverFreteBairroEntre,
 };

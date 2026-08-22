@@ -6,7 +6,7 @@
 // A orquestração (transação caixa/pedido) vive em src/caixa.js (venderLocal).
 // ============================================================
 
-const cardapioWeb = require("./cardapio-web"); // parseOpcionais
+const formasPag = require("./pagamentos"); // ehDinheiro (vocabulário único das formas)
 const grupos = require("../public/grupos"); // validação da composição
 const variacoes = require("../public/variacoes"); // variações (opções com preço+estoque)
 
@@ -97,8 +97,8 @@ function aplicarDesconto(subtotal, desconto) {
 
 // Valida o pagamento (split): formas não-vazias, valores positivos e soma == total
 // (tolerância de 1 centavo p/ arredondamento). Lança Error com mensagem ao usuário.
-// Dinheiro? (mesma regra do front pdvEhDinheiro) — só o dinheiro gera troco.
-function ehDinheiroForma(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
+// Dinheiro? — só o dinheiro gera troco. Delega ao vocabulário de `pagamentos.js`
+// em vez de repetir a regex aqui: era a terceira cópia da mesma regra no projeto.
 
 // Normaliza valorPago/troco NO SERVIDOR (não confia no cliente): troco só existe
 // no dinheiro (troco = valorPago − valor); as demais formas têm troco 0 e
@@ -109,7 +109,7 @@ function normalizarPagamentos(pagamentos) {
   return lista.map((p) => {
     const forma = String((p && p.forma) || "").trim();
     const valor = cent(p && p.valor);
-    if (ehDinheiroForma(forma)) {
+    if (formasPag.ehDinheiro(forma)) {
       const valorPago = Math.max(valor, cent(p && p.valorPago));
       return { forma, valor, valorPago, troco: cent(valorPago - valor) };
     }
@@ -155,9 +155,19 @@ function totalComFrete(total, frete) {
 }
 
 // Resumo legível das formas, p/ o campo `pagamento` do pedido (ex.: "Dinheiro R$ 30,00 · Pix R$ 15,00").
+// Espelha o `fmtBR` dos impressos (padrão único de dinheiro do projeto): com
+// separador de milhar. `toFixed` não tem, então o mesmo cupom saía com
+// "TOTAL: 1.234,56" e "Pagamento: Dinheiro R$ 1234,56" logo abaixo.
+function _fmtBR(n) {
+  n = Number(n) || 0;
+  const neg = n < 0 ? "-" : "";
+  const cents = Math.round(Math.abs(n) * 100);
+  return neg + Math.floor(cents / 100).toLocaleString("pt-BR") + "," + String(cents % 100).padStart(2, "0");
+}
+
 function resumoPagamento(pagamentos) {
   return (Array.isArray(pagamentos) ? pagamentos : [])
-    .map((p) => (p.forma || "Outros") + " R$ " + cent(p.valor).toFixed(2).replace(".", ","))
+    .map((p) => (p.forma || "Outros") + " R$ " + _fmtBR(p.valor))
     .join(" · ");
 }
 

@@ -210,8 +210,9 @@
     ].join("::");
   }
 
-  // Lê o texto legado de opcionais ("Nome | 3.00\n..."), espelhando o
-  // parseOpcionais de src/cardapio-web.js.
+  // Lê o texto legado de opcionais ("Nome | 3.00\n..."). Única leitura desse
+  // formato que ainda existe no projeto, e só serve à conversão para a
+  // biblioteca (`converterCardapio`): o pedido do dia a dia não passa por aqui.
   function lerOpcionaisLegado(texto) {
     if (!texto || !String(texto).trim()) return [];
     const lista = [];

@@ -2,22 +2,6 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const cw = require("../src/cardapio-web");
 
-// ---- parseOpcionais ----
-test("parseOpcionais: 'Nome | preco' por linha → [{nome,preco}]", () => {
-  assert.deepEqual(cw.parseOpcionais("Bacon | 3,50\nOvo | 2"), [
-    { nome: "Bacon", preco: 3.5 },
-    { nome: "Ovo", preco: 2 },
-  ]);
-});
-test("parseOpcionais: vazio/nulo → []", () => {
-  assert.deepEqual(cw.parseOpcionais(""), []);
-  assert.deepEqual(cw.parseOpcionais(null), []);
-});
-test("parseOpcionais: sem preço → 0", () => {
-  assert.deepEqual(cw.parseOpcionais("Sem cebola"), [{ nome: "Sem cebola", preco: 0 }]);
-});
-
-// ---- projetarCardapio (whitelist) ----
 test("projetarCardapio: só campos públicos, só itens disponíveis, sem categoria vazia", () => {
   const cru = {
     categorias: [

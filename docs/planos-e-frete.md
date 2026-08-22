@@ -152,6 +152,16 @@ Entrega). O bairro do cliente vem do endereço (CEP autopreenche ou o cliente di
 no PDV. Puro em `src/frete.js` (`normalizarNome`/`encontrarBairro`/`resolverFreteBairro`);
 `config.frete.bairro = { faixas: [{nome, valor}], foraDaArea }`.
 
+**Quem escolhe o bairro é o CEP, não o campo de texto.** `resolverFreteBairroEntre` tenta os nomes
+na ordem `[bairro da base do CEP, bairro digitado]` e para no primeiro que casa (o servidor resolve
+o CEP em `resolverBairroDoFrete`, com o cache da tabela `ceps`). A ordem existe por dois motivos: no
+modo raio o servidor geocodifica e o cliente não consegue mentir, mas aqui ele podia escolher um
+bairro mais barato; e o match exato reprovava quem digitava uma variação do nome ("Pq das Gaivotas"),
+empurrando para Retirada sem explicar. **O fallback para o digitado é deliberado:** base de CEP
+desatualizada ou loteamento novo não pode tirar a entrega de quem tem direito a ela. Com vários
+bairros de preços diferentes cadastrados, essa ordem passa a decidir valor — vale reler antes de
+mexer.
+
 ## Parte 4 — Escolher / assinar o Completo
 
 - **Cadastro (wizard):** seletor de plano (Essencial/Completo) na etapa de conta/plano; o trial

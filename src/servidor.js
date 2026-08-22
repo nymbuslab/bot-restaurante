@@ -687,7 +687,11 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
         return { modo: "fixo", taxaFixa: f.taxaFixa };
       })(),
       taxaEntrega: frete.freteDeConfig(config).taxaFixa, // compat (checkout antigo)
-      pagamentos: (Array.isArray(config.pagamentos) ? config.pagamentos : []),
+      // Lista NORMALIZADA, a mesma que o painel e o PDV recebem. Servir a crua
+      // fazia um tenant com dado legado ("Cartão", de quando as formas eram texto
+      // livre) falar um vocabulário na tela do cliente e outro no painel — e a
+      // conferência do caixa contar a mesma forma em duas linhas.
+      pagamentos: formasPag.normalizarFormasPagamento(config.pagamentos),
       cardapio: cardapioWeb.projetarCardapio(store.getCardapio(dir)),
     });
   } catch (e) {
@@ -779,6 +783,22 @@ app.post("/api/redefinir-senha", esqueciLimiter, async (req, res) => {
 // Cálculo de frete por raio no checkout (Plano Completo). Público, rate-limited.
 // CEP → ViaCEP (cep.js) → endereço; cliente dá o número → geocodifica (cache) →
 // distância (Haversine) vs coords da empresa → faixa. Nunca expõe a chave/coords.
+// Bairro que decide o frete: o da base do CEP primeiro, o digitado como rede de
+// segurança (ver o porquê da ordem em `frete.resolverFreteBairroEntre`). A base
+// fora do ar não pode derrubar a entrega: sem CEP resolvido, sobra o digitado,
+// que é exatamente o comportamento antigo.
+async function resolverBairroDoFrete(f, campos) {
+  let bairroCep = "";
+  const cepDig = String((campos && campos.cep) || "").replace(/\D/g, "");
+  if (cepDig.length === 8) {
+    try {
+      const end = await cep.buscarCep(cepDig);
+      bairroCep = (end && end.bairro) || "";
+    } catch (e) { console.error("bairro pelo CEP:", e.message); }
+  }
+  return frete.resolverFreteBairroEntre(f, [bairroCep, campos && campos.bairro]);
+}
+
 app.post("/api/c/:slug/frete", publicoLimiter, async (req, res) => {
   try {
     const emp = await empresas.buscarPorSlug(req.params.slug);
@@ -790,7 +810,7 @@ app.post("/api/c/:slug/frete", publicoLimiter, async (req, res) => {
 
     // Modo BAIRRO: casa o bairro informado (sem geocodificar).
     if (f.modo === "bairro") {
-      const r = frete.resolverFreteBairro(f, b.bairro);
+      const r = await resolverBairroDoFrete(f, { cep: b.cep, bairro: b.bairro });
       if (!r.entrega_disponivel) {
         return res.json({ entrega_disponivel: false, foraDaArea: r.foraDaArea, mensagem: "Não atendemos seu bairro." });
       }
@@ -874,7 +894,7 @@ async function calcularFretePdv(dir, tipoEntrega, enderecoCampos) {
   const f = frete.freteDeConfig(store.getConfig(dir));
   if (f.modo === "bairro") {
     const ec = sanitizarEnderecoCampos(enderecoCampos);
-    const r = frete.resolverFreteBairro(f, ec.bairro);
+    const r = await resolverBairroDoFrete(f, ec);
     if (!r.entrega_disponivel) return { taxa: 0, entrega_disponivel: false, foraDaArea: true };
     return { taxa: Number(r.valor_frete) || 0, entrega_disponivel: true };
   }
@@ -912,8 +932,11 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     if (tipoEntrega === "Entrega" && endereco.length < 4) return res.status(400).json({ erro: "Informe o endereço de entrega." });
 
     const config = store.getConfig(dir);
-    const pagamentos = (Array.isArray(config.pagamentos) ? config.pagamentos : []);
-    if (pagamentos.length && pagamentos.indexOf(pagamento) === -1) return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    // Confere contra a MESMA lista que o GET acima mostrou ao cliente. Comparar
+    // com a crua recusaria a forma que a própria tela ofereceu, sem pista do motivo.
+    if (!formasPag.formaPermitida(config.pagamentos, pagamento)) {
+      return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    }
 
     // "Troco para R$ 100": quanto o cliente vai entregar em mãos. Só faz sentido
     // no dinheiro — troco em Pix ou cartão não significa nada, então nem é gravado.
@@ -966,7 +989,7 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     if (tipoEntrega === "Entrega") {
       if (f.modo === "bairro") {
         const ec = sanitizarEnderecoCampos(b.enderecoCampos);
-        const r = frete.resolverFreteBairro(f, ec.bairro);
+        const r = await resolverBairroDoFrete(f, ec);
         if (!r.entrega_disponivel) return res.status(409).json({ erro: "Não atendemos seu bairro." });
         taxaEntrega = r.valor_frete;
       } else if (f.modo === "raio") {
@@ -2307,6 +2330,9 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
 
     // Tipo da venda + frete (servidor é a fonte de verdade do frete).
+    // Mesma régua da rota do cardápio web: sem isso o nome ia cru para o banco
+    // (qualquer tipo, qualquer tamanho) num campo que a comanda imprime.
+    const cliente = String(b.cliente || "").trim().slice(0, 120);
     const tipoEntrega = ["Entrega", "Retirada"].includes(b.tipoEntrega) ? b.tipoEntrega : "Balcão";
     let endereco = "", telefone = "", taxaEntrega = 0;
     if (tipoEntrega === "Entrega") {
@@ -2351,7 +2377,7 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       }
       pdv.validarPagamentos(total, pagamentosNorm);
       pedido = await caixa.venderLocal(req.tenantDir, {
-        cliente: b.cliente, itens, total, desconto,
+        cliente, itens, total, desconto,
         pagamentos: pagamentosNorm,
         pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
         observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
@@ -2363,7 +2389,7 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
         // Mesmos itens que o pedido grava (ver o porquê na baixa do cardápio web).
         const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(clientTx, req.tenantDir, itens);
         pedido = await pedidos.salvarPedido(req.tenantDir, {
-          cliente: b.cliente || "", telefone, tipoEntrega, endereco,
+          cliente, telefone, tipoEntrega, endereco,
           pagamento: "", taxaEntrega, itens, total, observacao: obs,
           desconto, origem: "pdv",
         }, clientTx);

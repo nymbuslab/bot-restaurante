@@ -210,3 +210,27 @@ test("recalcularVenda: dentro do limite não reporta excedente", () => {
   const r = recalcularVenda(cardapio, [{ id: "a1", qtd: 3 }, { id: "a2", qtd: "1,5" }]);
   assert.deepEqual(r.excedentes, []);
 });
+
+// ---------------------------------------------------------------------------
+// O resumo do pagamento usava um terceiro formato de dinheiro.
+//
+// `toFixed(2)` não tem separador de milhar, então num pedido de R$ 1.234,56 o
+// cupom saía com "TOTAL: 1.234,56" e, duas linhas abaixo, "Pagamento: Dinheiro
+// R$ 1234,56" — dois formatos para o mesmo número, no mesmo papel. O padrão
+// único do projeto (CLAUDE.md) manda espelhar o `fmtBR` dos impressos.
+// ---------------------------------------------------------------------------
+
+test("resumoPagamento: valor na casa do milhar sai com ponto, como o resto do sistema", () => {
+  assert.equal(resumoPagamento([{ forma: "Dinheiro", valor: 1234.56 }]), "Dinheiro R$ 1.234,56");
+});
+
+test("resumoPagamento: milhão também, e o split mantém o separador em cada forma", () => {
+  assert.equal(
+    resumoPagamento([{ forma: "Dinheiro", valor: 1000000 }, { forma: "PIX", valor: 2500.5 }]),
+    "Dinheiro R$ 1.000.000,00 · PIX R$ 2.500,50"
+  );
+});
+
+test("resumoPagamento: abaixo de mil segue idêntico ao que já era", () => {
+  assert.equal(resumoPagamento([{ forma: "Dinheiro", valor: 999.9 }]), "Dinheiro R$ 999,90");
+});

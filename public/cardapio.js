@@ -959,11 +959,14 @@
     var st = $("cdFreteStatus");
     if (!st) return;
     var bairro = ($("cdBairro").value || "").trim();
-    if (!bairro) { freteBairro = null; st.innerHTML = ""; atualizarTotais(); return; }
+    var cepB = ($("cdCep").value || "").replace(/\D/g, "");
+    // Manda o CEP junto: quem decide o bairro é a base do CEP, e o digitado fica
+    // de rede de segurança. Sem o CEP, o campo de texto decidia sozinho o preço.
+    if (!bairro && cepB.length !== 8) { freteBairro = null; st.innerHTML = ""; atualizarTotais(); return; }
     st.innerHTML = '<span class="cd-frete-calc">Calculando frete…</span>';
     fetch("/api/c/" + encodeURIComponent(SLUG) + "/frete", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bairro: bairro }),
+      body: JSON.stringify({ bairro: bairro, cep: cepB }),
     })
       .then(function (r) { return r.json(); })
       .then(function (j) { freteBairro = j; renderFreteBairroStatus(j); atualizarTotais(); })

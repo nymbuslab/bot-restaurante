@@ -110,7 +110,7 @@ src/
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
   fluxo.js            -> bot: saudação envia o LINK do cardápio web (/c/:slug?p=token); estados MENU/ATENDENTE
   cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, token HMAC do link)
-  frete.js            -> frete avançado (Plano Completo): por RAIO (Haversine + faixas + geocodificar() Geoapify c/ cache geo_cache) e por BAIRRO (normalizarNome/encontrarBairro/resolverFreteBairro — match exato normalizado, sem geocode). Puros
+  frete.js            -> frete avançado (Plano Completo): por RAIO (Haversine + faixas + geocodificar() Geoapify c/ cache geo_cache) e por BAIRRO (normalizarNome/encontrarBairro/resolverFreteBairro/resolverFreteBairroEntre — match exato normalizado, sem geocode; **o bairro da base do CEP decide, o digitado é fallback**). Puros
   cep.js              -> busca de CEP (ViaCEP) com cache no banco (tabela ceps)
   assets.js           -> cache-busting SEM build: versaoAssets (hash do conteúdo dos css/js de public/) + injetarVersao (injeta ?v nos assets das páginas HTML). Puro; o servidor.js serve HTML fresco (no-cache) com a versão
   email.js            -> e-mail transacional via Resend (boas-vindas, reset de senha, assinatura, avisos)

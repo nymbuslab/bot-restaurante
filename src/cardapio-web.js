@@ -17,23 +17,6 @@ const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 // de cortar em silêncio. Mora aqui porque é aqui que o corte acontece.
 const LIMITE_QTD = 50;
 
-// Opcionais do item são guardados como texto ("Nome | preco" por linha).
-// Converte para [{ nome, preco }] — mesma regra usada pelo bot (fluxo.js importa daqui).
-function parseOpcionais(texto) {
-  if (!texto || !texto.trim()) return [];
-  const lista = [];
-  for (let linha of texto.split("\n")) {
-    linha = linha.trim().replace(/^[*\-•]\s*/, "");
-    if (!linha) continue;
-    const partes = linha.split("|");
-    const nome = partes[0].trim();
-    let preco = 0;
-    if (partes.length >= 2) preco = parseFloat(partes[1].replace(",", ".").replace(/[^\d.]/g, "")) || 0;
-    if (nome) lista.push({ nome, preco });
-  }
-  return lista;
-}
-
 // Projeção PÚBLICA (whitelist) do cardápio jsonb: só os campos que o cliente
 // pode ver, e só itens disponíveis. NUNCA devolver o jsonb cru (evita vazar
 // campos internos). Categorias sem itens disponíveis somem.
@@ -185,4 +168,4 @@ function verificarToken(secret, token, slug, agoraMs) {
   return { chatId: dados.chatId };
 }
 
-module.exports = { parseOpcionais, projetarCardapio, recalcularItens, mensagemExcedente, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS, LIMITE_QTD };
+module.exports = { projetarCardapio, recalcularItens, mensagemExcedente, itensSoLocal, assinarToken, verificarToken, TOKEN_TTL_MS, LIMITE_QTD };

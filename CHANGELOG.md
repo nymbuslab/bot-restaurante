@@ -952,3 +952,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   dinheiro**. A segunda é a conta que costuma sair errada na hora da entrega.
 - O detalhe do pedido, no painel, mostra a mesma informação junto da forma de pagamento.
 - Só vale para pagamento em dinheiro. Troco em Pix ou cartão não significa nada e é ignorado.
+
+## [0.95.0] — Frete por bairro mais tolerante, e acabamento no cupom
+
+- Quem pede entrega e escreve o bairro de um jeito diferente do cadastrado (por exemplo
+  "Pq das Gaivotas" no lugar de "Parque das Gaivotas") não ouve mais que o restaurante não
+  atende a região. O bairro agora é reconhecido pelo CEP informado, e o que a pessoa
+  digitou continua valendo como segunda tentativa.
+- Isso também impede que alguém escolha um bairro mais barato do que o do endereço real.
+- No cupom, valores acima de mil reais no resumo do pagamento passam a sair no mesmo
+  formato do total, com o ponto de milhar.

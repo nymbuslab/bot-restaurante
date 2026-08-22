@@ -4,6 +4,7 @@ const {
   calcularDistanciaKm, encontrarFaixa, montarEnderecoCompleto, freteDeConfig, calcularFreteRaio,
   normalizarNome, encontrarBairro, resolverFreteBairro,
 } = require("../src/frete");
+const frete = require("../src/frete");
 
 // ---- calcularDistanciaKm (Haversine) ----
 test("calcularDistanciaKm: mesmo ponto = 0", () => {
@@ -110,4 +111,57 @@ test("freteDeConfig: bloco bairro normalizado (descarta linha sem nome)", () => 
   assert.equal(f.bairro.faixas.length, 1);
   assert.equal(f.bairro.faixas[0].nome, "Centro");
   assert.equal(f.bairro.foraDaArea, "retirada");
+});
+
+// ---------------------------------------------------------------------------
+// Bairro do frete: o CEP manda, o digitado é rede de segurança.
+//
+// No modo raio o servidor geocodifica o CEP e não dá para mentir. No modo
+// bairro ele aceitava o campo de texto livre do checkout, com duas consequências:
+// dava para escolher um bairro mais barato, e quem digitava uma variação do nome
+// ("Pq das Gaivotas") ouvia "Não atendemos seu bairro" e era empurrado para
+// Retirada sem entender por quê — o match é exato depois de normalizar.
+//
+// A ordem resolve os dois: tenta primeiro o nome que a base do CEP devolve e,
+// só se não casar, o que a pessoa digitou. O fallback garante que nada que
+// funciona hoje pare de funcionar (base de CEP desatualizada, área nova).
+// ---------------------------------------------------------------------------
+
+const cfgBairro = { modo: "bairro", bairro: { foraDaArea: "retirada", faixas: [
+  { nome: "Parque das Gaivotas", valor: 12 },
+  { nome: "Centro", valor: 5 },
+] } };
+
+test("resolverFreteBairroEntre: o bairro do CEP ganha do digitado", () => {
+  const r = frete.resolverFreteBairroEntre(cfgBairro, ["Parque das Gaivotas", "Centro"]);
+  assert.equal(r.entrega_disponivel, true);
+  assert.equal(r.valor_frete, 12, "quem escolhe é o CEP, não o campo de texto");
+});
+
+test("resolverFreteBairroEntre: cai no digitado quando o CEP não casa", () => {
+  const r = frete.resolverFreteBairroEntre(cfgBairro, ["Jardim Inexistente", "Centro"]);
+  assert.equal(r.entrega_disponivel, true);
+  assert.equal(r.valor_frete, 5);
+});
+
+test("resolverFreteBairroEntre: ignora candidato vazio e segue para o próximo", () => {
+  const r = frete.resolverFreteBairroEntre(cfgBairro, ["", null, undefined, "Centro"]);
+  assert.equal(r.entrega_disponivel, true);
+  assert.equal(r.valor_frete, 5);
+});
+
+test("resolverFreteBairroEntre: nenhum candidato casa → não atende, com a política de fora da área", () => {
+  const r = frete.resolverFreteBairroEntre(cfgBairro, ["Marte", "Vênus"]);
+  assert.equal(r.entrega_disponivel, false);
+  assert.equal(r.foraDaArea, "retirada");
+});
+
+test("resolverFreteBairroEntre: sem candidato nenhum não quebra", () => {
+  assert.equal(frete.resolverFreteBairroEntre(cfgBairro, []).entrega_disponivel, false);
+  assert.equal(frete.resolverFreteBairroEntre(cfgBairro, null).entrega_disponivel, false);
+});
+
+test("resolverFreteBairroEntre: continua tolerando acento e caixa, como o match de sempre", () => {
+  const r = frete.resolverFreteBairroEntre(cfgBairro, ["PARQUE DAS GAIVOTAS"]);
+  assert.equal(r.valor_frete, 12);
 });
