@@ -3230,7 +3230,7 @@ function atualizarChipStatus(real) {
 }
 
 // Formas de pagamento: conjunto FIXO (só liga/desliga por toggle). Espelha a
-// ordem canônica de src/pagamentos.js.
+// ordem canônica de public/pagamentos.js.
 const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
 const FORMA_SUB = {};
 // Ícones SVG por forma (design system). Cartão de Crédito/Débito compartilham o cartão.
@@ -3765,7 +3765,10 @@ async function movimentoCaixa(tipo) {
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não deu para registrar a movimentação. Tente de novo."); }
 }
 
-function ehFormaDinheiro(f) { return /dinheiro/i.test(String(f || "")); }
+// "É dinheiro?" — regra ÚNICA, a mesma que o servidor usa para validar a venda.
+// Antes esta tela usava `/dinheiro/i` e o PDV usava `/dinheiro|esp[ée]cie/i`: duas
+// telas do mesmo produto podiam discordar sobre a mesma forma de pagamento.
+function ehFormaDinheiro(f) { return window.Pagamentos.ehDinheiro(f); }
 
 // Leva à aba Pedidos já filtrada em "A receber" (atalho do bloqueio de fechamento).
 function irParaPedidosAReceber() {
@@ -5942,7 +5945,7 @@ let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|
 let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada'
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
 
-function pdvEhDinheiro(f) { return /dinheiro|esp[ée]cie/i.test(f || ""); }
+function pdvEhDinheiro(f) { return window.Pagamentos.ehDinheiro(f); } // mesma regra do servidor (public/pagamentos.js)
 
 // Fonte ÚNICA da regra de pagamento (PDV, Receber-Pedidos e Mesa). A partir das formas
 // lançadas na tela, desconta o TROCO (só do dinheiro; o troco volta pro cliente, não

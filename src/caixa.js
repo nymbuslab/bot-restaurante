@@ -8,7 +8,7 @@ const db = require("./db");
 const calc = require("./caixa-calc");
 const store = require("./store");
 const pdv = require("./pdv"); // normalizarPagamentos (troco só no dinheiro; não confia no cliente)
-const formasPag = require("./pagamentos"); // normalizarFormasPagamento (descarta legado "A Prazo")
+const formasPag = require("../public/pagamentos"); // normalizarFormasPagamento (descarta legado "A Prazo")
 const relatorioCaixa = require("../public/relatorio-caixa"); // dual-mode Node/browser
 
 const slugDe = (dir) => path.basename(dir);

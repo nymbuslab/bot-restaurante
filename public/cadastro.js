@@ -238,7 +238,7 @@
       renderPagsWiz();
     }
     // Formas de pagamento: cards individuais (liga/desliga), igual ao painel.
-    // Espelha src/pagamentos.js.
+    // Espelha public/pagamentos.js.
     const WIZ_FORMAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
     const WIZ_CARTAO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
     const WIZ_FORMA_ICONE = {

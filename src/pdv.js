@@ -6,7 +6,7 @@
 // A orquestração (transação caixa/pedido) vive em src/caixa.js (venderLocal).
 // ============================================================
 
-const formasPag = require("./pagamentos"); // ehDinheiro (vocabulário único das formas)
+const formasPag = require("../public/pagamentos"); // ehDinheiro (vocabulário único das formas)
 const grupos = require("../public/grupos"); // validação da composição
 const variacoes = require("../public/variacoes"); // variações (opções com preço+estoque)
 

@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { FORMAS_PAGAMENTO, normalizarFormasPagamento } = require("../src/pagamentos");
-const pg = require("../src/pagamentos");
+const { FORMAS_PAGAMENTO, normalizarFormasPagamento } = require("../public/pagamentos");
+const pg = require("../public/pagamentos");
 
 test("FORMAS_PAGAMENTO: vocabulário fixo em ordem canônica", () => {
   assert.deepEqual(FORMAS_PAGAMENTO, ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"]);
@@ -106,4 +106,55 @@ test("ehDinheiro: reconhece a forma canônica e a legada", () => {
 test("ehDinheiro: as outras formas não são dinheiro", () => {
   ["PIX", "Cartão de Crédito", "Cartão de Débito", "Cartão", "", null, undefined]
     .forEach((f) => assert.equal(pg.ehDinheiro(f), false, String(f)));
+});
+
+// ---------------------------------------------------------------------------
+// Uma regra so para "e dinheiro", no servidor E no painel.
+//
+// O front tinha DUAS copias em regex que discordavam entre si: o Caixa usava
+// /dinheiro/i e o PDV /dinheiro|esp[ée]cie/i. Eram a quarta e a quinta copia da
+// regra no projeto, depois de tres terem sido consolidadas aqui. Com o
+// vocabulario canonico as duas concordam, mas "Especie" faria as duas telas do
+// mesmo produto discordarem — o Caixa contaria como cartao/Pix e o PDV como
+// dinheiro (com troco).
+//
+// O modulo virou dual-mode e mora em public/, como grupos.js e estoque.js: o
+// servidor valida a venda e o painel decide o que e dinheiro pela MESMA funcao,
+// por construcao e nao por coincidencia.
+// ---------------------------------------------------------------------------
+
+const fsPg = require("fs");
+const pathPg = require("path");
+const raiz = pathPg.join(__dirname, "..");
+
+test("o módulo é dual-mode e expõe window.Pagamentos no navegador", () => {
+  const src = fsPg.readFileSync(pathPg.join(raiz, "public", "pagamentos.js"), "utf8");
+  assert.match(src, /root\.Pagamentos = factory\(\)/, "sem isso o painel não enxerga o módulo");
+  assert.match(src, /module\.exports = factory\(\)/, "e o servidor precisa continuar importando");
+});
+
+test("o painel carrega o módulo antes do app.js", () => {
+  const html = fsPg.readFileSync(pathPg.join(raiz, "public", "admin.html"), "utf8");
+  const iMod = html.indexOf('src="pagamentos.js"');
+  const iApp = html.indexOf('src="app.js"');
+  assert.ok(iMod > -1, "admin.html precisa carregar pagamentos.js");
+  assert.ok(iApp > -1 && iMod < iApp, "tem que vir ANTES do app.js, que o usa na primeira renderização");
+});
+
+test("nenhuma tela define «e dinheiro» por conta própria", () => {
+  const app = fsPg.readFileSync(pathPg.join(raiz, "public", "app.js"), "utf8");
+  // Os nomes locais (`ehFormaDinheiro`, `pdvEhDinheiro`) FICAM: são oito pontos de
+  // chamada e renomeá-los não muda comportamento nenhum. O que não pode voltar é uma
+  // REGRA própria dentro deles — era isso que fazia Caixa e PDV discordarem.
+  assert.doesNotMatch(app, /function (ehFormaDinheiro|pdvEhDinheiro)\([^)]*\)\s*{\s*return \//,
+    "nenhuma das duas pode voltar a testar a forma com regex própria");
+  const usos = (app.match(/Pagamentos\.ehDinheiro/g) || []).length;
+  assert.ok(usos >= 2, "as duas telas delegam à regra única (achei " + usos + ")");
+});
+
+test("o servidor importa do novo lugar", () => {
+  ["src/caixa.js", "src/pdv.js", "src/servidor.js"].forEach((f) => {
+    const s = fsPg.readFileSync(pathPg.join(raiz, f), "utf8");
+    assert.match(s, /require\("\.\.\/public\/pagamentos"\)/, f);
+  });
 });
