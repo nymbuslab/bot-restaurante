@@ -94,3 +94,43 @@ test("o excluir diz ao admin em que pé ficou quando falha no meio", () => {
   assert.match(c, /assinatura j\u00e1 foi cancelada/i,
     "falhar depois do Stripe exige mensagem própria: silêncio esconde a cobrança já cancelada");
 });
+
+// ---------------------------------------------------------------------------
+// O interruptor da env precisa valer para as rotas, não só para o login.
+//
+// `SUPERADMIN_CONFIGURADO` (Boolean de `SUPERADMIN_EMAIL`) era checado só em
+// `/api/admin/login`. Como `masterEmail()` cai no banco quando a env some,
+// tirar o segredo fazia o login responder 503 enquanto quem já estava dentro
+// seguia entrando — e renovando para sempre, porque a rota de refresh também
+// não checava. Fechava a porta da frente e deixava a lateral aberta.
+//
+// A renovação também não tinha rate limit, enquanto o login master usa o
+// limitador mais rígido do projeto e o refresh do restaurante tem o dele.
+// ---------------------------------------------------------------------------
+
+test("o porteiro do master respeita o interruptor da env", () => {
+  const i = servidor.indexOf("async function exigeSuperAdmin");
+  assert.ok(i > -1);
+  const corpo = servidor.slice(i, servidor.indexOf("\n}", i));
+  assert.match(corpo, /SUPERADMIN_CONFIGURADO/,
+    "sem isso, remover SUPERADMIN_EMAIL nao desliga quem ja tem token em maos");
+});
+
+test("a renovação do master respeita o mesmo interruptor", () => {
+  const c = corpoDaRota('app.post("/api/admin/refresh"');
+  assert.match(c, /SUPERADMIN_CONFIGURADO/,
+    "senao o refresh vira sobrevida indefinida de uma area supostamente desligada");
+});
+
+test("a renovação do master tem rate limit próprio, mais rígido que o do restaurante", () => {
+  const linha = linhas.find((l) => l.startsWith('app.post("/api/admin/refresh"'));
+  assert.ok(linha, "rota de refresh do master não encontrada");
+  assert.match(linha, /adminRefreshLimiter/, "rota sem limitador nenhum");
+  const def = linhas.find((l) => l.includes("const adminRefreshLimiter"));
+  assert.ok(def, "limitador não definido");
+  const maxMaster = Number((def.match(/limitador\(\d+,\s*(\d+)/) || [])[1]);
+  const defRest = linhas.find((l) => l.includes("const refreshLimiter"));
+  const maxRest = Number((defRest.match(/limitador\(\d+,\s*(\d+)/) || [])[1]);
+  assert.ok(maxMaster < maxRest,
+    `master (${maxMaster}) precisa ser mais rigido que restaurante (${maxRest}), como ja e no login`);
+});

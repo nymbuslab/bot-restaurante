@@ -106,6 +106,7 @@ const adminLoginLimiter = limitador(15, 5,  TENTE_DEPOIS); // login master (mais
 const cadastroLimiter   = limitador(60, 5,  "Muitos cadastros a partir deste IP. Tente novamente mais tarde.");
 const assinaturaLimiter = limitador(15, 20, TENTE_DEPOIS); // setup-intent / checkout
 const refreshLimiter    = limitador(15, 60, TENTE_DEPOIS); // renovação de sessão (~1x/h por usuário)
+const adminRefreshLimiter = limitador(15, 20, TENTE_DEPOIS); // renovação do master — mais rígida (uma pessoa, um navegador), como o login master já é
 const publicoLimiter    = limitador(15, 60, "Muitas requisições. Aguarde um momento e tente novamente."); // cardápio web público
 const esqueciLimiter    = limitador(60, 5,  "Muitas solicitações de redefinição. Tente novamente mais tarde."); // esqueci a senha
 const contaLimiter      = limitador(15, 10, TENTE_DEPOIS); // trocar senha/e-mail/excluir conta — anti brute-force da senha atual
@@ -273,6 +274,11 @@ if (!SUPERADMIN_CONFIGURADO) {
 
 // Valida o JWT do Supabase e exige que o e-mail seja o do master (allowlist).
 async function exigeSuperAdmin(req, res, next) {
+  // O interruptor da env vale para as ROTAS, não só para o login. `masterEmail()`
+  // cai no banco quando a env some, então sem esta linha tirar `SUPERADMIN_EMAIL`
+  // fazia o login responder 503 enquanto quem já estava dentro seguia entrando:
+  // fechava a porta da frente e deixava a lateral aberta.
+  if (!SUPERADMIN_CONFIGURADO) return res.status(503).json({ erro: "Super-admin não configurado no servidor." });
   try {
     const token = (req.headers["authorization"] || "").replace("Bearer ", "");
     const info = await empresas.emailDoToken(token);
@@ -1135,7 +1141,10 @@ app.post("/api/admin/login", adminLoginLimiter, async (req, res) => {
 });
 
 // Renova a sessão do master (o JWT do Supabase dura ~1h) usando o refresh token.
-app.post("/api/admin/refresh", async (req, res) => {
+app.post("/api/admin/refresh", adminRefreshLimiter, async (req, res) => {
+  // Mesmo interruptor do porteiro: sem ele, o refresh virava sobrevida
+  // indefinida de uma área supostamente desligada.
+  if (!SUPERADMIN_CONFIGURADO) return res.status(503).json({ erro: "Super-admin não configurado no servidor." });
   const { refresh } = req.body || {};
   if (!refresh) return res.status(401).json({ erro: "Sessão expirada" });
   try {

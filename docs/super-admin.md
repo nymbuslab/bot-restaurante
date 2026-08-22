@@ -6,7 +6,13 @@
   O que o torna super-admin é uma **allowlist de e-mail**: `master_email` (`plataforma_config`,
   editável) com **bootstrap na env `SUPERADMIN_EMAIL`**. Quem loga com esse e-mail vira
   super-admin; qualquer outro usuário Supabase (restaurante) **não** entra no `/api/admin/*`.
-  Sem `SUPERADMIN_EMAIL`, as rotas `/api/admin/*` ficam desativadas (login **503**). Em produção:
+  Sem `SUPERADMIN_EMAIL`, as rotas `/api/admin/*` ficam desativadas (**503**) — a checagem vive no
+  `exigeSuperAdmin` e no `/api/admin/refresh`, não só no login. É um **interruptor real**: como
+  `masterEmail()` cai no banco quando a env some, checar só no login fazia o 503 valer para logins
+  novos enquanto quem já tinha token seguia entrando e renovando para sempre. Tirar o segredo
+  apaga o painel master na hora, **inclusive para quem está logado**. A renovação tem limitador
+  próprio (`adminRefreshLimiter`, 20 em 15min), mais rígido que o do restaurante (60), pelo mesmo
+  motivo de o login master já ser mais rígido: é uma pessoa num navegador. Em produção:
   `fly secrets set SUPERADMIN_EMAIL=...`; o usuário master é criado/gerenciado no Supabase Auth.
 - **Auth (sem token em memória):** login `POST /api/admin/login { email, senha }` →
   `signInWithPassword` (Supabase) + checa o e-mail == master → devolve **`{ token, refresh }`**
