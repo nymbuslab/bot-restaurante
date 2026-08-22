@@ -915,6 +915,20 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
     const pagamentos = (Array.isArray(config.pagamentos) ? config.pagamentos : []);
     if (pagamentos.length && pagamentos.indexOf(pagamento) === -1) return res.status(400).json({ erro: "Forma de pagamento inválida." });
 
+    // "Troco para R$ 100": quanto o cliente vai entregar em mãos. Só faz sentido
+    // no dinheiro — troco em Pix ou cartão não significa nada, então nem é gravado.
+    // O teto existe porque a coluna é `numeric(10,2)`: um número absurdo vindo do
+    // cliente estouraria o tipo no INSERT e derrubaria o pedido inteiro, trocando
+    // "sem troco" por "sem pedido". Acima do teto o valor é ignorado, não cortado:
+    // ninguém pede troco de R$ 100 mil, então é engano de digitação, e inventar um
+    // valor no lugar seria pior do que não ter nenhum.
+    const TROCO_MAX = 100000;
+    let trocoPara = null;
+    if (formasPag.ehDinheiro(pagamento)) {
+      const t = Math.round((Number(b.troco) || 0) * 100) / 100;
+      if (t > 0 && t <= TROCO_MAX) trocoPara = t;
+    }
+
     let recalc;
     try {
       recalc = cardapioWeb.recalcularItens(store.getCardapio(dir), b.itens);
@@ -991,7 +1005,7 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
       novoCardapio = baixa.cardapio;
       pedido = await pedidos.salvarPedido(dir, {
         cliente, telefone, chatId, tipoEntrega, endereco, pagamento,
-        taxaEntrega, itens: recalc.itens, total, observacao,
+        taxaEntrega, itens: recalc.itens, total, observacao, trocoPara,
       }, clientTx);
       await store.amarrarPedidoTx(clientTx, baixa.movimentoIds, pedido.id, pedido.numero);
       await clientTx.query("COMMIT");

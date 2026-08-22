@@ -193,3 +193,50 @@ test("comprovante final sem troco: omite a linha de troco", () => {
   assert.equal(/Troco:/.test(txt), false);
   assert.equal(/recebido antes/i.test(txt), false);
 });
+
+// ---------------------------------------------------------------------------
+// Troco do pedido de entrega.
+//
+// O cardápio web pergunta "Troco para" quando o cliente escolhe Dinheiro, manda
+// o valor no pedido — e o servidor nunca lia. Não havia coluna, o cupom não
+// imprimia e o painel não mostrava: quem ia entregar descobria na porta do
+// cliente que precisava de troco e não tinha.
+//
+// O cupom mostra as duas linhas porque são duas informações diferentes: o que o
+// cliente vai dar na mão, e o que precisa voltar em dinheiro. A segunda é a
+// conta que a pessoa da entrega faria de cabeça, que é onde o erro acontece.
+// ---------------------------------------------------------------------------
+
+const pedidoTroco = Object.assign({}, pedidoBase, { pagamento: "Dinheiro", trocoPara: 100 });
+
+test("cupom: pedido em dinheiro com troco mostra para quanto e quanto levar", () => {
+  const { cupom } = montarComanda(pedidoTroco, config);
+  assert.match(cupom, /Troco para:\s*100,00/);
+  assert.match(cupom, /Levar troco:\s*39,50/); // 100,00 − 60,50
+});
+
+test("cupom: sem troco informado não inventa linha nenhuma", () => {
+  const { cupom } = montarComanda(Object.assign({}, pedidoBase, { pagamento: "Dinheiro" }), config);
+  assert.doesNotMatch(cupom, /Troco/i);
+});
+
+test("cupom: troco menor que o total não vira 'levar' negativo", () => {
+  // O cliente digitou um valor abaixo do pedido (engano dele). Ainda vale
+  // imprimir o que ele disse, mas 'levar troco' negativo seria mentira.
+  const { cupom } = montarComanda(Object.assign({}, pedidoTroco, { trocoPara: 50 }), config);
+  assert.match(cupom, /Troco para:\s*50,00/);
+  assert.doesNotMatch(cupom, /Levar troco/);
+});
+
+test("cupom: troco exatamente igual ao total não pede troco nenhum", () => {
+  const { cupom } = montarComanda(Object.assign({}, pedidoTroco, { trocoPara: 60.5 }), config);
+  assert.match(cupom, /Troco para:\s*60,50/);
+  assert.doesNotMatch(cupom, /Levar troco/);
+});
+
+test("cupom: valor grande de troco sai com separador de milhar, como o total", () => {
+  const grande = Object.assign({}, pedidoTroco, { total: 1234.56, trocoPara: 2000 });
+  const { cupom } = montarComanda(grande, config);
+  assert.match(cupom, /Troco para:\s*2\.000,00/);
+  assert.match(cupom, /Levar troco:\s*765,44/);
+});

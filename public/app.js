@@ -4916,6 +4916,14 @@ function abrirModalPedido(p) {
   $("pedido-quando").textContent = new Date(p.criadoEm).toLocaleString("pt-BR");
 
   const taxa = p.taxaEntrega || 0;
+  // Troco pedido pelo cliente no cardápio web. Duas informações diferentes: o que
+  // ele vai dar na mão e o que precisa voltar em dinheiro. A segunda é a conta que
+  // quem entrega faria de cabeça na porta do cliente, que é onde o erro acontece.
+  const trocoPara = Number(p.trocoPara) || 0;
+  const levarTroco = Math.round((trocoPara - (Number(p.total) || 0)) * 100) / 100;
+  const trocoHtml = trocoPara > 0
+    ? `<span class="sub">Troco para R$ ${moedaBR(trocoPara)}${levarTroco > 0 ? ` · levar R$ ${moedaBR(levarTroco)}` : ""}</span>`
+    : "";
   // Soma dos extras de um item: cada opcional E cada variação conta a sua quantidade
   // (a variação carrega o preço real; o item-pai fica com preço 0 — ex.: Refrigerante).
   const extrasDe = (i) => (i.opcionais || []).reduce((s, o) => s + (o.preco || 0) * (o.qtd || 1), 0)
@@ -5022,7 +5030,7 @@ function abrirModalPedido(p) {
           <div class="ped-bloco-titulo">Pagamento</div>
           <div class="ped-linha-info">
             <span class="ped-info-icone">${ICO_PAG}</span>
-            <div class="ped-info-texto">${escapar(p.pagamento) || "—"}</div>
+            <div class="ped-info-texto">${escapar(p.pagamento) || "—"}${trocoHtml}</div>
           </div>
         </div>
         <div class="ped-bloco ped-resumo">

@@ -58,4 +58,12 @@ function formaPermitida(configPagamentos, forma) {
   return permitidas.indexOf(String(forma || "")) !== -1;
 }
 
-module.exports = { FORMAS_PAGAMENTO, normalizarFormasPagamento, formaPermitida };
+// A forma escolhida é dinheiro? Decide se o "Troco para" do cardápio web vale
+// alguma coisa: troco em Pix ou cartão não significa nada e nem é gravado.
+// Passa pelo mesmo `_mapear` do resto do módulo para não virar mais uma cópia
+// solta da regex de "dinheiro".
+function ehDinheiro(forma) {
+  return _mapear(forma).indexOf("Dinheiro") !== -1;
+}
+
+module.exports = { FORMAS_PAGAMENTO, normalizarFormasPagamento, formaPermitida, ehDinheiro };

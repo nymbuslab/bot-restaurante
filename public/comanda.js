@@ -149,6 +149,15 @@
     if (taxa > 0) linhas.push(linhaValor("Taxa entrega:", fmtBR(taxa)));
     linhas.push(linhaValor("TOTAL:", fmtBR(pedido.total)));
     if (pedido.pagamento) linhas.push("Pagamento: " + pedido.pagamento);
+    // Troco pedido pelo cliente no cardápio web. Duas linhas porque são duas
+    // informações: o que ele vai dar na mão, e o que precisa voltar em dinheiro.
+    // A segunda é a conta que quem entrega faria de cabeça na porta do cliente.
+    const trocoPara = Number(pedido.trocoPara) || 0;
+    if (trocoPara > 0) {
+      linhas.push(linhaValor("Troco para:", fmtBR(trocoPara)));
+      const levar = Math.round((trocoPara - (Number(pedido.total) || 0)) * 100) / 100;
+      if (levar > 0) linhas.push(linhaValor("Levar troco:", fmtBR(levar)));
+    }
     linhas.push(sep("="));
     // Rodapé (marketing): mensagem personalizável + chamada pro cardápio digital.
     const imp = (config && config.impressao) || {};

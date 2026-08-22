@@ -88,3 +88,22 @@ test("formaPermitida: config vazia não bloqueia a venda", () => {
   assert.equal(pg.formaPermitida([], "Dinheiro"), true);
   assert.equal(pg.formaPermitida(null, "Dinheiro"), true);
 });
+
+// ---------------------------------------------------------------------------
+// "Isso é dinheiro?" — usado para decidir se o troco pedido no cardápio web
+// vale alguma coisa. Troco em Pix ou cartão não significa nada, então o valor
+// nem é gravado. Passa pelo mesmo `_mapear` do resto do módulo, para não virar
+// uma quarta cópia da regex de "dinheiro" espalhada pelo projeto.
+// ---------------------------------------------------------------------------
+
+test("ehDinheiro: reconhece a forma canônica e a legada", () => {
+  assert.equal(pg.ehDinheiro("Dinheiro"), true);
+  assert.equal(pg.ehDinheiro("dinheiro"), true);
+  assert.equal(pg.ehDinheiro("Espécie"), true);
+  assert.equal(pg.ehDinheiro("Dinheiro (na entrega)"), true);
+});
+
+test("ehDinheiro: as outras formas não são dinheiro", () => {
+  ["PIX", "Cartão de Crédito", "Cartão de Débito", "Cartão", "", null, undefined]
+    .forEach((f) => assert.equal(pg.ehDinheiro(f), false, String(f)));
+});

@@ -942,3 +942,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - Salvar um produto não desfaz mais uma venda que entrou no mesmo momento.
 - No painel, a forma de pagamento mais usada volta a mostrar a forma (Dinheiro, PIX,
   cartão) em vez de um texto com valor colado.
+
+## [0.94.0] — O troco que o cliente pede agora chega até você
+
+- Quando o cliente escolhe Dinheiro no cardápio digital, ele informa para quanto precisa de
+  troco. Esse valor não chegava a lugar nenhum: não aparecia no pedido nem no cupom, e quem
+  ia entregar só descobria na porta do cliente.
+- Agora o cupom mostra duas linhas: para quanto o cliente pediu troco e **quanto levar em
+  dinheiro**. A segunda é a conta que costuma sair errada na hora da entrega.
+- O detalhe do pedido, no painel, mostra a mesma informação junto da forma de pagamento.
+- Só vale para pagamento em dinheiro. Troco em Pix ou cartão não significa nada e é ignorado.

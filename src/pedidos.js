@@ -45,6 +45,8 @@ function mapRow(r) {
     impressoEm: r.impresso_em ? new Date(r.impresso_em).toISOString() : null,
     mesaId: r.mesa_id == null ? null : r.mesa_id,
     origem: r.origem || "web",
+    // Cardápio web, dinheiro: valor que o cliente vai entregar. null = não pediu troco.
+    trocoPara: r.troco_para == null ? null : Number(r.troco_para),
   };
 }
 
@@ -56,10 +58,10 @@ async function salvarPedido(dir, pedido, client) {
   const exec = client ? (sql, p) => client.query(sql, p) : (sql, p) => db.query(sql, p);
   const r = await exec(
     `INSERT INTO pedidos
-       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, mesa_id, desconto, origem)
+       (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, mesa_id, desconto, origem, troco_para)
      VALUES
        ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14)
+        $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13, $14, $15)
      RETURNING id, numero, criado_em`,
     [
       empId,
@@ -76,6 +78,7 @@ async function salvarPedido(dir, pedido, client) {
       pedido.mesaId || null,
       pedido.desconto || 0,
       pedido.origem || "web",
+      pedido.trocoPara == null ? null : pedido.trocoPara,
     ]
   );
   const row = r.rows[0];

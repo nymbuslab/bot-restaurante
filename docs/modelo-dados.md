@@ -103,6 +103,10 @@ reservado_em / reservado_por (timestamptz / text; CLAIM do agente — o poll res
   pendentes atomicamente [FOR UPDATE SKIP LOCKED] por id de sessão do agente; reserva
   expira em 30s. Evita 2 agentes do mesmo tenant imprimirem a mesma comanda. Mesma dupla
   de colunas em `impressao_fila`),
+troco_para (numeric; só no cardápio web e só em dinheiro: quanto o cliente vai
+  entregar em mãos. NULL = não pediu troco. Guarda o que ele dá, não o que volta —
+  o troco a devolver é `troco_para - total`, calculado na hora de mostrar, para não
+  congelar uma conta que o pedido ainda pode mudar por cancelamento de item),
 origem (text 'web' | 'pdv' | 'mesa'; de onde o pedido entrou — escopa o alerta de
   "novo pedido" e a impressão do agente ao 'web', e dá o "Canal" na lista de Pedidos)
 ```
