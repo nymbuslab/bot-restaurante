@@ -10,6 +10,7 @@ const crypto  = require("crypto");
 const multer  = require("multer");
 const helmet  = require("helmet");
 const rateLimit = require("express-rate-limit");
+const { ipKeyGenerator } = require("express-rate-limit"); // normaliza IPv6 em /56
 const QRCode  = require("qrcode");
 
 const empresas = require("./empresas");
@@ -91,10 +92,31 @@ app.get("/health", (req, res) => {
 
 // ---- Rate limiting (anti brute force / abuso) ----
 // trust proxy acima garante req.ip correto atrás do Fly. Mensagens genéricas.
+// Chave do rate limit: o IP REAL de quem chamou.
+//
+// `trust proxy` sozinho NÃO bastou atrás do Fly. Quando o `X-Forwarded-For` não
+// vem com o hop que o `trust proxy: 1` espera, `req.ip` cai no IP interno do
+// proxy — e aí a plataforma INTEIRA divide o mesmo balde. Na prática: 10
+// tentativas de login a cada 15 minutos somando todos os restaurantes.
+//
+// Foi o que tirou um restaurante do ar em 2026-08-22. Os aparelhos de uma mesma
+// loja (PDV, celular, tablet) foram deslogados juntos, tentaram entrar ao mesmo
+// tempo, estouraram o balde — e o 429 travou também quem não tinha nada a ver.
+// O sintoma enganava: cada login funcionava, a sessão era criada, e mesmo assim
+// a tela dizia "muitas tentativas".
+//
+// O Fly manda o IP de origem em `Fly-Client-IP`; ele tem prioridade sobre o
+// `req.ip`, que fica de reserva para rodar fora do Fly (local, outro host).
+function chaveDoIp(req) {
+  const fly = String((req.headers && req.headers["fly-client-ip"]) || "").trim();
+  return ipKeyGenerator(fly || req.ip || "");
+}
+
 function limitador(windowMin, max, msg) {
   return rateLimit({
     windowMs: windowMin * 60 * 1000,
     max,
+    keyGenerator: chaveDoIp,
     standardHeaders: true,
     legacyHeaders: false,
     message: { erro: msg },
@@ -502,7 +524,16 @@ app.post("/api/logout", async (req, res) => {
   const token = (req.headers["authorization"] || "").replace("Bearer ", "");
   if (token) {
     try {
-      await supabaseAdmin.auth.admin.signOut(token, "global");
+      // "local" (só esta sessão), NÃO "global".
+      //
+      // A conta de um restaurante é COMPARTILHADA entre os aparelhos: o PDV do
+      // balcão, o celular do dono, o tablet do salão. O "global" derrubava todos
+      // quando UMA pessoa clicava em Sair — foi o que causou o incidente de
+      // 2026-08-22. O objetivo original continua atendido: sair no computador
+      // emprestado invalida aquele refresh token, que era o furo real. Derrubar
+      // TODA a credencial segue existindo onde faz sentido: no reset de senha
+      // (`revogarTodasSessoes`) e na troca de credencial (`others`).
+      await supabaseAdmin.auth.admin.signOut(token, "local");
     } catch (e) {
       console.error("logout: falha ao revogar sessão —", e && e.message);
     }
