@@ -2296,8 +2296,19 @@ app.post("/api/caixa/abrir", exigeAuth, async (req, res) => {
 
 app.post("/api/caixa/receber/:pedidoId", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.receberPedido(req.tenantDir, Number(req.params.pedidoId), { pagamentos: req.body.pagamentos, forma: req.body.forma, valor: req.body.valor })); }
-  catch (e) { res.status(400).json({ erro: e.message }); }
+  try {
+    // Confere a forma contra a lista do tenant, como o PDV já faz. Sem isto,
+    // qualquer texto do cliente virava forma de pagamento no caixa — e a lista de
+    // reserva do front carregava o vocabulário ANTIGO, que reintroduziria as
+    // grafias limpas pela migração de 22/08. `formaPermitida` compara contra a
+    // lista NORMALIZADA, a mesma que a tela recebeu (ver o porquê em 8a366eb).
+    const cfgReceber = store.getConfig(req.tenantDir) || {};
+    const informadas = Array.isArray(req.body.pagamentos) ? req.body.pagamentos : [{ forma: req.body.forma }];
+    if (informadas.some((pg) => !formasPag.formaPermitida(cfgReceber.pagamentos, pg && pg.forma))) {
+      return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    }
+    res.json(await caixa.receberPedido(req.tenantDir, Number(req.params.pedidoId), { pagamentos: req.body.pagamentos, forma: req.body.forma, valor: req.body.valor }));
+  } catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
 app.post("/api/caixa/estornar/:pedidoId", exigeAuth, async (req, res) => {
@@ -2806,7 +2817,16 @@ app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
     const pagsRaw = Array.isArray(b.pagamentos) ? b.pagamentos : [{ forma: b.forma, valor: b.valor }];
     // Normaliza o troco no SERVIDOR (não confia no cliente) e VALIDA a soma contra o que
     // falta — sem isto, um valor inflado creditava caixa fantasma (a conferência estourava).
+    // Confere a forma contra a lista do tenant, como o PDV já faz. Sem isto,
+    // qualquer texto do cliente virava forma de pagamento no caixa — e a lista de
+    // reserva do front carregava o vocabulário ANTIGO, que reintroduziria as
+    // grafias limpas pela migração de 22/08. `formaPermitida` compara contra a
+    // lista NORMALIZADA, a mesma que a tela recebeu (ver o porquê em 8a366eb).
     const pags = pdv.normalizarPagamentos(pagsRaw);
+    const cfgParcial = store.getConfig(req.tenantDir) || {};
+    if (pags.some((pg) => !formasPag.formaPermitida(cfgParcial.pagamentos, pg.forma))) {
+      return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    }
     const pedsP = await mesasDb.pedidosDaMesa(req.tenantDir, mesaId);
     const resumoP = mesas.calcularTotalMesa(pedsP, mesa.taxaServico);
     const jaRecebido = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);
@@ -2854,7 +2874,16 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
     const total = resumo.total; // mesa não tem desconto — não afrouxa a validação com b.desconto
     const recebidoAntes = await mesasDb.recebidoDaMesa(req.tenantDir, mesaId);
     // Normaliza troco no SERVIDOR (não confia no cliente): valor líquido por forma.
+    // Confere a forma contra a lista do tenant, como o PDV já faz. Sem isto,
+    // qualquer texto do cliente virava forma de pagamento no caixa — e a lista de
+    // reserva do front carregava o vocabulário ANTIGO, que reintroduziria as
+    // grafias limpas pela migração de 22/08. `formaPermitida` compara contra a
+    // lista NORMALIZADA, a mesma que a tela recebeu (ver o porquê em 8a366eb).
     const pagamentos = pdv.normalizarPagamentos(Array.isArray(b.pagamentos) ? b.pagamentos : []);
+    const cfgMesa = store.getConfig(req.tenantDir) || {};
+    if (pagamentos.some((pg) => !formasPag.formaPermitida(cfgMesa.pagamentos, pg.forma))) {
+      return res.status(400).json({ erro: "Forma de pagamento inválida." });
+    }
     const somaAgora = Math.round(pagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100;
     if (recebidoAntes + somaAgora + 0.01 < total) {
       return res.status(400).json({ erro: "Pagamento insuficiente para fechar a conta." });

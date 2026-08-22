@@ -7563,7 +7563,10 @@ var mesaPagarAlvo = 0;     // alvo a cobrir (falta a receber), em reais
 function mesaFormasPagamento() {
   if (configAtual && Array.isArray(configAtual.pagamentos) && configAtual.pagamentos.length) return configAtual.pagamentos;
   if (typeof pdvFormasPg !== "undefined" && pdvFormasPg && pdvFormasPg.length > 1) return pdvFormasPg;
-  return ["Dinheiro", "Cartão Débito", "Cartão Crédito", "Pix", "Outros"];
+  // Reserva vinda do vocabulário ÚNICO. A lista literal que estava aqui carregava
+  // as grafias antigas ("Cartão Débito", "Pix") e um "Outros" que nem existe no
+  // vocabulário — se caísse em uso, reintroduziria a sujeira limpa em 22/08.
+  return window.Pagamentos.FORMAS_PAGAMENTO.slice();
 }
 function mesaPagoTotal() { return Math.round(mesaPagamentos.reduce(function (s, p) { return s + (Number(p.valor) || 0); }, 0) * 100) / 100; }
 
