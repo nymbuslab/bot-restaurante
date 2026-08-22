@@ -962,3 +962,15 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - Isso também impede que alguém escolha um bairro mais barato do que o do endereço real.
 - No cupom, valores acima de mil reais no resumo do pagamento passam a sair no mesmo
   formato do total, com o ponto de milhar.
+
+## [0.96.0] — Painel master: sair agora encerra a sessão de verdade
+
+- Sair do painel master encerra a sessão em todos os lugares. Antes o acesso sumia da aba
+  mas continuava válido nos bastidores por até 30 dias.
+- Trocar o e-mail ou a senha do master também desconecta os outros acessos, do mesmo jeito
+  que já acontecia no painel do restaurante.
+- As ações sobre um restaurante (suspender, reativar, excluir, trocar plano, cortesia)
+  passam a devolver uma mensagem quando algo falha. Antes a tela podia ficar esperando para
+  sempre, sem erro e sem confirmação.
+- Ao excluir um restaurante, se a assinatura for cancelada mas a exclusão falhar em seguida,
+  a mensagem diz exatamente isso, em vez de deixar você no escuro.

@@ -1148,13 +1148,31 @@ app.post("/api/admin/refresh", async (req, res) => {
   }
 });
 
-// Logout do master é stateless (o cliente descarta o token). No-op no servidor.
-app.post("/api/admin/logout", (_req, res) => res.json({ ok: true }));
+// Sair do painel master invalida a SESSÃO, não só o token guardado na aba.
+// Antes era um no-op: o token vivia em `sessionStorage` e sumia ao fechar a aba,
+// mas o refresh token seguia válido por até 30 dias. Quando o defeito foi
+// encontrado havia 35 sessões abertas do master, a mais antiga com dois meses,
+// e nenhum caminho de código jamais apagava nenhuma delas. Mesma correção que o
+// login do restaurante já tinha; a conta que suspende e exclui restaurante era
+// a única de fora. "global" porque sair do painel master é sair de todo lugar.
+app.post("/api/admin/logout", async (req, res) => {
+  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
+  if (token) {
+    try { await supabaseAdmin.auth.admin.signOut(token, "global"); }
+    catch (e) { console.error("logout master: falha ao revogar sessão —", e && e.message); }
+  }
+  res.json({ ok: true });
+});
 
 // ---- Super-admin: gestão de tenants ----
 
 app.get("/api/admin/tenants", exigeSuperAdmin, async (_req, res) => {
-  res.json(await empresas.listar());
+  try {
+    res.json(await empresas.listar());
+  } catch (e) {
+    console.error("admin listar tenants:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar os restaurantes." });
+  }
 });
 
 // Início do mês corrente no fuso BR (America/Sao_Paulo, UTC-3 fixo), em UTC ISO.
@@ -1346,6 +1364,16 @@ app.patch("/api/admin/conta", exigeSuperAdmin, async (req, res) => {
     const upd = await supabaseAdmin.auth.admin.updateUserById(req.adminUserId, updates);
     if (upd.error) return res.status(400).json({ erro: "Não foi possível atualizar a conta." });
     if (novoEmail) await plataforma.salvarMaster({ email: novoEmail }); // allowlist segue o e-mail
+    // Derruba as OUTRAS sessões: um refresh token roubado não pode sobreviver à
+    // troca de credencial (mesma regra do restaurante). Mantém a de quem está
+    // trocando, para o admin não cair do painel no meio do trabalho. Leva junto a
+    // sessão que o `signInWithPassword` acima criou só para conferir a senha atual
+    // — essa verificação é um login de verdade, e cada uma deixava uma sessão para trás.
+    const tokenAtual = (req.headers["authorization"] || "").replace("Bearer ", "");
+    if (tokenAtual) {
+      try { await supabaseAdmin.auth.admin.signOut(tokenAtual, "others"); }
+      catch (e) { console.error("master: falha ao revogar outras sessões —", e && e.message); }
+    }
     const oQue = (updates.password && novoEmail) ? "Sua senha e e-mail" : updates.password ? "Sua senha" : "Seu e-mail de acesso";
     mail.avisoSeguranca(novoEmail || alvo, oQue).catch((e) => console.error("email aviso master:", e.message));
     res.json({ ok: true, email: novoEmail || alvo });
@@ -1368,75 +1396,104 @@ app.post("/api/admin/tenants", exigeSuperAdmin, async (req, res) => {
 });
 
 app.patch("/api/admin/tenants/:slug/suspender", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const emp = await empresas.buscarPorSlug(slug);
-  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
-  // Efeito real: login recusado (autenticar filtra ativo) + exigeAuth checa ativo
-  // a cada request (sessão aberta cai no próximo request); e o bot é derrubado.
-  await empresas.setAtivo(slug, 0);
-  await multiBot.desconectar(slug);
-  // Pausa a cobrança no Stripe (reversível) para não cobrar enquanto suspenso.
-  // O bloqueio de acesso já aconteceu; se o Stripe falhar, avisamos o admin.
-  let avisoStripe = null;
-  if (emp.stripeSubscriptionId) {
-    try {
-      await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId);
-    } catch (e) {
-      console.error("pausar assinatura ao suspender:", e.message);
-      avisoStripe = "Tenant suspenso, mas NÃO consegui pausar a cobrança no Stripe. Verifique no painel do Stripe ou contate o suporte para evitar cobrança indevida.";
+  try {
+    const slug = req.params.slug;
+    const emp = await empresas.buscarPorSlug(slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    // Efeito real: login recusado (autenticar filtra ativo) + exigeAuth checa ativo
+    // a cada request (sessão aberta cai no próximo request); e o bot é derrubado.
+    await empresas.setAtivo(slug, 0);
+    await multiBot.desconectar(slug);
+    // Pausa a cobrança no Stripe (reversível) para não cobrar enquanto suspenso.
+    // O bloqueio de acesso já aconteceu; se o Stripe falhar, avisamos o admin.
+    let avisoStripe = null;
+    if (emp.stripeSubscriptionId) {
+      try {
+        await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId);
+      } catch (e) {
+        console.error("pausar assinatura ao suspender:", e.message);
+        avisoStripe = "Tenant suspenso, mas NÃO consegui pausar a cobrança no Stripe. Verifique no painel do Stripe ou contate o suporte para evitar cobrança indevida.";
+      }
     }
+    res.json({ ok: true, ativo: false, avisoStripe });
+  } catch (e) {
+    console.error("admin suspender tenant:", e.message);
+    res.status(500).json({ erro: "Não foi possível suspender o restaurante. Tente de novo." });
   }
-  res.json({ ok: true, ativo: false, avisoStripe });
 });
 
 app.patch("/api/admin/tenants/:slug/reativar", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const emp = await empresas.buscarPorSlug(slug);
-  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
-  await empresas.setAtivo(slug, 1);
-  // Retoma a cobrança pausada na suspensão. Falhou? Reativa mesmo assim e avisa.
-  let avisoStripe = null;
-  if (emp.stripeSubscriptionId) {
-    try {
-      await stripeBilling.retomarAssinatura(emp.stripeSubscriptionId);
-    } catch (e) {
-      console.error("retomar assinatura ao reativar:", e.message);
-      avisoStripe = "Tenant reativado, mas NÃO consegui retomar a cobrança no Stripe. Verifique no painel do Stripe ou contate o suporte.";
+  try {
+    const slug = req.params.slug;
+    const emp = await empresas.buscarPorSlug(slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    await empresas.setAtivo(slug, 1);
+    // Retoma a cobrança pausada na suspensão. Falhou? Reativa mesmo assim e avisa.
+    let avisoStripe = null;
+    if (emp.stripeSubscriptionId) {
+      try {
+        await stripeBilling.retomarAssinatura(emp.stripeSubscriptionId);
+      } catch (e) {
+        console.error("retomar assinatura ao reativar:", e.message);
+        avisoStripe = "Tenant reativado, mas NÃO consegui retomar a cobrança no Stripe. Verifique no painel do Stripe ou contate o suporte.";
+      }
     }
+    res.json({ ok: true, ativo: true, avisoStripe });
+  } catch (e) {
+    console.error("admin reativar tenant:", e.message);
+    res.status(500).json({ erro: "Não foi possível reativar o restaurante. Tente de novo." });
   }
-  res.json({ ok: true, ativo: true, avisoStripe });
 });
 
 app.delete("/api/admin/tenants/:slug", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const { confirmacao } = req.body || {};
+  try {
+    const slug = req.params.slug;
+    const { confirmacao } = req.body || {};
 
-  if (confirmacao !== slug) {
-    return res.status(400).json({ erro: "Confirmação não confere. Envie { confirmacao: \"<slug>\" } igual ao slug." });
-  }
+    if (confirmacao !== slug) {
+      return res.status(400).json({ erro: "Confirmação não confere. Envie { confirmacao: \"<slug>\" } igual ao slug." });
+    }
 
-  const empresa = await empresas.buscarPorSlug(slug);
-  if (!empresa) return res.status(404).json({ erro: "Tenant não encontrado." });
+    const empresa = await empresas.buscarPorSlug(slug);
+    if (!empresa) return res.status(404).json({ erro: "Tenant não encontrado." });
 
-  // Se houver assinatura no Stripe, CANCELA antes de apagar — senão ficaria órfã
-  // cobrando o cartão. Falhou? Aborta a exclusão (não deixa cobrança viva).
-  if (empresa.stripeSubscriptionId) {
+    // Se houver assinatura no Stripe, CANCELA antes de apagar — senão ficaria órfã
+    // cobrando o cartão. Falhou? Aborta a exclusão (não deixa cobrança viva).
+    if (empresa.stripeSubscriptionId) {
+      try {
+        await stripeBilling.cancelarAssinatura(empresa.stripeSubscriptionId);
+      } catch (e) {
+        console.error("cancelar assinatura na exclusão (master):", e.message);
+        return res.status(502).json({
+          erro: "Não foi possível cancelar a assinatura no Stripe, então o tenant NÃO foi excluído (evita cobrança órfã). Verifique no painel do Stripe e tente de novo; se persistir, contate o suporte.",
+        });
+      }
+    }
+
+    // Daqui para baixo o Stripe JÁ foi cancelado. Uma falha agora deixa um estado
+    // meio-termo (assinatura cancelada, tenant de pé), e antes disso a requisição
+    // ficava pendurada: o admin não recebia resposta nenhuma e não tinha como saber
+    // em que pé as coisas ficaram. A mensagem diz exatamente isso, para a segunda
+    // tentativa ser uma decisão e não um chute.
     try {
-      await stripeBilling.cancelarAssinatura(empresa.stripeSubscriptionId);
+      // Ordem: parar o bot (libera a sessão em disco) → excluir (linha + cascade de
+      // pedidos + usuário do Auth + pasta do tenant).
+      await multiBot.desconectar(slug);
+      await empresas.excluir(slug);
     } catch (e) {
-      console.error("cancelar assinatura na exclusão (master):", e.message);
-      return res.status(502).json({
-        erro: "Não foi possível cancelar a assinatura no Stripe, então o tenant NÃO foi excluído (evita cobrança órfã). Verifique no painel do Stripe e tente de novo; se persistir, contate o suporte.",
+      console.error("admin excluir tenant:", e.message);
+      return res.status(500).json({
+        erro: empresa.stripeSubscriptionId
+          ? "A assinatura já foi cancelada no Stripe, mas o restaurante NÃO foi excluído. Ele segue de pé e sem cobrança. Tente excluir de novo; se persistir, contate o suporte."
+          : "Não foi possível excluir o restaurante. Nada foi apagado. Tente de novo.",
       });
     }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("admin excluir tenant (inesperado):", e.message);
+    res.status(500).json({ erro: "Não foi possível excluir o restaurante." });
   }
-
-  // Ordem: parar o bot (libera a sessão em disco) → excluir (linha + cascade de
-  // pedidos + usuário do Auth + pasta do tenant).
-  await multiBot.desconectar(slug);
-  await empresas.excluir(slug);
-
-  res.json({ ok: true });
 });
 
 // ---- Super-admin: assinatura por tenant ----
@@ -1473,20 +1530,25 @@ app.get("/api/admin/tenants/:slug/assinatura", exigeSuperAdmin, async (req, res)
 // Troca o plano do tenant (Essencial <-> Completo). Com assinatura viva no Stripe,
 // troca o preço lá (proration); senão (cortesia/sem Stripe), só ajusta a coluna.
 app.patch("/api/admin/tenants/:slug/plano", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const plano = req.body && req.body.plano;
-  if (plano !== "essencial" && plano !== "completo") return res.status(400).json({ erro: "Plano inválido." });
-  const emp = await empresas.buscarPorSlug(slug);
-  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
-  if (empresas.planoDe(emp) === plano) return res.json({ ok: true, plano, jaNoPlano: true });
   try {
-    const temStripeVivo = emp.stripeSubscriptionId && ["trialing", "active", "past_due"].includes(emp.assinaturaStatus);
-    if (temStripeVivo && stripeBilling.CONFIGURADO) {
-      await stripeBilling.trocarPlano(slug, emp.stripeSubscriptionId, plano); // proration + aplica plano
-    } else {
-      await empresas.atualizarAssinatura(slug, { plano }); // override (cortesia / sem Stripe)
+    const slug = req.params.slug;
+    const plano = req.body && req.body.plano;
+    if (plano !== "essencial" && plano !== "completo") return res.status(400).json({ erro: "Plano inválido." });
+    const emp = await empresas.buscarPorSlug(slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    if (empresas.planoDe(emp) === plano) return res.json({ ok: true, plano, jaNoPlano: true });
+    try {
+      const temStripeVivo = emp.stripeSubscriptionId && ["trialing", "active", "past_due"].includes(emp.assinaturaStatus);
+      if (temStripeVivo && stripeBilling.CONFIGURADO) {
+        await stripeBilling.trocarPlano(slug, emp.stripeSubscriptionId, plano); // proration + aplica plano
+      } else {
+        await empresas.atualizarAssinatura(slug, { plano }); // override (cortesia / sem Stripe)
+      }
+      res.json({ ok: true, plano });
+    } catch (e) {
+      console.error("admin trocar plano:", e.message);
+      res.status(500).json({ erro: "Não foi possível trocar o plano." });
     }
-    res.json({ ok: true, plano });
   } catch (e) {
     console.error("admin trocar plano:", e.message);
     res.status(500).json({ erro: "Não foi possível trocar o plano." });
@@ -1498,55 +1560,70 @@ app.patch("/api/admin/tenants/:slug/plano", exigeSuperAdmin, async (req, res) =>
 // fim do trial — a cortesia sozinha é invisível ao Stripe. O webhook, por sua vez,
 // preserva a cortesia (ver aplicarSubscription em src/stripe.js).
 app.patch("/api/admin/tenants/:slug/assinatura/cortesia", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const emp = await empresas.buscarPorSlug(slug);
-  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
-  let pausado = true;
-  if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
-    try {
-      await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId);
-      // Anula fatura já em aberto (caso a cortesia venha depois do trial vencer):
-      // a pausa só evita cobranças futuras; a fatura finalizada seguiria cobrando.
-      await stripeBilling.anularFaturasAbertas(emp.stripeCustomerId);
+  try {
+    const slug = req.params.slug;
+    const emp = await empresas.buscarPorSlug(slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    let pausado = true;
+    if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
+      try {
+        await stripeBilling.pausarAssinatura(emp.stripeSubscriptionId);
+        // Anula fatura já em aberto (caso a cortesia venha depois do trial vencer):
+        // a pausa só evita cobranças futuras; a fatura finalizada seguiria cobrando.
+        await stripeBilling.anularFaturasAbertas(emp.stripeCustomerId);
+      }
+      catch (e) { pausado = false; console.error("cortesia: falha ao pausar/anular no Stripe:", e.message); }
     }
-    catch (e) { pausado = false; console.error("cortesia: falha ao pausar/anular no Stripe:", e.message); }
+    await empresas.atualizarAssinatura(slug, { status: "cortesia", trialAte: null, proximaCobranca: null });
+    res.json({ ok: true, assinaturaStatus: "cortesia", pausadoNoStripe: pausado });
+  } catch (e) {
+    console.error("admin cortesia:", e.message);
+    res.status(500).json({ erro: "Não foi possível liberar a cortesia." });
   }
-  await empresas.atualizarAssinatura(slug, { status: "cortesia", trialAte: null, proximaCobranca: null });
-  res.json({ ok: true, assinaturaStatus: "cortesia", pausadoNoStripe: pausado });
 });
 
 // Revoga a cortesia (volta a "nenhuma" e derruba o bot). Se a cortesia havia pausado
 // a cobrança no Stripe, RETOMA o ciclo normal — o webhook seguinte reflete o status
 // real (o tenant volta a pagar/ficar a receber).
 app.patch("/api/admin/tenants/:slug/assinatura/revogar", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const emp = await empresas.buscarPorSlug(slug);
-  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
-  if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
-    try { await stripeBilling.retomarAssinatura(emp.stripeSubscriptionId); }
-    catch (e) { console.error("revogar: falha ao retomar no Stripe:", e.message); }
+  try {
+    const slug = req.params.slug;
+    const emp = await empresas.buscarPorSlug(slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    if (emp.stripeSubscriptionId && stripeBilling.CONFIGURADO) {
+      try { await stripeBilling.retomarAssinatura(emp.stripeSubscriptionId); }
+      catch (e) { console.error("revogar: falha ao retomar no Stripe:", e.message); }
+    }
+    await empresas.atualizarAssinatura(slug, { status: "nenhuma" });
+    await multiBot.desconectar(slug).catch(() => {});
+    res.json({ ok: true, assinaturaStatus: "nenhuma" });
+  } catch (e) {
+    console.error("admin revogar cortesia:", e.message);
+    res.status(500).json({ erro: "Não foi possível revogar a cortesia." });
   }
-  await empresas.atualizarAssinatura(slug, { status: "nenhuma" });
-  await multiBot.desconectar(slug).catch(() => {});
-  res.json({ ok: true, assinaturaStatus: "nenhuma" });
 });
 
 // Cancela a assinatura no Stripe (o webhook subscription.deleted confirma depois).
 app.patch("/api/admin/tenants/:slug/assinatura/cancelar", exigeSuperAdmin, async (req, res) => {
-  const slug = req.params.slug;
-  const emp = await empresas.buscarPorSlug(slug);
-  if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
-  if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
-  if (!emp.stripeSubscriptionId) return res.status(400).json({ erro: "Este restaurante não tem assinatura no Stripe." });
   try {
-    await stripeBilling.cancelarAssinatura(emp.stripeSubscriptionId);
-    // Reflexo imediato (o webhook subscription.deleted confirma logo em seguida).
-    await empresas.atualizarAssinatura(slug, { status: "canceled" });
-    await multiBot.desconectar(slug).catch(() => {});
-    res.json({ ok: true, assinaturaStatus: "canceled" });
+    const slug = req.params.slug;
+    const emp = await empresas.buscarPorSlug(slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
+    if (!emp.stripeSubscriptionId) return res.status(400).json({ erro: "Este restaurante não tem assinatura no Stripe." });
+    try {
+      await stripeBilling.cancelarAssinatura(emp.stripeSubscriptionId);
+      // Reflexo imediato (o webhook subscription.deleted confirma logo em seguida).
+      await empresas.atualizarAssinatura(slug, { status: "canceled" });
+      await multiBot.desconectar(slug).catch(() => {});
+      res.json({ ok: true, assinaturaStatus: "canceled" });
+    } catch (e) {
+      console.error("cancelar assinatura:", e.message);
+      res.status(500).json({ erro: "Falha ao cancelar no Stripe." });
+    }
   } catch (e) {
-    console.error("cancelar assinatura:", e.message);
-    res.status(500).json({ erro: "Falha ao cancelar no Stripe." });
+    console.error("admin cancelar assinatura:", e.message);
+    res.status(500).json({ erro: "Não foi possível cancelar a assinatura." });
   }
 });
 

@@ -81,6 +81,20 @@
   A allowlist é `plataforma_config.master_email` (editável via `PATCH /api/admin/conta`) com bootstrap
   na env `SUPERADMIN_EMAIL` (`masterEmail()` em `servidor.js`). Trocar e-mail/senha = `updateUserById`
   no Supabase (+ atualiza `master_email`). O `master_senha_hash` foi aposentado.
+- **Revogação de sessão (master):** `POST /api/admin/logout` faz `signOut(token, "global")` e
+  `PATCH /api/admin/conta` faz `signOut(token, "others")` depois de trocar a credencial — as mesmas
+  regras do painel do restaurante. Antes o logout era **no-op** e a troca de credencial não revogava
+  nada: o token vivia em `sessionStorage` e sumia ao fechar a aba, mas o refresh token seguia válido
+  por até 30 dias. Quando o defeito foi encontrado havia **35 sessões abertas do master**, a mais
+  antiga com dois meses. O `"others"` na troca de credencial mantém quem está mexendo logado e leva
+  junto a sessão que o `signInWithPassword` da conferência de senha atual cria — essa verificação
+  é um login de verdade, e cada uma deixava uma sessão para trás.
+- **Corpo protegido:** toda rota `/api/admin/*` assíncrona tem o corpo **inteiro** dentro de
+  `try/catch`. Uma rejeção solta não derruba o processo (o `index.js` instala um handler global de
+  `unhandledRejection`), mas também **nunca responde**: a requisição fica pendurada. O caso crítico
+  é o `DELETE`, onde o Stripe é cancelado **antes** de apagar: falha depois disso devolve **500 com
+  mensagem própria** ("a assinatura já foi cancelada, mas o restaurante NÃO foi excluído"), para a
+  segunda tentativa ser decisão e não chute.
 - **Footer da landing** (`index.html`) consome `GET /api/plataforma/publico` e exibe Nome Fantasia,
   Razão Social, CNPJ, Endereço, Telefone e ícones Facebook/Instagram **quando preenchidos** (vazio =
   footer padrão, sem placeholder falso).
