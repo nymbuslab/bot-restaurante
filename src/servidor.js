@@ -516,8 +516,8 @@ app.get("/api/agente/versao-publicada", async (req, res) => {
 // Sair de verdade: limpar o cookie só some com a chave da porta, não tranca a
 // porta. O refresh token do Supabase seguia válido por até 30 dias, então
 // "sair" num computador emprestado não tirava ninguém de lugar nenhum.
-// `signOut(jwt, 'global')` derruba todas as sessões do usuário; o access token
-// já emitido vale até o `exp` (~1h), mas sem refresh não há renovação.
+// `signOut(jwt, 'local')` derruba a sessão DESTE aparelho; o access token já
+// emitido vale até o `exp` (~1h), mas sem refresh não há renovação.
 // Best-effort: o logout NUNCA pode falhar por causa disto, senão a pessoa fica
 // presa numa sessão que ela pediu para encerrar.
 app.post("/api/logout", async (req, res) => {
