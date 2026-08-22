@@ -123,3 +123,48 @@ test("esperadoPorForma: dinheiro = espécie inteira, resto = recebido líquido; 
   assert.equal(somaForma, totalEmCaixa(c, r)); // 100 + 110 + 10 - 25 - 5 = 190
 });
 
+
+// ---------------------------------------------------------------------------
+// A tela do caixa precisa explicar o "Total em Caixa" que ela mostra.
+//
+// A legenda dizia "Valor inicial + Suprimentos + Vendas - Sangrias", mas o
+// calculo tambem subtrai os CANCELAMENTOS, e o card "Movimentacao do caixa" nao
+// os listava em lugar nenhum. Nao e hipotese: a producao tinha 12 cancelamentos
+// somando R$ 547,50, nos dois restaurantes. Cada pedido pago cancelado derrubava
+// o total sem que a tela explicasse de onde saiu — e quem confere a gaveta nao
+// fechava a conta.
+//
+// A linha de Cancelamentos so aparece quando existe algum no turno, para nao
+// poluir o dia normal com um zero que nao diz nada.
+// ---------------------------------------------------------------------------
+
+const fsCx = require("fs");
+const pathCx = require("path");
+const appCx = fsCx.readFileSync(pathCx.join(__dirname, "..", "public", "app.js"), "utf8");
+
+function blocoCaixaAberto() {
+  const i = appCx.indexOf("function renderCaixaAberto(");
+  assert.ok(i > -1, "renderCaixaAberto não encontrado");
+  const fim = appCx.indexOf("\nasync function estornarCaixa", i);
+  return appCx.slice(i, fim === -1 ? undefined : fim);
+}
+
+test("a legenda do Total em Caixa cita os cancelamentos que ela subtrai", () => {
+  const b = blocoCaixaAberto();
+  const i = b.indexOf("cx-formula");
+  assert.ok(i > -1, "legenda da fórmula não encontrada");
+  const legenda = b.slice(i, i + 220);
+  assert.match(legenda, /Cancelamentos/i,
+    "a conta subtrai cancelamentos; omitir isso na legenda impede conferir a gaveta");
+});
+
+test("o card de movimentação mostra os cancelamentos do turno", () => {
+  const b = blocoCaixaAberto();
+  const i = b.indexOf("Movimenta\u00e7\u00e3o do caixa");
+  assert.ok(i > -1);
+  const card = b.slice(i, i + 900);
+  assert.match(card, /Cancelamentos/,
+    "sem a linha, os R$ 547,50 existem só no extrato, misturados com o resto");
+  assert.match(card, /cancelamentos\s*>\s*0/,
+    "a linha só aparece quando há cancelamento — zero fixo polui o dia normal");
+});

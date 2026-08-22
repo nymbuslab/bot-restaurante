@@ -3368,13 +3368,24 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
-  const r = await api("PUT", "/api/config", configAtual);
-  btn.disabled = false;
-  btn.textContent = "Salvar configurações";
-  if (r && r.ok) {
-    let aviso = null;
-    try { aviso = (await r.json()).avisoFrete; } catch (_) { /* sem corpo */ }
-    toast(aviso ? "Configurações salvas. " + aviso : "Configurações salvas!");
+  try {
+    const r = await api("PUT", "/api/config", configAtual);
+    if (!r) return; // 401 já redirecionou
+    if (r.ok) {
+      let aviso = null;
+      try { aviso = (await r.json()).avisoFrete; } catch (_) { /* sem corpo */ }
+      toast(aviso ? "Configurações salvas. " + aviso : "Configurações salvas!");
+      return;
+    }
+    // Mesma regra do salvar cardápio: a mensagem do servidor diz o que corrigir.
+    const d = await r.json().catch(() => ({}));
+    toast(d.erro || "Não foi possível salvar as configurações. Tente de novo.", "erro");
+  } catch (_) {
+    toast("Sem conexão com o servidor. As configurações NÃO foram salvas.", "erro");
+  } finally {
+    // `api()` lança quando o fetch falha; sem o finally o botão ficava preso.
+    btn.disabled = false;
+    btn.textContent = "Salvar configurações";
   }
 });
 
@@ -3668,7 +3679,7 @@ function renderCaixaAberto(data) {
       <div>
         <span class="cx-badge">Caixa aberto</span>
         <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
-        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias</span>
+        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias − Cancelamentos</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
@@ -3702,6 +3713,7 @@ function renderCaixaAberto(data) {
         <div class="caixa-linha"><span>Valor inicial (troco)</span><span>R$ ${fmtBRn(fundo)}</span></div>
         <div class="caixa-linha"><span>Suprimentos</span><span>R$ ${fmtBRn(suprimentos)}</span></div>
         <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
+        ${cancelamentos > 0 ? `<div class="caixa-linha"><span>Cancelamentos</span><span>− R$ ${fmtBRn(cancelamentos)}</span></div>` : ""}
         <div class="cx-box">
           <span class="cx-box-rotulo">Total Faturamento</span>
           <span class="cx-box-formula">Total de vendas (todas as formas)</span>
@@ -3722,8 +3734,18 @@ function renderCaixaAberto(data) {
 
 async function estornarCaixa(id) {
   if (!(await confirmar("Estornar este recebimento?", 'O pagamento volta para "a receber" e sai do caixa. Faça isso só se recebeu por engano.', "Estornar", "Voltar"))) return;
-  const r = await api("POST", "/api/caixa/estornar/" + id, {});
-  if (r && r.ok) { toast("Estornado."); carregarCaixa(); }
+  try {
+    const r = await api("POST", "/api/caixa/estornar/" + id, {});
+    if (!r) return; // 401 já redirecionou
+    if (r.ok) { toast("Estornado."); carregarCaixa(); return; }
+    // O diálogo de confirmação fala em dinheiro saindo do caixa. Falhar calado
+    // deixava a pessoa sem saber se o estorno aconteceu — e o motivo mais comum
+    // (caixa já fechado) só o servidor sabe dizer.
+    const d = await r.json().catch(() => ({}));
+    toast(d.erro || "Não foi possível estornar. Recarregue o caixa e tente de novo.", "erro");
+  } catch (_) {
+    toast("Sem conexão com o servidor. O estorno NÃO foi feito.", "erro");
+  }
 }
 
 async function movimentoCaixa(tipo) {

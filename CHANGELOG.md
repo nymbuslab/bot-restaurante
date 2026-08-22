@@ -994,3 +994,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   falhar em silêncio.
 - Se a internet cair no meio do salvamento, aparece um aviso e o botão volta a funcionar.
   Antes ele ficava preso em "Salvando..." até recarregar a página.
+
+## [0.99.0] — Avisos que faltavam e um caixa que fecha a conta
+
+- Salvar configurações e estornar um recebimento agora avisam quando não dão certo, com o
+  motivo na tela. Antes falhavam sem dizer nada.
+- Se a internet cair durante o salvamento das configurações, aparece um aviso e o botão
+  volta a funcionar.
+- No caixa, os cancelamentos passam a aparecer na "Movimentação do caixa", junto de
+  suprimentos e sangrias. Eles já eram descontados do Total em Caixa, mas não apareciam em
+  lugar nenhum, e a conta da gaveta não fechava.
