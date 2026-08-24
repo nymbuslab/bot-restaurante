@@ -14,15 +14,7 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-**Checkpoint de 2026-08-24**
-
-O **review das telas do front terminou** (era o P1 aberto): saíram as três levas dos
-cadastros e configurações, somando 10 achados corrigidos em 3 commits, todos em ✅ Concluído.
-Os achados que estavam presos no checkpoint anterior viraram item próprio em 📋 Próximos Passos,
-que é onde alguém procura pendência.
-
-Nada em edição. Próximo passo natural: **deploy**, que junta 3 commits ainda não publicados
-(`7def0ad`, `d17d126` e o desta leva).
+_(nada no momento)_
 
 ## 📋 Próximos Passos
 
@@ -63,6 +55,8 @@ Nada em edição. Próximo passo natural: **deploy**, que junta 3 commits ainda 
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **Deploy da v134** — subiu as três levas do review das telas do front (`7def0ad`, `d17d126`, `a28228b`). **Conferido em produção:** máquina `started` com health check passando; `horario.js` sendo servido (6.745 bytes); o `app.js` publicado carregando `Horario.abertoAgora`, `Pagamentos.FORMAS_PAGAMENTO`, `planoInfo`/`precoPlano` e o aviso novo do "Conectar ao WhatsApp", com **zero** ocorrências das cópias antigas (`PLANOS_INFO`, `FORMAS_FIXAS`, `window.confirm(msg)`, `DIAS_KEY`); `/api/assinatura` devolvendo 401 sem token. **Caminho do cliente testado no tenant real** (`GET /api/c/sabor-d-casa`): `aberto: true` numa segunda 13:39 BR, coerente com "Segunda a Sexta das 07:00 às 22:00", projeção com 12 categorias e 64 itens e as quatro formas canônicas de pagamento. É a prova de que trocar o `estaAberto` pelo módulo compartilhado não mexeu no que o cliente vê. **Não conferido:** a pílula de status dentro do painel, que exige login do dono. Primeira tentativa de deploy falhou com `unauthorized` porque o token do flyctl só enxergava o app, e não a organização, onde vive o builder; resolvido com `fly auth login`.
 
 - [x] **Review das telas do front concluído: Conta, Privacidade, Conexão e Assinatura (leva 3), e o P1 fecha aqui** — **Conta de acesso e Privacidade saíram sem achado**: trocar e-mail e senha confere a senha atual e revoga as outras sessões, a exclusão exige senha mais a palavra "EXCLUIR", cancela a assinatura no Stripe **antes** de apagar e aborta se o cancelamento falhar, e o servidor derruba os cookies. Nos outros dois blocos, quatro achados. **(1) "Conectar ao WhatsApp" falhava calado:** `conectarBot` e `desconectarBot` jogavam a resposta fora, mas a rota tem dois portões que recusam — `exigeAssinatura` (402, "Assinatura inativa. Ative seu plano para usar o bot") e o rate limit (429). O dono via "Iniciando...", o poll de 4s voltava sozinho ao estado desconectado e ninguém dizia o motivo; ele clicava de novo, e de novo. O `resetarBot`, três linhas abaixo, sempre tratou certo, então era inconsistência dentro da mesma tela. Agora a mensagem do servidor aparece e o placeholder é desfeito na hora. **(2) O preço do plano estava escrito à mão numa mensagem de cobrança:** `src/planos.js` se declara "fonte única de nome/valor" e o comentário do `renderAssinatura` diz que os valores vêm da API, mas `public/app.js` tinha `PLANOS_INFO = { 79, 99 }`, e era essa cópia que montava a confirmação da troca ("Mudar para o Plano Completo (R$ 99/mês)? A diferença é cobrada proporcionalmente"), mais um `|| 79` de fallback e um botão com o valor no texto. Num reajuste, o card mostraria o preço novo e a tela que pede a autorização da cobrança, o antigo. `GET /api/assinatura` passou a devolver **os dois planos** (`planos`, direto de `PLANO_INFO`) e o front lê de lá; sem resposta da API sai "—", não um número inventado. **(3) A troca de plano usava `window.confirm`:** era a única confirmação do painel fora do modal `confirmar()`, criado justamente para substituí-lo, numa ação que gera cobrança proporcional imediata. **(4) Resquício na exclusão de conta:** `sessionStorage.removeItem("token")` não fazia nada (o painel do restaurante nunca guardou o token ali; ele vive em memória mais o cookie httpOnly, e o servidor já limpa os cookies), e os formulários de senha só eram limpos ao abrir, deixando o que foi digitado no input até a próxima abertura. 493 testes. **Ressalva: não validado no navegador** — o `.env` local aponta para o banco de produção. **Fecha o P1 "Terminar o review das telas do front"**, aberto desde que os quatro primeiros blocos renderam 30 achados: as três levas dos cadastros e configurações somaram mais 10.
 
