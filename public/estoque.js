@@ -182,6 +182,43 @@
     return Object.assign({}, cardapioNovo, { categorias: categorias });
   }
 
+  // O saldo do item mudou entre duas versões dele? Só conta o que `preservarSaldos`
+  // devolve do banco: `estoque` e `estoqueMinimo`, do produto e de cada variação (por id).
+  // É a régua para o editor decidir se carimba `_estoqueEditado`. O campo de saldo abre
+  // preenchido com a cópia que o navegador carregou, então carimbar sempre fazia uma
+  // edição de preço reescrever o saldo com o número velho e desfazer as vendas do dia.
+  // Variação criada ou removida conta como mudança: o dono mexeu na lista de saldos.
+  function saldoMudou(antes, depois) {
+    if (!antes || !depois) return true;
+    if (!_mesmoSaldo(antes, depois)) return true;
+    const va = _saldoPorId(antes.variacoes);
+    const vd = _saldoPorId(depois.variacoes);
+    const ids = Object.keys(va).concat(Object.keys(vd));
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      if (!va[id] || !vd[id]) return true;
+      if (!_mesmoSaldo(va[id], vd[id])) return true;
+    }
+    return false;
+  }
+
+  // "Sem controle" tem três grafias (ausente, null e ""), e o editor devolve string
+  // onde o banco guarda número. Compara pelo valor, não pela grafia.
+  function _numSaldo(v) {
+    if (v === undefined || v === null || v === "") return null;
+    const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+  function _mesmoSaldo(a, b) {
+    return _numSaldo(a && a.estoque) === _numSaldo(b && b.estoque)
+        && _numSaldo(a && a.estoqueMinimo) === _numSaldo(b && b.estoqueMinimo);
+  }
+  function _saldoPorId(lista) {
+    const out = {};
+    (Array.isArray(lista) ? lista : []).forEach(function (v) { if (v && v.id != null) out[String(v.id)] = v; });
+    return out;
+  }
+
   // Arredonda respeitando a unidade (kg tem 3 casas; un é inteiro).
   function _round(n, ehKg) {
     return ehKg ? Math.round(n * 1000) / 1000 : Math.round(n);
@@ -443,6 +480,6 @@
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
     acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste, linhasDeEstoque: linhasDeEstoque,
-    definirMinimo: definirMinimo, preservarSaldos: preservarSaldos, MARCA_ESTOQUE: MARCA_ESTOQUE,
+    definirMinimo: definirMinimo, preservarSaldos: preservarSaldos, saldoMudou: saldoMudou, MARCA_ESTOQUE: MARCA_ESTOQUE,
   };
 });

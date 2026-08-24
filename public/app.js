@@ -276,6 +276,31 @@ document.querySelectorAll(".nav-subtoggle").forEach((t) => t.addEventListener("c
 // CRUD + reordenar + contagem sobre cardapioAtual.categorias (mesmo jsonb do cardápio).
 // ============================================================
 function carregarCategorias() { renderCategorias(); }
+
+// Troca o nome do card por um input e salva no blur/Enter. Mora fora do listener
+// porque criar categoria também precisa abrir a edição: a nova nasce chamada
+// "Nova categoria" e o dono digita o nome ali mesmo, sem procurar o lápis.
+function catEditarNomeInline(idx) {
+  const cont = $("categorias-lista");
+  const div = cont && cont.querySelector('.cat-card-nome[data-i="' + idx + '"]');
+  if (!div || div.querySelector("input")) return;
+  const atual = (cardapioAtual.categorias[idx] || {}).nome || "";
+  div.innerHTML = '<input class="cat-nome-edit" value="' + escapar(atual) + '" aria-label="Nome da categoria" />';
+  const inp = div.querySelector("input");
+  inp.focus(); inp.select();
+  let feito = false;
+  const salvar = async () => {
+    if (feito) return; feito = true;
+    const novo = inp.value.trim();
+    if (!novo || novo === atual) { renderCategorias(); return; }
+    cardapioAtual.categorias[idx].nome = novo;
+    if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias[idx].nome = atual; toast("Não foi possível renomear.", "erro"); }
+    renderCategorias();
+  };
+  inp.addEventListener("blur", salvar);
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } else if (e.key === "Escape") { feito = true; renderCategorias(); } });
+}
+
 function renderCategorias() {
   const cont = $("categorias-lista");
   if (!cont) return;
@@ -318,26 +343,8 @@ function renderCategorias() {
     if (!novaAtiva && n > 0) toast("Categoria desativada. Ela e seus " + n + (n === 1 ? " item somem" : " itens somem") + " do cardápio e do PDV.");
   }));
   // Editar nome (inline no card)
-  cont.querySelectorAll(".cat-edit").forEach((b) => b.addEventListener("click", () => {
-    const idx = +b.dataset.i;
-    const div = cont.querySelector('.cat-card-nome[data-i="' + idx + '"]');
-    if (!div || div.querySelector("input")) return;
-    const atual = cardapioAtual.categorias[idx].nome || "";
-    div.innerHTML = '<input class="cat-nome-edit" value="' + escapar(atual) + '" aria-label="Nome da categoria" />';
-    const inp = div.querySelector("input");
-    inp.focus(); inp.select();
-    let feito = false;
-    const salvar = async () => {
-      if (feito) return; feito = true;
-      const novo = inp.value.trim();
-      if (!novo || novo === atual) { renderCategorias(); return; }
-      cardapioAtual.categorias[idx].nome = novo;
-      if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias[idx].nome = atual; toast("Não foi possível renomear.", "erro"); }
-      renderCategorias();
-    };
-    inp.addEventListener("blur", salvar);
-    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } else if (e.key === "Escape") { feito = true; renderCategorias(); } });
-  }));
+  cont.querySelectorAll(".cat-edit").forEach((b) =>
+    b.addEventListener("click", () => catEditarNomeInline(+b.dataset.i)));
   // Excluir — bloqueia se houver itens (modal de aviso); senão confirma (destrutivo)
   cont.querySelectorAll(".cat-del").forEach((b) => b.addEventListener("click", async () => {
     const idx = +b.dataset.i, cat = cardapioAtual.categorias[idx], n = (cat.itens || []).length;
@@ -355,9 +362,7 @@ if ($("btnNovaCategoria")) $("btnNovaCategoria").addEventListener("click", async
   cardapioAtual.categorias.push({ id: "cat_" + Date.now(), nome: "Nova categoria", itens: [] });
   renderCategorias();
   if (!(await salvarCardapioRemoto())) { cardapioAtual.categorias.pop(); renderCategorias(); toast("Não foi possível criar a categoria.", "erro"); return; }
-  const inputs = $("categorias-lista").querySelectorAll(".cat-nome");
-  const last = inputs[inputs.length - 1];
-  if (last) { last.focus(); last.select(); }
+  catEditarNomeInline(cardapioAtual.categorias.length - 1);
 });
 
 // ============================================================
@@ -2527,7 +2532,12 @@ async function salvarEditorItem() {
   // pegou ao abrir o painel — sem a marca, uma venda que caia nesse meio-tempo
   // seria desfeita. O servidor devolve o saldo do banco para todo o resto e
   // descarta esta chave antes de gravar (Estoque.preservarSaldos).
-  novoItem[Estoque.MARCA_ESTOQUE] = true;
+  //
+  // Só carimba se o dono MEXEU no saldo. O campo abre preenchido com a cópia do
+  // navegador, então carimbar sempre fazia o contrário do que a marca promete:
+  // trocar só o preço às 15h reescrevia o estoque com o número das 9h e desfazia
+  // as vendas do dia, ainda por cima com um "ajuste / Editor do produto" na trilha.
+  if (Estoque.saldoMudou(orig, novoItem)) novoItem[Estoque.MARCA_ESTOQUE] = true;
 
   if (editorIi === -1) {
     cardapioAtual.categorias[novoCi].itens.push(novoItem);
@@ -2548,6 +2558,12 @@ async function salvarEditorItem() {
   btn.textContent = "Salvar alterações";
 
   if (r && r.ok) {
+    // A marca é de UM envio. Ela vive dentro de `cardapioAtual`, que só recarrega no
+    // boot, então deixá-la aqui contaminava todo salvamento seguinte do cardápio
+    // inteiro (interruptor "Disponível", mexer em categoria, salvar grupo, "Salvar
+    // cardápio"): o item ia de novo com a marca e um saldo velho, e o servidor
+    // gravava por cima das vendas do meio-tempo.
+    delete novoItem[Estoque.MARCA_ESTOQUE];
     toast("Item salvo!");
     fecharEditorItem();
     renderCardapio();

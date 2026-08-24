@@ -14,7 +14,42 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-_(nada no momento)_
+**Checkpoint salvo em 2026-08-22 16:32**
+
+### Feito nesta sessão
+- **Incidente de acesso resolvido** (Sabor D' Casa não conseguia entrar): logout do
+  restaurante voltou a ser `"local"` (a conta é compartilhada entre aparelhos) e o rate
+  limit passou a usar o `Fly-Client-IP` — antes a plataforma inteira dividia um balde de
+  10 logins por 15 min. Restart destravou na hora; correção na v131.
+- **Review de super-admin** (4 achados, todos corrigidos): revogação de sessão do master,
+  8 rotas que penduravam a requisição, e o `SUPERADMIN_EMAIL` virando interruptor real.
+- **Review de Caixa e PDV** (5 achados, todos corrigidos): salvar cardápio/configurações e
+  estornar deixaram de falhar em silêncio, o caixa passou a mostrar os cancelamentos que
+  já descontava, e o "é dinheiro" virou regra única em `public/pagamentos.js` (dual-mode).
+- **Review de Mesas** (1 achado, corrigido): as três rotas que recebiam dinheiro sem
+  conferir a forma de pagamento agora usam `formaPermitida`.
+- Histórico de `caixa_movimentos.forma_pagamento` normalizado por migração (112 registros;
+  os 39 de "Cartão (na entrega)" ficaram, por serem ambíguos). Deploy v133 no ar.
+
+### Em meio de edição
+- **O review de Pedidos terminou, mas os achados NÃO foram registrados** em Próximos
+  Passos — a sessão foi interrompida antes da confirmação. São dois: (1) o Faturamento e o
+  Ticket médio mudam ao filtrar por "A receber" (medido: R$ 140,00 → R$ 40,00), contra o
+  que o comentário do código afirma; (2) uma terceira cópia da lista antiga de formas de
+  pagamento em `abrirPedReceber` (`public/app.js:4592`), hoje código morto, mas que agora
+  faria o recebimento ser recusado pelo servidor se entrasse em uso.
+- Também não registrados: o comentário obsoleto acima de `canalPedido`, que diz não existir
+  coluna `origem` quando ela existe e a própria função já a usa.
+
+### Próximo passo
+- Registrar os dois achados de Pedidos em Próximos Passos e fechar os dois itens que o dono
+  esclareceu: WhatsApp desconectado é decisão do cliente (vai usar em breve), e o acento nos
+  nomes dos grupos não é regra, é como cada dono cadastra.
+
+### Decisões pendentes
+- **O que os cards de métricas devem significar ao filtrar por pagamento.** Ou eles seguem o
+  filtro e o rótulo "Faturamento" muda, ou ficam presos ao período inteiro, como o
+  comentário do código diz que era a intenção. É decisão de produto, não de implementação.
 
 ## 📋 Próximos Passos
 
@@ -22,9 +57,10 @@ _(nada no momento)_
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
-- [ ] **(P1) Terminar o review das telas do front** — **Caixa, PDV e Mesas saíram** (5 e 1 achado, ver Concluído). Falta **Pedidos** (~850 linhas), que também movimenta dinheiro, e depois as telas de cadastro/configuração. Contexto: **as telas do front** (`public/app.js`, com mais de 7 mil linhas) e o **super-admin** (`src/plataforma.js`, `public/admin-master.html`), que nunca entrou em lista nenhuma. Justificativa: os quatro blocos já feitos (estoque, caixa/mesas/pedidos, rotas, pdv/cardápio web) renderam 30 achados, e quatro deles quebravam coisa em produção sem aparecer como erro na tela. O método que funcionou: reproduzir o defeito antes, corrigir, conferir rodando.
+- [ ] **(P1) Terminar o review das telas do front** — **Caixa, PDV, Mesas e os cadastros de produto saíram** (Categorias, Complementos e Cardápio/Editor de item, 3 achados em 24/08; ver Concluído). O review de **Pedidos** também foi feito, mas os dois achados dele seguem só no checkpoint de 🔄 Em Andamento, sem item próprio. **Faltam:** Configurações e frete (`3076-3466`, `4047-4147`), Conta de acesso e Privacidade (`4148-4298`), Conexão e Assinatura (`1598-2107`). Contexto: **as telas do front** (`public/app.js`, com mais de 7 mil linhas) e o **super-admin** (`src/plataforma.js`, `public/admin-master.html`), que nunca entrou em lista nenhuma. Justificativa: os quatro blocos já feitos (estoque, caixa/mesas/pedidos, rotas, pdv/cardápio web) renderam 30 achados, e quatro deles quebravam coisa em produção sem aparecer como erro na tela. O método que funcionou: reproduzir o defeito antes, corrigir, conferir rodando.
 - [ ] **(P2) A coluna `pedidos.pagamento` guarda duas coisas diferentes** — em pedido do cardápio web e de mesa ela guarda a **forma escolhida** ("PIX"); em venda do PDV guarda o **resumo com valor** ("PIX R$ 20,00", montado por `pdv.resumoPagamento`). Já produziu um efeito concreto: o registro `"Pix R$ 12,00"` que estava em `caixa_movimentos.forma_pagamento` (normalizado em 22/08) veio de uma coluna copiada na outra. **Sem vítima hoje** — o painel de caixa e o dashboard leem `caixa_movimentos`, não esta coluna — mas inviabiliza qualquer relatório por forma a partir de `pedidos`, e é armadilha para quem for construir um. Descoberto ao fechar o review de Caixa e PDV.
 - [ ] **(P2) Nenhum restaurante tem sessão de WhatsApp conectada** — a tabela `wa_auth` está vazia para todos os tenants, ou seja, o bot não está ligado em lugar nenhum. Não dá para saber se caiu num deploy ou se pararam de usar o canal, porque não há medição anterior para comparar. **Não afeta a operação atual**, que é toda pelo PDV: dos pedidos recentes, nenhum veio do bot. Se for para voltar a usar, é reconectar pela aba Conexão e ler o QR.
+- [ ] **(P2) O editor do produto abre mostrando o saldo do boot** — o campo de estoque é preenchido com a cópia que o navegador carregou ao abrir o painel, então às 15h ele exibe o número das 9h. Depois da correção de 24/08 isso não corrompe mais nada (só o saldo realmente digitado é gravado), mas quem decidir corrigir a contagem por cima decide olhando um número velho. A correção é recarregar `GET /api/cardapio` ao abrir o editor de um produto existente, ao custo de uma requisição por abertura. Ficou fora da leva de 24/08, que tratou só os três achados.
 - [ ] **(P2) Extrato geral do restaurante** — hoje o histórico é sempre por produto, dentro da gaveta. Um extrato único, com todos os movimentos do restaurante e filtro por tipo e período, responderia "o que mudou no estoque hoje" sem abrir produto por produto. Ficou de fora da 3/4 de propósito: a gaveta responde a pergunta comum, e o geral só vale a pena se fizer falta.
 - [ ] **(P2) Split de Produtos — 4/4: Insumos (em curso, 3 de 6 fases entregues)** — cadastro de insumos e ficha técnica, para a venda baixar ingrediente em vez de produto pronto. **Desenho fechado** em `docs/superpowers/specs/2026-08-16-insumos-design.md` (oito decisões do dono, seis fases). **Fase 0** (`1b5f129`): `public/insumos.js` com 21 testes e a tabela `insumos` verificada em produção. **Fase 1** (`2f1150b`): `avaliarEscolhas` (`public/grupos.js`) passou a devolver `opcionais[].id` e `composicao[].ids`, que é o que permite devolver ingrediente no cancelamento. **Fase 2** (`a10388e`): os três caminhos de venda passaram a baixar pelos itens recalculados, e não mais pelo payload cru. As três são inertes: **nada baixa ingrediente ainda**. **Próxima é a Fase 3**, o cadastro de insumos e a ficha técnica na tela, ainda sem baixa nenhuma — se a receita estiver errada, ninguém se machuca. Começa por desenho no Stitch, que precisa da aprovação do dono antes de qualquer código.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
@@ -51,6 +87,8 @@ _(nada no momento)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **A marca de saldo do editor de produto vazava para os salvamentos seguintes (leva 1 do review dos cadastros)** — o editor carimba `_estoqueEditado` no item para dizer ao servidor "este saldo veio da tela, vale o que o dono digitou" (`Estoque.preservarSaldos`, do commit `745c27c`). Dois defeitos da mesma família, os dois desfazendo venda sem erro nenhum na tela e ainda gravando um "ajuste / Editor do produto" que ninguém fez. **(1) A marca nunca era apagada:** ela mora dentro de `cardapioAtual`, que só recarrega no boot e depois de venda no PDV, então pelo resto da sessão qualquer um dos **onze pontos do painel que mandam o cardápio inteiro** reenviava aquele item com a marca e o saldo velho — o interruptor "Disponível", criar/renomear/excluir/ativar categoria, salvar ou excluir grupo em Complementos, arquivar item e o botão "Salvar cardápio". Editar o produto às 9h, vender 10 durante o dia e desativar uma categoria às 15h devolvia o saldo ao das 9h. **(2) A marca era carimbada mesmo sem o dono tocar no saldo:** o campo abre preenchido com a cópia do boot, então trocar só o preço reescrevia o estoque com o número da manhã. Na prática a marca significava "o dono abriu este produto", não "o dono digitou este saldo", que é o que o comentário do código prometia. A régua virou a função pura `Estoque.saldoMudou` (compara `estoque`/`estoqueMinimo` do produto e de cada variação por id, tratando ausente, `null` e `""` como o mesmo "sem controle", e a string do editor como o número do banco), o que trouxe a regra para dentro da suíte em vez de deixá-la solta no `app.js`: 8 testes novos. A marca também passou a ser apagada assim que o salvamento dá certo, então os dois lados estão fechados. Junto saiu um terceiro achado, cosmético: **criar categoria não focava o nome**, porque o código procurava `.cat-nome`, classe que não existe (o render usa o span `.cat-card-nome`) — a categoria nascia chamada "Nova categoria" e o dono precisava achar o lápis; a edição inline virou `catEditarNomeInline`, reusada pelo lápis e pela criação. 479 testes. **Ressalva: não validado no navegador** — é estado de front, e o `.env` local aponta para o banco de produção.
 
 - [x] **PDV validava a forma de pagamento pela lista crua** — a tela do PDV recebe as formas normalizadas (`/api/caixa` roda `normalizarFormasPagamento`) mas o servidor conferia a escolha contra `config.pagamentos` como está gravado. Num tenant com dado legado (`["Dinheiro","Cartão"]`, de quando as formas eram texto livre) a tela oferecia "Cartão de Crédito" e o servidor recusava com 400 "Forma de pagamento inválida", sem pista do motivo para o operador. Ninguém estava afetado (salvar as Configurações já normaliza, e os dois tenants estavam canônicos), mas era armadilha para tenant novo ou restaurado de backup. A regra virou função pura `formaPermitida`, em vez de uma terceira cópia da comparação. **O cardápio web não tinha o defeito**: serve e valida pela mesma lista crua, então é coerente. Provado plantando a config legada no banco e vendendo no crédito. 412 testes.
 

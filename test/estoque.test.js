@@ -412,3 +412,43 @@ test("calcularBaixa: duas variações na mesma linha cada uma multiplica", () =>
   assert.equal(saldoVar(r.cardapio, "a1", "v300"), 8);
   assert.equal(saldoVar(r.cardapio, "a1", "v500"), 2);
 });
+
+// ---- saldoMudou: a régua do carimbo `_estoqueEditado` no editor do produto ----
+// O campo de saldo abre preenchido com a cópia que o navegador carregou ao abrir o
+// painel. Carimbar sem o dono ter mexido no saldo fazia uma edição de preço às 15h
+// reescrever o estoque com o número das 9h, desfazendo calado as vendas do dia.
+test("saldoMudou: mexer só no preço ou no nome não conta como mudança de saldo", () => {
+  const antes  = { id: 1, nome: "Coca", preco: 8, estoque: 100, estoqueMinimo: 10 };
+  const depois = { id: 1, nome: "Coca Lata", preco: 9.5, estoque: 100, estoqueMinimo: 10 };
+  assert.equal(E.saldoMudou(antes, depois), false);
+});
+test("saldoMudou: estoque ou mínimo diferente conta", () => {
+  const antes = { id: 1, estoque: 100, estoqueMinimo: 10 };
+  assert.equal(E.saldoMudou(antes, { id: 1, estoque: 90, estoqueMinimo: 10 }), true);
+  assert.equal(E.saldoMudou(antes, { id: 1, estoque: 100, estoqueMinimo: 5 }), true);
+});
+test("saldoMudou: string do editor e número do banco são o mesmo saldo", () => {
+  assert.equal(E.saldoMudou({ id: 1, estoque: 100 }, { id: 1, estoque: "100" }), false);
+  assert.equal(E.saldoMudou({ id: 1, estoque: 2.5 }, { id: 1, estoque: "2,5" }), false);
+});
+test("saldoMudou: ausente, null e \"\" são todos 'sem controle'", () => {
+  assert.equal(E.saldoMudou({ id: 1 }, { id: 1, estoque: "" }), false);
+  assert.equal(E.saldoMudou({ id: 1, estoque: null }, { id: 1 }), false);
+});
+test("saldoMudou: ligar ou desligar o controle conta", () => {
+  assert.equal(E.saldoMudou({ id: 1 }, { id: 1, estoque: 0 }), true);        // passou a controlar (zerado)
+  assert.equal(E.saldoMudou({ id: 1, estoque: 50 }, { id: 1 }), true);        // deixou de controlar
+});
+test("saldoMudou: variação com saldo alterado conta, reordenar não", () => {
+  const a = { id: 1, variacoes: [ { id: "v1", estoque: 10 }, { id: "v2", estoque: 5 } ] };
+  assert.equal(E.saldoMudou(a, { id: 1, variacoes: [ { id: "v1", estoque: 10 }, { id: "v2", estoque: 4 } ] }), true);
+  assert.equal(E.saldoMudou(a, { id: 1, variacoes: [ { id: "v2", estoque: 5 }, { id: "v1", estoque: 10 } ] }), false);
+});
+test("saldoMudou: variação criada ou removida conta", () => {
+  const a = { id: 1, variacoes: [ { id: "v1", estoque: 10 } ] };
+  assert.equal(E.saldoMudou(a, { id: 1, variacoes: [ { id: "v1", estoque: 10 }, { id: "v2", estoque: 3 } ] }), true);
+  assert.equal(E.saldoMudou(a, { id: 1, variacoes: [] }), true);              // removida: muda
+});
+test("saldoMudou: produto novo (sem versão anterior) sempre conta", () => {
+  assert.equal(E.saldoMudou(null, { id: 1, estoque: 10 }), true);
+});
