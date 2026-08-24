@@ -1766,7 +1766,15 @@ app.put("/api/config", exigeAuth, async (req, res) => {
         } else if (!raio.coordEmpresa || raio.enderecoBase !== endEmpresa) {
           const coord = await frete.geocodificar(endEmpresa);
           if (coord) { raio.coordEmpresa = coord; raio.enderecoBase = endEmpresa; }
-          else avisoFrete = "Não foi possível localizar o endereço do restaurante no mapa. Confira o endereço cadastrado.";
+          // Sem coordenada nova, as antigas ficam: apagá-las jogaria todo cliente
+          // para fora da área e derrubaria a entrega na hora. Mas o dono precisa
+          // saber que o frete continua saindo do endereço anterior, senão lê o
+          // aviso como "falhou o mapa" e segue cobrando pela distância errada.
+          else if (raio.coordEmpresa) {
+            avisoFrete = "Não foi possível localizar o novo endereço no mapa. O frete por raio continua sendo calculado pelo endereço anterior (" + raio.enderecoBase + ") até isso ser corrigido.";
+          } else {
+            avisoFrete = "Não foi possível localizar o endereço do restaurante no mapa. Confira o endereço cadastrado.";
+          }
         }
       }
     }

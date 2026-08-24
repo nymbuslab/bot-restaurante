@@ -226,22 +226,14 @@ function atualizarHeaderData() {
 atualizarHeaderData();
 setInterval(atualizarHeaderData, 30000);
 
-// Dias indexados por getDay() (0=dom) — para o estado real de abertura.
-const DIAS_KEY = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
-// Estado REAL de abertura agora: respeita o toggle E o horário do dia (espelha o
-// estaAberto do backend). O badge do header usa isto, não só o toggle manual.
+// "Aberto agora?" vem de public/horario.js, a MESMA regra que o servidor usa para
+// aceitar (ou recusar) o pedido. A versão curta que morava aqui dizia "fechado"
+// para loja aberta em quatro casos: horário que vira a noite, fechamento às 00:00
+// (inclusive o 00:00–00:00 de quem abre 24h), a cauda da madrugada e a config sem
+// `atendimento.aberto`. Quem lia o erro era o dono, no selo do topo e no chip de
+// Configurações; o cliente sempre viu o certo, porque o cardápio web lê do servidor.
 function lojaAbertaAgora(config) {
-  if (!config || !config.atendimento || !config.atendimento.aberto) return false;
-  const horarios = config.horarios;
-  if (!horarios) return true;
-  const agora = new Date();
-  const h = horarios[DIAS_KEY[agora.getDay()]];
-  if (!h || h.fechado) return false;
-  if (!h.abre || !h.fecha) return true;
-  const [hA, mA] = h.abre.split(":").map(Number);
-  const [hF, mF] = h.fecha.split(":").map(Number);
-  const min = agora.getHours() * 60 + agora.getMinutes();
-  return min >= hA * 60 + mA && min < hF * 60 + mF;
+  return Horario.abertoAgora(config);
 }
 
 // ============================================================
@@ -3138,30 +3130,11 @@ function lerHorariosDoDOM() {
   return horarios;
 }
 
-// Monta um texto pt-BR de horário a partir da tabela: agrupa dias seguidos com
-// o mesmo abre/fecha e pula os fechados. Ex.: "Nosso atendimento é de *Segunda*
-// a *Sexta* das *11:00* às *22:00*; *Sábado* das *11:00* às *23:00*".
+// Texto pt-BR do horário, gerado da tabela (campo read-only). Mora em
+// public/horario.js porque o bot manda o mesmo texto ao cliente na mensagem de
+// "fechado" — eram dois algoritmos idênticos escritos em lugares diferentes.
 function resumirHorarios(horarios) {
-  const grupos = [];
-  let atual = null;
-  for (const { key, label } of DIAS_SEMANA) {
-    const h = horarios[key] || {};
-    if (h.fechado) { atual = null; continue; } // dia fechado quebra a sequência
-    const abre = h.abre || "11:00";
-    const fecha = h.fecha || "22:00";
-    if (atual && atual.abre === abre && atual.fecha === fecha) {
-      atual.fim = label; // estende o grupo
-    } else {
-      atual = { ini: label, fim: label, abre, fecha };
-      grupos.push(atual);
-    }
-  }
-  if (!grupos.length) return "";
-  const trechos = grupos.map((g) => {
-    const dias = g.ini === g.fim ? `*${g.ini}*` : `de *${g.ini}* a *${g.fim}*`;
-    return `${dias} das *${g.abre}* às *${g.fecha}*`;
-  });
-  return "Nosso atendimento é " + trechos.join("; ");
+  return Horario.textoHorario(horarios);
 }
 
 function preencherConfig() {
@@ -3245,9 +3218,11 @@ function atualizarChipStatus(real) {
   }
 }
 
-// Formas de pagamento: conjunto FIXO (só liga/desliga por toggle). Espelha a
-// ordem canônica de public/pagamentos.js.
-const FORMAS_FIXAS = ["Dinheiro", "PIX", "Cartão de Crédito", "Cartão de Débito"];
+// Formas de pagamento: conjunto FIXO (só liga/desliga por toggle). A lista vem de
+// public/pagamentos.js, que é quem o servidor consulta para aceitar a venda. Aqui
+// havia uma cópia da mesma lista "espelhando a ordem canônica": esta é a tela que
+// decide o que o tenant pode ligar, então uma divergência sairia oferecendo forma
+// que o servidor recusa (foi assim o incidente do PDV com dado legado).
 const FORMA_SUB = {};
 // Ícones SVG por forma (design system). Cartão de Crédito/Débito compartilham o cartão.
 const ICO_CARTAO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
@@ -3263,7 +3238,7 @@ function renderPagamentos() {
   cont.innerHTML = "";
   if (!Array.isArray(configAtual.pagamentos)) configAtual.pagamentos = [];
   const ligadas = new Set(configAtual.pagamentos);
-  FORMAS_FIXAS.forEach((forma) => {
+  Pagamentos.FORMAS_PAGAMENTO.forEach((forma) => {
     const card = document.createElement("label");
     card.className = "cfg-pag-card" + (ligadas.has(forma) ? " on" : "");
     const sub = FORMA_SUB[forma] ? `<span class="cfg-pag-sub">${FORMA_SUB[forma]}</span>` : "";
@@ -3278,7 +3253,7 @@ function renderPagamentos() {
       const set = new Set(configAtual.pagamentos);
       if (el.checked) set.add(el.dataset.forma);
       else set.delete(el.dataset.forma);
-      configAtual.pagamentos = FORMAS_FIXAS.filter((f) => set.has(f)); // mantém a ordem canônica
+      configAtual.pagamentos = Pagamentos.FORMAS_PAGAMENTO.filter((f) => set.has(f)); // mantém a ordem canônica
       el.closest(".cfg-pag-card").classList.toggle("on", el.checked);
     })
   );
