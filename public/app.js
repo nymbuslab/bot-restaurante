@@ -4746,13 +4746,25 @@ function resumoPedidos(lista) {
   return { pedidos, faturamento, ticket, cancelados };
 }
 
+// O rótulo do dinheiro acompanha o filtro de pagamento. A faixa descreve a lista
+// que está logo abaixo, então filtrando "A receber" a soma é justamente o que ainda
+// NÃO entrou — e chamar aquilo de "Faturamento" dizia o oposto do que o número
+// mostrava (medido: R$ 140,00 no período viravam R$ 40,00 com o filtro, ambos
+// corretos, mas o segundo é dinheiro a receber, não faturado). Só o rótulo muda; o
+// número continua sendo o do recorte, senão o card brigaria com a lista.
+const ROTULO_FATURAMENTO = { areceber: "A receber", recebidos: "Recebido" };
+
 function resumoPedidosHtml(lista) {
   const r = resumoPedidos(lista);
   const cel = (label, valor, extra) =>
     `<div class="ped-resumo-cel${extra ? " " + extra : ""}"><span class="ped-resumo-label">${label}</span><span class="ped-resumo-valor">${valor}</span></div>`;
+  // Mesma condição do filtro (só o Completo tem Caixa, e é ele que recorta a lista):
+  // no Essencial o seletor fica escondido e a lista não é recortada, então renomear
+  // ali deixaria o rótulo prometendo um recorte que não aconteceu.
+  const rotulo = (planoAtual === "completo" && ROTULO_FATURAMENTO[filtros.pagamento]) || "Faturamento";
   return `<div class="pedidos-resumo">
     ${cel("Pedidos", String(r.pedidos))}
-    ${cel("Faturamento", "R$ " + moedaBR(r.faturamento))}
+    ${cel(rotulo, "R$ " + moedaBR(r.faturamento))}
     ${cel("Ticket médio", "R$ " + moedaBR(r.ticket))}
     ${cel("Cancelados", String(r.cancelados), r.cancelados > 0 ? "alerta" : "")}
   </div>`;
