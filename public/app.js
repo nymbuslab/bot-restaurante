@@ -2387,11 +2387,58 @@ function novoId() {
 function novoVarId() {
   return "v" + Math.random().toString(36).slice(2, 9);
 }
+// Recarrega o cardápio do servidor e diz ONDE o produto está agora:
+// `{ ci, ii }` quando achou, `"sumiu"` quando ele não existe mais, `"abortar"`
+// quando a sessão caiu (o `api()` já está mandando para o login) e `null` quando
+// a recarga não deu certo — nesse caso o editor segue com a cópia em memória,
+// que é melhor que não abrir.
+async function recarregarCardapioEAchar(idAlvo) {
+  let rc;
+  try {
+    rc = await api("GET", "/api/cardapio");
+  } catch (_) {
+    toast("Sem conexão. Abrindo com os dados já carregados.", "erro");
+    return null;
+  }
+  if (!rc) return "abortar";
+  if (!rc.ok) {
+    toast("Não foi possível atualizar o cardápio. Abrindo com os dados já carregados.", "erro");
+    return null;
+  }
+  cardapioAtual = await rc.json();
+  if (!idAlvo) return null;
+  const cats = cardapioAtual.categorias || [];
+  for (let c = 0; c < cats.length; c++) {
+    const itens = cats[c].itens || [];
+    for (let i = 0; i < itens.length; i++) {
+      if (itens[i] && String(itens[i].id) === idAlvo) return { ci: c, ii: i };
+    }
+  }
+  return "sumiu";
+}
 
 // ============================================================
 // EDITOR DE ITEM (modal)
 // ============================================================
-function abrirEditorItem(ci, ii) {
+// O saldo que o editor mostra vinha de `cardapioAtual`, que só recarrega no boot
+// e depois de venda no PDV: abrir o produto às 15h exibia o número das 9h, e quem
+// fosse corrigir a contagem por cima decidia olhando um saldo velho. Editar
+// produto existente passa a recarregar o cardápio antes de preencher os campos.
+// O `id` é guardado ANTES da recarga porque `ci`/`ii` vêm da tela: se o cardápio
+// mudou no servidor, reusar os índices abriria OUTRO produto.
+async function abrirEditorItem(ci, ii) {
+  if (ii !== -1) {
+    const alvo = (((cardapioAtual.categorias || [])[ci] || {}).itens || [])[ii];
+    const idAlvo = alvo && alvo.id != null ? String(alvo.id) : null;
+    const pos = await recarregarCardapioEAchar(idAlvo);
+    if (pos === "abortar") return;
+    if (pos === "sumiu") {
+      toast("Este produto não está mais no cardápio.", "erro");
+      renderCardapio();
+      return;
+    }
+    if (pos) { ci = pos.ci; ii = pos.ii; renderCardapio(); }
+  }
   editorCi = ci;
   editorIi = ii;
 
