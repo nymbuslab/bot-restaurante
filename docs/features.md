@@ -47,11 +47,23 @@ Estrutura em `config.json` (por tenant):
 }
 ```
 
-A função `estaAberto(tenantDir)` em `fluxo.js` verifica:
+A regra vive em **`public/horario.js`** (`abertoAgora`), módulo dual-mode: `estaAberto(tenantDir)`
+em `fluxo.js` só delega, e o **painel usa o mesmo arquivo** para o selo de aberto/fechado. Antes o
+painel tinha a própria versão, mais curta, que dizia "fechado" para loja aberta.
 
-1. Se `config.atendimento.aberto` é `false` → sempre fechado (override manual).
-2. Se `horarios` existe → compara dia/hora atual com o range do dia.
+1. Se `config.atendimento.aberto` é `false` → sempre fechado (override manual). **Ausente não fecha**:
+   só o `false` explícito.
+2. Se `horarios` existe → compara dia/hora atual com a janela do dia.
 3. Se não existe → considera aberto.
+
+Quatro sutilezas que a versão curta do painel errava, todas cobertas por `test/horario.test.js`:
+
+- **Hora sempre no fuso BR** (`America/Sao_Paulo`), nunca o relógio da máquina: o Fly roda em UTC e o
+  navegador roda no fuso de quem está olhando.
+- **Fechar às `00:00` é o FIM do dia** (1440 minutos), não o começo. Então `11:00–00:00` vale o dia
+  inteiro, e **`00:00–00:00` significa 24 horas abertas**.
+- **Janela que vira a noite** (`fecha <= abre`, ex.: `18:00–02:00`): aberto a partir da abertura.
+- **Cauda da madrugada**: 01:00 de terça ainda conta pela janela da segunda que virou.
 
 Fora do horário, saudações e o "1" (fazer pedido) recebem `config.mensagens.fechado`.
 

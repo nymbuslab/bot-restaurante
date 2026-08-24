@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-08-21
+atualizado: 2026-08-24
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1004,3 +1004,18 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - No caixa, os cancelamentos passam a aparecer na "Movimentação do caixa", junto de
   suprimentos e sangrias. Eles já eram descontados do Total em Caixa, mas não apareciam em
   lugar nenhum, e a conta da gaveta não fechava.
+
+## [1.0.0] — O painel passa a contar a mesma história do sistema
+
+- Editar um produto não desfaz mais as vendas do dia. Antes, mexer no preço à tarde podia
+  devolver o estoque ao número da manhã, sem aviso nenhum.
+- O painel mostra aberto ou fechado pelo mesmo horário que o sistema usa para aceitar pedido.
+  Quem vira a noite, fecha à meia-noite ou abre 24 horas aparecia como fechado o tempo todo.
+- "Conectar ao WhatsApp" diz por que não conectou, em vez de voltar sozinho ao estado anterior.
+- Na lista de pedidos, o card de dinheiro deixa de chamar de "Faturamento" o que ainda não foi
+  recebido. Agora ele diz "A receber" ou "Recebido", conforme o filtro.
+- O preço dos planos sai de um lugar só, então painel, checkout e confirmação de cobrança
+  mostram sempre o mesmo valor.
+- Criar uma categoria já abre o campo do nome para digitar.
+- Se o endereço do restaurante não for encontrado no mapa, o aviso diz que o frete continua
+  sendo calculado pelo endereço anterior.
