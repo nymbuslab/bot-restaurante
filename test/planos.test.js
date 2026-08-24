@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { PLANO_INFO, planoDoPrice } = require("../src/planos");
+const { PLANO_INFO, planoDoPrice } = require("../public/planos");
 
 const IDS = { essencial: "price_essencial", completo: "price_completo" };
 

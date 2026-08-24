@@ -824,7 +824,11 @@ async function liberarCortesia(slug) {
 
 async function trocarPlanoTenant(slug) {
   const destino = planoTenantAtual === "completo" ? "essencial" : "completo";
-  const nome = destino === "completo" ? "Plano Completo (R$ 99/mês)" : "Plano Essencial (R$ 79/mês)";
+  // Nome e valor vêm de public/planos.js, a mesma fonte que o servidor usa para
+  // cobrar. Estavam digitados aqui, então um reajuste deixaria o master trocando
+  // o plano do tenant anunciando o preço antigo.
+  const info = Planos.infoDoPlano(destino);
+  const nome = info.nome + " (" + Planos.precoPlano(info.valorMes) + "/mês)";
   const ok = await confirmar(
     "Trocar de plano",
     `Mudar "${slug}" para o ${nome}? Com assinatura ativa no Stripe, o valor é ajustado proporcionalmente; em cortesia/sem Stripe, a troca é imediata e sem cobrança.`,

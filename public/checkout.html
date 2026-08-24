@@ -29,12 +29,12 @@
       <div class="co-planos" id="coPlanos">
         <label class="co-plano-opt ativo" data-plano="essencial">
           <input type="radio" name="coPlano" value="essencial" checked />
-          <span class="co-plano-opt-cab"><span class="co-plano-opt-nome">Essencial</span><span class="co-plano-opt-preco">R$ 79<span>/mês</span></span></span>
+          <span class="co-plano-opt-cab"><span class="co-plano-opt-nome">Essencial</span><span class="co-plano-opt-preco"><span id="coPrecoEssencial">—</span><span>/mês</span></span></span>
           <span class="co-plano-opt-desc">Pedidos no WhatsApp + cardápio + frete fixo</span>
         </label>
         <label class="co-plano-opt" data-plano="completo">
           <input type="radio" name="coPlano" value="completo" />
-          <span class="co-plano-opt-cab"><span class="co-plano-opt-nome">Completo</span><span class="co-plano-opt-preco">R$ 99<span>/mês</span></span></span>
+          <span class="co-plano-opt-cab"><span class="co-plano-opt-nome">Completo</span><span class="co-plano-opt-preco"><span id="coPrecoCompleto">—</span><span>/mês</span></span></span>
           <span class="co-plano-opt-desc">Tudo do Essencial + <strong>PDV de balcão</strong> + <strong>caixa do dia</strong> + <strong>controle de estoque</strong> + <strong>frete por raio</strong> + <strong>impressão</strong> na térmica</span>
         </label>
       </div>
@@ -61,6 +61,7 @@
 
   <div id="toast-container"></div>
 
+  <script src="planos.js"></script>
   <script src="checkout.js"></script>
 </body>
 </html>

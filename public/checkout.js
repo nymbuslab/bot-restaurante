@@ -16,6 +16,17 @@ async function bootSessao() {
   }
 }
 
+// Preço de cada plano: public/planos.js, a mesma fonte que o servidor usa para
+// cobrar. Estava escrito no HTML desta página — a tela onde a pessoa autoriza a
+// cobrança era justamente a que anunciaria o valor velho depois de um reajuste.
+(function () {
+  const alvos = { essencial: "coPrecoEssencial", completo: "coPrecoCompleto" };
+  Object.keys(alvos).forEach(function (chave) {
+    const el = document.getElementById(alvos[chave]);
+    if (el) el.textContent = Planos.precoPlano(Planos.infoDoPlano(chave).valorMes);
+  });
+})();
+
 const form = document.getElementById("co-form");
 const btn  = document.getElementById("co-btn");
 const erro = document.getElementById("co-erro");

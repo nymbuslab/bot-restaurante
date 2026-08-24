@@ -1597,20 +1597,19 @@ document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click"
 let assinaturaAtual = null;
 let planoAtual = "essencial"; // plano do tenant (essencial|completo) — gating de features no painel
 let pedidoModalAtual = null; // pedido aberto no modal de detalhe (p/ impressão)
-// Nome e valor de cada plano vêm de GET /api/assinatura (`planos`), que os lê de
-// src/planos.js, a fonte única. Antes havia uma cópia dos valores escrita aqui, e
-// era ela que montava a confirmação da troca de plano: um reajuste faria o card
-// mostrar o preço novo e a tela que pede a autorização da cobrança, o antigo.
-function planoInfo(chave) {
-  const mapa = (assinaturaAtual && assinaturaAtual.planos) || {};
-  return mapa[chave] || { nome: chave === "completo" ? "Plano Completo" : "Plano Essencial", valorMes: null };
-}
+// Nome e valor de cada plano vêm de public/planos.js, a mesma fonte que o servidor
+// usa para cobrar. Antes havia uma cópia dos valores escrita aqui, e era ela que
+// montava a confirmação da troca de plano: um reajuste faria o card mostrar o preço
+// novo e a tela que pede a autorização da cobrança, o antigo.
+const planoInfo = Planos.infoDoPlano;
+const precoPlano = Planos.precoPlano;
 
-// "R$ 99,00" a partir do valor da API; "—" quando ela ainda não respondeu (melhor
-// um traço do que um número inventado numa tela de cobrança).
-function precoPlano(valorMes) {
-  return valorMes == null ? "—" : "R$ " + Number(valorMes).toFixed(2).replace(".", ",");
-}
+// Preço do upsell ("a partir de R$ X/mês"): mesmo módulo, senão o card de venda
+// do Completo seria mais um lugar anunciando o valor antigo depois de um reajuste.
+(function () {
+  const el = $("upsellPreco");
+  if (el) el.textContent = precoPlano(planoInfo("completo").valorMes);
+})();
 
 // Upgrade/downgrade de plano (assinatura viva). Confirma, troca no Stripe (proration)
 // e recarrega o plano (gating) + a aba Assinatura.
@@ -4556,13 +4555,13 @@ function seloPagamento(p) {
   return '<span class="selo-pag selo-areceber">A receber</span>';
 }
 
-// Canal de origem do pedido (inferido, sem campo dedicado no banco):
-//   Mesa    -> tem mesa_id (salão);
-//   Balcão  -> tipoEntrega "Balcão" (só o PDV produz esse tipo);
-//   WhatsApp-> o resto (cardápio web via link).
-// Borda conhecida: uma venda de PDV feita como Entrega/Retirada cai como "WhatsApp"
-// (o PDV é majoritariamente balcão). Conserto 100% robusto = coluna `origem` no
-// banco — anotado no ROADMAP/PROGRESSO, sem migration por ora.
+// Canal de origem do pedido, pela coluna `origem` (web/pdv/mesa):
+//   Mesa     -> origem 'mesa' (salão);
+//   Balcão   -> origem 'pdv' (qualquer tipo de venda no local);
+//   WhatsApp -> origem 'web' (cardápio web via link).
+// A borda antiga acabou: venda de PDV feita como Entrega/Retirada tem origem 'pdv'
+// e já não é contada como WhatsApp. O fallback abaixo é só para registro anterior
+// à coluna, que nasceu sem ela.
 function canalPedido(p) {
   // Fonte de verdade: a coluna `origem` (web/pdv/mesa). Uma venda de PDV-Entrega
   // tem origem 'pdv' (canal Balcão) e tipo Entrega — sem a borda antiga.
@@ -4619,7 +4618,12 @@ function abrirPedReceber(p, aoReceber) {
   pedReceberCallback = aoReceber;
   pedReceberAlvo = Math.round((Number(p.total) || 0) * 100) / 100;
   pedReceberPagamentos = [];
-  const formas = (typeof mesaFormasPagamento === "function" && mesaFormasPagamento()) || ["Dinheiro", "Pix", "Cartão Crédito", "Cartão Débito", "Outros"];
+  // Sem lista de reserva aqui: `mesaFormasPagamento` já cai no vocabulário único
+  // (`Pagamentos.FORMAS_PAGAMENTO`) e nunca devolve vazio. A que estava neste `||`
+  // carregava as grafias antigas ("Pix", "Cartão Débito") e um "Outros" que não
+  // existe no vocabulário — inalcançável, mas se voltasse a valer o servidor
+  // recusaria o recebimento, porque a validação confere contra a lista canônica.
+  const formas = mesaFormasPagamento();
   // Pré-seleciona a forma informada, se estiver na lista; senão, a primeira.
   pedReceberFormaSel = formas.indexOf(p.pagamento) >= 0 ? p.pagamento : formas[0];
   const X = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';

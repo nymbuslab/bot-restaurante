@@ -3,7 +3,7 @@
 Monetização via **assinatura mensal**, **7 dias grátis com cartão**, em **dois planos**:
 **Essencial — R$ 79/mês** (`STRIPE_PRICE_ID`) e **Completo — R$ 99/mês** (`STRIPE_PRICE_ID_COMPLETO`).
 O Completo adiciona o **frete por raio** (ver [planos-e-frete.md](planos-e-frete.md)).
-Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `src/planos.js`). Sem chave/preço
+Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `public/planos.js`, dual-mode: as telas leem o mesmo preço que o servidor cobra). Sem chave/preço
 (`STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID`), as rotas `/api/assinatura/*` respondem **503**.
 
 - **Plano (`empresas.plano`, `essencial|completo`):** gravado pelo webhook (`aplicarSubscription`

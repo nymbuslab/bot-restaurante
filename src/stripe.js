@@ -16,7 +16,7 @@ const Stripe = require("stripe");
 const empresas = require("./empresas");
 const multiBot = require("./multi-bot");
 const mail = require("./email");
-const { PLANO_INFO, planoDoPrice } = require("./planos");
+const { PLANO_INFO, planoDoPrice } = require("../public/planos");
 
 const SECRET = process.env.STRIPE_SECRET_KEY || "";
 const PRICE_ID = process.env.STRIPE_PRICE_ID || "";                       // Plano Essencial
