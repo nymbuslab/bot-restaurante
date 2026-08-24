@@ -586,3 +586,7 @@ button.cd-hero { cursor: pointer; }
   font-size: 12px; font-weight: 600; cursor: pointer;
 }
 .cd-frete-retirar:hover { background: var(--accent-hover); }
+
+/* "+" no teto de quantidade: apagado e sem resposta ao toque. O motivo vai no
+   aria-label do próprio botão, porque title não aparece no celular. */
+.cd-qtd button:disabled { opacity: .35; pointer-events: none; }

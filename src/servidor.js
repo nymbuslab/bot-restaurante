@@ -724,6 +724,11 @@ app.get("/api/c/:slug", publicoLimiter, async (req, res) => {
         return { modo: "fixo", taxaFixa: f.taxaFixa };
       })(),
       taxaEntrega: frete.freteDeConfig(config).taxaFixa, // compat (checkout antigo)
+      // Teto de quantidade por item. O servidor SEMPRE recusa acima disso (com a
+      // mensagem dizendo qual é o limite), mas descobrir no fechamento, depois de
+      // montar o carrinho, é caminho longo demais. Publicando o número, o "+" da
+      // página para sozinho — e continua existindo um dono só para o valor.
+      limites: { qtd: cardapioWeb.LIMITE_QTD },
       // Lista NORMALIZADA, a mesma que o painel e o PDV recebem. Servir a crua
       // fazia um tenant com dado legado ("Cartão", de quando as formas eram texto
       // livre) falar um vocabulário na tela do cliente e outro no painel — e a

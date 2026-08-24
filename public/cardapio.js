@@ -28,6 +28,11 @@
 
   var DADOS = null;        // resposta do GET /api/c/:slug
   var carrinho = [];       // [{ id, nome, preco, opcionais:[{nome,preco}], observacao, qtd }]
+  // Teto de quantidade por item, publicado pelo servidor em GET /api/c/:slug. O
+  // 50 aqui é só a rede de segurança para o caso de a resposta vir sem o campo
+  // (versão antiga do servidor): quem manda é `src/cardapio-web.js`, que também
+  // recusa o pedido acima do teto.
+  var LIMITE_QTD = 50;
   var catAtiva = null;
   var busca = "";
 
@@ -77,10 +82,32 @@
     return carrinho.some(function (l) { return itemEhSoLocal(l.id); });
   }
 
+  // O "+" para no teto em vez de deixar o cliente montar um carrinho que o servidor
+  // vai recusar só no fechamento. O rótulo diz o motivo: botão apagado sem explicação
+  // parece defeito da página.
+  function pintarTetoQtd(escopo, qtd) {
+    var mais = escopo.querySelector('[data-qtd="1"]');
+    if (!mais) return;
+    var noTeto = qtd >= LIMITE_QTD;
+    mais.disabled = noTeto;
+    mais.setAttribute("aria-label", noTeto ? "Máximo de " + LIMITE_QTD + " por pedido" : "Mais");
+  }
+
+  // Carrinho guardado no navegador pode ter sido montado antes do teto (ou com um
+  // teto maior). Sem isso o cliente veria a quantidade antiga na tela e tomaria a
+  // recusa no fechamento, que é justamente o caminho longo que o teto evita.
+  function aplicarTetoCarrinho() {
+    var mudou = false;
+    carrinho.forEach(function (l) {
+      if (l.qtd > LIMITE_QTD) { l.qtd = LIMITE_QTD; mudou = true; }
+    });
+    if (mudou) salvarCarrinho();
+  }
+
   function addLinha(nova) {
     var sig = assinatura(nova);
     var ex = carrinho.filter(function (l) { return assinatura(l) === sig; })[0];
-    if (ex) ex.qtd += nova.qtd; else carrinho.push(nova);
+    if (ex) ex.qtd = Math.min(LIMITE_QTD, ex.qtd + nova.qtd); else carrinho.push(nova);
     salvarCarrinho();
     atualizarBadge();
   }
@@ -94,6 +121,8 @@
       .then(function (d) {
         if (!d || d.disponivel === false) return mostrarIndisponivel();
         DADOS = d;
+        if (d.limites && d.limites.qtd > 0) LIMITE_QTD = d.limites.qtd;
+        aplicarTetoCarrinho();
         montar();
       })
       .catch(mostrarIndisponivel);
@@ -537,12 +566,14 @@
     caixa.querySelectorAll("[data-vdec]").forEach(function (b) { b.addEventListener("click", function () { mudarVar(+b.getAttribute("data-vdec"), -1); }); });
     caixa.querySelectorAll("[data-qtd]").forEach(function (b) {
       b.addEventListener("click", function () {
-        modalQtd = Math.max(1, Math.min(50, modalQtd + (+b.getAttribute("data-qtd"))));
+        modalQtd = Math.max(1, Math.min(LIMITE_QTD, modalQtd + (+b.getAttribute("data-qtd"))));
         $("cdModalQtd").textContent = modalQtd;
+        pintarTetoQtd(caixa, modalQtd);
         atualizarPrecoModal();
       });
     });
     $("cdModalAdd").addEventListener("click", confirmarModal);
+    pintarTetoQtd(caixa, modalQtd);
     var obs = $("cdModalObs"), cnt = $("cdObsCount");
     if (obs && cnt) obs.addEventListener("input", function () { cnt.textContent = obs.value.length + "/200"; });
     atualizarPrecoModal();
@@ -733,7 +764,7 @@
           '<div class="cd-qtd" style="margin-top:8px">' +
             '<button type="button" data-dec="' + idx + '" aria-label="Menos">−</button>' +
             "<span>" + l.qtd + "</span>" +
-            '<button type="button" data-inc="' + idx + '" aria-label="Mais">+</button>' +
+            '<button type="button" data-inc="' + idx + '"' + (l.qtd >= LIMITE_QTD ? ' disabled aria-label="Máximo de ' + LIMITE_QTD + ' por pedido"' : ' aria-label="Mais"') + '>+</button>' +
           "</div>" +
         "</div>" +
         '<div class="cd-linha-dir">' +
@@ -752,7 +783,7 @@
   function mudarQtd(idx, delta) {
     var l = carrinho[idx];
     if (!l) return;
-    l.qtd += delta;
+    l.qtd = Math.min(LIMITE_QTD, l.qtd + delta);
     if (l.qtd <= 0) carrinho.splice(idx, 1);
     salvarCarrinho();
     atualizarBadge();
