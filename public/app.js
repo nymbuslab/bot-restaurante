@@ -985,6 +985,9 @@ function estRenderAcoesGaveta() {
     : '<button type="button" class="est-g-acao" data-est-lanc="controlar" aria-pressed="false">' + EST_ICO.controlar + 'Começar a controlar</button>';
   cont.querySelectorAll("[data-est-lanc]").forEach((b) =>
     b.addEventListener("click", () => estAbrirLancamento(b.dataset.estLanc)));
+  // O rodapé só existe para quem já controla: "parar de controlar" não faz sentido
+  // em produto ilimitado, e o botão de ligar já está na fileira acima.
+  if ($("estDesligarBloco")) $("estDesligarBloco").hidden = !l.controlado;
   estMarcarAcao(estLancTipo);
 }
 
@@ -1165,6 +1168,56 @@ function estAplicarSaldoNovo(quantidade) {
   renderEstoque();
 }
 
+// Espelho do estAplicarSaldoNovo para o caminho contrário: o produto deixou de ser
+// controlado, então sai dos contadores, perde o selo e a gaveta volta a oferecer
+// só "Começar a controlar".
+function estAplicarSemControle() {
+  const l = estGavetaLinha;
+  if (!l) return;
+  l.controlado = false;
+  l.quantidade = null;
+  l.esgotado = false;
+  l.baixo = false;
+  l.minimo = 0;
+  estRecalcularContadores();
+  estPintarSaldo();
+  estRenderAcoesGaveta();
+  $("formEstMinimo").hidden = true;   // sem controle não há mínimo para guardar
+  $("estMinimo").value = "";
+  renderEstoque();
+}
+
+// Desliga o controle do produto. O saldo é descartado, então a confirmação diz o
+// número que vai embora: quem clicou por engano precisa ver o que está perdendo.
+async function estDesligarControle() {
+  const l = estGavetaLinha;
+  if (!l || !l.controlado) return;
+  const saldo = Estoque.formatarQtd(l.quantidade, l.unidade) + " " + l.unidade;
+  const ok = await confirmar(
+    "Parar de controlar?",
+    "O saldo de " + saldo + " será descartado e " + (l.nome || "o produto") +
+      " volta a ser vendido sem limite de quantidade. A movimentação já registrada continua no histórico.",
+    "Parar de controlar"
+  );
+  if (!ok) return;
+  const btn = $("btnEstDesligar");
+  btn.disabled = true;
+  let r;
+  try {
+    r = await api("POST", "/api/estoque/controle", { itemId: l.itemId, variacaoId: l.variacaoId, ativo: false });
+  } catch (_) {
+    btn.disabled = false;
+    toast("Sem conexão. O controle continua ligado.", "erro");
+    return;
+  }
+  btn.disabled = false;
+  if (!r) return;
+  const dados = await r.json().catch(() => ({}));
+  if (!r.ok) { toast(dados.erro || "Não foi possível desligar o controle.", "erro"); return; }
+  estAplicarSemControle();
+  toast("Controle desligado. O produto voltou a ser ilimitado.");
+}
+
 function estRecalcularContadores() {
   const ctrl = estoqueLinhas.filter((l) => l.controlado);
   $("estContControlados").textContent = String(ctrl.length);
@@ -1272,6 +1325,7 @@ if ($("formEstLanc")) $("formEstLanc").addEventListener("submit", estEnviarLanca
 if ($("formEstMinimo")) $("formEstMinimo").addEventListener("submit", estSalvarMinimo);
 if ($("estLancQtd")) $("estLancQtd").addEventListener("input", estAtualizarPrevia);
 if ($("btnEstMais")) $("btnEstMais").addEventListener("click", () => estCarregarExtrato(false));
+if ($("btnEstDesligar")) $("btnEstDesligar").addEventListener("click", estDesligarControle);
 
 if ($("estBusca")) $("estBusca").addEventListener("input", (e) => {
   estTermoBusca = e.target.value || "";

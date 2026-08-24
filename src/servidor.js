@@ -2123,6 +2123,41 @@ app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
   }
 });
 
+// Parar de controlar: o produto volta a ser ilimitado e o saldo é descartado. O
+// editor do produto já fazia isso apagando o campo Estoque ("Em branco = ilimitado"),
+// mas quem ligou o controle por engano estava na tela de Controle de estoque, que
+// só sabia ligar — e item controlado com saldo zero SOME da venda como esgotado.
+// Rota própria em vez de mandar o cardápio inteiro do painel: o PUT /api/cardapio
+// carrega a cópia que o navegador tem, e uma venda que caísse no meio seria desfeita.
+app.post("/api/estoque/controle", exigeAuth, async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  const itemId = String(b.itemId || "");
+  if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
+  // Só o desligar passa por aqui. Ligar continua sendo a CONTAGEM inicial, que já
+  // existe e nasce com o número que o dono contou; um "ligar" sem número criaria um
+  // segundo caminho para o mesmo lugar, com saldo zero e o produto fora de venda.
+  if (b.ativo !== false) {
+    return res.status(400).json({ erro: "Para ligar o controle, faça a contagem inicial do produto." });
+  }
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const r = await store.pararControleTx(client, req.tenantDir, {
+      itemId, variacaoId: b.variacaoId ? String(b.variacaoId) : null,
+    });
+    await client.query("COMMIT");
+    store.sincronizarCardapio(req.tenantDir, r.cardapio);
+    res.json({ ok: true });
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    const naoAchou = /não encontrado/i.test(e.message || "");
+    res.status(naoAchou ? 404 : 400).json({ erro: e.message || "Não foi possível desligar o controle." });
+  } finally {
+    client.release();
+  }
+});
+
 // ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----
 
 const MIME_TO_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };

@@ -226,6 +226,48 @@ test("garantirControle: item ilimitado passa a ter estoque 0 sem mutar o origina
   assert.equal(c.categorias[0].itens[2].estoque, undefined);
 });
 
+// ---- removerControle (par do garantirControle) ----
+// Desligar o controle apaga o saldo, e é o oposto exato de ligar. O editor do
+// produto já fazia isso apagando o campo (é o que "Em branco = ilimitado" quer
+// dizer), mas a tela de Controle de estoque só sabia ligar.
+test("removerControle: item controlado volta a ilimitado sem mutar o original", () => {
+  const c = cloneMov();
+  const novo = E.removerControle(c, "a1", null);
+  assert.equal(E.statusEstoque(novo.categorias[0].itens[0]).controlado, false);
+  assert.equal(novo.categorias[0].itens[0].estoque, undefined);
+  assert.equal(novo.categorias[0].itens[0].estoqueMinimo, undefined);
+  assert.equal(novo.categorias[0].itens[0].nome, "Espeto");   // o resto do item fica
+  assert.equal(c.categorias[0].itens[0].estoque, 3);          // original intacto
+});
+
+test("removerControle: desliga a variação sem tocar as outras opções", () => {
+  const novo = E.removerControle(cloneMov(), "a4", "v1");
+  const item = novo.categorias[0].itens[3];
+  assert.equal(E.statusEstoque(item.variacoes[0]).controlado, false);
+  assert.equal(item.variacoes[0].preco, 18);                  // preço da opção fica
+  assert.equal(item.variacoes[1].nome, "G");
+});
+
+test("removerControle: alvo inexistente devolve null (rota responde 404)", () => {
+  assert.equal(E.removerControle(cloneMov(), "zzz", null), null);
+  assert.equal(E.removerControle(cloneMov(), "a4", "vX"), null);
+  assert.equal(E.removerControle(cloneMov(), "a1", "v1"), null); // item sem variações
+});
+
+test("removerControle: desligar não vira movimento de saldo no diffEstoque", () => {
+  const antes = cloneMov();
+  const depois = E.removerControle(antes, "a1", null);
+  assert.deepEqual(E.diffEstoque(antes, depois), []);
+});
+
+test("removerControle: ligar e desligar volta ao ponto de partida", () => {
+  const c = cloneMov();
+  const ligado = E.garantirControle(c, "a3", null);
+  assert.equal(E.statusEstoque(ligado.categorias[0].itens[2]).controlado, true);
+  const desligado = E.removerControle(ligado, "a3", null);
+  assert.deepEqual(desligado.categorias[0].itens[2], c.categorias[0].itens[2]);
+});
+
 // ---- aplicarAjuste (Ruling D — revisão da Task 7) ----
 // Motor de ajuste de UM alvo só: nunca reusa o payload de venda (que agrega por
 // pedido e força mínimo 1 pra item "un"), porque isso deixava vazar um

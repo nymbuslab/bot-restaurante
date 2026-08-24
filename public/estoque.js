@@ -338,6 +338,38 @@
     });
     return Object.assign({}, cardapio, { categorias: categorias });
   }
+  // Desliga o controle de um item/variação: o saldo é DESCARTADO e o produto volta
+  // a ser ilimitado. Par do `garantirControle`. NÃO é movimento de estoque — o item
+  // não passou a ter outra quantidade, passou a não ter quantidade nenhuma — e é
+  // por isso que o `diffEstoque` ignora a virada para "sem controle". Cópia, não
+  // muta. Devolve null quando o alvo não existe, para a rota poder responder 404.
+  function removerControle(cardapio, itemId, variacaoId) {
+    const alvo = String(itemId);
+    let achou = false;
+    const semSaldo = function (o) {
+      const novo = Object.assign({}, o);
+      delete novo.estoque;
+      delete novo.estoqueMinimo;
+      return novo;
+    };
+    const categorias = ((cardapio && cardapio.categorias) || []).map(function (c) {
+      return Object.assign({}, c, {
+        itens: ((c && c.itens) || []).map(function (it) {
+          if (!it || String(it.id) !== alvo) return it;
+          if (variacaoId == null) { achou = true; return semSaldo(it); }
+          if (!Array.isArray(it.variacoes)) return it;
+          return Object.assign({}, it, {
+            variacoes: it.variacoes.map(function (v) {
+              if (!v || String(v.id) !== String(variacaoId)) return v;
+              achou = true;
+              return semSaldo(v);
+            }),
+          });
+        }),
+      });
+    });
+    return achou ? Object.assign({}, cardapio, { categorias: categorias }) : null;
+  }
   // Ajuste MANUAL de um único alvo (o item OU a variação, NUNCA os dois): entrada,
   // perda ou contagem lançados na tela de Controle de estoque. Ruling D: um ajuste
   // não é "isso foi vendido" (formato de payload de pedido, agregado por id), é
@@ -479,7 +511,7 @@
   return {
     temControle: temControle, statusEstoque: statusEstoque, formatarQtd: formatarQtd, validarEstoque: validarEstoque,
     aplicarBaixa: aplicarBaixa, calcularBaixa: calcularBaixa, calcularDevolucao: calcularDevolucao, diffEstoque: diffEstoque,
-    acharSaldo: acharSaldo, garantirControle: garantirControle, aplicarAjuste: aplicarAjuste, linhasDeEstoque: linhasDeEstoque,
+    acharSaldo: acharSaldo, garantirControle: garantirControle, removerControle: removerControle, aplicarAjuste: aplicarAjuste, linhasDeEstoque: linhasDeEstoque,
     definirMinimo: definirMinimo, preservarSaldos: preservarSaldos, saldoMudou: saldoMudou, MARCA_ESTOQUE: MARCA_ESTOQUE,
   };
 });

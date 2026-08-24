@@ -6511,3 +6511,9 @@ button.est-acao:hover { border-color: var(--accent-fg); }
 }
 .est-g-pedido:hover { border-color: var(--secondary); background: var(--secondary-subtle); }
 .est-g-mais { width: 100%; margin-top: var(--space-3); }
+
+/* Rodapé da gaveta do estoque: "parar de controlar" fica separado dos lançamentos
+   por uma linha, porque não é movimento — é desfazer o controle. Botão discreto
+   (variante perigo) para não competir com Entrada/Perda/Contagem. */
+.est-g-desligar { border-top: 1px solid var(--border); padding-top: var(--space-4); }
+.est-g-desligar .campo-nota { margin-top: var(--space-2); }

@@ -189,6 +189,22 @@ async function definirMinimoTx(client, dir, { itemId, variacaoId = null, minimo 
   return { cardapio: novo };
 }
 
+// Desligar o controle não mexe em saldo, mexe na EXISTÊNCIA do saldo, então também
+// não é movimento: grava direto no cardápio, no mesmo molde do mínimo. Sob a mesma
+// trava, pelo mesmo motivo (ler do cache deixaria uma venda concorrente ser
+// sobrescrita, e o `diffEstoque` do setCardapio ainda registraria a diferença como
+// "ajuste" do editor).
+async function pararControleTx(client, dir, { itemId, variacaoId = null } = {}) {
+  const slug = slugDe(dir);
+  const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
+  if (!r.rows[0]) throw new Error("Tenant não encontrado: " + slug);
+  const cardapio = r.rows[0].cardapio || { categorias: [] };
+  const novo = Estoque.removerControle(cardapio, itemId, variacaoId);
+  if (!novo) throw new Error("Produto não encontrado no cardápio.");
+  await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(novo), slug]);
+  return { cardapio: novo };
+}
+
 async function ajustarEstoqueTx(client, dir, { itemId, variacaoId = null, tipo, quantidade, contado, obs } = {}) {
   const slug = slugDe(dir);
   const r = await client.query("SELECT id, cardapio FROM empresas WHERE slug = $1 FOR UPDATE", [slug]);
@@ -274,4 +290,4 @@ function esquecer(slug) {
   delete cache[slug];
 }
 
-module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, devolverEstoqueTx, ajustarEstoqueTx, definirMinimoTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };
+module.exports = { ensure, getConfig, getCardapio, setConfig, setCardapio, baixarEstoqueTx, devolverEstoqueTx, ajustarEstoqueTx, definirMinimoTx, pararControleTx, amarrarPedidoTx, sincronizarCardapio, itensDisponiveis, esquecer };
