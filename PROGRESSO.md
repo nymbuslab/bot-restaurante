@@ -14,42 +14,15 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-08-22 16:32**
+**Checkpoint de 2026-08-24**
 
-### Feito nesta sessão
-- **Incidente de acesso resolvido** (Sabor D' Casa não conseguia entrar): logout do
-  restaurante voltou a ser `"local"` (a conta é compartilhada entre aparelhos) e o rate
-  limit passou a usar o `Fly-Client-IP` — antes a plataforma inteira dividia um balde de
-  10 logins por 15 min. Restart destravou na hora; correção na v131.
-- **Review de super-admin** (4 achados, todos corrigidos): revogação de sessão do master,
-  8 rotas que penduravam a requisição, e o `SUPERADMIN_EMAIL` virando interruptor real.
-- **Review de Caixa e PDV** (5 achados, todos corrigidos): salvar cardápio/configurações e
-  estornar deixaram de falhar em silêncio, o caixa passou a mostrar os cancelamentos que
-  já descontava, e o "é dinheiro" virou regra única em `public/pagamentos.js` (dual-mode).
-- **Review de Mesas** (1 achado, corrigido): as três rotas que recebiam dinheiro sem
-  conferir a forma de pagamento agora usam `formaPermitida`.
-- Histórico de `caixa_movimentos.forma_pagamento` normalizado por migração (112 registros;
-  os 39 de "Cartão (na entrega)" ficaram, por serem ambíguos). Deploy v133 no ar.
+O **review das telas do front terminou** (era o P1 aberto): saíram as três levas dos
+cadastros e configurações, somando 10 achados corrigidos em 3 commits, todos em ✅ Concluído.
+Os achados que estavam presos no checkpoint anterior viraram item próprio em 📋 Próximos Passos,
+que é onde alguém procura pendência.
 
-### Em meio de edição
-- **O review de Pedidos terminou, mas os achados NÃO foram registrados** em Próximos
-  Passos — a sessão foi interrompida antes da confirmação. São dois: (1) o Faturamento e o
-  Ticket médio mudam ao filtrar por "A receber" (medido: R$ 140,00 → R$ 40,00), contra o
-  que o comentário do código afirma; (2) uma terceira cópia da lista antiga de formas de
-  pagamento em `abrirPedReceber` (`public/app.js:4592`), hoje código morto, mas que agora
-  faria o recebimento ser recusado pelo servidor se entrasse em uso.
-- Também não registrados: o comentário obsoleto acima de `canalPedido`, que diz não existir
-  coluna `origem` quando ela existe e a própria função já a usa.
-
-### Próximo passo
-- Registrar os dois achados de Pedidos em Próximos Passos e fechar os dois itens que o dono
-  esclareceu: WhatsApp desconectado é decisão do cliente (vai usar em breve), e o acento nos
-  nomes dos grupos não é regra, é como cada dono cadastra.
-
-### Decisões pendentes
-- **O que os cards de métricas devem significar ao filtrar por pagamento.** Ou eles seguem o
-  filtro e o rótulo "Faturamento" muda, ou ficam presos ao período inteiro, como o
-  comentário do código diz que era a intenção. É decisão de produto, não de implementação.
+Nada em edição. Próximo passo natural: **deploy**, que junta 3 commits ainda não publicados
+(`7def0ad`, `d17d126` e o desta leva).
 
 ## 📋 Próximos Passos
 
@@ -57,7 +30,10 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
-- [ ] **(P1) Terminar o review das telas do front** — **Caixa, PDV, Mesas e os cadastros de produto saíram** (Categorias, Complementos e Cardápio/Editor de item, 3 achados em 24/08; ver Concluído). O review de **Pedidos** também foi feito, mas os dois achados dele seguem só no checkpoint de 🔄 Em Andamento, sem item próprio. **Configurações, horários e frete** também saíram (3 achados em 24/08). **Faltam:** Conta de acesso e Privacidade, Conexão e Assinatura. Contexto: **as telas do front** (`public/app.js`, com mais de 7 mil linhas) e o **super-admin** (`src/plataforma.js`, `public/admin-master.html`), que nunca entrou em lista nenhuma. Justificativa: os quatro blocos já feitos (estoque, caixa/mesas/pedidos, rotas, pdv/cardápio web) renderam 30 achados, e quatro deles quebravam coisa em produção sem aparecer como erro na tela. O método que funcionou: reproduzir o defeito antes, corrigir, conferir rodando.
+- [ ] **(P1, decisão de produto) O que os cards de métricas devem significar ao filtrar por forma de pagamento** — na aba Pedidos, filtrar por "A receber" muda o Faturamento e o Ticket médio (medido: R$ 140,00 → R$ 40,00), contra o que o comentário do código afirma ser a intenção. Ou os cards seguem o filtro e o rótulo "Faturamento" passa a significar outra coisa, ou ficam presos ao período inteiro. É decisão do dono, não de implementação; sem ela não dá para dizer se é defeito ou comportamento. Achado no review da tela de Pedidos (22/08).
+- [ ] **(P2) Preço de plano escrito à mão fora do painel** — a correção de 24/08 tirou a cópia dos valores de `public/app.js`, que passou a ler os dois planos de `GET /api/assinatura`. Sobraram dois lugares: **`public/checkout.html`** traz "R$ 79" e "R$ 99" fixos no HTML, e é a tela onde a pessoa autoriza a cobrança; e **`public/app-admin.js:827`** monta a confirmação de troca de plano do master com os valores digitados. Um reajuste em `src/planos.js` e no Stripe deixaria as duas mostrando o preço velho. O checkout precisa de uma rota pública com os planos (hoje `/api/assinatura` exige login); o master já pode usar a mesma resposta que o painel usa.
+- [ ] **(P2) Código morto: terceira cópia da lista de formas de pagamento em `abrirPedReceber`** — `public/app.js` guarda uma lista antiga de formas dentro de `abrirPedReceber`, hoje inalcançável. Não afeta ninguém enquanto estiver morta, mas se voltar a ser usada o servidor recusa o recebimento, porque a validação passou a conferir contra a lista canônica de `pagamentos.js`. Achado no review da tela de Pedidos (22/08).
+- [ ] **(P3) Comentário obsoleto acima de `canalPedido`** — diz que a coluna `origem` não existe, quando ela existe e a própria função já a usa para separar PDV de cardápio web. Só desinforma quem for mexer. Achado no review da tela de Pedidos (22/08).
 - [ ] **(P2) A coluna `pedidos.pagamento` guarda duas coisas diferentes** — em pedido do cardápio web e de mesa ela guarda a **forma escolhida** ("PIX"); em venda do PDV guarda o **resumo com valor** ("PIX R$ 20,00", montado por `pdv.resumoPagamento`). Já produziu um efeito concreto: o registro `"Pix R$ 12,00"` que estava em `caixa_movimentos.forma_pagamento` (normalizado em 22/08) veio de uma coluna copiada na outra. **Sem vítima hoje** — o painel de caixa e o dashboard leem `caixa_movimentos`, não esta coluna — mas inviabiliza qualquer relatório por forma a partir de `pedidos`, e é armadilha para quem for construir um. Descoberto ao fechar o review de Caixa e PDV.
 - [ ] **(P2) Nenhum restaurante tem sessão de WhatsApp conectada** — a tabela `wa_auth` está vazia para todos os tenants, ou seja, o bot não está ligado em lugar nenhum. Não dá para saber se caiu num deploy ou se pararam de usar o canal, porque não há medição anterior para comparar. **Não afeta a operação atual**, que é toda pelo PDV: dos pedidos recentes, nenhum veio do bot. Se for para voltar a usar, é reconectar pela aba Conexão e ler o QR.
 - [ ] **(P2) O editor do produto abre mostrando o saldo do boot** — o campo de estoque é preenchido com a cópia que o navegador carregou ao abrir o painel, então às 15h ele exibe o número das 9h. Depois da correção de 24/08 isso não corrompe mais nada (só o saldo realmente digitado é gravado), mas quem decidir corrigir a contagem por cima decide olhando um número velho. A correção é recarregar `GET /api/cardapio` ao abrir o editor de um produto existente, ao custo de uma requisição por abertura. Ficou fora da leva de 24/08, que tratou só os três achados.
@@ -87,6 +63,8 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **Review das telas do front concluído: Conta, Privacidade, Conexão e Assinatura (leva 3), e o P1 fecha aqui** — **Conta de acesso e Privacidade saíram sem achado**: trocar e-mail e senha confere a senha atual e revoga as outras sessões, a exclusão exige senha mais a palavra "EXCLUIR", cancela a assinatura no Stripe **antes** de apagar e aborta se o cancelamento falhar, e o servidor derruba os cookies. Nos outros dois blocos, quatro achados. **(1) "Conectar ao WhatsApp" falhava calado:** `conectarBot` e `desconectarBot` jogavam a resposta fora, mas a rota tem dois portões que recusam — `exigeAssinatura` (402, "Assinatura inativa. Ative seu plano para usar o bot") e o rate limit (429). O dono via "Iniciando...", o poll de 4s voltava sozinho ao estado desconectado e ninguém dizia o motivo; ele clicava de novo, e de novo. O `resetarBot`, três linhas abaixo, sempre tratou certo, então era inconsistência dentro da mesma tela. Agora a mensagem do servidor aparece e o placeholder é desfeito na hora. **(2) O preço do plano estava escrito à mão numa mensagem de cobrança:** `src/planos.js` se declara "fonte única de nome/valor" e o comentário do `renderAssinatura` diz que os valores vêm da API, mas `public/app.js` tinha `PLANOS_INFO = { 79, 99 }`, e era essa cópia que montava a confirmação da troca ("Mudar para o Plano Completo (R$ 99/mês)? A diferença é cobrada proporcionalmente"), mais um `|| 79` de fallback e um botão com o valor no texto. Num reajuste, o card mostraria o preço novo e a tela que pede a autorização da cobrança, o antigo. `GET /api/assinatura` passou a devolver **os dois planos** (`planos`, direto de `PLANO_INFO`) e o front lê de lá; sem resposta da API sai "—", não um número inventado. **(3) A troca de plano usava `window.confirm`:** era a única confirmação do painel fora do modal `confirmar()`, criado justamente para substituí-lo, numa ação que gera cobrança proporcional imediata. **(4) Resquício na exclusão de conta:** `sessionStorage.removeItem("token")` não fazia nada (o painel do restaurante nunca guardou o token ali; ele vive em memória mais o cookie httpOnly, e o servidor já limpa os cookies), e os formulários de senha só eram limpos ao abrir, deixando o que foi digitado no input até a próxima abertura. 493 testes. **Ressalva: não validado no navegador** — o `.env` local aponta para o banco de produção. **Fecha o P1 "Terminar o review das telas do front"**, aberto desde que os quatro primeiros blocos renderam 30 achados: as três levas dos cadastros e configurações somaram mais 10.
 
 - [x] **O painel dizia "fechado" para loja aberta: duas regras de horário que discordavam (leva 2 do review dos cadastros)** — `lojaAbertaAgora` (painel) e `estaAberto` (`src/fluxo.js`) respondiam a mesma pergunta, e quem manda é o servidor: é ele que o bot e o cardápio web consultam para aceitar pedido. A versão curta do painel errava em quatro casos, todos exibindo FECHADO para loja aberta. **(1) Horário que vira a noite:** `min >= abre && min < fecha` nunca é verdade quando o fechamento é menor que a abertura, então uma pizzaria das 18:00 às 02:00 aparecia fechada 24 horas por dia. **(2) Fechar às 00:00:** o servidor trata `00:00` como fim do dia (1440), justamente para "11:00 às 00:00" valer o dia inteiro — e para **`00:00 às 00:00` significar 24 horas abertas**, que foi como o dono cadastrou e viu a pílula dizer "fechado"; o painel lia zero e `min < 0` nunca acontecia. **(3) Cauda da madrugada:** o servidor conta a janela do dia anterior (01:00 de terça pela segunda que virou), o painel não olhava para trás. **(4) Padrão do interruptor:** o servidor só fecha com `aberto === false`, o painel fechava com qualquer valor falsy. Havia ainda um quinto: o painel usava o relógio do navegador, o servidor usa `America/Sao_Paulo` fixo. A regra virou o módulo dual-mode **`public/horario.js`** (`abertoAgora`, `textoHorario`, `proximaAbertura`, `agoraBR`), consumido pelos dois lados, com `agora` injetável para teste: **14 testes novos**, um por caso acima. Sumiu junto uma terceira duplicação inofensiva, o texto do horário (`resumirHorarios` no painel e `textoHorario` no `fluxo.js` eram o mesmo algoritmo escrito duas vezes). **Conferido a pedido do dono:** o cardápio web obedece o horário nos dois lados — `POST /api/c/:slug/pedido` recusa com 409 fora do horário e a página desabilita o botão, mostra o aviso e trava o envio, ambos pela regra do servidor. O defeito era só do painel. Junto saíram dois menores: **a lista de formas de pagamento tinha uma quarta cópia** em `public/app.js` (`FORMAS_FIXAS`, com o comentário admitindo que "espelha a ordem canônica" de `pagamentos.js`) — sem vítima, porque as listas coincidiam, mas é a tela que decide o que o tenant pode ligar, e o incidente do PDV com dado legado nasceu exatamente de cópias divergentes; passou a ler `Pagamentos.FORMAS_PAGAMENTO`. E **o aviso de geocodificação falhada não dizia a consequência**: quando o dono muda o endereço e o Geoapify não acha o novo, as coordenadas antigas ficam (apagá-las jogaria todo cliente para fora da área) e o frete segue sendo cobrado pela distância até o endereço velho; o aviso agora nomeia o endereço anterior e diz que ele continua valendo até a correção. 493 testes. **Ressalva: não validado no navegador** — o `.env` local aponta para o banco de produção.
 

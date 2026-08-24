@@ -652,6 +652,11 @@ app.get("/api/assinatura", exigeAuth, async (req, res) => {
       plano,
       planoNome: info.nome,
       valorMes: info.valorMes,
+      // Os dois planos, não só o atual: a tela precisa do preço do plano de
+      // DESTINO para a confirmação de troca ("Mudar para o X (R$ Y/mês)?"). Sem
+      // isto o painel mantinha uma cópia dos valores escrita à mão, e um reajuste
+      // deixaria a mensagem que pede a autorização da cobrança com o preço velho.
+      planos: stripeBilling.PLANO_INFO,
       faturas,
     });
   } catch (e) {

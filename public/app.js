@@ -1597,18 +1597,38 @@ document.querySelectorAll(".btn-sair").forEach((b) => b.addEventListener("click"
 let assinaturaAtual = null;
 let planoAtual = "essencial"; // plano do tenant (essencial|completo) — gating de features no painel
 let pedidoModalAtual = null; // pedido aberto no modal de detalhe (p/ impressão)
-const PLANOS_INFO = { essencial: { nome: "Plano Essencial", valor: 79 }, completo: { nome: "Plano Completo", valor: 99 } };
+// Nome e valor de cada plano vêm de GET /api/assinatura (`planos`), que os lê de
+// src/planos.js, a fonte única. Antes havia uma cópia dos valores escrita aqui, e
+// era ela que montava a confirmação da troca de plano: um reajuste faria o card
+// mostrar o preço novo e a tela que pede a autorização da cobrança, o antigo.
+function planoInfo(chave) {
+  const mapa = (assinaturaAtual && assinaturaAtual.planos) || {};
+  return mapa[chave] || { nome: chave === "completo" ? "Plano Completo" : "Plano Essencial", valorMes: null };
+}
+
+// "R$ 99,00" a partir do valor da API; "—" quando ela ainda não respondeu (melhor
+// um traço do que um número inventado numa tela de cobrança).
+function precoPlano(valorMes) {
+  return valorMes == null ? "—" : "R$ " + Number(valorMes).toFixed(2).replace(".", ",");
+}
 
 // Upgrade/downgrade de plano (assinatura viva). Confirma, troca no Stripe (proration)
 // e recarrega o plano (gating) + a aba Assinatura.
 async function trocarPlanoAcao(novoPlano) {
-  const info = PLANOS_INFO[novoPlano] || PLANOS_INFO.essencial;
+  const info = planoInfo(novoPlano);
   const ehUpgrade = novoPlano === "completo";
   const recursos = "Mesas e comandas, PDV de balcão, Caixa do dia, controle de estoque, frete por raio e impressão de pedidos";
+  // Modal do painel, não `window.confirm`: era a única confirmação que ainda saía
+  // como caixa crua do navegador, justamente numa ação que gera cobrança na hora.
   const msg = ehUpgrade
-    ? `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nA diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter: ${recursos}.`
-    : `Mudar para o ${info.nome} (R$ ${info.valor}/mês)?\n\nO ajuste é proporcional. Você deixa de ter: ${recursos}.`;
-  if (!window.confirm(msg)) return;
+    ? `A diferença é cobrada proporcionalmente pelo Stripe. Você passa a ter: ${recursos}.`
+    : `O ajuste é proporcional. Você deixa de ter: ${recursos}.`;
+  const ok = await confirmar(
+    `Mudar para o ${info.nome} (${precoPlano(info.valorMes)}/mês)?`,
+    msg,
+    ehUpgrade ? "Fazer upgrade" : "Mudar de plano"
+  );
+  if (!ok) return;
   const r = await api("POST", "/api/assinatura/plano", { plano: novoPlano });
   if (r && r.ok) {
     toast("Plano atualizado!");
@@ -1671,8 +1691,7 @@ function renderAssinatura(a) {
   badge.className = "assin-badge " + cls;
 
   // Nome e valor do plano vêm da API (não fixos no HTML) — refletem Essencial/Completo.
-  const valorMes = a.valorMes || 79;
-  const valorTxt = "R$ " + valorMes.toFixed(2).replace(".", ",");
+  const valorTxt = precoPlano(a.valorMes);
   const nomeEl = $("assinPlanoNome");
   if (nomeEl && a.planoNome) nomeEl.textContent = a.planoNome;
   const valorEl = $("assinPlanoValor");
@@ -1724,7 +1743,8 @@ function renderAssinatura(a) {
     // Cortesia é gerenciada pela equipe (sem assinatura no Stripe). Quem está no
     // Essencial pode assinar o Completo por autoatendimento (checkout) → vira pagante.
     if (a.plano !== "completo") {
-      acoes.appendChild(botaoAssin("Assinar o Plano Completo (R$ 99/mês)", () => { location.href = "checkout.html?plano=completo"; }));
+      const completo = planoInfo("completo");
+      acoes.appendChild(botaoAssin(`Assinar o ${completo.nome} (${precoPlano(completo.valorMes)}/mês)`, () => { location.href = "checkout.html?plano=completo"; }));
     }
   } else {
     acoes.appendChild(botaoAssin("Gerenciar assinatura", abrirPortal, "secundario"));
@@ -1733,8 +1753,8 @@ function renderAssinatura(a) {
   // Trocar de plano (upgrade/downgrade) — só com assinatura Stripe viva (trial/ativa).
   if ((a.status === "trialing" || a.status === "active") && a.plano) {
     const outro = a.plano === "completo" ? "essencial" : "completo";
-    const infoOutro = PLANOS_INFO[outro];
-    const label = (outro === "completo" ? "Fazer upgrade para o " : "Mudar para o ") + infoOutro.nome + " (R$ " + infoOutro.valor + "/mês)";
+    const infoOutro = planoInfo(outro);
+    const label = (outro === "completo" ? "Fazer upgrade para o " : "Mudar para o ") + infoOutro.nome + " (" + precoPlano(infoOutro.valorMes) + "/mês)";
     acoes.appendChild(botaoAssin(label, () => trocarPlanoAcao(outro), "secundario"));
   }
 }
@@ -2064,7 +2084,18 @@ async function atualizarStatus() {
 async function conectarBot() {
   _statusKey = null; // forçamos o próximo poll a re-renderizar (saímos do placeholder)
   $("statusBox").innerHTML = painelCarregando("Iniciando...");
-  await api("POST", "/api/bot/conectar");
+  const r = await api("POST", "/api/bot/conectar");
+  // A rota tem dois portões que recusam: assinatura inativa (402, "Ative seu plano
+  // para usar o bot") e o rate limit (429). A resposta era jogada fora, então o dono
+  // via "Iniciando...", o poll voltava sozinho ao estado desconectado e ninguém dizia
+  // o motivo — ele clicava de novo, e de novo. O resetarBot, logo abaixo, sempre
+  // tratou isso certo; era inconsistência dentro da mesma tela.
+  if (r && !r.ok) {
+    const d = await r.json().catch(() => ({}));
+    toast(d.erro || "Não foi possível conectar agora. Tente de novo em instantes.", "erro");
+    atualizarStatus();   // desfaz o "Iniciando..." na hora, sem esperar o poll de 4s
+    return;
+  }
   setTimeout(atualizarStatus, 1500);
 }
 
@@ -2076,7 +2107,11 @@ async function desconectarBot() {
   );
   if (!ok) return;
   _statusKey = null;
-  await api("POST", "/api/bot/desconectar");
+  const r = await api("POST", "/api/bot/desconectar");
+  if (r && !r.ok) {
+    const d = await r.json().catch(() => ({}));
+    toast(d.erro || "Não foi possível desconectar agora. Tente de novo.", "erro");
+  }
   setTimeout(atualizarStatus, 800);
 }
 
@@ -4157,10 +4192,12 @@ function alternarFormConta(formId, mostrar) {
   const form = $(formId);
   if (!form) return;
   form.hidden = !mostrar;
+  // Limpa ao abrir E ao fechar: fechando, a senha digitada ficava no input até
+  // alguém reabrir o formulário.
+  form.querySelectorAll("input").forEach((i) => (i.value = ""));
+  const aviso = form.querySelector(".aviso");
+  if (aviso) { aviso.textContent = ""; aviso.className = "aviso"; }
   if (mostrar) {
-    form.querySelectorAll("input").forEach((i) => (i.value = ""));
-    const aviso = form.querySelector(".aviso");
-    if (aviso) { aviso.textContent = ""; aviso.className = "aviso"; }
     const primeiro = form.querySelector("input");
     if (primeiro) primeiro.focus();
   }
@@ -4275,7 +4312,9 @@ $("formExcluir").addEventListener("submit", async (e) => {
   const r = await api("DELETE", "/api/conta", { senhaAtual, confirmacao });
   const data = r ? await r.json().catch(() => ({})) : {};
   if (r && r.ok) {
-    sessionStorage.removeItem("token");
+    // Sem limpeza de token aqui: o painel do restaurante nunca guardou o token no
+    // sessionStorage (ele vive em memória + cookie httpOnly), e o servidor já
+    // derruba os cookies em `limparSessaoCookies` ao apagar a conta.
     location.href = "/";
   } else {
     btn.disabled = false; btn.textContent = "Excluir permanentemente";
