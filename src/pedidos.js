@@ -35,6 +35,9 @@ function mapRow(r) {
     tipoEntrega: r.tipo_entrega,
     endereco: r.endereco,
     pagamento: r.pagamento,
+    // Como foi pago de fato, com valor por forma. Nulo enquanto o pedido não foi
+    // recebido. `pagamento` guarda a FORMA (ver a migração de 2026-08-24).
+    pagamentoResumo: r.pagamento_resumo || "",
     taxaEntrega: r.taxa_entrega == null ? 0 : Number(r.taxa_entrega),
     itens: r.itens || [],
     total: r.total == null ? 0 : Number(r.total),

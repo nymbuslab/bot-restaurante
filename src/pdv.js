@@ -171,4 +171,17 @@ function resumoPagamento(pagamentos) {
     .join(" · ");
 }
 
-module.exports = { LIMITE_QTD, LIMITE_KG, recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete };
+// A forma que vai para `pedidos.pagamento`. Uma forma só, ainda que lançada em duas
+// parcelas, é a forma do pedido; venda dividida ENTRE formas diferentes devolve
+// vazio, porque escolher uma delas seria inventar informação num registro
+// financeiro. Quem guarda a verdade completa é `pedidos.pagamento_resumo`.
+function formaUnica(pagamentos) {
+  const formas = [];
+  (Array.isArray(pagamentos) ? pagamentos : []).forEach((p) => {
+    const f = (p && p.forma) || "";
+    if (f && formas.indexOf(f) === -1) formas.push(f);
+  });
+  return formas.length === 1 ? formas[0] : "";
+}
+
+module.exports = { LIMITE_QTD, LIMITE_KG, recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, formaUnica, freteEfetivo, totalComFrete };

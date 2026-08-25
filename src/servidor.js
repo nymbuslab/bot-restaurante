@@ -2555,7 +2555,6 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
       pedido = await caixa.venderLocal(req.tenantDir, {
         cliente, itens, total, desconto,
         pagamentos: pagamentosNorm,
-        pagamentoResumo: pdv.resumoPagamento(pagamentosNorm),
         observacao: obs, tipoEntrega, endereco, telefone, taxaEntrega,
       });
     } else {

@@ -94,7 +94,17 @@ baixa no próprio estoque** (chave `item.id::variacao.id`), atômica via `store.
 id (bigint), empresa_id (uuid→empresas), numero (sequencial por empresa; índice
 único parcial `pedidos_empresa_numero_unico` em (empresa_id, numero) — rede de
 segurança contra duplicata sob corrida, além do lock FOR UPDATE em runtime),
-status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento,
+status, cliente, telefone, chat_id, tipo_entrega, endereco,
+pagamento (a FORMA: Dinheiro/PIX/Cartão de Crédito/Cartão de Débito. Vazio quando a
+  venda foi dividida entre formas — escolher uma seria inventar informação num
+  registro financeiro. Linhas antigas podem trazer grafia fora do vocabulário atual),
+pagamento_resumo (text; como foi pago DE FATO, com valor por forma:
+  "PIX R$ 20,00 · Dinheiro R$ 5,00". NULL enquanto o pedido não foi recebido.
+  Escrito por receberPedido, venderLocal e fecharMesa, sempre via
+  `pdv.resumoPagamento`. É o que o cupom e o card do pedido mostram; a forma pura
+  é o que o painel usa para pré-selecionar o recebimento. Até 2026-08-24 as duas
+  informações dividiam a coluna `pagamento`, e o `indexOf` que pré-seleciona a
+  forma nunca casava com um resumo, caindo calado na primeira forma da lista),
 taxa_entrega, itens (jsonb), total, observacao, criado_em (timestamptz),
 avisado_em, recebido_em (timestamptz; null = a receber — usado pelo Caixa),
 desconto (numeric; abatido na venda — usado pelo PDV; web fica 0),

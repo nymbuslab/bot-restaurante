@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, freteEfetivo, totalComFrete } = require("../src/pdv");
+const { recalcularVenda, aplicarDesconto, validarPagamentos, normalizarPagamentos, calcularTroco, resumoPagamento, formaUnica, freteEfetivo, totalComFrete } = require("../src/pdv");
 
 const cardapio = {
   categorias: [
@@ -233,4 +233,33 @@ test("resumoPagamento: milhão também, e o split mantém o separador em cada fo
 
 test("resumoPagamento: abaixo de mil segue idêntico ao que já era", () => {
   assert.equal(resumoPagamento([{ forma: "Dinheiro", valor: 999.9 }]), "Dinheiro R$ 999,90");
+});
+
+// ---- formaUnica (coluna pedidos.pagamento, migração de 2026-08-24) ----
+// A coluna guardava ora a forma escolhida, ora o resumo com valor. Agora `pagamento`
+// é a FORMA e `pagamento_resumo` é como foi pago; esta função decide o que cabe na
+// primeira.
+test("formaUnica: pagamento numa forma só devolve a forma", () => {
+  assert.equal(formaUnica([{ forma: "PIX", valor: 20 }]), "PIX");
+});
+
+test("formaUnica: duas parcelas da MESMA forma ainda são uma forma", () => {
+  assert.equal(formaUnica([{ forma: "PIX", valor: 5 }, { forma: "PIX", valor: 15 }]), "PIX");
+});
+
+test("formaUnica: venda dividida entre formas devolve vazio, não escolhe uma", () => {
+  assert.equal(formaUnica([{ forma: "PIX", valor: 5 }, { forma: "Dinheiro", valor: 15 }]), "");
+});
+
+test("formaUnica: lista vazia ou malformada devolve vazio", () => {
+  assert.equal(formaUnica([]), "");
+  assert.equal(formaUnica(null), "");
+  assert.equal(formaUnica([{ valor: 10 }]), "");
+});
+
+// O resumo NUNCA cabe na coluna da forma: é o defeito que a migração corrigiu.
+test("formaUnica: o que vai para `pagamento` não tem valor colado", () => {
+  const pags = [{ forma: "Cartão de Débito", valor: 26 }];
+  assert.equal(formaUnica(pags), "Cartão de Débito");
+  assert.equal(resumoPagamento(pags), "Cartão de Débito R$ 26,00");
 });

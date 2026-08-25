@@ -8,6 +8,7 @@ const path = require("path");
 const db = require("./db");
 const caixa = require("./caixa");
 const store = require("./store"); // devolverEstoqueTx/sincronizarCardapio (cancelamento devolve ao estoque)
+const pdv = require("./pdv");     // resumoPagamento: o formato do resumo tem um dono só
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {};
@@ -284,6 +285,7 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
     // do Dashboard (que agrega por pedidos.pagamento).
     const abertaEm = m.rows[0].aberta_em;
     let resumo = "";
+    let formaUnica = "";
     if (abertaEm) {
       const fq = await client.query(
         `SELECT forma_pagamento AS forma, SUM(valor) AS total
@@ -292,7 +294,10 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
           GROUP BY forma_pagamento ORDER BY SUM(valor) DESC`,
         [empId, mesaId, abertaEm]
       );
-      resumo = fq.rows.map((x) => (x.forma || "Outros") + " R$ " + (Number(x.total) || 0).toFixed(2).replace(".", ",")).join(" · ");
+      resumo = pdv.resumoPagamento(fq.rows.map((x) => ({ forma: x.forma, valor: Number(x.total) || 0 })));
+      // A conta paga numa forma só é a forma do pedido; dividida entre formas fica
+      // vazia, e quem guarda a verdade é o resumo (ver a migração de 2026-08-24).
+      formaUnica = fq.rows.length === 1 ? ((fq.rows[0].forma || "")) : "";
     }
     // Quita só o que ESTA sessão consumiu. Marcar sobra antiga como recebida aqui
     // inflaria o faturamento com dinheiro que nunca entrou; ela fica na aba Pedidos
@@ -303,11 +308,13 @@ async function finalizarFechamento(dir, mesaId, { pagamentos }, nomeMesa) {
       // nulo: sem isso, o item que o cliente desistiu entrava no faturamento com
       // resumo de pagamento, sem dinheiro ter entrado. E o estorno se recusa a
       // consertar depois, porque enxerga um pedido cancelado.
-      `UPDATE pedidos SET recebido_em = now(), pagamento = COALESCE(NULLIF($3,''), pagamento)
+      `UPDATE pedidos SET recebido_em = now(),
+              pagamento = COALESCE(NULLIF($5,''), pagamento),
+              pagamento_resumo = COALESCE(NULLIF($3,''), pagamento_resumo)
         WHERE empresa_id = $1 AND mesa_id = $2 AND recebido_em IS NULL
           AND status <> 'cancelado'
           AND criado_em >= COALESCE($4::timestamptz, '-infinity'::timestamptz)`,
-      [empId, mesaId, resumo, abertaEm]
+      [empId, mesaId, resumo, abertaEm, formaUnica]
     );
     const r = await client.query(
       `UPDATE mesas SET status = 'livre', total_consumido = 0, fechada_em = now(), aberta_em = NULL

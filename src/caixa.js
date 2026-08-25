@@ -150,10 +150,12 @@ async function receberPedido(dir, pedidoId, opts) {
         [caixa.id, empId, p.forma, p.valor, pedidoId, p.valorPago, p.troco]
       );
     }
-    const resumo = pagamentos.map((p) => p.forma + " R$ " + p.valor.toFixed(2).replace(".", ",")).join(" · ");
+    // O resumo sai do `pdv.resumoPagamento`, que já era o dono desse formato: aqui
+    // vivia a quinta cópia da mesma formatação, escrita à mão.
+    const resumo = pdv.resumoPagamento(pagamentos);
     await client.query(
-      "UPDATE pedidos SET recebido_em = now(), pagamento = $3 WHERE empresa_id = $1 AND id = $2",
-      [empId, pedidoId, resumo]
+      "UPDATE pedidos SET recebido_em = now(), pagamento = $3, pagamento_resumo = $4 WHERE empresa_id = $1 AND id = $2",
+      [empId, pedidoId, pdv.formaUnica(pagamentos), resumo]
     );
     await client.query("COMMIT");
     return { ok: true };
@@ -170,7 +172,8 @@ async function receberPedido(dir, pedidoId, opts) {
 // recebimento POR FORMA de pagamento, tudo numa transação (a venda nunca fica
 // meio-salva). Exige caixa aberto. `venda` já vem RECALCULADA pela rota
 // (src/pdv.js): { cliente, itens, total, desconto, pagamentos:[{forma,valor}],
-// pagamentoResumo, tipoEntrega, endereco, telefone, taxaEntrega }. `total` já
+// tipoEntrega, endereco, telefone, taxaEntrega }. A forma e o resumo saem dos
+// próprios `pagamentos` aqui dentro, não do chamador. `total` já
 // inclui o frete. A baixa de estoque é ATÔMICA, dentro desta transação
 // (store.baixarEstoqueTx). Retorna o pedido salvo (p/ impressão).
 async function venderLocal(dir, venda) {
@@ -215,12 +218,12 @@ async function venderLocal(dir, venda) {
     const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, dir, itens);
     const ped = await client.query(
       `INSERT INTO pedidos
-         (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, taxa_entrega, itens, total, observacao, desconto, origem, recebido_em)
+         (empresa_id, numero, status, cliente, telefone, chat_id, tipo_entrega, endereco, pagamento, pagamento_resumo, taxa_entrega, itens, total, observacao, desconto, origem, recebido_em)
        VALUES
          ($1, (SELECT COALESCE(MAX(numero),0)+1 FROM pedidos WHERE empresa_id = $1), 'novo',
-          $2, $3, '', $4, $5, $6, $7, $8::jsonb, $9, $10, $11, 'pdv', now())
+          $2, $3, '', $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, 'pdv', now())
        RETURNING id, numero, criado_em, recebido_em`,
-      [empId, cliente, telefone, tipoEntrega, endereco, venda.pagamentoResumo || "", taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
+      [empId, cliente, telefone, tipoEntrega, endereco, pdv.formaUnica(pagamentos), pdv.resumoPagamento(pagamentos), taxaEntrega, JSON.stringify(itens), total, (venda.observacao || ""), desconto]
     );
     const row = ped.rows[0];
     await store.amarrarPedidoTx(client, movimentoIds, row.id, row.numero);
@@ -237,7 +240,7 @@ async function venderLocal(dir, venda) {
     return {
       id: row.id, numero: row.numero, status: "novo",
       cliente, telefone, tipoEntrega, endereco,
-      pagamento: venda.pagamentoResumo || "", taxaEntrega,
+      pagamento: pdv.formaUnica(pagamentos), pagamentoResumo: pdv.resumoPagamento(pagamentos), taxaEntrega,
       itens, total, desconto, observacao: venda.observacao || "",
       criadoEm: new Date(row.criado_em).toISOString(),
       recebidoEm: new Date(row.recebido_em).toISOString(),

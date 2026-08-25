@@ -240,3 +240,22 @@ test("cupom: valor grande de troco sai com separador de milhar, como o total", (
   assert.match(cupom, /Troco para:\s*2\.000,00/);
   assert.match(cupom, /Levar troco:\s*765,44/);
 });
+
+// ---- Pagamento: forma x resumo (migração de 2026-08-24) ----
+// O cupom precisa mostrar COMO foi pago quando o pedido já foi recebido. Antes as
+// duas informações dividiam a coluna `pagamento`; agora o resumo tem coluna própria
+// e o cupom prefere ele, sem perder a venda dividida no papel.
+test("cupom: com resumo, imprime o valor por forma; sem resumo, a forma escolhida", () => {
+  const comResumo = montarComanda(
+    Object.assign({}, pedidoBase, { pagamento: "PIX", pagamentoResumo: "PIX R$ 30,50 · Dinheiro R$ 30,00" }),
+    config
+  ).cupom;
+  assert.match(comResumo, /Pagamento: PIX R\$ 30,50 · Dinheiro R\$ 30,00/);
+
+  const semResumo = montarComanda(
+    Object.assign({}, pedidoBase, { pagamento: "PIX", pagamentoResumo: "" }),
+    config
+  ).cupom;
+  assert.match(semResumo, /Pagamento: PIX/);
+  assert.doesNotMatch(semResumo, /R\$ 30,50/);
+});

@@ -148,7 +148,10 @@
     linhas.push(linhaValor("Subtotal:", fmtBR(subtotal)));
     if (taxa > 0) linhas.push(linhaValor("Taxa entrega:", fmtBR(taxa)));
     linhas.push(linhaValor("TOTAL:", fmtBR(pedido.total)));
-    if (pedido.pagamento) linhas.push("Pagamento: " + pedido.pagamento);
+    // Resumo com valor por forma quando já foi pago; a forma escolhida enquanto
+    // está a receber. Colunas separadas desde 2026-08-24 (ver a migração).
+    const pag = pedido.pagamentoResumo || pedido.pagamento;
+    if (pag) linhas.push("Pagamento: " + pag);
     // Troco pedido pelo cliente no cardápio web. Duas linhas porque são duas
     // informações: o que ele vai dar na mão, e o que precisa voltar em dinheiro.
     // A segunda é a conta que quem entrega faria de cabeça na porta do cliente.

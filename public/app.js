@@ -4596,6 +4596,15 @@ function exportarPedidosCSV() {
     .map((i) => `${i.qtd || 1}x ${i.nome}${i.observacao ? ` (${i.observacao})` : ""}`)
     .join(" | ");
   const cab = ["Numero", "Data", "Cliente", "Telefone", "Tipo", "Endereco", "Pagamento", "Itens", "Total", "Avisado"];
+
+// O que mostrar no campo "Pagamento" de um pedido: o resumo com valor por forma
+// quando já foi pago (é a informação mais completa, e a única que descreve venda
+// dividida), e a forma escolhida enquanto está a receber. As duas moram em colunas
+// separadas desde 2026-08-24: `pagamento` é a FORMA, `pagamentoResumo` é como foi
+// pago de fato.
+function textoPagamento(p) {
+  return (p && (p.pagamentoResumo || p.pagamento)) || "";
+}
   const linhas = lista.map((p) => [
     p.numero,
     new Date(p.criadoEm).toLocaleString("pt-BR"),
@@ -4603,7 +4612,7 @@ function exportarPedidosCSV() {
     telefoneFmt(p),
     p.tipoEntrega || "",
     p.endereco || "",
-    p.pagamento || "",
+    textoPagamento(p),
     resumoItens(p),
     "R$ " + moedaBR(p.total || 0),
     p.avisadoEm ? "Sim" : "Nao",
@@ -5217,7 +5226,7 @@ function abrirModalPedido(p) {
           <div class="ped-bloco-titulo">Pagamento</div>
           <div class="ped-linha-info">
             <span class="ped-info-icone">${ICO_PAG}</span>
-            <div class="ped-info-texto">${escapar(p.pagamento) || "—"}${trocoHtml}</div>
+            <div class="ped-info-texto">${escapar(textoPagamento(p)) || "—"}${trocoHtml}</div>
           </div>
         </div>
         <div class="ped-bloco ped-resumo">
