@@ -2,6 +2,18 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
+
+// Env dummy: `src/supabase.js` LANÇA no require quando falta credencial, e o
+// `src/empresas.js` logo abaixo o carrega. Sem isto o arquivo inteiro morre antes
+// do primeiro teste — e some do CI, que não tem `.env`. Aqui a máquina do dono
+// passava porque o dotenv repõe as chaves a partir do `.env` local, então a
+// suíte ficava verde no notebook e vermelha no GitHub. Mesmo preâmbulo do
+// `test/seguranca.test.js`. Valores fake só para os módulos CARREGAREM: nenhum
+// teste deste arquivo toca a rede ou o banco (ele lê `src/servidor.js` como texto).
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://example.supabase.co";
+process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "anon-dummy";
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "service-dummy";
+process.env.DATABASE_URL = process.env.DATABASE_URL || "postgres://u:p@localhost:5432/db";
 const db = require("../src/db");
 const empresas = require("../src/empresas");
 
