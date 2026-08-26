@@ -1,10 +1,15 @@
 # Testando o bot
 
-> **Dois níveis de teste:**
+> **Como testar:**
 > - **Unitário (lógica pura):** `npm test` — runner nativo `node:test` (sem dependência), cobre
 >   `test/` (validação de payload, magic bytes do upload, hash master bcrypt + migração do SHA-256
 >   legado, geração de slug). Usa **env dummy** → roda sem segredos, inclusive no CI
 >   (`.github/workflows/test.yml`). `npm run check` faz a varredura de sintaxe.
+> - **Na condição do CI:** `npm run test:ci` roda a suíte de uma pasta vazia, para o `dotenv`
+>   não repor o `.env` local — é o que o runner do GitHub vê. O `npm test` sozinho **engana**:
+>   com o `.env` presente, um teste que precise de credencial passa aqui e quebra lá. O hook de
+>   `pre-push` (`.githooks/`, ligado com `git config core.hooksPath .githooks`) roda isso antes
+>   de deixar subir. Detalhe no [README](../README.md#-testes-e-ci).
 > - **Integração/fluxo do bot:** o **simulador** abaixo (`testar-bot.js` ou a aba Simulador).
 
 O arquivo `testar-bot.js` na raiz simula uma conversa completa no terminal,
