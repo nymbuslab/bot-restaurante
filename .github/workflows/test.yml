@@ -4,6 +4,14 @@ on:
   push:
   pull_request:
 
+# `issues: write` é só para o aviso de quebra abaixo: quando a `main` fica
+# vermelha, o job abre uma issue e a fecha sozinho quando volta ao verde. Sem
+# isso a falha vira mais um e-mail na caixa de entrada — e foi assim que 32
+# execuções vermelhas passaram cinco dias sem ninguém agir (21 a 25/08).
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,3 +27,45 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+
+      # ---- Aviso de quebra (só na main; PR e outros branches ficam de fora) ----
+      # Uma issue só, reaproveitada: quebra em sequência vira comentário na mesma,
+      # em vez de encher o repositório. O rótulo é o que liga uma coisa à outra.
+      - name: Abre issue quando a main quebra
+        if: failure() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT: ${{ github.sha }}
+          TITULO_COMMIT: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create ci-vermelho --color B60205 --description "A suite de testes esta falhando na main" 2>/dev/null || true
+          CORPO=$(cat <<FIM
+          A suíte falhou na \`main\`.
+
+          - Commit: $COMMIT
+          - Mensagem: $TITULO_COMMIT
+          - Execução: $RUN_URL
+
+          Esta issue fecha sozinha quando a \`main\` voltar ao verde.
+
+          Antes de investigar, rode \`npm run test:ci\` no local: ele roda a suíte na
+          mesma condição daqui (sem \`.env\`), que é onde o \`npm test\` normal engana.
+          FIM
+          )
+          ABERTA=$(gh issue list --state open --label ci-vermelho --json number --jq '.[0].number')
+          if [ -n "$ABERTA" ]; then
+            gh issue comment "$ABERTA" --body "$CORPO"
+          else
+            gh issue create --title "CI vermelho na main" --label ci-vermelho --body "$CORPO"
+          fi
+
+      - name: Fecha a issue quando a main volta ao verde
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          for N in $(gh issue list --state open --label ci-vermelho --json number --jq '.[].number'); do
+            gh issue close "$N" --comment "Verde de novo em $COMMIT."
+          done

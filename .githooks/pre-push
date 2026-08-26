@@ -1,0 +1,32 @@
+#!/bin/sh
+# ============================================================
+# PRE-PUSH — a suíte na condição do CI antes de deixar subir.
+#
+# Existe por causa do que aconteceu entre 21 e 25/08: o CI ficou vermelho por
+# cinco dias porque a suíte passava no notebook (o `dotenv` repõe as chaves a
+# partir do `.env` local) e falhava no runner, que não tem `.env`. Trinta e duas
+# execuções vermelhas, trinta e dois e-mails, e um teste de revogação de sessão
+# fora do ar sem ninguém saber.
+#
+# `npm run test:ci` roda de uma pasta vazia, então reproduz o runner. Se passar
+# aqui, passa lá.
+#
+# Não é versionado por padrão: o Git só enxerga esta pasta depois de
+#   git config core.hooksPath .githooks
+# (uma vez por clone). Para desligar: git config --unset core.hooksPath
+# ============================================================
+
+npm run test:ci
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "  Push barrado: a suíte falha na condição do CI (sem .env)."
+  echo "  Rode 'npm run test:ci' para ver o erro com calma."
+  echo ""
+  echo "  Causa mais comum: um teste novo faz require de módulo que exige"
+  echo "  credencial (src/empresas, src/supabase) sem o preâmbulo de env dummy."
+  echo "  Modelo de como resolver: o topo de test/seguranca.test.js."
+  echo ""
+  echo "  Em emergência real, 'git push --no-verify' pula esta checagem — mas aí"
+  echo "  o vermelho vai para o GitHub, que é exatamente o que isto evita."
+  exit 1
+fi

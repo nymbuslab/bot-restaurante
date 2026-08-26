@@ -14,7 +14,8 @@
     "setup-storage": "node scripts/setup-storage.js",
     "normalizar-pagamentos": "node scripts/normalizar-pagamentos.js",
     "converter-complementos": "node scripts/converter-complementos.js",
-    "migrar-convenios": "node scripts/migrar-convenios.js"
+    "migrar-convenios": "node scripts/migrar-convenios.js",
+    "test:ci": "node scripts/test-ci.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

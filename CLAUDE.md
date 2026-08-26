@@ -86,8 +86,11 @@ Depois faça login e, na aba **Conexão**, clique em "Conectar ao WhatsApp".
 (varredura de sintaxe). **`src/db.js` recusa acesso ao banco dentro do runner** (detecta
 `NODE_TEST_CONTEXT`): o `.env` local aponta para produção, e um teste que esqueça de stubar
 sairia gravando em dado real. Stube `db.query`/`db.pool.connect`; `PERMITIR_BANCO_EM_TESTE=1`
-é a saída consciente. Os testes usam **env dummy** → rodam sem segredos (e no CI, ver
-`.github/workflows/test.yml`). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
+é a saída consciente. Os testes usam **env dummy** → rodam sem segredos. Quem garante isso é
+**`npm run test:ci`**: roda a suíte a partir de uma pasta vazia, para o `dotenv` não repor o
+`.env` local, que é a condição exata do runner. O hook de `pre-push` em `.githooks/` o executa
+antes de deixar subir (ligue com `git config core.hooksPath .githooks` em cada clone). Sem isso a
+suíte fica verde no notebook e vermelha no GitHub, que foi o que aconteceu por cinco dias em 21/08. Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
 ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
 ## Arquitetura
