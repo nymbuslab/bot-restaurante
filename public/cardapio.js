@@ -161,6 +161,13 @@
       fb.textContent = (nomeRest.trim()[0] || "R").toUpperCase();
       fb.hidden = false;
     }
+    // A aba leva a marca do RESTAURANTE, não a da Nymbus: quem abre esta página
+    // está pedindo comida daquele restaurante, não usando a plataforma. Sem logo
+    // cadastrado, fica o ícone padrão que o HTML já declara.
+    if (logo) {
+      var icone = document.querySelector('link[rel="icon"]');
+      if (icone) { icone.removeAttribute("type"); icone.setAttribute("href", logo); }  // o logo é PNG/JPG, não SVG
+    }
 
     catAtiva = null; // abre na aba "Todos"
     renderCategorias();
