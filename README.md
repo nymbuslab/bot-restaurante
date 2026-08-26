@@ -82,10 +82,15 @@ SUPORTE_WHATSAPP=...             # WhatsApp de suporte (só dígitos, ex.: 55119
 
 ```bash
 npm install
+git config core.hooksPath .githooks   # liga o guarda de pre-push (uma vez por clone)
 npx supabase db push     # aplica o schema (supabase/migrations/) no seu projeto
 npm run setup-storage    # cria o bucket público de imagens (uma vez)
 npm start
 ```
+
+> O `core.hooksPath` faz o `git push` rodar a suíte antes de subir, na mesma condição do CI.
+> O Git não versiona hooks, então **cada clone precisa desse comando uma vez**. Detalhe em
+> [🧪 Testes e CI](#-testes-e-ci).
 
 Abra o painel na porta configurada (`PORT` no `.env`, padrão 3000).
 
@@ -197,16 +202,53 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 
 ---
 
-## 🧪 Testes
+## 🧪 Testes e CI
 
 **Testes automatizados** — runner nativo `node:test` (sem dependência nova), cobrindo a lógica
-pura crítica (validação de payload, magic bytes do upload, hash master bcrypt + legado, slug).
-Usam env dummy → rodam **sem segredos** (e no CI a cada push, via `.github/workflows/test.yml`):
+pura crítica (validação de payload, magic bytes do upload, hash master bcrypt + legado, slug,
+planos, frete, estoque, pagamentos). Usam env dummy → rodam **sem segredos**, aqui e no CI:
 
 ```bash
 npm test        # suíte de testes
 npm run check   # varredura de sintaxe (node --check) em src/, scripts/ e index.js
+npm run test:ci # a suíte na condição EXATA do runner do GitHub (ver abaixo)
 ```
+
+### ⚠️ Em máquina nova, ligue o hook (uma vez só)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Sem esse comando o `git push` não tem guarda nenhuma, e a falha só aparece no GitHub. O Git não
+versiona hooks, então **cada clone precisa rodar isso uma vez**. Para desligar:
+`git config --unset core.hooksPath`.
+
+**O que o hook faz:** antes de deixar o push subir, roda `npm run test:ci` e recusa se falhar.
+
+**Por que `test:ci` existe, e não basta o `npm test`:** todo módulo que precisa de credencial
+chama `require("dotenv").config()`, que lê o `.env` **da pasta atual**. Na sua máquina o `.env`
+está lá e as chaves aparecem; no runner do GitHub não existe `.env`, e o módulo lança no
+`require` — o arquivo de teste inteiro morre antes do primeiro caso. Resultado: **suíte verde no
+notebook e vermelha no GitHub**. O `test:ci` roda a partir de uma pasta vazia, então o `dotenv`
+não acha nada para repor e o resultado é o mesmo de lá.
+
+Isso não é hipótese: entre 21 e 25/08/2026 o CI ficou vermelho por 32 execuções seguidas
+exatamente assim, com testes de revogação de sessão fora do ar sem ninguém notar.
+
+**Teste novo que importa módulo com credencial** (`src/empresas`, `src/supabase`) precisa do
+preâmbulo de env dummy no topo do arquivo. Modelo pronto: as primeiras linhas de
+`test/seguranca.test.js`.
+
+### Quando o CI quebra
+
+Além do e-mail do GitHub, o workflow **abre uma issue** no repositório com o commit, a mensagem
+e o link da execução, e **fecha sozinho** quando a `main` volta ao verde. Uma issue só, marcada
+com o rótulo `ci-vermelho`: quebras em sequência viram comentário nela, em vez de encher o
+repositório. Só vale para a `main`; PR e outros branches não abrem issue.
+
+Ao investigar, rode `npm run test:ci` antes de qualquer coisa — é o comando que reproduz a falha
+localmente, enquanto o `npm test` normal pode dizer que está tudo bem.
 
 **Simulador de conversa** — testa o fluxo completo do bot no terminal, sem WhatsApp:
 
@@ -244,14 +286,16 @@ bot-restaurante/
 ├── package.json              → scripts: start, test, check, setup-storage
 ├── testar-bot.js             → simulador de conversa no terminal
 ├── Dockerfile, fly.toml      → deploy no Fly.io (Node 22, stateless, sem volume)
-├── .github/workflows/        → CI: test.yml (npm run check + npm test a cada push)
+├── .github/workflows/        → CI: test.yml (check + testes a cada push; abre issue se a main quebrar)
+├── .githooks/                → pre-push: roda test:ci antes de deixar subir (git config core.hooksPath .githooks)
 ├── test/                     → testes (node:test): validacao + seguranca
 ├── supabase/
 │   ├── config.toml
 │   └── migrations/           → schema do banco (npx supabase db push)
 ├── scripts/
 │   ├── setup-storage.js      → cria o bucket de imagens (npm run setup-storage)
-│   └── check-syntax.js       → varredura de sintaxe (npm run check)
+│   ├── check-syntax.js       → varredura de sintaxe (npm run check)
+│   └── test-ci.js            → a suite na condicao do runner, sem .env (npm run test:ci)
 ├── public/                   → painel web (HTML/CSS/JS puro, sem framework)
 │   ├── index.html            → landing pública (apresentação + preço)
 │   ├── login.html / cadastro.html → login e wizard de onboarding (4 etapas)
