@@ -45,6 +45,28 @@ Cada cor semântica tem variante `*-subtle` com `rgba(..., 0.12)` para fundos.
 > **Tags de status são semânticas, nunca de marca:** Entrega = `--info` (azul),
 > Retirada = `--success` (verde). Sem laranja em lugar nenhum.
 
+## Favicon (a marca na aba do navegador)
+
+`public/favicon.svg` — o glifo de garfo e faca do cabeçalho da landing, branco sobre um
+quadrado arredondado no roxo da marca (`#6344BC`). Todas as páginas HTML declaram
+`<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`; sem a tag o navegador
+chuta `/favicon.ico` e sobra 404 em todo carregamento.
+
+Três decisões que não são óbvias no arquivo:
+
+- **Fundo sólido, não só o traço.** O glifo é `stroke` puro e sumiria na barra de abas
+  escura. O quadrado roxo é o que torna a aba reconhecível de relance.
+- **Enquadramento decidido a 16px, não no editor.** O ícone foi renderizado em 16, 32 e
+  64px sobre fundo claro e escuro antes de ser aceito. Na primeira versão o glifo ocupava
+  metade do quadrado: sobrava roxo e faltava desenho justamente no tamanho da aba. Ficou
+  em ~60%, com o traço em `2.2` no espaço de 24.
+- **A `/c/:slug` troca pelo logo do RESTAURANTE** (`public/cardapio.js`, no boot, quando
+  `config.restaurante.logo` existe). Quem abre aquela página está pedindo comida do
+  restaurante, não usando a plataforma. Sem logo cadastrado, fica o ícone da Nymbus.
+
+**A saber:** navegador guarda favicon com força, e o cache-busting do `assets.js` cobre
+CSS e JS, não o ícone. Trocar a marca não reflete na hora nas abas já abertas.
+
 ## Tokens de forma e sombra
 
 | Token | Valor |

@@ -192,6 +192,7 @@ fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é im
   ligado **sem policy** é deny-all deliberado: o backend usa a conexão privilegiada do `DATABASE_URL`,
   que ignora RLS — policy só abriria um caminho que hoje está fechado.
 - **Valores monetários** — padrão **único** `dinheiro.js` (`window.Dinheiro`): inputs `type=text inputmode=numeric` + `Dinheiro.mascarar`/`Dinheiro.valor` (máscara "centavos primeiro"; **nunca** `type=number`/`parseFloat`); exibição via `Dinheiro.formatar`/`comPrefixo` — no `app.js` os atalhos `moedaBR`/`fmtBRn` delegam ao util → sempre `1.234,56` **com separador de milhar**; impressos dual-mode (`comanda.js`/`relatorio-caixa.js`) têm `fmtBR` que **espelha** o formato. Toda tela nova com R$ segue isso. Detalhe e exceções (% e kg) em [docs/design-system.md](docs/design-system.md). **Endereço** via `endereco-cep.js`.
+- **Página HTML nova declara o ícone da aba:** `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` no `<head>`. Sem a tag o navegador chuta `/favicon.ico`, ninguém responde e sobra 404 em todo carregamento. Detalhe em [docs/design-system.md](docs/design-system.md).
 - **CSP estrita (helmet):** todo JS do front é **externo** — **nunca** adicionar `<script>` inline nem
   handler inline (`onclick=`, `onsubmit=`) no HTML (a CSP bloqueia; usar `addEventListener` em `.js`).
   Origem externa nova (CDN/API) exige liberar a diretiva correspondente no `helmet` de `src/servidor.js`.

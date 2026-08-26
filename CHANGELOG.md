@@ -1019,3 +1019,15 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - Criar uma categoria já abre o campo do nome para digitar.
 - Se o endereço do restaurante não for encontrado no mapa, o aviso diz que o frete continua
   sendo calculado pelo endereço anterior.
+
+## [1.1.0] — Estoque que mostra o número certo, e um teto que aparece
+
+- Ao abrir um produto, o estoque mostrado é o do momento, e não o de quando você abriu o
+  painel. Quem conferia a contagem à tarde decidia olhando o número da manhã.
+- Dá para parar de controlar o estoque de um produto direto na tela de estoque. Antes só
+  dava para ligar, e quem ligou por engano ficava preso.
+- No cardápio, o "+" para no limite de 50 por item e diz o motivo. Antes o cliente montava
+  o carrinho inteiro e só descobria o limite no fechamento.
+- No pedido e no cupom, o pagamento mostra quanto entrou em cada forma. Venda dividida
+  entre cartão e dinheiro aparece inteira.
+- As abas do navegador passam a ter ícone. No cardápio, o ícone é o logo do restaurante.
