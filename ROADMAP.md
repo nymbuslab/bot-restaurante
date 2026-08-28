@@ -66,6 +66,23 @@ restaurante.
 - [x] **App stateless (sessões + imagens fora do disco)** — ✅ **concluído**: sessões do WhatsApp no Postgres (`wa_auth` + adapter `wa-auth.js`), imagens no Supabase Storage (bucket `cardapio`). O app não grava nada em disco → dispensa volume persistente e habilita múltiplas instâncias. Ver `CHANGELOG.md` v0.17.0.
 - [x] **Validar JWT localmente** — ✅ **concluído**: `exigeAuth` valida o JWT pelo JWKS público do Supabase (ES256), sem ida à rede por request (fallback para `getUser` em erro). Ver `CHANGELOG.md` v0.17.0.
 
+**Testes de integração (3 etapas)** — o projeto tinha 504 testes e nenhum executava uma rota:
+os que pareciam testar API liam o `src/servidor.js` como texto e conferiam por expressão
+regular. A linha de trabalho fecha essa lacuna contra um Postgres real, em projeto Supabase
+descartável.
+
+- [x] **Etapa 1 — encanamento + os dois testes de maior valor** — ✅ **concluída** (2026-08-27):
+  `npm run test:integracao`, trava de duas camadas contra rodar em produção (ensaiada), empresa
+  descartável criada e limpa por teste, isolamento entre empresas e recálculo de preço do
+  cardápio web. 11 casos. Ver `PROGRESSO.md`.
+- [ ] **Etapa 2 — o dinheiro**: caixa (abrir/receber/fechar e a trava de venda a receber), PDV
+  com baixa de estoque na mesma transação, mesas.
+- [ ] **Etapa 3 — Stripe e bot**: Stripe em modo de teste com evento e assinatura reais. O
+  WhatsApp real fica de fora por decisão registrada (número automatizado é banido); o que entra
+  é automatizar o simulador.
+- [ ] **Levar ao CI**: exige Session pooler na `DATABASE_URL` (o runner do GitHub é só IPv4) e
+  os segredos cadastrados no repositório.
+
 (Os dois itens *funcionais* que já estiveram aqui — botões de status do pedido e taxa por bairro/CEP — foram decididos como **fora de escopo**; ver a seção acima.)
 
 ## P2 — Melhorias de produto

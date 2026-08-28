@@ -3094,7 +3094,10 @@ app.post("/api/simulador/reset", exigeAuth, (req, res) => {
 });
 
 function iniciar(porta) {
-  app.listen(porta, () => {
+  // Devolve o servidor (em vez de descartar): a bateria de integração sobe o app
+  // numa porta livre e precisa desligá-lo no fim, senão o processo de teste nunca
+  // termina. O index.js ignora o retorno, então produção segue idêntica.
+  return app.listen(porta, () => {
     console.log("🌐 Painel disponível em http://localhost:" + porta);
   });
 }

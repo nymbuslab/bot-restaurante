@@ -10,6 +10,10 @@
 >   com o `.env` presente, um teste que precise de credencial passa aqui e quebra lá. O hook de
 >   `pre-push` (`.githooks/`, ligado com `git config core.hooksPath .githooks`) roda isso antes
 >   de deixar subir. Detalhe no [README](../README.md#-testes-e-ci).
+> - **Contra banco de verdade:** `npm run test:integracao` sobe o servidor numa porta livre e
+>   faz requisição HTTP real contra um Postgres separado (`.env.test`, modelo em
+>   `.env.test.example`). É a única bateria que grava em banco, e ela **aborta** se o destino
+>   for o mesmo projeto do `.env`. Precisa de um projeto Supabase descartável configurado.
 > - **Integração/fluxo do bot:** o **simulador** abaixo (`testar-bot.js` ou a aba Simulador).
 
 O arquivo `testar-bot.js` na raiz simula uma conversa completa no terminal,

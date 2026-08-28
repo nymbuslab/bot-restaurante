@@ -9,6 +9,8 @@ baileys-*/
 # Ambiente / temporários
 .env
 .env.*
+# Exceção: o modelo do banco de teste PRECISA ir para o git (a linha acima o pegaria).
+!.env.test.example
 .mcp.json
 *.tmp
 

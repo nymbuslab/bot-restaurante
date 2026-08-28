@@ -212,7 +212,30 @@ planos, frete, estoque, pagamentos). Usam env dummy → rodam **sem segredos**, 
 npm test        # suíte de testes
 npm run check   # varredura de sintaxe (node --check) em src/, scripts/ e index.js
 npm run test:ci # a suíte na condição EXATA do runner do GitHub (ver abaixo)
+npm run test:integracao # bateria contra banco REAL (exige .env.test — ver abaixo)
 ```
+
+### Bateria de integração (banco de verdade)
+
+O `npm test` cobre lógica pura e não toca banco. O `npm run test:integracao` faz o oposto: sobe
+o servidor numa porta livre, cria empresas reais e conversa por HTTP contra um **Postgres de
+verdade**. Hoje cobre o **isolamento entre empresas** (o token de um restaurante não alcança o
+dado de outro) e o **recálculo de preço do cardápio web** (o preço mandado pelo navegador é
+ignorado).
+
+Ela **nunca** roda contra produção. O banco vem de um projeto Supabase separado e descartável:
+
+1. Crie um projeto novo no Supabase (plano grátis serve).
+2. Copie o `.env.test.example` para `.env.test` e preencha com as credenciais dele.
+3. Aplique o schema: `npx supabase db push --db-url <a DATABASE_URL do .env.test>`.
+
+Duas travas impedem o acidente, e as duas precisam passar: a marca `BANCO_DE_TESTE=1` no
+`.env.test`, e a comparação com o `.env` — se for o mesmo projeto Supabase, a bateria aborta
+antes do primeiro caso. Os testes criam e **apagam** empresas, então contra produção isso seria
+perda de dado real, não erro de teste.
+
+Projeto grátis do Supabase hiberna após ~7 dias sem uso: se a bateria falhar com erro de
+conexão, restaure o projeto pelo painel antes de investigar o código.
 
 ### ⚠️ Em máquina nova, ligue o hook (uma vez só)
 

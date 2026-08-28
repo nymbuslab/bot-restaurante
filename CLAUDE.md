@@ -90,7 +90,13 @@ sairia gravando em dado real. Stube `db.query`/`db.pool.connect`; `PERMITIR_BANC
 **`npm run test:ci`**: roda a suíte a partir de uma pasta vazia, para o `dotenv` não repor o
 `.env` local, que é a condição exata do runner. O hook de `pre-push` em `.githooks/` o executa
 antes de deixar subir (ligue com `git config core.hooksPath .githooks` em cada clone). Sem isso a
-suíte fica verde no notebook e vermelha no GitHub, que foi o que aconteceu por cinco dias em 21/08. Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
+suíte fica verde no notebook e vermelha no GitHub, que foi o que aconteceu por cinco dias em 21/08. **`npm run test:integracao`** é a terceira bateria e a única que toca banco: sobe o Express
+numa porta livre e conversa por HTTP contra um Postgres REAL, num projeto Supabase separado e
+descartável (`.env.test`, modelo em `.env.test.example`) — é o consumidor legítimo do
+`PERMITIR_BANCO_EM_TESTE=1`. Mora em `test/integracao/`, fora do glob do `npm test` (que não
+entra em subpasta), e **recusa rodar** se o `.env.test` apontar para o mesmo projeto do `.env`
+ou se faltar a marca `BANCO_DE_TESTE=1`. Cobre o isolamento entre empresas e o recálculo de
+preço do cardápio web. Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
 ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
 ## Arquitetura
