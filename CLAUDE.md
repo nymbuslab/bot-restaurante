@@ -95,8 +95,9 @@ numa porta livre e conversa por HTTP contra um Postgres REAL, num projeto Supaba
 descartável (`.env.test`, modelo em `.env.test.example`) — é o consumidor legítimo do
 `PERMITIR_BANCO_EM_TESTE=1`. Mora em `test/integracao/`, fora do glob do `npm test` (que não
 entra em subpasta), e **recusa rodar** se o `.env.test` apontar para o mesmo projeto do `.env`
-ou se faltar a marca `BANCO_DE_TESTE=1`. Cobre o isolamento entre empresas e o recálculo de
-preço do cardápio web. Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
+ou se faltar a marca `BANCO_DE_TESTE=1`. Cobre isolamento entre empresas, recálculo de
+preço do cardápio web, caixa (abrir/receber/estornar/fechar), PDV (venda, baixa de estoque,
+porteiro do plano) e mesas (abrir/lançar/pagar, e o caixa que não fecha com mesa aberta). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
 ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
 ## Arquitetura

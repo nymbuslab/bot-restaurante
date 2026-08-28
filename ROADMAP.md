@@ -75,8 +75,9 @@ descartável.
   `npm run test:integracao`, trava de duas camadas contra rodar em produção (ensaiada), empresa
   descartável criada e limpa por teste, isolamento entre empresas e recálculo de preço do
   cardápio web. 11 casos. Ver `PROGRESSO.md`.
-- [ ] **Etapa 2 — o dinheiro**: caixa (abrir/receber/fechar e a trava de venda a receber), PDV
-  com baixa de estoque na mesma transação, mesas.
+- [x] **Etapa 2 — o dinheiro e o salão** — ✅ **concluída** (2026-08-28): caixa, PDV com baixa
+  de estoque e mesas, mais o cruzamento das duas features (o caixa não fecha com mesa aberta).
+  28 casos novos, 39 no total. Ver `PROGRESSO.md`.
 - [ ] **Etapa 3 — Stripe e bot**: Stripe em modo de teste com evento e assinatura reais. O
   WhatsApp real fica de fora por decisão registrada (número automatizado é banido); o que entra
   é automatizar o simulador.
