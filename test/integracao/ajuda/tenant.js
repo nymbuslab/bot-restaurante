@@ -25,7 +25,7 @@ function sufixo() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-async function criarEmpresa(rotulo = "teste") {
+async function criarEmpresa(rotulo = "teste", opcoes = {}) {
   const marca = rotulo + "-" + sufixo();
   const email = marca + "@exemplo-teste.invalid"; // .invalid nunca resolve: e-mail não vaza
   const senha = "Teste" + sufixo() + "!1";
@@ -39,7 +39,10 @@ async function criarEmpresa(rotulo = "teste") {
   // contornar de forma honesta. `cortesia` é o status que o super-admin usa para
   // liberar acesso sem Stripe, então é o que descreve a verdade aqui: liberado à
   // mão, sem cobrança nenhuma envolvida.
-  await empresas.atualizarAssinatura(slug, { status: "cortesia" });
+  // `plano` importa para Caixa, PDV e Mesas: os porteiros `temCaixa`/`temPdv`
+  // exigem plano completo. Passar { plano: "completo" } configura o plano pelo
+  // mesmo caminho do super-admin — não burla o porteiro.
+  await empresas.atualizarAssinatura(slug, { status: "cortesia", plano: opcoes.plano || "essencial" });
 
   const sessao = await empresas.autenticar(email, senha);
   if (!sessao) throw new Error("empresa criada mas o login falhou (slug=" + slug + ")");
@@ -51,6 +54,7 @@ async function criarEmpresa(rotulo = "teste") {
     senha,
     token: sessao.token,
     dir: empresas.tenantDir(slug),
+    plano: opcoes.plano || "essencial",
     marca,
   };
 }
