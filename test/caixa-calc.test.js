@@ -125,17 +125,16 @@ test("esperadoPorForma: dinheiro = espécie inteira, resto = recebido líquido; 
 
 
 // ---------------------------------------------------------------------------
-// A tela do caixa precisa explicar o "Total em Caixa" que ela mostra.
+// A tela do caixa precisa separar dinheiro fisico, vendas e conferencia.
 //
-// A legenda dizia "Valor inicial + Suprimentos + Vendas - Sangrias", mas o
-// calculo tambem subtrai os CANCELAMENTOS, e o card "Movimentacao do caixa" nao
-// os listava em lugar nenhum. Nao e hipotese: a producao tinha 12 cancelamentos
-// somando R$ 547,50, nos dois restaurantes. Cada pedido pago cancelado derrubava
-// o total sem que a tela explicasse de onde saiu — e quem confere a gaveta nao
-// fechava a conta.
+// O cabecalho dizia "Total em Caixa" para um valor que inclui PIX/cartao. Na
+// operacao real, caixa e dinheiro fisico; PIX/cartao entram na conferencia geral.
+// Alem disso, "Vendas por forma" mostrava bruto enquanto o fechamento usava
+// liquido. No sabor-d-casa, isso fazia Debito aparecer como R$ 110,00 na tela,
+// mas pesar R$ 98,00 no fechamento.
 //
-// A linha de Cancelamentos so aparece quando existe algum no turno, para nao
-// poluir o dia normal com um zero que nao diz nada.
+// A linha de Cancelamentos/estornos so aparece quando existe deducao no turno,
+// para nao poluir o dia normal com um zero que nao diz nada.
 // ---------------------------------------------------------------------------
 
 const fsCx = require("fs");
@@ -149,22 +148,36 @@ function blocoCaixaAberto() {
   return appCx.slice(i, fim === -1 ? undefined : fim);
 }
 
-test("a legenda do Total em Caixa cita os cancelamentos que ela subtrai", () => {
+test("o cabecalho mostra dinheiro em caixa, nao o total com PIX/cartao", () => {
   const b = blocoCaixaAberto();
   const i = b.indexOf("cx-formula");
   assert.ok(i > -1, "legenda da fórmula não encontrada");
   const legenda = b.slice(i, i + 220);
-  assert.match(legenda, /Cancelamentos/i,
-    "a conta subtrai cancelamentos; omitir isso na legenda impede conferir a gaveta");
+  assert.match(b, /Dinheiro em caixa:/i);
+  assert.match(legenda, /Vendas em dinheiro/i);
+  assert.doesNotMatch(legenda, /cart[aã]o\/Pix/i,
+    "dinheiro em caixa nao pode incluir recebimento eletronico");
+  assert.match(b, /Total para conferência:/i,
+    "o total geral ainda precisa aparecer, mas com outro nome");
 });
 
-test("o card de movimentação mostra os cancelamentos do turno", () => {
+test("vendas por forma usam valores liquidos, nao brutos", () => {
+  const b = blocoCaixaAberto();
+  assert.match(b, /Vendas líquidas por forma/i);
+  assert.match(b, /valorLiquidoForma\(f\)/,
+    "cada forma precisa subtrair cancelamento/estorno da propria forma");
+  assert.match(b, /Total de vendas líquidas/i);
+});
+
+test("o card de movimentacao mostra deducoes do turno", () => {
   const b = blocoCaixaAberto();
   const i = b.indexOf("Movimenta\u00e7\u00e3o do caixa");
   assert.ok(i > -1);
-  const card = b.slice(i, i + 900);
+  const card = b.slice(i, i + 1300);
   assert.match(card, /Cancelamentos/,
-    "sem a linha, os R$ 547,50 existem só no extrato, misturados com o resto");
+    "sem a linha, as deducoes existem so no extrato, misturadas com o resto");
   assert.match(card, /cancelamentos\s*>\s*0/,
-    "a linha só aparece quando há cancelamento — zero fixo polui o dia normal");
+    "a linha só aparece quando há deducao — zero fixo polui o dia normal");
+  assert.match(card, /Dinheiro em caixa/i);
+  assert.match(card, /Total para conferência/i);
 });

@@ -29,7 +29,8 @@ test("relatório: seções, vendas por forma e totais agregados", () => {
   assert.match(txt, /Suprimento\s+R\$ 20,00/);
   assert.match(txt, /Retirada\s+- R\$ 10,00/);
   assert.match(txt, /Total de Vendas\s+R\$ 180,00/);
-  assert.match(txt, /Total em Caixa\s+R\$ 240,00/);
+  assert.match(txt, /Dinheiro em Caixa\s+R\$ 160,00/);
+  assert.match(txt, /Total Conferencia\s+R\$ 240,00/);
   assert.match(txt, /FECHAMENTO OPERADOR/);
   assert.match(txt, /Total\s+R\$ 240,00/);
   assert.match(txt, /CONFERIDO/);
@@ -73,8 +74,9 @@ test("relatório: cancelamento em dinheiro sai da linha da forma e do total (lí
   const txt = Relatorio.montarRelatorioFechamento(d);
   assert.match(txt, /Dinheiro\s+R\$ 70,00/);              // 100 recebido - 30 cancelado = LÍQUIDO
   assert.match(txt, /Total de Vendas\s+R\$ 150,00/);      // 180 bruto - 30 cancelado
-  assert.match(txt, /Total em Caixa\s+R\$ 210,00/);       // 240 - 30
-  assert.match(txt, /CANCELAMENTOS/);
+  assert.match(txt, /Dinheiro em Caixa\s+R\$ 130,00/);    // 50 + 20 + 70 - 10
+  assert.match(txt, /Total Conferencia\s+R\$ 210,00/);    // 240 - 30
+  assert.match(txt, /CANCELAMENTOS\/ESTORNOS/);
   assert.match(txt, /Cancelamento pedido #7 \(Dinheiro\)\s+- R\$ 30,00/);
   assert.match(txt, /CONFERIDO/);                         // 130 dinheiro + 80 elet = 210
 });
@@ -90,8 +92,21 @@ test("relatório: cancelamento de Pix não infla a linha do Pix (líquido por fo
   const txt = Relatorio.montarRelatorioFechamento(d);
   assert.match(txt, /Pix\s+R\$ 30,00/);                   // LÍQUIDO, não os 47 brutos
   assert.match(txt, /Total de Vendas\s+R\$ 180,00/);      // 197 bruto - 17 = 180
-  assert.match(txt, /Total em Caixa\s+R\$ 240,00/);       // 50+20+180-10
-  assert.match(txt, /CANCELAMENTOS/);
+  assert.match(txt, /Dinheiro em Caixa\s+R\$ 160,00/);
+  assert.match(txt, /Total Conferencia\s+R\$ 240,00/);    // 50+20+180-10
+  assert.match(txt, /CANCELAMENTOS\/ESTORNOS/);
   assert.match(txt, /Cancelamento pedido #86 \(Pix\)\s+- R\$ 17,00/);
   assert.match(txt, /CONFERIDO/);                         // 160 din + 80 elet = 240
+});
+
+test("relatório: estorno aparece junto das deduções do fechamento", () => {
+  const d = dadosBase();
+  d.canceladoPorForma = { Pix: 30 };
+  d.totalCancelado = 30;
+  d.cancelamentos = [{ descricao: "Estorno recebimento #12", forma: "Pix", valor: 30 }];
+  d.eletronicoPorForma = { Cartão: 50, Pix: 0 };
+  const txt = Relatorio.montarRelatorioFechamento(d);
+  assert.match(txt, /Pix\s+R\$ 0,00/);
+  assert.match(txt, /CANCELAMENTOS\/ESTORNOS/);
+  assert.match(txt, /Estorno recebimento #12 \(Pix\)\s+- R\$ 30,00/);
 });

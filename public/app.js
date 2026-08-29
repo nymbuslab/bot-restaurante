@@ -3733,12 +3733,20 @@ function renderCaixaAberto(data) {
   const fundo = Number(data.caixa.fundoTroco) || 0;
   const totalRecebido = Number(r.totalRecebido) || 0;
   const recebidoDinheiro = Number(r.recebidoDinheiro) || 0;
-  const totalCartaoPix = totalRecebido - recebidoDinheiro;
+  const recebidoPorForma = r.recebidoPorForma || {};
+  const canceladoPorForma = r.canceladoPorForma || {};
+  const canceladoDinheiro = Number(r.canceladoDinheiro) || 0;
   const suprimentos = Number(r.suprimentos) || 0;
   const sangrias = Number(r.sangrias) || 0;
   const cancelamentos = Number(r.cancelamentos) || 0;
-  const totalEmCaixa = fundo + suprimentos + totalRecebido - sangrias - cancelamentos; // gaveta (esperado geral)
-  const totalFaturamento = totalRecebido;
+  const vendasLiquidas = totalRecebido - cancelamentos;
+  const dinheiroLiquido = recebidoDinheiro - canceladoDinheiro;
+  const dinheiroEmCaixa = fundo + suprimentos + dinheiroLiquido - sangrias;
+  const valorLiquidoForma = (f) => (Number(recebidoPorForma[f]) || 0) - (Number(canceladoPorForma[f]) || 0);
+  const totalCartaoPixLiquido = Object.keys(recebidoPorForma).reduce((s, f) => (
+    ehFormaDinheiro(f) ? s : s + valorLiquidoForma(f)
+  ), 0);
+  const totalConferencia = dinheiroEmCaixa + totalCartaoPixLiquido;
 
   const dataHoraCurta = (iso) => iso
     ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -3747,11 +3755,11 @@ function renderCaixaAberto(data) {
   // Vendas por forma: TODAS as formas configuradas (zeradas se não houve venda) +
   // qualquer forma que tenha tido recebimento fora da config + subtotal + dinheiro.
   const formasElet = (data.formasPagamento || []).filter((f) => !ehFormaDinheiro(f));
-  Object.keys(r.recebidoPorForma).forEach((f) => {
+  Object.keys(recebidoPorForma).forEach((f) => {
     if (!ehFormaDinheiro(f) && !formasElet.includes(f)) formasElet.push(f);
   });
   const linhasElet = formasElet
-    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(r.recebidoPorForma[f] || 0)}</span></div>`)
+    .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(valorLiquidoForma(f))}</span></div>`)
     .join("");
 
   // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
@@ -3804,12 +3812,13 @@ function renderCaixaAberto(data) {
     <div class="cx-header">
       <div>
         <span class="cx-badge">Caixa aberto</span>
-        <h2 class="cx-total">Total em Caixa: R$ ${fmtBRn(totalEmCaixa)}</h2>
-        <span class="cx-formula">Valor inicial + Suprimentos + Vendas (dinheiro + cartão/Pix) − Sangrias − Cancelamentos</span>
+        <h2 class="cx-total">Dinheiro em caixa: R$ ${fmtBRn(dinheiroEmCaixa)}</h2>
+        <span class="cx-formula">Valor inicial + Suprimentos + Vendas em dinheiro − Sangrias − Cancelamentos em dinheiro</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
         <span>Aberto em: ${dataHoraCurta(data.caixa.abertoEm)}</span>
+        <span>Total para conferência: <b>R$ ${fmtBRn(totalConferencia)}</b></span>
       </div>
     </div>
 
@@ -3829,10 +3838,11 @@ function renderCaixaAberto(data) {
 
     <div class="cx-cards">
       <div class="cx-card">
-        <h4 class="cx-card-titulo">Vendas por forma</h4>
+        <h4 class="cx-card-titulo">Vendas líquidas por forma</h4>
         ${linhasElet}
-        <div class="caixa-linha caixa-total"><span>Total cartão/Pix</span><span>R$ ${fmtBRn(totalCartaoPix)}</span></div>
-        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(recebidoDinheiro)}</span></div>
+        <div class="caixa-linha caixa-total"><span>Total eletrônico</span><span>R$ ${fmtBRn(totalCartaoPixLiquido)}</span></div>
+        <div class="caixa-linha"><span>Dinheiro</span><span>R$ ${fmtBRn(dinheiroLiquido)}</span></div>
+        <div class="caixa-linha caixa-total"><span>Total de vendas líquidas</span><span>R$ ${fmtBRn(vendasLiquidas)}</span></div>
       </div>
       <div class="cx-card">
         <h4 class="cx-card-titulo">Movimentação do caixa</h4>
@@ -3841,9 +3851,14 @@ function renderCaixaAberto(data) {
         <div class="caixa-linha"><span>Sangrias</span><span>− R$ ${fmtBRn(sangrias)}</span></div>
         ${cancelamentos > 0 ? `<div class="caixa-linha"><span>Cancelamentos</span><span>− R$ ${fmtBRn(cancelamentos)}</span></div>` : ""}
         <div class="cx-box">
-          <span class="cx-box-rotulo">Total Faturamento</span>
-          <span class="cx-box-formula">Total de vendas (todas as formas)</span>
-          <span class="cx-box-valor">R$ ${fmtBRn(totalFaturamento)}</span>
+          <span class="cx-box-rotulo">Dinheiro em caixa</span>
+          <span class="cx-box-formula">Inicial + suprimentos + dinheiro líquido − sangrias</span>
+          <span class="cx-box-valor">R$ ${fmtBRn(dinheiroEmCaixa)}</span>
+        </div>
+        <div class="cx-box">
+          <span class="cx-box-rotulo">Total para conferência</span>
+          <span class="cx-box-formula">Dinheiro em caixa + eletrônico líquido</span>
+          <span class="cx-box-valor">R$ ${fmtBRn(totalConferencia)}</span>
         </div>
       </div>
     </div>

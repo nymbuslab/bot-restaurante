@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-08-28
+atualizado: 2026-08-29
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1031,3 +1031,12 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - No pedido e no cupom, o pagamento mostra quanto entrou em cada forma. Venda dividida
   entre cartão e dinheiro aparece inteira.
 - As abas do navegador passam a ter ícone. No cardápio, o ícone é o logo do restaurante.
+
+## [1.2.0] — Caixa com dinheiro físico e vendas líquidas
+
+- A tela do Caixa agora separa dinheiro físico na gaveta, vendas líquidas por forma e total
+  geral para conferência.
+- Cancelamentos e estornos deixam de inflar as vendas por forma e aparecem como deduções no
+  relatório de fechamento.
+- O relatório 80mm troca "Total em Caixa" por "Dinheiro em Caixa" e "Total Conferência",
+  evitando misturar dinheiro com PIX/cartão.

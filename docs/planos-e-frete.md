@@ -269,24 +269,28 @@ que vêm do WhatsApp.
   **selo** "A receber"/"Recebido" + **filtro** por pagamento (só no Completo) pra achar os pendentes.
 - **Abertura:** informa **operador** (pré-preenchido com o nome do painel, editável), **saldo inicial**
   (fundo de troco) e **observações** (`caixas.operador`/`obs_abertura`).
-- **Tela do caixa aberto (estilo PDV):** **Total em Caixa** em destaque (= saldo + suprimentos +
-  vendas − sangrias), cards **Vendas por forma** (todas as formas configuradas, zeradas se sem venda;
-  subtotal cartão/Pix + dinheiro) e **Movimentação do caixa** (valor inicial, suprimentos, sangrias +
-  box **Total Faturamento**), e o **extrato do turno** em tabela (Hora/Nº/Tipo/Cliente/Valor/Forma;
-  sangria destacada; **Estornar** só em recebimento de pedido a-receber — web/PDV-Entrega/Retirada, **não** Mesa/Balcão — que **deixa rastro** via movimento `estorno` que deduz em vez de apagar). Ações: **sangria/suprimento** (com motivo),
+- **Tela do caixa aberto (estilo PDV):** **Dinheiro em caixa** em destaque (= saldo inicial +
+  suprimentos + vendas em dinheiro líquidas − sangrias), cards **Vendas líquidas por forma** (todas as
+  formas configuradas, zeradas se sem venda; recebimentos − cancelamentos/estornos por forma, subtotal
+  eletrônico + dinheiro + total líquido) e **Movimentação do caixa** (valor inicial, suprimentos,
+  sangrias, cancelamentos/estornos, dinheiro em caixa e **Total para conferência**). O total para
+  conferência soma dinheiro físico + eletrônico líquido; não é chamado de caixa porque inclui PIX/cartão.
+  O **extrato do turno** segue em tabela (Hora/Nº/Tipo/Cliente/Valor/Forma; sangria destacada;
+  **Estornar** só em recebimento de pedido a-receber — web/PDV-Entrega/Retirada, **não** Mesa/Balcão —
+  que **deixa rastro** via movimento `estorno` que deduz em vez de apagar). Ações: **sangria/suprimento** (com motivo),
   **Caixas anteriores** e **Fechar caixa**.
 - **Fechamento = conferência simplificada:** tabela única por forma de pagamento
   (`Forma · Esperado · Em caixa · Diferença`). O operador digita só o valor **em mãos** por forma
   configurada (Dinheiro, PIX, Crédito, Débito etc.); a diferença calcula ao vivo por linha e no total.
-  Ao fechar, o servidor recalcula tudo, **monta o relatório 80mm** (fonte única; vendas por forma,
-  movimentos, Total em Caixa, Faturamento, diferença global), enfileira para o agente e guarda em
-  `detalhe_fechamento` p/ reimpressão.
+  Ao fechar, o servidor recalcula tudo, **monta o relatório 80mm** (fonte única; vendas líquidas por
+  forma, movimentos, dinheiro em caixa, total para conferência e diferença global), enfileira para o
+  agente e guarda em `detalhe_fechamento` p/ reimpressão.
 - **Regra:** **não fecha com consumo do turno em aberto** (guarda no servidor). Bloqueios separados:
   **mesas abertas** → atalho pra aba **Mesas** (recebe na mesa); **pedidos de delivery/local a receber**
   (`mesa_id` nulo, criados desde a abertura) → atalho pra aba **Pedidos** em "A receber". Pedido
   **cancelado não conta** (nunca é recebido).
-- **Caixas anteriores:** os **3 últimos** fechamentos com resumo na linha (operador · Total em Caixa ·
-  Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
+- **Caixas anteriores:** os **3 últimos** fechamentos com resumo na linha (operador · total para
+  conferência · Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
 - **Regras gerais:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);
   receber/estornar exigem caixa aberto; **1 operador** (a conta do tenant); sangria/suprimento imutáveis.
 - **Caixa vencido (virou o dia):** o caixa deve ser fechado ao fim do expediente / ao virar o dia.
@@ -327,7 +331,8 @@ depende do **tipo de venda** (todos com `origem='pdv'` e **baixa de estoque ATÔ
 `store.baixarEstoqueTx`: `FOR UPDATE` no tenant + revalida + decrementa; falta de estoque desfaz a venda):
 
 - **Balcão** (paga na hora): `caixa.venderLocal` grava numa transação o pedido **já `recebido_em`** +
-  **1 movimento de recebimento por forma** no caixa; aparece no **Caixa** (Vendas por forma). Imprime
+  **1 movimento de recebimento por forma** no caixa; aparece no **Caixa** (Vendas líquidas por forma).
+  Imprime
   **cozinha (se houver item marcado) + cupom**.
 - **Entrega / Retirada** (sem cobrança agora): pedido nasce **"a receber"** (`recebido_em` nulo), **sem
   caixa**; vai para **Pedidos** e o recebimento é feito **depois** (botão Receber). Impressão: **Entrega**

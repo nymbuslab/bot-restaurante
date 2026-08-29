@@ -354,7 +354,8 @@ detalhe_fechamento (jsonb: contadoPorForma, esperadoPorForma,
 
 ```text
 id, caixa_id (→caixas), empresa_id, tipo ('recebimento'|'cancelamento'|'estorno'|'sangria'|'suprimento'),
-forma_pagamento (só recebimento), valor (numeric; LÍQUIDO que entra na gaveta),
+forma_pagamento (recebimento/cancelamento/estorno; null em sangria/suprimento),
+valor (numeric; valor do movimento em reais; recebimento soma, cancelamento/estorno/sangria deduzem conforme o tipo),
 pedido_id (→pedidos, null), mesa_id (→mesas, null), descricao (motivo de sangria/suprimento),
 valor_pago (numeric, null; quanto o cliente ENTREGOU), troco (numeric, null; troco devolvido),
 criado_em
@@ -372,12 +373,17 @@ criado_em
   seta `pedidos.recebido_em = now()`; **estornar** insere um movimento `estorno` (que deduz, deixando
   rastro) e zera `recebido_em` — restrito a recebimento de pedido a-receber (web/PDV-Entrega/Retirada),
   **não** em Mesa/Balcão. Pedido "a receber" = `recebido_em IS NULL`.
+- **Recebimento por mesa:** entra no caixa com `mesa_id` e pode deixar `pedido_id = null`; isso entra
+  normalmente no fechamento, mas não reconcilia por número de pedido sem olhar a mesa/comanda.
 - **Fechamento (conferência):** o operador informa o valor **em mãos por forma de pagamento**
-  (Dinheiro, PIX, Crédito, Débito etc.). O servidor calcula o esperado por forma, a diferença por
-  forma e a diferença global: `contado total − total_em_caixa`. `total_em_caixa = fundo +
-  suprimentos + vendas (todas as formas) − sangrias`. O **relatório 80mm é montado no servidor**
-  (`public/relatorio-caixa.js`) e guardado em `detalhe_fechamento.relatorio` p/ reimpressão.
-  O backend ainda aceita o payload legado `{ contagem, eletronico }` para front em cache. **Não
+  (Dinheiro, PIX, Crédito, Débito etc.). O servidor calcula o esperado líquido por forma, a diferença
+  por forma e a diferença global. O **dinheiro esperado na gaveta** é `fundo + suprimentos +
+  recebimentos em dinheiro − cancelamentos/estornos em dinheiro − sangrias`; os eletrônicos esperados
+  são os recebimentos líquidos por forma. O **total para conferência** soma dinheiro físico +
+  eletrônico líquido (`fundo + suprimentos + vendas líquidas − sangrias`). O **relatório 80mm é montado
+  no servidor** (`public/relatorio-caixa.js`) e guardado em `detalhe_fechamento.relatorio` p/
+  reimpressão, com linhas separadas de **Dinheiro em Caixa** e **Total Conferência**. O backend ainda
+  aceita o payload legado `{ contagem, eletronico }` para front em cache. **Não
   fecha** com consumo em aberto: **mesas abertas** (bloqueio à parte, atalho pra Mesas) ou **pedidos
   de delivery/local a receber** (`mesa_id` nulo, criados desde a abertura). Pedido **cancelado não
   conta** (`_contarAReceber` exclui `status='cancelado'`).

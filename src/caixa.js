@@ -561,10 +561,11 @@ async function fecharCaixa(dir, { contado, contagem, eletronico }) {
     const pagsCanon = formasPag.normalizarFormasPagamento(cfg.pagamentos);
     const formaDinheiro = pagsCanon.find((f) => calc.ehDinheiro(f)) || "Dinheiro";
     const formasElet = _formasEletronicas(pagsCanon, resumo.recebidoPorForma, eletronicoPorForma);
-    // Cancelamentos do turno (rastro no relatório): cada um com descrição/forma/valor.
+    // Deduções do turno (rastro no relatório): cancelamento de pedido e estorno de
+    // recebimento reduzem o esperado do caixa, então os dois precisam aparecer.
     const cancelamentos = movimentos
-      .filter((m) => m.tipo === "cancelamento")
-      .map((m) => ({ descricao: m.descricao || "Cancelamento", forma: m.forma_pagamento || "Outros", valor: Number(m.valor) || 0 }));
+      .filter((m) => m.tipo === "cancelamento" || m.tipo === "estorno")
+      .map((m) => ({ descricao: m.descricao || (m.tipo === "estorno" ? "Estorno" : "Cancelamento"), forma: m.forma_pagamento || "Outros", valor: Number(m.valor) || 0 }));
     const relatorio = relatorioCaixa.montarRelatorioFechamento({
       restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
       abertoEm: new Date(caixa.aberto_em).toISOString(),

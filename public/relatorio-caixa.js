@@ -77,18 +77,21 @@
 
     let totalVendas = 0;
     for (const k in recebido) totalVendas += liquido(k); // vendas LÍQUIDAS (já sem cancelados)
-    const totalCaixa = (Number(d.fundoTroco) || 0) + (Number(d.suprimentos) || 0)
+    const dinheiroEmCaixa = (Number(d.fundoTroco) || 0) + (Number(d.suprimentos) || 0)
+      + liquido(formaDin) - (Number(d.sangrias) || 0);
+    const totalConferencia = (Number(d.fundoTroco) || 0) + (Number(d.suprimentos) || 0)
       + totalVendas - (Number(d.sangrias) || 0);
     L.push(linhaValor("Total de Vendas", "R$ " + fmtBR(totalVendas)));
-    L.push(linhaValor("Total em Caixa", "R$ " + fmtBR(totalCaixa)));
+    L.push(linhaValor("Dinheiro em Caixa", "R$ " + fmtBR(dinheiroEmCaixa)));
+    L.push(linhaValor("Total Conferencia", "R$ " + fmtBR(totalConferencia)));
     L.push(sep("="));
 
-    // CANCELAMENTOS (detalhe) — rastro anti-fraude: cada pedido pago cancelado.
+    // CANCELAMENTOS/ESTORNOS (detalhe) — rastro anti-fraude: cada dedução do caixa.
     const cancs = Array.isArray(d.cancelamentos) ? d.cancelamentos : [];
     if (cancs.length) {
-      L.push("CANCELAMENTOS");
+      L.push("CANCELAMENTOS/ESTORNOS");
       cancs.forEach((c) => {
-        const rotulo = (c.descricao || "Cancelamento") + (c.forma ? " (" + c.forma + ")" : "");
+        const rotulo = (c.descricao || "Cancelamento/estorno") + (c.forma ? " (" + c.forma + ")" : "");
         L.push(linhaValor(rotulo, "- R$ " + fmtBR(c.valor)));
       });
       L.push(sep("="));
@@ -107,7 +110,7 @@
     const totalOperador = (Number(d.contadoDinheiro) || 0) + totalElet;
     // Arredonda a centavos + tolerância: sem isso, ruído de float (0,1+0,2) faria um
     // caixa que bateu certinho imprimir "SOBROU"/"FALTOU" com Diferença R$ 0,00.
-    const dif = Math.round((totalOperador - totalCaixa) * 100) / 100;
+    const dif = Math.round((totalOperador - totalConferencia) * 100) / 100;
     const bateu = Math.abs(dif) < 0.005;
     L.push(linhaValor("Total", "R$ " + fmtBR(totalOperador)));
     const estado = bateu ? "CONFERIDO" : (dif > 0 ? "SOBROU" : "FALTOU");

@@ -162,10 +162,34 @@ test("sangria sai do caixa como movimento próprio", async () => {
   assert.equal(sangria.valor, 30);
 });
 
+test("cancelar pedido pago deduz do caixa e aparece como cancelamento", async () => {
+  const pedido = await criarPedidoAReceber();
+  const receber = await app.pedir("/api/caixa/receber/" + pedido.id, {
+    token: loja.token,
+    corpo: { forma: "Dinheiro", valor: TOTAL_PEDIDO },
+  });
+  assert.equal(receber.status, 200, "falha ao receber pedido que será cancelado: " + JSON.stringify(receber.corpo));
+
+  const cancelar = await app.pedir("/api/pedidos/" + pedido.id + "/cancelar", {
+    token: loja.token,
+    corpo: { devolver: true },
+  });
+  assert.equal(cancelar.status, 200, "falha ao cancelar pedido pago: " + JSON.stringify(cancelar.corpo));
+
+  const e = await estado();
+  const cancelamento = e.movimentos.find((m) => m.tipo === "cancelamento" && m.pedidoId === pedido.id);
+  assert.ok(cancelamento, "o cancelamento pago não apareceu no extrato do caixa");
+  assert.equal(cancelamento.valor, TOTAL_PEDIDO);
+  assert.equal(cancelamento.forma, "Dinheiro");
+  assert.equal(e.resumo.cancelamentos, TOTAL_PEDIDO * 2, "estorno + cancelamento pago precisam deduzir o caixa");
+});
+
 test("com tudo recebido, o caixa fecha e devolve o relatório", async () => {
   // Recebe de novo o pedido que foi estornado no caso anterior.
   const lista = await app.pedir("/api/pedidos", { token: loja.token });
-  const pedido = (Array.isArray(lista.corpo) ? lista.corpo : lista.corpo.pedidos || [])[0];
+  const pedido = (Array.isArray(lista.corpo) ? lista.corpo : lista.corpo.pedidos || [])
+    .find((p) => !p.recebidoEm && p.status !== "cancelado");
+  assert.ok(pedido, "precisava encontrar o pedido estornado como a receber");
   const receber = await app.pedir("/api/caixa/receber/" + pedido.id, {
     token: loja.token,
     corpo: { forma: "Dinheiro", valor: TOTAL_PEDIDO },
@@ -178,6 +202,9 @@ test("com tudo recebido, o caixa fecha e devolve o relatório", async () => {
   });
   assert.equal(r.status, 200, "falha ao fechar: " + JSON.stringify(r.corpo));
   assert.ok(r.corpo.relatorio, "o fechamento tinha que devolver o relatório para impressão");
+  assert.match(r.corpo.relatorio, /Dinheiro em Caixa\s+R\$ 90,00/);
+  assert.match(r.corpo.relatorio, /Total Conferencia\s+R\$ 90,00/);
+  assert.match(r.corpo.relatorio, /CANCELAMENTOS\/ESTORNOS/);
 
   const e = await estado();
   assert.equal(e.caixa, null, "depois de fechar não pode sobrar caixa aberto");
