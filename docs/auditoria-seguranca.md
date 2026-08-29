@@ -63,7 +63,7 @@ b) Rode um scan no HISTORICO INTEIRO do git (nao so no working tree). Comandos:
    Liste TODO arquivo sensivel que algum dia foi commitado (mesmo que ja removido).
 c) Confirme que NENHUM destes aparece hardcoded no codigo ou em arquivo versionado:
    SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-   SUPERADMIN_SENHA_HASH, DATABASE_URL com senha. Faca grep por esses nomes e por
+   SUPERADMIN_SENHA_HASH (legado), DATABASE_URL com senha. Faca grep por esses nomes e por
    padroes de chave (sk_live, sk_test, service_role, eyJ... de JWT longo).
 d) Confirme que .env.example tem so placeholders (sem valor real).
 e) Confirme no front (public/*.js, *.html) que NAO ha SERVICE_ROLE_KEY nem chave secreta
@@ -289,24 +289,24 @@ Aguarde meu OK.
 ```
 [1] LEITURA
 Leia e me reporte:
-- src/servidor.js (exigeSuperAdmin, credenciaisMaster, login master, tokensAdmin)
-- src/plataforma.js (master_email/master_senha_hash, hashSenha sha256+salt)
-- scripts/gerar-hash.js
+- src/servidor.js (exigeSuperAdmin, masterEmail, login/refresh/logout master)
+- src/plataforma.js (plataforma_config/master_email)
+- src/empresas.js e src/supabase.js (validação JWT/Auth admin)
 - public/app-admin.js e public/login.html (como o destino master e decidido)
 
 [2] AUDITORIA — Super-admin
 Reporte (item / estado / acao):
 
-a) Hash da senha master: hoje e SHA-256+salt. Por ser conta unica e isolada e aceitavel, mas
-   avalie migrar pra bcrypt/argon2 (resistente a brute force offline caso o hash vaze). So
-   recomende com pros/contras — nao mude.
-b) Confirme comparacao com crypto.timingSafeEqual (anti timing attack) no login master.
-c) Login master tem rate limit? (cruza com o prompt 5) — confirme.
+a) Master e Supabase Auth + allowlist de e-mail (`plataforma_config.master_email`, bootstrap em
+   `SUPERADMIN_EMAIL`). Confirme que, sem `SUPERADMIN_EMAIL`, login, rotas e refresh master retornam
+   503 inclusive para sessao ja aberta.
+b) Confirme que login e refresh master tem rate limit (cruza com o prompt 5).
+c) Confirme que troca de e-mail/senha do master atualiza Supabase Auth e a allowlist, exigindo senha atual.
 d) Confirme que a area master nao e descoberta por link/redirect visivel e que um token de
    restaurante NUNCA acessa /api/admin/* (e vice-versa). Teste mental: token de restaurante
    chamando rota master deve dar 401/403.
-e) Token master e opaco, em memoria, em sessionStorage (cai ao fechar a aba) — confirme que
-   continua assim e que nao ha persistencia indevida.
+e) Token master e JWT do Supabase em `sessionStorage` + refresh token separado; confirme que nao ha
+   persistencia indevida e que `POST /api/admin/logout` revoga globalmente.
 
 [3] REPORTE E PARE
 NAO altere ainda. Reporte adaptacoes fora do spec. Aguarde meu OK.

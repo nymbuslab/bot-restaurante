@@ -2,7 +2,8 @@
 
 Monetização via **assinatura mensal**, **7 dias grátis com cartão**, em **dois planos**:
 **Essencial — R$ 79/mês** (`STRIPE_PRICE_ID`) e **Completo — R$ 99/mês** (`STRIPE_PRICE_ID_COMPLETO`).
-O Completo adiciona o **frete por raio** (ver [planos-e-frete.md](planos-e-frete.md)).
+O Completo adiciona o pacote operacional: **frete por raio/bairro**, PDV, Mesas, Caixa,
+impressão térmica e controle de estoque (ver [planos-e-frete.md](planos-e-frete.md)).
 Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `public/planos.js`, dual-mode: as telas leem o mesmo preço que o servidor cobra). Sem chave/preço
 (`STRIPE_SECRET_KEY` + `STRIPE_PRICE_ID`), as rotas `/api/assinatura/*` respondem **503**.
 
@@ -56,18 +57,18 @@ Pacote `stripe`; lógica em `src/stripe.js` (+ mapa puro em `public/planos.js`, 
   nem derrubam o bot — só o master (revogando) sai desse estado.
 
 - **Gerenciar** (cliente): aba **Assinatura** no painel + **gate** que trava o painel sem acesso.
-  Página de billing com **card largo do plano** (plano `Plano Nymbus Pedidos` · `R$ 79,00/mês` ·
-  próximo vencimento · badge de status), duas colunas (Pagamento + "Precisa de ajuda?" à esquerda,
+  Página de billing com **card largo do plano** (nome e valor dinâmicos via `planoNome`/`valorMes`,
+  próximo vencimento e badge de status), duas colunas (Pagamento + "Precisa de ajuda?" à esquerda,
   **Histórico de Faturas** à direita) e, no mobile, tudo empilhado (faturas viram cards via
   `data-label`). "Gerenciar assinatura" abre o **Customer Portal** hospedado
   (`/api/assinatura/portal` — cancelamento). Reativar = passar pelo checkout próprio de novo.
   - **Histórico de faturas (real):** `GET /api/assinatura` devolve `faturas` (via
     `stripe.listarFaturas` quando há `stripeCustomerId`): data, valor, status (Pago/Em aberto/…) e
     **link de PDF**. Sem Customer (cortesia/sem assinatura) → lista vazia → estado vazio honesto.
-  - **"Falar com Suporte" → WhatsApp:** `GET /api/plataforma` devolve `{ suporteWhatsapp }` lido da
-    env `SUPORTE_WHATSAPP` (só dígitos, formato `wa.me`). O card "Precisa de ajuda?" só aparece com
-    número configurado (nunca botão quebrado). **Futuro:** a aba "Nymbus" do painel master vai
-    gerenciar este e outros dados da plataforma, substituindo a env.
+  - **"Falar com Suporte" → WhatsApp:** `GET /api/plataforma` devolve `{ suporteWhatsapp }` vindo da
+    tabela `plataforma_config` (com fallback para a env `SUPORTE_WHATSAPP`; só dígitos, formato
+    `wa.me`). O card "Precisa de ajuda?" só aparece com número configurado (nunca botão quebrado).
+    A aba **Configurações Master** gerencia este e outros dados da plataforma.
 
 - **Gestão de cartões NO PAINEL** (sem o portal hospedado) — seção "Forma de pagamento" na aba
   Assinatura. `admin.html` carrega `js.stripe.com/v3` e reusa o **Payment Element** (mesma
@@ -100,8 +101,10 @@ nem webhooks:
    chaves `sk_test`/`pk_test`. **Não é mais o que roda em produção.**
 2. **Modo de teste** (clássico) — outro ambiente de teste, **vazio** (não usado).
 3. **Produção (Live)** — **É onde o app roda em produção desde 2026-06-18** (go-live feito). Os
-   secrets do **Fly** são as chaves `sk_live`/`pk_live`, com o produto **"Plano Essencial"**
-   (`prod_UjIR38QCFMhn9E` / `price_1Tjpqo2OKIQsz5AIqYw0XpcZ`, R$ 79,00/mês) e o webhook live ativo.
+   secrets do **Fly** são as chaves `sk_live`/`pk_live`, com os produtos **"Plano Essencial"**
+   (`prod_UjIR38QCFMhn9E` / `price_1Tjpqo2OKIQsz5AIqYw0XpcZ`, R$ 79,00/mês) e
+   **"Plano Completo"** (`prod_UjIWmF1mLorw5s` / `price_1TjpvO2OKIQsz5AIRKGUWHmQ`, R$ 99,00/mês),
+   além do webhook live ativo.
 
 > O botão de modo no dashboard é só uma **lente de visualização** — alternar entre os ambientes
 > não cria, apaga nem cobra nada. O que decide se há cobrança real é **qual chave está rodando no
@@ -122,8 +125,8 @@ nem webhooks:
 
 Mantido como referência (e para repetir ao criar um 2º plano / migrar de domínio). Passos:
 
-1. **Criar o produto/preço em Produção** (Live) — espelhar "Nymbus Pedidos - Assinatura", R$ 79/mês.
-   Anotar o novo `price_live_...`.
+1. **Criar os produtos/preços em Produção** (Live) — Essencial (R$ 79/mês) e Completo (R$ 99/mês).
+   Anotar os novos `price_live_...`.
 2. **Pegar as chaves Live** (dashboard em Produção → Desenvolvedores → Chaves de API): `sk_live_...`
    e `pk_live_...`.
 3. **Cadastrar o webhook em Produção** apontando para o domínio:
@@ -141,13 +144,14 @@ Mantido como referência (e para repetir ao criar um 2º plano / migrar de domí
    ```
 
    Guardar o `whsec_...` que ele devolve (signing secret do endpoint).
-4. **Trocar os 4 secrets no Fly** pelas versões live (dispara redeploy):
+4. **Trocar os secrets no Fly** pelas versões live (dispara redeploy):
 
    ```bash
    fly secrets set \
      STRIPE_SECRET_KEY="sk_live_..." \
      STRIPE_PUBLISHABLE_KEY="pk_live_..." \
      STRIPE_PRICE_ID="price_live_..." \
+     STRIPE_PRICE_ID_COMPLETO="price_live_completo_..." \
      STRIPE_WEBHOOK_SECRET="whsec_..."
    ```
 

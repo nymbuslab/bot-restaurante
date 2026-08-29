@@ -3,7 +3,7 @@ doc: prd
 titulo: PRD — Nymbus Pedidos
 proposito: Requisitos do produto: visão, público, escopo atual e o que fica de fora.
 manutencao: Revisar quando um módulo entrar ou sair do produto. Escopo detalhado por área fica em docs/; o que está em curso fica no PROGRESSO.md.
-atualizado: 2026-07-13
+atualizado: 2026-08-28
 relacionados: [CLAUDE.md, ROADMAP.md, PROGRESSO.md, CHANGELOG.md]
 ---
 
@@ -111,9 +111,9 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 - **Mesas**: abre mesa, lança pedido, transfere e junta, registra número de pessoas, pede a conta e
   fecha com split e recebimento parcial.
 - **Caixa do dia**: abertura com fundo de troco, recebimento por pedido, sangria e suprimento,
-  estorno de recebimento errado e cancelamento com rastro. O fechamento pede contagem de cédulas e
-  conferência de cartão e Pix, e gera o relatório 80mm. Não fecha com venda do turno a receber nem
-  com mesa aberta.
+  estorno de recebimento errado e cancelamento com rastro. O fechamento é uma conferência direta
+  por forma de pagamento (esperado, contado e diferença) e gera o relatório 80mm. Não fecha com
+  venda do turno a receber nem com mesa aberta.
 
 ### 5.7 Impressão térmica (Plano Completo)
 

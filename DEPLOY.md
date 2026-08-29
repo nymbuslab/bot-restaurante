@@ -59,7 +59,7 @@ Use Linux (Ubuntu). Com Baileys (WebSocket, sem Chromium) o consumo de RAM por t
 
 ```bash
 # 1) Node.js
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # 2) git (libsignal do Baileys vem do GitHub)
@@ -87,17 +87,18 @@ O painel roda na porta 3000. Acesse com o IP do servidor: `http://SEU_IP:3000`
 
 - **HTTPS (só na VPS):** coloque atrás de um proxy com TLS (ex.: Nginx + Let's Encrypt). Isso
   vale **apenas para a VPS/local** — no Fly.io o HTTPS já é automático (ver Opção 3).
-- Altere a senha padrão pelo painel → Configurações.
+- Não há senha padrão. Crie as contas pelo cadastro público ou pelo painel master, e mantenha as
+  credenciais no Supabase Auth.
 - Considere restringir o acesso ao painel por IP/VPN.
 
 ---
 
 ## ✅ Opção 3 — Fly.io (recomendado para produção na nuvem)
 
-O Fly.io roda o bot em um container Docker na região de São Paulo, com **volume
-persistente** para todos os dados (config, cardápio, pedidos e sessões WhatsApp
-de todos os tenants). Plano gratuito cobre o uso básico; para garantir uptime
-24h use o plano **Pay As You Go** (~$5–10/mês).
+O Fly.io roda o app em um container Docker na região de São Paulo. O app é **stateless**:
+dados, cardápio, pedidos, imagens e sessões WhatsApp ficam no Supabase, não em volume local.
+Plano gratuito cobre o uso básico; para garantir uptime 24h use o plano **Pay As You Go**
+(~$5–10/mês).
 
 ### Pré-requisitos
 
@@ -168,8 +169,8 @@ Não há mais migração automática de instalação legada. Acompanhe os logs c
 fly open
 ```
 
-Faça login → aba **Conexão** → **Conectar ao WhatsApp**. A sessão fica salva no
-volume — próximos deploys reconectam automaticamente.
+Faça login → aba **Conexão** → **Conectar ao WhatsApp**. A sessão fica salva na tabela
+`wa_auth` (Supabase/Postgres), então próximos deploys reconectam automaticamente.
 
 ### Atualizar depois de mudanças no código
 
@@ -177,7 +178,7 @@ volume — próximos deploys reconectam automaticamente.
 fly deploy
 ```
 
-Os dados e sessões são preservados no volume — não precisa re-escanear o QR.
+Os dados e sessões são preservados no Supabase — não precisa re-escanear o QR.
 
 ### Deploy automático pelo GitHub (CI) — opcional
 
@@ -236,7 +237,7 @@ fly logs                   # logs em tempo real
 fly status                 # status da máquina
 fly ssh console            # terminal dentro do container
 fly deploy                 # novo deploy após alterações
-fly volumes list           # listar volumes
+fly secrets list           # conferir quais secrets existem (sem mostrar valores)
 ```
 
 ### Limpar sessão WhatsApp de um tenant (se travar)
@@ -272,7 +273,7 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 Por padrão o app abre em `https://bot-restaurante.fly.dev`. Para usar um domínio seu
 (ex.: `pedidos.nymbuslab.com.br`), **não precisa mexer em código** — as URLs de retorno do
 Stripe (`success_url`/`return_url`) são derivadas do host da requisição
-([`src/servidor.js`](../src/servidor.js) → `baseUrlDe`), então se adaptam sozinhas ao endereço
+([`src/servidor.js`](src/servidor.js) → `baseUrlDe`), então se adaptam sozinhas ao endereço
 que o cliente acessar. O `.fly.dev` continua funcionando em paralelo.
 
 Passo a passo (feito em 2026-06-16 para `pedidos.nymbuslab.com.br`):
@@ -306,10 +307,9 @@ Passo a passo (feito em 2026-06-16 para `pedidos.nymbuslab.com.br`):
    automático (Let's Encrypt gerenciado pelo Fly). Não precisa renomear o app no Fly nem mexer
    no `fly.toml`.
 
-4. **Stripe:** atualizar a URL do **webhook** para o domínio novo — ver o checklist em
-   [`docs/assinatura-stripe.md`](../docs/assinatura-stripe.md) (seção *Go-live*). Como hoje o app
-   roda em **Área restrita (teste)** e o webhook ainda não foi cadastrado, isso entra no checklist
-   de lançamento, não bloqueia a troca de domínio.
+4. **Stripe:** conferir se o **webhook live** aponta para o domínio em uso — ver
+   [`docs/assinatura-stripe.md`](docs/assinatura-stripe.md). Em produção, desde 2026-06-18,
+   o app usa chaves live e webhook ativo em `https://pedidos.nymbuslab.com.br/api/stripe/webhook`.
 
 ---
 

@@ -13,7 +13,8 @@ CEP/geocodificação) como diferencial do plano superior:
 - **Plano Essencial — R$ 79/mês** (`price_1Tjpqo2OKIQsz5AIqYw0XpcZ`, `prod_UjIR38QCFMhn9E`):
   tudo que existe hoje + **frete fixo** (taxa única de entrega).
 - **Plano Completo — R$ 99/mês** (`price_1TjpvO2OKIQsz5AIRKGUWHmQ`, `prod_UjIWmF1mLorw5s`):
-  tudo do Essencial + **frete por raio** (faixas por km via Geoapify).
+  tudo do Essencial + pacote operacional: **frete por raio/bairro**, PDV, Mesas, Caixa,
+  impressão térmica e controle de estoque.
 
 Decisões de produto (já tomadas):
 
@@ -274,11 +275,12 @@ que vêm do WhatsApp.
   box **Total Faturamento**), e o **extrato do turno** em tabela (Hora/Nº/Tipo/Cliente/Valor/Forma;
   sangria destacada; **Estornar** só em recebimento de pedido a-receber — web/PDV-Entrega/Retirada, **não** Mesa/Balcão — que **deixa rastro** via movimento `estorno` que deduz em vez de apagar). Ações: **sangria/suprimento** (com motivo),
   **Caixas anteriores** e **Fechar caixa**.
-- **Fechamento = conferência:** tela com **contador de 12 cédulas/moedas** (R$200→R$0,05) para o
-  dinheiro + **lançamentos de cartão/Pix** por forma, com **diferença** (sobra/falta) por coluna (digitar
-  valor + **Enter** lança e mantém o foco). Ao fechar, **monta o relatório 80mm no servidor** (fonte
-  única; vendas por forma, movimentos, Total em Caixa, Faturamento, diferença global) e abre a **prévia
-  para imprimir** (guardado em `detalhe_fechamento` p/ reimpressão).
+- **Fechamento = conferência simplificada:** tabela única por forma de pagamento
+  (`Forma · Esperado · Em caixa · Diferença`). O operador digita só o valor **em mãos** por forma
+  configurada (Dinheiro, PIX, Crédito, Débito etc.); a diferença calcula ao vivo por linha e no total.
+  Ao fechar, o servidor recalcula tudo, **monta o relatório 80mm** (fonte única; vendas por forma,
+  movimentos, Total em Caixa, Faturamento, diferença global), enfileira para o agente e guarda em
+  `detalhe_fechamento` p/ reimpressão.
 - **Regra:** **não fecha com consumo do turno em aberto** (guarda no servidor). Bloqueios separados:
   **mesas abertas** → atalho pra aba **Mesas** (recebe na mesa); **pedidos de delivery/local a receber**
   (`mesa_id` nulo, criados desde a abertura) → atalho pra aba **Pedidos** em "A receber". Pedido
@@ -295,7 +297,8 @@ que vêm do WhatsApp.
 - **Gate:** `empresas.temCaixa(emp)` (= acesso liberado + plano completo) no front (cadeado/upsell) e no
   backend (403); o gate do front decide pela **resposta da API** (evita cadeado falso na navegação inicial).
 - **Dados:** tabelas `caixas` (+ `operador`, `obs_abertura`, `contado_eletronico`, `detalhe_fechamento`
-  jsonb) e `caixa_movimentos` (`recebimento|sangria|suprimento`) + coluna `pedidos.recebido_em`. Puros em
+  jsonb com `contadoPorForma`/`esperadoPorForma`/`diferencaPorForma`) e `caixa_movimentos`
+  (`recebimento|cancelamento|estorno|sangria|suprimento`) + coluna `pedidos.recebido_em`. Puros em
   `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`. Migrations
   `20260620120000`/`20260620130000`/`20260620140000`.
 
@@ -339,7 +342,7 @@ mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/p
 
 ### Fora do v1 do caixa/PDV (futuro)
 
-- Mesas / comanda aberta e venda presencial **sem** caixa aberto; **item avulso** (fora do cardápio).
+- Venda presencial **sem** caixa aberto e **item avulso** (fora do cardápio).
 - **Formas de pagamento detalhadas + taxa** (Crédito/Débito/PIX maquininha/conta; recebimento líquido) — ROADMAP P3.
 - **Conferência cega, justificativa de diferença, limite de gaveta, comprovante de sangria/suprimento,
   tolerância de divergência, múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.

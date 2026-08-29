@@ -22,8 +22,10 @@
   O bot SÓ processa mensagens com `type === 'notify'` (recebidas ao vivo), ignorando
   `'append'` (histórico). NÃO remover esse filtro em `multi-bot.js` — é o que evita responder
   a conversas antigas em massa (equivale ao antigo filtro de timestamp do whatsapp-web.js).
-- **Conexão manual**: `index.js` não chama `multiBot.iniciar()`. A conexão é disparada
-  pelo painel (`POST /api/bot/conectar`). Reconexão controlada via `connection.update`:
+- **Conexão manual + restauração no boot**: a primeira conexão continua sendo disparada pelo painel
+  (`POST /api/bot/conectar`), para não gerar QR fantasma. Depois que um tenant já tem credencial salva
+  em `wa_auth`, o job `restaurarBots()` no `index.js` reconecta automaticamente os slugs com acesso
+  liberado após restart/deploy. Reconexão controlada via `connection.update`:
   `restartRequired` (normal pós-QR) reconecta; `loggedOut` (401) para e marca desligado;
   teto de tentativas para não martelar o WhatsApp. No `connection: open`, o número conectado
   (`sock.user.id` → `jidDecode`) é guardado e exposto por `getEstado` como `numero`; o painel
@@ -50,14 +52,14 @@
   rota `/imagens` nem arquivos em disco. Bucket criado por `npm run setup-storage`.
 - **Avisar cliente**: `POST /api/pedido/avisar` envia, pelo socket do tenant
   (`enviarMensagem(slug, jid, texto)`), uma mensagem de "pedido pronto". Templates editáveis
-  em `config.json` → `mensagens.pedidoPronto.entrega`/`.retirada` (variáveis `{cliente}` e
+  em `empresas.config` → `mensagens.pedidoPronto.entrega`/`.retirada` (variáveis `{cliente}` e
   `{numero}`). Envio **MANUAL**, 1 cliente por clique — nunca automático/massa. Exige WhatsApp
   conectado; normaliza o telefone para `<digitos>@s.whatsapp.net`; grava `avisadoEm` no sucesso.
-- **Segurança**: login de restaurante via **Supabase Auth** (senha em bcrypt; sessão é JWT
-  stateless, sobrevive a reinício do app). Super-admin usa **bcrypt** (`bcryptjs`) env-based,
-  com migração graciosa do SHA-256+salt legado (conta única e isolada); token master via
-  `crypto.randomBytes` com TTL de 12h. HTTPS é responsabilidade do host (no Fly era automático; em VPS depende
-  de Nginx + TLS).
+- **Segurança**: login de restaurante via **Supabase Auth** (senha em bcrypt; access token JWT
+  renovado por refresh cookie `httpOnly`, sobrevive a reinício do app). Super-admin também usa
+  **Supabase Auth**: vira master por allowlist de e-mail (`plataforma_config.master_email`, bootstrap
+  em `SUPERADMIN_EMAIL`). Token master fica em `sessionStorage` e o logout master revoga globalmente.
+  HTTPS é responsabilidade do host (no Fly era automático; em VPS depende de Nginx + TLS).
 - **Primeiro acesso**: a primeira empresa é criada pelo wizard público (`/cadastro.html`) ou
   pelo super-admin (`/admin-master`). Tenant novo nasce limpo (ver `empresas.configInicial`,
   gravado no `config` jsonb).

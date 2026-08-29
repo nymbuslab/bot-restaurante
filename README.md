@@ -205,8 +205,8 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
 ## 🧪 Testes e CI
 
 **Testes automatizados** — runner nativo `node:test` (sem dependência nova), cobrindo a lógica
-pura crítica (validação de payload, magic bytes do upload, hash master bcrypt + legado, slug,
-planos, frete, estoque, pagamentos). Usam env dummy → rodam **sem segredos**, aqui e no CI:
+pura crítica (validação de payload, magic bytes do upload, sessão/segurança, slug, planos,
+frete, estoque, pagamentos). Usam env dummy → rodam **sem segredos**, aqui e no CI:
 
 ```bash
 npm test        # suíte de testes
@@ -220,8 +220,8 @@ npm run test:integracao # bateria contra banco REAL (exige .env.test — ver aba
 O `npm test` cobre lógica pura e não toca banco. O `npm run test:integracao` faz o oposto: sobe
 o servidor numa porta livre, cria empresas reais e conversa por HTTP contra um **Postgres de
 verdade**. Hoje cobre o **isolamento entre empresas** (o token de um restaurante não alcança o
-dado de outro) e o **recálculo de preço do cardápio web** (o preço mandado pelo navegador é
-ignorado).
+dado de outro), o **recálculo de preço do cardápio web** (o preço mandado pelo navegador é
+ignorado), **Caixa**, **PDV**, **Mesas** e o cruzamento em que o caixa não fecha com mesa aberta.
 
 Ela **nunca** roda contra produção. O banco vem de um projeto Supabase separado e descartável:
 

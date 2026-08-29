@@ -4,7 +4,7 @@ titulo: Roadmap
 proposito: Direção futura do produto, por prioridade.
 distincao: Futuro aqui; presente no PROGRESSO.md; entregue no CHANGELOG.md.
 manutencao: Revisar ao fim de uma fase ou antes de etapa grande. Não lista o que já foi entregue.
-atualizado: 2026-08-21
+atualizado: 2026-08-28
 relacionados: [PROGRESSO.md, CHANGELOG.md]
 ---
 
@@ -56,13 +56,13 @@ restaurante.
 
 ## P1 — Próximas funcionalidades prioritárias
 
-- [x] **Painel de super-admin** — ✅ **concluído** (3 passos): backend + auth master isolada por env; tela `/admin-master` (listar/criar/suspender/reativar/excluir tenants com confirmação forte); métricas reais (total, ativos/suspensos, pedidos do mês, conectados). Ver `CHANGELOG.md` e `PROGRESSO.md`
+- [x] **Painel de super-admin** — ✅ **concluído**: master no Supabase Auth por allowlist de e-mail (`SUPERADMIN_EMAIL` como bootstrap), tela `/admin-master` para listar/criar/suspender/reativar/excluir tenants, gerir plano/cortesia, editar configurações da plataforma e acompanhar métricas/monitoramento. Ver `CHANGELOG.md` e `PROGRESSO.md`
 
 **Robustez para produto comercial** (levantado na revisão de arquitetura "crescer e vender"):
 
 - [x] **Migração SQLite → Supabase (Postgres + Auth)** — ✅ **concluído**: dados em Postgres gerenciado (empresas/pedidos/config/cardápio), schema versionado em `supabase/migrations/`, isolamento por `empresa_id` (+ RLS). Ver `CHANGELOG.md` v0.16.0.
-- [x] **Hash de senha com bcrypt/argon2** — ✅ **resolvido pelo Supabase Auth** (senha em bcrypt no `auth.users`; o login de restaurante não usa mais o SHA-256). Só o super-admin (conta única env-based) segue SHA-256+salt. Ver `CHANGELOG.md` v0.16.0.
-- [x] **Sessão persistente (não deslogar no deploy)** — ✅ **resolvido pelo Supabase Auth** (sessão é JWT stateless; sobrevive a reinício/deploy do app). O super-admin segue com token em memória (conta única). Ver `CHANGELOG.md` v0.16.0.
+- [x] **Hash de senha com bcrypt/argon2** — ✅ **resolvido pelo Supabase Auth** (senha em bcrypt no `auth.users`; login de restaurante e master não usam mais SHA-256 próprio). Ver `CHANGELOG.md` v0.16.0 e v0.28.0.
+- [x] **Sessão persistente (não deslogar no deploy)** — ✅ **resolvido pelo Supabase Auth** (sessão é JWT + refresh; no restaurante o refresh fica em cookie httpOnly, e no master em `sessionStorage` por escolha de segurança). Ver `CHANGELOG.md` v0.16.0, v0.26.0 e v0.96.0.
 - [x] **App stateless (sessões + imagens fora do disco)** — ✅ **concluído**: sessões do WhatsApp no Postgres (`wa_auth` + adapter `wa-auth.js`), imagens no Supabase Storage (bucket `cardapio`). O app não grava nada em disco → dispensa volume persistente e habilita múltiplas instâncias. Ver `CHANGELOG.md` v0.17.0.
 - [x] **Validar JWT localmente** — ✅ **concluído**: `exigeAuth` valida o JWT pelo JWKS público do Supabase (ES256), sem ida à rede por request (fallback para `getUser` em erro). Ver `CHANGELOG.md` v0.17.0.
 
@@ -121,13 +121,14 @@ descartável.
   com **granularidade Crédito/Débito/Pix** e **taxa (%) por forma** que a administradora cobra.
   Habilita **relatórios de recebimento líquido** (bruto − taxa = base de recebimento). Separar a
   forma **grossa** que o cliente escolhe no cardápio (Dinheiro/Cartão/Pix) da forma **detalhada +
-  taxa** usada pelo operador/relatório. Levantado em 2026-06-20, durante o fechamento de caixa
-  (contador de cédulas) — o fechamento v1 usa as formas já configuradas; esta feature vem depois,
-  junto do relatório que consome a taxa.
+  taxa** usada pelo operador/relatório. Levantado em 2026-06-20 e mantido após o fechamento
+  simplificado por forma — hoje o caixa já confere as formas configuradas, mas ainda não calcula
+  recebimento líquido por taxa.
 - [ ] **Caixa do dia — evolução (gaps de mercado)** — levantado em 2026-06-21 (pesquisa de boas
   práticas de PDV/frente de caixa BR). O que **já temos**: abertura com fundo+operador+observações,
-  sangria/suprimento com motivo e imutáveis, recebimento por forma com estorno, fechamento com
-  contagem de cédulas, **bloqueio de fechar com vendas a receber**, relatório + histórico reabrível.
+  sangria/suprimento com motivo e imutáveis, recebimento por forma com estorno, fechamento
+  simplificado por forma, **bloqueio de fechar com vendas a receber/mesa aberta**, relatório +
+  histórico reabrível.
   **Gaps priorizados:**
   - **P0 (segurança/integridade, baixo esforço):**
     - **Conferência cega (opcional):** no fechamento, esconder "Esperado"/"Diferença" até o operador
@@ -272,22 +273,23 @@ o pedido cai no backend (recalculado lá) e o bot **confirma** no WhatsApp. Foi 
 referência em React/Tailwind (usado só como **referência visual** na época e **já portado** pro stack
 vanilla do repo — `public/cardapio.*` —, pois os tokens de design já eram idênticos).
 
-**Status:** entregue nas Fases 1→5 (API pública + token, página vanilla, POST com recálculo no
-servidor + confirmação pelo bot, bot envia o link, docs). Migração `20260617120000_pedido_observacao`
-aplicada. **Requer no ambiente:** `PUBLIC_URL` (`CARDAPIO_LINK_SECRET` virou opcional — ver atualização).
+**Status:** entregue nas Fases 1→5 e atualizado em 2026-06-18 para link limpo (API pública, página
+vanilla, POST com recálculo no servidor, confirmação pelo bot via telefone do checkout, bot envia o
+link, docs). Migração `20260617120000_pedido_observacao` aplicada. **Requer no ambiente:**
+`PUBLIC_URL`; `CARDAPIO_LINK_SECRET` é opcional/legado.
 
-> **Atualização (2026-06-18):** o link agora é **limpo** (`/c/:slug`, **sem** `?p=<token>`). A
+> **Atualização (2026-06-18):** o link agora é **limpo** (`/c/:slug`, sem parâmetro de token). A
 > confirmação do pedido passou a usar o **telefone informado no checkout** (o fallback que já existia) —
 > motivo: no caso `@lid` o WhatsApp não expõe o número na mensagem recebida, e o checkout coleta o
 > telefone de qualquer forma. O bot **não gera mais** o token; o backend ainda aceita `?p=` de links
-> antigos. Logo, `CARDAPIO_LINK_SECRET` virou **opcional**. Os trechos abaixo que citam o token
-> descrevem o **desenho original**.
+> antigos. Logo, `CARDAPIO_LINK_SECRET` virou **opcional/legado**.
 
 ### Decisões travadas
 
 - **Stack:** **HTML/CSS/JS puro** (sem build; casa com a CSP `scriptSrc 'self'` e a convenção do repo).
-- **Integração:** **web → backend + bot confirma** — bot manda link com **token assinado** (carrega o
-  `chatId`); a web faz `POST` do pedido; o bot confirma sozinho. (Não usa `wa.me`/reenvio.)
+- **Integração:** **web → backend + bot confirma** — bot manda link limpo; a web faz `POST` do pedido
+  com telefone obrigatório; o bot confirma sozinho por esse telefone. Links antigos com token assinado
+  continuam aceitos como compatibilidade. (Não usa `wa.me`/reenvio.)
 - **Bot:** **substituir** o fluxo conversacional de pedido (mantendo saudação, "falar com atendente" e
   a confirmação, que passa a vir do `POST` da web).
 
@@ -299,13 +301,14 @@ aplicada. **Requer no ambiente:** `PUBLIC_URL` (`CARDAPIO_LINK_SECRET` virou opc
  → cliente monta carrinho (itens + opcionais + obs) e faz checkout (informa telefone)
  → POST /api/c/<slug>/pedido → backend RECALCULA total por id → salvarPedido
  → bot confirma (config.mensagens.pedidoConfirmado) p/ telefone do checkout → web "pedido enviado"
-   (links antigos com ?p=<token> ainda são aceitos e confirmam pelo chatId)
+   (links antigos com parâmetro `p` ainda são aceitos e confirmam pelo chatId)
 ```
 
 ### Fases
 
-- [x] **Fase 1 — API + token:** `GET /api/c/:slug` (sem auth, rate-limited; projeção whitelisted + parse
-  de opcionais), helper de token HMAC (`crypto`, sem dep nova) e env novo `PUBLIC_URL`.
+- [x] **Fase 1 — API pública:** `GET /api/c/:slug` (sem auth, rate-limited; projeção whitelisted +
+  parse de opcionais), helper de token HMAC mantido para links legados (`crypto`, sem dep nova) e env
+  `PUBLIC_URL`.
 - [x] **Fase 2 — Página vanilla:** `/c/:slug` (`cardapio.html`/`.js`/`.css` reusando tokens do `style.css`):
   categorias roláveis, busca, cards iFood, modal com opcionais/obs, carrinho, checkout — reusa
   `dinheiro.js`/`endereco-cep.js`.

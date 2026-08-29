@@ -264,8 +264,9 @@ estoque) e `estoque_movimentos` conta **prateleira**.
 
 O pedido **não é mais montado no chat** — vai para o cardápio web. Estados: **MENU** e **ATENDENTE**.
 
-- Loja **aberta**: qualquer mensagem recebe boas-vindas + o **link** `PUBLIC_URL/c/:slug?p=<token>`
-  (token HMAC assinado liga o pedido ao `chatId`, para a confirmação automática).
+- Loja **aberta**: qualquer mensagem recebe boas-vindas + o **link limpo** `PUBLIC_URL/c/:slug`.
+  A confirmação automática usa o telefone informado no checkout; links antigos com `?p=` ainda são
+  aceitos e podem usar o `chatId` legado.
 - **ATENDENTE**: digitar "atendente"/"humano" silencia o bot (humano conduz); "menu" reativa.
 - Loja **fechada**: responde a mensagem de "fechado" com o horário; não envia o link.
 - Chave de sessão: `{slug}:{chatId}` — isola clientes entre tenants.
@@ -281,9 +282,10 @@ O pedido **não é mais montado no chat** — vai para o cardápio web. Estados:
   gradiente da marca + inicial quando faltam).
 - `POST /api/c/:slug/pedido` (público): valida, **recalcula** itens/total a partir do cardápio
   (fonte de verdade — ignora preço/nome do cliente; opcional desconhecido é descartado; item
-  indisponível rejeita), salva via `salvarPedido` e dispara a confirmação pelo bot (`token` →
-  `chatId`, com fallback no telefone). Helpers puros em `src/cardapio-web.js` (`projetarCardapio`,
-  `recalcularItens`, `assinarToken`/`verificarToken`).
+  indisponível rejeita), salva via `salvarPedido` e dispara a confirmação pelo bot usando o telefone
+  do checkout. Se o pedido veio de um link legado com token válido, o backend ainda pode confirmar
+  pelo `chatId`. Helpers puros em `src/cardapio-web.js` (`projetarCardapio`, `recalcularItens`,
+  `assinarToken`/`verificarToken` para compatibilidade).
 - Página vanilla `public/cardapio.{html,js,css}` (CSP-safe, reusa `dinheiro.js`/`endereco-cep.js`).
 
 ## Mesas — a fronteira de sessão (`aberta_em`)
@@ -341,8 +343,8 @@ id (bigint), empresa_id (uuid→empresas), aberto_em, fechado_em,
 fundo_troco (numeric), operador (text), obs_abertura (text),
 status ('aberto'|'fechado'), contado_dinheiro, contado_eletronico,
 diferenca (GLOBAL: contado total − total em caixa),
-detalhe_fechamento (jsonb: cédulas contadas, lançamentos eletrônicos,
-  esperado, contado e o texto do relatório 80mm), observacao
+detalhe_fechamento (jsonb: contadoPorForma, esperadoPorForma,
+  diferencaPorForma e o texto do relatório 80mm), observacao
 ```
 
 Índice único parcial `caixas_um_aberto_por_empresa` (empresa_id WHERE status='aberto') →
@@ -370,13 +372,15 @@ criado_em
   seta `pedidos.recebido_em = now()`; **estornar** insere um movimento `estorno` (que deduz, deixando
   rastro) e zera `recebido_em` — restrito a recebimento de pedido a-receber (web/PDV-Entrega/Retirada),
   **não** em Mesa/Balcão. Pedido "a receber" = `recebido_em IS NULL`.
-- **Fechamento (conferência):** o operador conta a gaveta no **contador de cédulas** (dinheiro) e
-  informa **cartão/Pix** por forma. `total_em_caixa = fundo + suprimentos + vendas (todas as formas) −
-  sangrias`; `diferenca = (contado_dinheiro + contado_eletronico) − total_em_caixa` (GLOBAL). O
-  **relatório 80mm é montado no servidor** (`public/relatorio-caixa.js`) e guardado em
-  `detalhe_fechamento.relatorio` p/ reimpressão. **Não fecha** com consumo em aberto: **mesas abertas**
-  (bloqueio à parte, atalho pra Mesas) ou **pedidos de delivery/local a receber** (`mesa_id` nulo,
-  criados desde a abertura). Pedido **cancelado não conta** (`_contarAReceber` exclui `status='cancelado'`).
+- **Fechamento (conferência):** o operador informa o valor **em mãos por forma de pagamento**
+  (Dinheiro, PIX, Crédito, Débito etc.). O servidor calcula o esperado por forma, a diferença por
+  forma e a diferença global: `contado total − total_em_caixa`. `total_em_caixa = fundo +
+  suprimentos + vendas (todas as formas) − sangrias`. O **relatório 80mm é montado no servidor**
+  (`public/relatorio-caixa.js`) e guardado em `detalhe_fechamento.relatorio` p/ reimpressão.
+  O backend ainda aceita o payload legado `{ contagem, eletronico }` para front em cache. **Não
+  fecha** com consumo em aberto: **mesas abertas** (bloqueio à parte, atalho pra Mesas) ou **pedidos
+  de delivery/local a receber** (`mesa_id` nulo, criados desde a abertura). Pedido **cancelado não
+  conta** (`_contarAReceber` exclui `status='cancelado'`).
 - Cálculos puros em `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`.
   Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
   `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).

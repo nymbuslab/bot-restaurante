@@ -14,7 +14,7 @@
   próprio (`adminRefreshLimiter`, 20 em 15min), mais rígido que o do restaurante (60), pelo mesmo
   motivo de o login master já ser mais rígido: é uma pessoa num navegador. Em produção:
   `fly secrets set SUPERADMIN_EMAIL=...`; o usuário master é criado/gerenciado no Supabase Auth.
-- **Auth (sem token em memória):** login `POST /api/admin/login { email, senha }` →
+- **Auth (JWT do Supabase + refresh):** login `POST /api/admin/login { email, senha }` →
   `signInWithPassword` (Supabase) + checa o e-mail == master → devolve **`{ token, refresh }`**
   (JWT do Supabase). `exigeSuperAdmin` **valida o JWT localmente** (jose/JWKS, via
   `empresas.emailDoToken`) e exige `email == master`. `POST /api/admin/refresh { refresh }`
@@ -46,7 +46,8 @@
   falhar, ABORTA a exclusão (502)** e orienta a contatar o suporte. Depois `multiBot.desconectar`
   (libera sessão Baileys) → `empresas.excluir(slug)`, que apaga a linha em `empresas` (**cascateia**
   os `pedidos`), remove o **usuário do Supabase Auth** (`auth.admin.deleteUser`) e apaga
-  `data/tenants/{slug}/` (sessões/imagens). **Trava de segurança:** o corpo deve trazer
+  resíduos locais do tenant se existirem; sessões (`wa_auth`) e imagens (Storage) já ficam no
+  Supabase. **Trava de segurança:** o corpo deve trazer
   `{ confirmacao: "<slug>" }` igual ao slug da URL, senão responde 400 sem apagar nada. O mesmo
   cancelamento-antes-de-apagar vale para o **autoatendimento** (`DELETE /api/conta`), que exige
   senha + `"EXCLUIR"`; `cancelarAssinatura`/`pausarAssinatura`/`retomarAssinatura` são **idempotentes**

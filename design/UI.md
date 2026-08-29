@@ -25,7 +25,7 @@ HTML/CSS/JS puro, sem framework).
 
 ## Cores e tokens
 
-Fonte única dos tokens: seção **Design System** do `CLAUDE.md` / `public/style.css`.
+Fonte única dos tokens: [docs/design-system.md](../docs/design-system.md) / `public/style.css`.
 Regras que valem em TODAS as telas:
 
 - **Sem laranja.** Marca = roxo `--accent #6344BC` (preenchimento, texto branco em cima) +
@@ -37,14 +37,18 @@ Regras que valem em TODAS as telas:
 
 ---
 
-## Navegação (travada em todas as telas)
+## Navegação (estado atual)
 
-Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Configurações · Prévia**.
+O painel cresceu além do redesign inicial. Hoje a navegação desktop é por sidebar com itens reais do
+produto: **Dashboard**, **Pedidos**, **PDV**, **Mesas**, **Caixa**, **Cadastros/Produtos**
+(Categorias, Complementos, Controle de estoque e Insumos em construção), **Configurações**,
+**Prévia** e **Assinatura**. Itens planejados como Clientes, Fornecedores, Financeiro e Relatórios
+podem aparecer bloqueados/desabilitados até existirem de verdade.
 
 - Desktop: sidebar fixa à esquerda; item ativo em roxo (`--accent-fg` + indicador).
-- Mobile: bottom-nav com os mesmos 5 itens (rótulos com espaçamento — não colar).
-- **Ignorar** os menus inventados nos protótipos ("Dashboard/Inventory/Analytics/Staff",
-  "Geral/Vendas/Equipe/Ajustes", "Pedidos/Histórico" duplicado).
+- Mobile: bottom-nav de atalhos para o uso diário (**Dashboard**, **Pedidos**, **PDV**, **Caixa**)
+  mais **Menu** para o restante.
+- Protótipo visual é referência de layout; menu só entra se houver rota/dado real.
 
 ---
 
@@ -68,7 +72,8 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 ### 1. Login
 - **Construir:** painel de marca com gradiente roxo->ciano + logo; formulário e-mail/senha,
   "Entrar", links. Responsivo (painel ao lado no desktop, topo no mobile).
-- **Dados/rotas:** `POST /api/login { email, senha }` -> `{ token, slug, nome }`; Bearer.
+- **Dados/rotas:** `POST /api/login { email, senha }` cria sessão Supabase, devolve access token
+  Bearer e usa refresh cookie `httpOnly`.
 - **Limites:** texto honesto — sem "analytics/performance/IA". Titulo consistente entre
   desktop e mobile. Usar o logo definido.
 
@@ -81,9 +86,9 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 ### 3. Pedidos (historico + metricas leves) — CONCLUIDO
 - **Construir:** lista cronologica — tabela no desktop, cards no mobile; tag de tipo
   (Entrega azul / Retirada verde); abrir detalhe. Topo com **metricas leves** do periodo:
-  total de pedidos, media diaria, ticket medio (**calculo real** a partir de `pedidos.db`,
+  total de pedidos, media diaria, ticket medio (**calculo real** a partir do Postgres),
   nunca numero decorativo). Busca (nome/telefone) e filtro (periodo/tipo).
-- **Dados/rotas:** `pedidos.db`. Metricas calculadas sobre o periodo selecionado.
+- **Dados/rotas:** tabela `pedidos`. Metricas calculadas sobre o periodo selecionado.
 - **Limites:** sem botoes de "status" interno (preparando/entregue) — ciclo do pedido e
   roadmap. A unica acao sobre o pedido e **"Avisar cliente"** (ver tela 4).
 
@@ -92,8 +97,8 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
   pagamento, subtotal+taxa+total. Botao **"Avisar cliente"** que ENVIA pelo bot uma mensagem
   de "pedido pronto": entrega -> "saiu para entrega"; retirada -> "pronto para retirar".
   Mensagens **editaveis** pelo dono em Configuracoes. Botao exige WhatsApp **conectado**.
-- **Dados/rotas:** pedido salvo; **rota nova** que usa o Client do tenant (`multi-bot.js`)
-  para enviar ao telefone do cliente; templates em `config.json`
+- **Dados/rotas:** pedido salvo; rota que usa o socket do tenant (`multi-bot.js`)
+  para enviar ao telefone do cliente; templates em `empresas.config`
   (`mensagens.pedidoPronto.entrega` / `.retirada`), com variaveis `{cliente}` e `{numero}`.
 - **Limites (sistema NAO faz):** mapa/geolocalizacao e pagamento online -> endereco e
   pagamento em **texto**. Sem acompanhamento de status interno. Envio **MANUAL** (1 clique,
@@ -102,21 +107,21 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 ### 5. Cardapio — CONCLUIDO (fase cardapio)
 - **Feito:** lista em cards de leitura (foto, nome, preco, toggle, editar/excluir), agrupada
   por categoria com contagem; "editar" abre o modal; estado vazio.
-- **Dados:** `cardapio.json` (+ campo `imagem`). Recarga ao vivo mantida.
+- **Dados:** `empresas.cardapio` (jsonb) + imagens no Supabase Storage. Recarga ao vivo mantida.
 
 ### 6. Editor de item — CONCLUIDO (fase cardapio)
-- **Feito:** modal de criar/editar com upload de foto; construtor visual de **Composicao**
-  (subgrupos + chips) e de **Opcionais** (linhas Nome+Preco) que **serializam para o formato
-  de texto atual** (`Sub:\n* item`, `Nome | preco`) — `fluxo.js`/bot intactos.
-- **Limite mantido:** opcionais com **regras** (obrigatorio/escolha 1) = roadmap, fora daqui.
+- **Feito:** modal de criar/editar com upload de foto, variações com preço/estoque próprios e
+  vínculos com a **biblioteca de complementos**. A regra efetiva fica no vínculo do produto; os
+  campos antigos `composicao`/`opcionais` não são mais lidos e são apagados ao salvar.
+- **Limite mantido:** ficha técnica/baixa de insumos ainda está em construção no Split Produtos 4/4.
 
 ### 7. Configuracoes — CONCLUIDO
 - **Construir:** secoes em cards — status do atendimento (toggle), dados do restaurante,
   mensagens, horarios (7 dias, **24h**; cards por dia no mobile), taxa fixa, formas de
   pagamento (tags). Barra fixa de "alteracoes nao salvas" = feature ok.
-- **Dados/rotas:** `config.json` (dados, mensagens, `horarios`, taxa, pagamento,
-  `atendimento.aberto`).
-- **Limites:** taxa por bairro/CEP = roadmap. Nada alem dos campos do `config.json`.
+- **Dados/rotas:** `empresas.config` (dados, mensagens, `horarios`, frete, pagamento,
+  `atendimento.aberto`, identidade visual e impressora).
+- **Limites:** não exibir configuração que não tenha persistência real no `config` jsonb ou rota própria.
 
 ### 8. Conexao WhatsApp — CONCLUIDO
 - **Construir:** fluxo guiado por estados — desconectado ("Conectar ao WhatsApp"), gerando QR,
@@ -157,11 +162,11 @@ Exatamente **5 itens, nesta ordem**: **Pedidos · Cardápio · Conexão · Confi
 
 ## Status e ordem
 
-**Redesign completo — todas as telas CONCLUIDAS:** shell (sidebar desktop / bottom-nav mobile),
-Login, Cadastro, Pedidos, Detalhe do pedido, Cardapio, Editor de item, Configuracoes, Conexao
-e Simulador, todos fieis aos prototipos. Ver `CHANGELOG.md` v0.4.0, v0.7.0 e v0.8.0; os padroes
-de espacamento/componente para proximas telas estao em **"Padroes de layout reutilizaveis"** no
-`CLAUDE.md`.
+**Redesign base concluido; referência viva para telas novas:** shell, Login, Cadastro, Pedidos,
+Detalhe do pedido, Cardapio, Editor de item, Configuracoes, Conexao e Simulador nasceram do ciclo
+v0.4.0/v0.7.0/v0.8.0. Depois disso o produto ganhou Dashboard, PDV, Mesas, Caixa, Assinatura,
+Master e Estoque; para telas novas, combine esta referência visual com
+[docs/design-system.md](../docs/design-system.md) e com o estado real em `CLAUDE.md`/`PROGRESSO.md`.
 
 Cada tela seguiu o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
 visual -> commit (Conventional Commits pt-BR, sem acento no titulo).
@@ -170,4 +175,4 @@ visual -> commit (Conventional Commits pt-BR, sem acento no titulo).
 
 - **Logo:** garfo-e-faca SVG — aplicado no Login/Cadastro e na marca do painel.
 - **Pedidos:** com **metricas leves reais** (total de pedidos, media diaria, ticket medio +
-  comparativo vs periodo anterior) calculadas sobre `pedidos.db` — nao e historico puro.
+  comparativo vs periodo anterior) calculadas sobre o Postgres — nao e historico puro.

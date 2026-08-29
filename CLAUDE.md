@@ -64,8 +64,9 @@ SUPABASE_SERVICE_ROLE_KEY=...    # service_role (secreto, só backend)
 ```
 
 Para o **cardápio web** (canal de pedido): `PUBLIC_URL` (URL pública base p/ o bot montar o
-link, ex.: `https://pedidos.seudominio.com`) e `CARDAPIO_LINK_SECRET` (assina o token que liga
-o pedido ao cliente). **Opcionais** — sem eles o app sobe, mas o bot manda um aviso no lugar do link.
+link limpo, ex.: `https://pedidos.seudominio.com`). Sem ela o app sobe, mas o bot manda um aviso
+no lugar do link. `CARDAPIO_LINK_SECRET` é **opcional/legado**: o backend ainda aceita links antigos
+com `?p=`, mas o bot não gera mais token; a confirmação usa o telefone informado no checkout.
 
 Para **planos e frete por raio**: `STRIPE_PRICE_ID_COMPLETO` (preço do **Plano Completo**, além do
 `STRIPE_PRICE_ID` do Essencial) e `GEOAPIFY_API_KEY` (geocodificação do frete por raio). Detalhe em
@@ -116,8 +117,8 @@ src/
   clientes.js         -> clientes por empresa: cadastro em background (bot/checkout, chave empresa_id+telefone) para o bot reconhecer/saudar o cliente que volta + `exportar`/`removerInativos` (LGPD). Isolado por empresa_id. (O cadastro admin no painel e o fiado foram removidos.)
   wa-auth.js          -> sessão Baileys persistida no Postgres (tabela wa_auth) — stateless
   multi-bot.js        -> gerencia um socket WhatsApp (Baileys) por tenant (Map slug→socket)
-  fluxo.js            -> bot: saudação envia o LINK do cardápio web (/c/:slug?p=token); estados MENU/ATENDENTE
-  cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, token HMAC do link)
+  fluxo.js            -> bot: saudação envia o LINK limpo do cardápio web (/c/:slug); estados MENU/ATENDENTE
+  cardapio-web.js     -> helpers PUROS do cardápio web (projeção whitelist, recálculo do pedido, compat token HMAC legado)
   frete.js            -> frete avançado (Plano Completo): por RAIO (Haversine + faixas + geocodificar() Geoapify c/ cache geo_cache) e por BAIRRO (normalizarNome/encontrarBairro/resolverFreteBairro/resolverFreteBairroEntre — match exato normalizado, sem geocode; **o bairro da base do CEP decide, o digitado é fallback**). Puros
   cep.js              -> busca de CEP (ViaCEP) com cache no banco (tabela ceps)
   assets.js           -> cache-busting SEM build: versaoAssets (hash do conteúdo dos css/js de public/) + injetarVersao (injeta ?v nos assets das páginas HTML). Puro; o servidor.js serve HTML fresco (no-cache) com a versão
@@ -125,8 +126,8 @@ src/
   store.js            -> config/cardápio (jsonb) com cache em memória; ensure() async
   sessoes.js          -> estado da conversa por cliente (em memória, expira em 30min)
   pedidos.js          -> tabela `pedidos` no Postgres, isolada por empresa_id (async)
-  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar; `cancelarRecebido` (cancela pedido PAGO mantendo rastro: insere movimento `cancelamento` que deduz, não apaga o recebimento); `estornarRecebimento` (correção de recebimento errado → pedido volta a "a receber"); fechamento com contagem de cédulas + conferência cartão/Pix (relatório mostra vendas LÍQUIDAS por forma + lista CANCELAMENTOS); NÃO fecha com vendas do turno a receber; monta o relatório 80mm no servidor (via relatorio-caixa.js); `venderLocal` (PDV: pedido "Balcão" recebido + 1 movimento por forma, transação); recebimento grava `valor_pago`/`troco` por forma (CHECK de coerência no banco: valor_pago = valor + troco); isolado por empresa_id
-  caixa-calc.js       -> PURO: cálculos do caixa (resumo por forma, esperado em espécie/eletrônico, total em caixa, total da contagem de cédulas, diferença) — testado em test/caixa-calc.test.js
+  caixa.js            -> caixa do dia (Completo): abrir/receber/sangria/suprimento/fechar; `cancelarRecebido` (cancela pedido PAGO mantendo rastro: insere movimento `cancelamento` que deduz, não apaga o recebimento); `estornarRecebimento` (correção de recebimento errado → pedido volta a "a receber"); fechamento simplificado por forma de pagamento (esperado/contado/diferença; relatório mostra vendas LÍQUIDAS por forma + lista CANCELAMENTOS); NÃO fecha com vendas do turno a receber; monta o relatório 80mm no servidor (via relatorio-caixa.js); `venderLocal` (PDV: pedido "Balcão" recebido + 1 movimento por forma, transação); recebimento grava `valor_pago`/`troco` por forma (CHECK de coerência no banco: valor_pago = valor + troco); isolado por empresa_id
+  caixa-calc.js       -> PURO: cálculos do caixa (resumo por forma, esperado por forma, total em caixa, diferença) — testado em test/caixa-calc.test.js
   pdv.js              -> PURO: PDV (vendas no local, Completo) — recalcular venda (kg+opcionais), aplicar desconto (R$/%), validar split, troco, resumo de pagamento — testado em test/pdv.test.js
   estoque-db.js       -> ÚNICO ponto que fala com a tabela `estoque_movimentos` (trilha do estoque, Completo): grava DENTRO da transação de quem chamou (venda, devolução, ajuste), lista o extrato paginado por cursor de data, soma o resumo do período e aplica a retenção de 12 meses. O SALDO continua no jsonb do cardápio; esta tabela é histórico, não fonte de verdade
 public/
@@ -162,11 +163,12 @@ atendimento, **sem reiniciar**. Cache por processo → múltiplas instâncias ex
 pub-sub (hoje é instância única). O `tenantDir(slug)` segue como **chave** do tenant (basename é
 o slug); nenhum arquivo é lido/gravado nesse caminho.
 
-**Fluxo do pedido (cardápio web):** bot manda `/c/:slug?p=<token>` → a página busca `GET /api/c/:slug`
+**Fluxo do pedido (cardápio web):** bot manda `/c/:slug` → a página busca `GET /api/c/:slug`
 (projeção whitelist do cardápio) → o cliente monta o carrinho e faz `POST /api/c/:slug/pedido` → o
 servidor **recalcula** preço/total a partir do cardápio (nunca confia no cliente), salva via
-`pedidos.salvarPedido` e o bot **confirma** pelo WhatsApp (o `token` liga ao `chatId`; fallback no
-telefone). Detalhe em [docs/modelo-dados.md](docs/modelo-dados.md).
+`pedidos.salvarPedido` e o bot **confirma** pelo WhatsApp usando o telefone informado no checkout.
+Links antigos com `?p=` ainda são aceitos e podem usar o `chatId` legado. Detalhe em
+[docs/modelo-dados.md](docs/modelo-dados.md).
 
 ## Multi-tenant
 
@@ -175,11 +177,13 @@ dos pedidos, `wa_auth` da sessão, pasta de imagens no Storage), **linha em `emp
 `config`/`cardapio` jsonb, ligada ao usuário do Auth por `user_id`), **sessão WhatsApp** em
 `wa_auth` e **imagens** no Storage (`cardapio/{slug}/`). Nada em disco.
 
-Autenticação: `POST /api/login { email, senha }` → `{ token, slug, nome }`, onde `token` é o
-**JWT do Supabase Auth** (viaja em `Authorization: Bearer ...`). O middleware `exigeAuth` (async)
-valida o JWT **localmente** (`empresas.resolverPorToken` → `jose.jwtVerify` com o JWKS público;
-fallback para `getUser` em erro), checa `ativo` a cada request (suspensão é imediata) e resolve
-`req.slug` / `req.tenantDir`. JWT é stateless → logout é só descartar o token no cliente.
+Autenticação: `POST /api/login { email, senha }` cria sessão no Supabase Auth, seta o refresh token
+em cookie `httpOnly` e devolve `{ token, slug, nome }`, onde `token` é o **JWT do Supabase Auth**
+mantido em memória no front e enviado em `Authorization: Bearer ...`. `POST /api/refresh` renova o
+access token; `POST /api/logout` revoga a sessão local. O middleware `exigeAuth` (async) valida o
+JWT **localmente** (`empresas.resolverPorToken` → `jose.jwtVerify` com o JWKS público; fallback para
+`getUser` em erro), checa `ativo` a cada request (suspensão é imediata) e resolve `req.slug` /
+`req.tenantDir`.
 
 - **Conta de acesso, Privacidade/LGPD (exportar/excluir, retenção, Termos/Privacidade):** ver
   [docs/lgpd/lgpd-e-conta.md](docs/lgpd/lgpd-e-conta.md) (índice em [docs/lgpd/](docs/lgpd/README.md)).
@@ -219,9 +223,9 @@ relevante ao mexer na área):
 
 - [docs/super-admin.md](docs/super-admin.md) — painel master: auth isolada, rotas, métricas, suspender/excluir (reflexo no Stripe), Configurações Master, footer da landing.
 - [docs/assinatura-stripe.md](docs/assinatura-stripe.md) — monetização: **dois planos** (Essencial/Completo), eixos de acesso, checkout próprio, webhook, gate, upgrade/downgrade (proration), faturas, gestão de cartões.
-- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo): frete por raio + impressão térmica**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, escolha no checkout + upgrade na Assinatura + troca no master; **impressão térmica 80mm via AGENTE** (Plano Completo): o app desktop Nymbus Impressora imprime TODOS os fluxos automaticamente (delivery + PDV + Mesas + Caixa) — fila genérica `impressao_fila` (servidor renderiza o texto via `comanda.js`/`relatorio-caixa.js` e enfileira; agente busca/imprime via `serial-escpos.js` por Rede 9100/Serial COM); config da impressora (porta/corte/sem-acento) no próprio app; tela Configurações → Impressora = download do agente; **Reimprimir** re-enfileira; o caminho navegador (`window.print`/Web Serial) foi **removido** (Fase 3); **caixa do dia** (Plano Completo): **receber é no Pedido** (selo/filtro de pagamento na aba Pedidos); tela do caixa aberto estilo PDV (Total em Caixa, Vendas por forma, Movimentação, **extrato** do turno com estorno); **fechamento** = contagem de cédulas + conferência cartão/Pix → **relatório 80mm montado no servidor** e guardado p/ reimpressão; **não fecha com vendas a receber**; **Caixas anteriores** com resumo por linha (3 últimos, reabre relatório); gate `temCaixa` (front+back), tabelas `caixas` (+ `operador`/`obs_abertura`/`contado_eletronico`/`detalhe_fechamento`)/`caixa_movimentos` + `pedidos.recebido_em`, `src/caixa.js`/`caixa-calc.js`/`public/relatorio-caixa.js`; **PDV — vendas no local** (Plano Completo): aba dedicada (exige caixa aberto), grade de produtos + carrinho (opcionais/observação/itens por kg) → tela de pagamento (desconto R$/%, **split**, troco) → exige **caixa aberto do dia** (caixa aberto em dia anterior = `vencido` → PDV bloqueado até fechar; `caixaAberto` calcula `vencido` no fuso BR); **tipo de venda** (Balcão/Entrega/Retirada): Entrega abre overlay de endereço (CEP autopreenche via `EnderecoCep`) + **frete** calculado (`POST /api/pdv/frete`, fixo/raio) com lixeira p/ zerar (cortesia); **comportamento por tipo** (todos `origem='pdv'` + **baixa de estoque atômica** `store.baixarEstoqueTx`): **Balcão** paga na hora → **pedido recebido** + 1 movimento por forma no caixa (`caixa.venderLocal`), imprime cozinha (se houver) + cupom; **Entrega/Retirada** **sem cobrança** → nascem **a receber** (sem caixa), vão p/ **Pedidos** (recebimento depois, botão Receber), imprime Entrega = cozinha+cupom / Retirada = só cozinha (front esconde o pagamento → botão "Enviar para Pedidos"). As vias vão p/ `impressao_fila` (tipo `pdv`) e saem pelo agente; o PDV **nunca** abre o modal de novo pedido — esse alerta é escopado **no servidor** a `origem='web'` (`pedidos.ultimo`/`pendentes`). Rota `POST /api/pdv/vender` (gate `temPdv`), `src/pdv.js` (puro) + `caixa.venderLocal`, colunas `pedidos.desconto`/`pedidos.origem`, front em `public/app.js` (`carregarPdv`/`renderPdv*`).
+- [docs/planos-e-frete.md](docs/planos-e-frete.md) — **planos (Essencial × Completo): frete por raio/bairro + impressão térmica**: gating por plano (`temFreteRaio`), aba Entrega, Geoapify/Haversine/faixas, frete por bairro, escolha no checkout + upgrade na Assinatura + troca no master; **impressão térmica 80mm via AGENTE** (Plano Completo): o app desktop Nymbus Impressora imprime TODOS os fluxos automaticamente (delivery + PDV + Mesas + Caixa) — fila genérica `impressao_fila` (servidor renderiza o texto via `comanda.js`/`relatorio-caixa.js` e enfileira; agente busca/imprime via `serial-escpos.js` por Rede 9100/Serial COM); config da impressora (porta/corte/sem-acento) no próprio app; tela Configurações → Impressora = download do agente; **Reimprimir** re-enfileira; o caminho navegador (`window.print`/Web Serial) foi **removido** (Fase 3); **caixa do dia** (Plano Completo): **receber é no Pedido** (selo/filtro de pagamento na aba Pedidos); tela do caixa aberto estilo PDV (Total em Caixa, Vendas por forma, Movimentação, **extrato** do turno com estorno); **fechamento** = conferência simplificada por forma de pagamento (esperado/contado/diferença) → **relatório 80mm montado no servidor** e guardado p/ reimpressão; **não fecha com vendas a receber** nem mesa aberta; **Caixas anteriores** com resumo por linha (3 últimos, reabre relatório); gate `temCaixa` (front+back), tabelas `caixas` (+ `operador`/`obs_abertura`/`contado_eletronico`/`detalhe_fechamento`)/`caixa_movimentos` + `pedidos.recebido_em`, `src/caixa.js`/`caixa-calc.js`/`public/relatorio-caixa.js`; **PDV — vendas no local** (Plano Completo): aba dedicada (exige caixa aberto), grade de produtos + carrinho (opcionais/observação/itens por kg) → tela de pagamento (desconto R$/%, **split**, troco) → exige **caixa aberto do dia** (caixa aberto em dia anterior = `vencido` → PDV bloqueado até fechar; `caixaAberto` calcula `vencido` no fuso BR); **tipo de venda** (Balcão/Entrega/Retirada): Entrega abre overlay de endereço (CEP autopreenche via `EnderecoCep`) + **frete** calculado (`POST /api/pdv/frete`, fixo/raio/bairro) com lixeira p/ zerar (cortesia); **comportamento por tipo** (todos `origem='pdv'` + **baixa de estoque atômica** `store.baixarEstoqueTx`): **Balcão** paga na hora → **pedido recebido** + 1 movimento por forma no caixa (`caixa.venderLocal`), imprime cozinha (se houver) + cupom; **Entrega/Retirada** **sem cobrança** → nascem **a receber** (sem caixa), vão p/ **Pedidos** (recebimento depois, botão Receber), imprime Entrega = cozinha+cupom / Retirada = só cozinha (front esconde o pagamento → botão "Enviar para Pedidos"). As vias vão p/ `impressao_fila` (tipo `pdv`) e saem pelo agente; o PDV **nunca** abre o modal de novo pedido — esse alerta é escopado **no servidor** a `origem='web'` (`pedidos.ultimo`/`pendentes`). Rota `POST /api/pdv/vender` (gate `temPdv`), `src/pdv.js` (puro) + `caixa.venderLocal`, colunas `pedidos.desconto`/`pedidos.origem`, front em `public/app.js` (`carregarPdv`/`renderPdv*`).
 - [docs/lgpd/](docs/lgpd/README.md) — **conformidade LGPD** (índice): [lgpd-e-conta.md](docs/lgpd/lgpd-e-conta.md) (conta de acesso + exportar/excluir/retenção/Termos/Privacidade/aceite), [ropa.md](docs/lgpd/ropa.md) (inventário de tratamentos), [subprocessadores.md](docs/lgpd/subprocessadores.md) (parceiros + região), [resposta-incidentes.md](docs/lgpd/resposta-incidentes.md). Aceite do dono gravado (`empresas.termos_aceitos_em`/`termos_versao`); trilha de auditoria em `src/auditoria.js` (tabela `auditoria`).
-- [docs/modelo-dados.md](docs/modelo-dados.md) — schema (`empresas` + coluna `plano`, `pedidos`, **`itens_venda`** — projeção relacional dos itens via trigger, item do cardápio, `config.frete`, `geo_cache`) + **biblioteca de complementos** (`cardapio.grupos` + `item.grupos`: opção com id estável, regra efetiva por produto, saída do pedido no formato antigo, conversão reversível) + **cardápio web** (API pública, recálculo no servidor, frete por raio, token de link) + estados enxutos do bot (`fluxo.js`).
+- [docs/modelo-dados.md](docs/modelo-dados.md) — schema (`empresas` + coluna `plano`, `pedidos`, **`itens_venda`** — projeção relacional dos itens via trigger, item do cardápio, `config.frete`, `geo_cache`) + **biblioteca de complementos** (`cardapio.grupos` + `item.grupos`: opção com id estável, regra efetiva por produto, saída do pedido no formato antigo, conversão reversível) + **cardápio web** (API pública, recálculo no servidor, frete por raio/bairro, link limpo com token legado aceito) + estados enxutos do bot (`fluxo.js`).
 - [docs/features.md](docs/features.md) — onboarding (wizard 4 etapas), utils de formulário (`endereco-cep.js`/`dinheiro.js`) e horário de funcionamento.
 - [docs/gotchas.md](docs/gotchas.md) — pontos de atenção: anti-massa, conexão manual, sessão `wa_auth`, avisar cliente, segurança, backup, pooler.
 - [docs/testar-bot.md](docs/testar-bot.md) — simulador de conversa (terminal + painel).

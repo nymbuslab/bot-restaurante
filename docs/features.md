@@ -22,8 +22,8 @@ No cadastro, o **aceite** dos Termos + Política de Privacidade é obrigatório 
 
 ## Formulários — utils compartilhados (`public/`)
 
-Para padronização entre onboarding e painel, dois utils carregados por `<script>` antes do
-`app.js`/script inline (em `cadastro.html` e `admin.html`):
+Para padronização entre onboarding e painel, dois utils carregados por `<script>` externo antes dos
+scripts das telas (em `cadastro.html` e `admin.html`):
 
 - **`endereco-cep.js`** (`window.EnderecoCep`): endereço **estruturado** (CEP, logradouro, número,
   bairro, complemento, cidade, UF) com **autofill via ViaCEP** (`viacep.com.br`, direto do
@@ -39,7 +39,7 @@ Para padronização entre onboarding e painel, dois utils carregados por `<scrip
 
 ## Horário de funcionamento
 
-Estrutura em `config.json` (por tenant):
+Estrutura em `empresas.config` (jsonb por tenant):
 ```json
 "horarios": {
   "seg": { "abre": "11:00", "fecha": "22:00", "fechado": false },
