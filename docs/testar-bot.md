@@ -14,6 +14,9 @@
 >   faz requisição HTTP real contra um Postgres separado (`.env.test`, modelo em
 >   `.env.test.example`). É a única bateria que grava em banco, e ela **aborta** se o destino
 >   for o mesmo projeto do `.env`. Precisa de um projeto Supabase descartável configurado.
+>   No GitHub Actions ela roda na `main` e manualmente via `workflow_dispatch`, usando os secrets
+>   `INTEGRACAO_DATABASE_URL`, `INTEGRACAO_SUPABASE_URL`, `INTEGRACAO_SUPABASE_ANON_KEY` e
+>   `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY`.
 > - **Integração/fluxo do bot:** o **simulador** abaixo (`testar-bot.js` ou a aba Simulador).
 
 O arquivo `testar-bot.js` na raiz simula uma conversa completa no terminal,

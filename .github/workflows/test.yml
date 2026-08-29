@@ -3,6 +3,7 @@ name: testes
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 # `issues: write` é só para o aviso de quebra abaixo: quando a `main` fica
 # vermelha, o job abre uma issue e a fecha sozinho quando volta ao verde. Sem
@@ -27,6 +28,15 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - name: Testes de integração
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          BANCO_DE_TESTE: "1"
+          DATABASE_URL: ${{ secrets.INTEGRACAO_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.INTEGRACAO_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.INTEGRACAO_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:integracao
 
       # ---- Aviso de quebra (só na main; PR e outros branches ficam de fora) ----
       # Uma issue só, reaproveitada: quebra em sequência vira comentário na mesma,

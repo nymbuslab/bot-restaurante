@@ -40,7 +40,8 @@ if (!arquivos.length) {
 }
 
 const arquivoEnv = path.join(RAIZ, ".env.test");
-if (!fs.existsSync(arquivoEnv)) {
+const usandoAmbienteCI = !fs.existsSync(arquivoEnv) && process.env.CI;
+if (!fs.existsSync(arquivoEnv) && !usandoAmbienteCI) {
   console.error(
     "\nFalta o .env.test na raiz do projeto.\n\n" +
       "Ele aponta para o projeto Supabase descartável usado por esta bateria.\n" +
@@ -50,9 +51,21 @@ if (!fs.existsSync(arquivoEnv)) {
 }
 
 const doArquivo = {};
-for (const linha of fs.readFileSync(arquivoEnv, "utf8").split(/\r?\n/)) {
-  const m = linha.match(/^\s*([A-Z_0-9]+)\s*=\s*(.*)$/);
-  if (m) doArquivo[m[1]] = m[2].trim();
+if (usandoAmbienteCI) {
+  for (const chave of [
+    "BANCO_DE_TESTE",
+    "DATABASE_URL",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ]) {
+    if (process.env[chave]) doArquivo[chave] = process.env[chave];
+  }
+} else {
+  for (const linha of fs.readFileSync(arquivoEnv, "utf8").split(/\r?\n/)) {
+    const m = linha.match(/^\s*([A-Z_0-9]+)\s*=\s*(.*)$/);
+    if (m) doArquivo[m[1]] = m[2].trim();
+  }
 }
 
 // Toda variável que possa carregar credencial de produção sai antes de o

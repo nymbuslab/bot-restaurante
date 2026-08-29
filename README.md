@@ -229,6 +229,15 @@ Ela **nunca** roda contra produção. O banco vem de um projeto Supabase separad
 2. Copie o `.env.test.example` para `.env.test` e preencha com as credenciais dele.
 3. Aplique o schema: `npx supabase db push --db-url <a DATABASE_URL do .env.test>`.
 
+No GitHub Actions, a mesma bateria roda na `main` e também pode ser disparada manualmente em
+**Actions → testes → Run workflow**. O runner não usa `.env.test`; ele recebe estes secrets do
+repositório:
+
+- `INTEGRACAO_DATABASE_URL` — string do Supabase de teste, de preferência Session pooler.
+- `INTEGRACAO_SUPABASE_URL`
+- `INTEGRACAO_SUPABASE_ANON_KEY`
+- `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY`
+
 Duas travas impedem o acidente, e as duas precisam passar: a marca `BANCO_DE_TESTE=1` no
 `.env.test`, e a comparação com o `.env` — se for o mesmo projeto Supabase, a bateria aborta
 antes do primeiro caso. Os testes criam e **apagam** empresas, então contra produção isso seria

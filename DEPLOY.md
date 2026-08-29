@@ -230,6 +230,21 @@ que esse workflow foi removido antes (o `FLY_API_TOKEN` nunca tinha sido configu
 **Para desligar de novo:** apague o arquivo `.github/workflows/fly-deploy.yml` (e, se quiser,
 remova o segredo `FLY_API_TOKEN` no GitHub).
 
+### Secrets dos testes de integração no GitHub
+
+O workflow `.github/workflows/test.yml` roda `npm run test:integracao` na `main` e quando alguém
+dispara manualmente **Actions → testes → Run workflow**. Esses secrets ficam no GitHub Actions,
+não no Fly:
+
+- `INTEGRACAO_DATABASE_URL` — `DATABASE_URL` do projeto Supabase descartável, de preferência
+  Session pooler.
+- `INTEGRACAO_SUPABASE_URL`
+- `INTEGRACAO_SUPABASE_ANON_KEY`
+- `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY`
+
+O banco precisa ter as migrations aplicadas antes do primeiro run: `npx supabase db push --db-url
+<INTEGRACAO_DATABASE_URL>`.
+
 ### Comandos úteis do dia a dia
 
 ```bash
