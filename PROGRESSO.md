@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-08-28
+atualizado: 2026-08-29
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -21,7 +21,6 @@ _(nada no momento)_
 ### Em aberto
 
 - [ ] **(P2) Testes de integração — etapa 3: Stripe e bot** — Stripe em modo de teste, com evento e assinatura de verdade, para pegar mudança de formato de evento que o mock nunca pega. **Ressalva já levantada e aceita:** o WhatsApp real **não dá para automatizar** — número que recebe tráfego automatizado é banido, e o Baileys é biblioteca não-oficial. O que dá é automatizar o **simulador**, que exercita a mesma máquina de estados da conversa. Cobre a lógica, não a entrega da mensagem.
-- [ ] **(P2) O `npm run check` não varre a pasta `test/`** — ele coleta `src/`, `scripts/`, `public/` e o `index.js` (ver `scripts/check-syntax.js`). Erro de sintaxe em arquivo de teste só aparece ao rodar a suíte, e no caso da bateria de integração rodar exige banco configurado. Incluir `test/` na varredura é mudança de uma linha; não foi feita junto para não misturar com a entrega da bateria.
 - [ ] **(P3) Decidir se item fora do cardápio deveria responder 400 em vez de 409** — a rota `POST /api/c/:slug/pedido` trata o que `recalcularItens` lança como conflito de disponibilidade (409). Dá para argumentar que carrinho com item inexistente é corpo malformado (400). O teste de integração **congelou o comportamento atual**: ele avisa se mudar sem querer, mas não diz qual é o certo. Levantado ao escrever o teste e não resolvido, porque mudar código de produção não era o escopo daquela tarefa.
 
 - [ ] **(P3) A faixa da aba Pedidos mostra três zeros ao filtrar por "Cancelados"** — Pedidos 0, Faturamento R$ 0,00 e Ticket médio R$ 0,00, porque pedido cancelado não entra no faturamento. Está tecnicamente certo e não informa nada; o número útil naquele recorte seria o **valor cancelado**. Ficou de fora da correção de 24/08 de propósito: aquela só trocou rótulos, sem mexer em nenhum número.
@@ -650,3 +649,5 @@ _(nada no momento)_
 - [x] **Favicon publicado e cinco pontos da v137 conferidos** — `fly deploy` publicou a versão 139; produção passou a responder `/favicon.svg` com 200 e `image/svg+xml` em `bot-restaurante.fly.dev` e `pedidos.nymbuslab.com.br`. Conferência no navegador com Playwright contra o bundle publicado, usando mocks para não tocar em dados reais: checkout renderiza os preços de `public/planos.js` (`R$ 79,00`/`R$ 99,00`); master mostra no modal de troca o destino `Plano Completo (R$ 99,00/mês)`; Conexão exibe o erro do servidor ao recusar conectar; Categorias cria e já foca o input `Nova categoria`; Pedidos troca o rótulo do card de dinheiro para `A receber`/`Recebido` conforme o filtro. — 2026-08-29
 
 - [x] **CI de integração ativado no GitHub Actions** — `npm run test:integracao` entrou no workflow `test.yml`, rodando na `main` e por disparo manual (`workflow_dispatch`) com secrets `INTEGRACAO_*`; o script de integração agora aceita credenciais via ambiente no CI sem depender de `.env.test`. Primeira execução remota conferida no GitHub: run `33250802820` passou, incluindo `npm run check`, `npm test` e `Testes de integração`. — 2026-08-29
+
+- [x] **`npm run check` passou a validar a pasta `test/`** — `scripts/check-syntax.js` agora inclui a suíte rápida, helpers e testes de integração na varredura de sintaxe com `node --check`, sem executar testes nem tocar banco. O comando subiu de 63 para 114 arquivos verificados. Validação: `npm run check` (114 arquivos), `npm test` (504/504) e `npm run test:integracao` (39/39). — 2026-08-29

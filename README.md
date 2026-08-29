@@ -210,7 +210,7 @@ frete, estoque, pagamentos). Usam env dummy → rodam **sem segredos**, aqui e n
 
 ```bash
 npm test        # suíte de testes
-npm run check   # varredura de sintaxe (node --check) em src/, scripts/ e index.js
+npm run check   # varredura de sintaxe (node --check) em src/, scripts/, public/, test/ e index.js
 npm run test:ci # a suíte na condição EXATA do runner do GitHub (ver abaixo)
 npm run test:integracao # bateria contra banco REAL (exige .env.test — ver abaixo)
 ```
