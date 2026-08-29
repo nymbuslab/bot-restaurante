@@ -78,11 +78,13 @@ descartável.
 - [x] **Etapa 2 — o dinheiro e o salão** — ✅ **concluída** (2026-08-28): caixa, PDV com baixa
   de estoque e mesas, mais o cruzamento das duas features (o caixa não fecha com mesa aberta).
   28 casos novos, 39 no total. Ver `PROGRESSO.md`.
-- [ ] **Etapa 3 — Stripe e bot**: Stripe em modo de teste com evento e assinatura reais. O
-  WhatsApp real fica de fora por decisão registrada (número automatizado é banido); o que entra
-  é automatizar o simulador.
-- [ ] **Levar ao CI**: exige Session pooler na `DATABASE_URL` (o runner do GitHub é só IPv4) e
-  os segredos cadastrados no repositório.
+- [x] **Etapa 3 — Stripe e bot** — ✅ **concluída** (2026-08-29): Stripe em modo de teste com
+  SetupIntent, assinatura real, evento `customer.subscription.created` assinado e dedup do webhook;
+  o WhatsApp real fica de fora por decisão registrada, e o simulador cobre a máquina de estados da
+  conversa. 3 casos novos, 42 no total. Ver `PROGRESSO.md`.
+- [x] **Levar ao CI** — ✅ **concluído** (2026-08-29): `npm run test:integracao` roda no GitHub
+  Actions na `main` e por `workflow_dispatch`, usando Supabase descartável e Stripe test-mode via
+  secrets `INTEGRACAO_*`.
 
 (Os dois itens *funcionais* que já estiveram aqui — botões de status do pedido e taxa por bairro/CEP — foram decididos como **fora de escopo**; ver a seção acima.)
 

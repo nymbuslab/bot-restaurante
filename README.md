@@ -221,12 +221,14 @@ O `npm test` cobre lógica pura e não toca banco. O `npm run test:integracao` f
 o servidor numa porta livre, cria empresas reais e conversa por HTTP contra um **Postgres de
 verdade**. Hoje cobre o **isolamento entre empresas** (o token de um restaurante não alcança o
 dado de outro), o **recálculo de preço do cardápio web** (o preço mandado pelo navegador é
-ignorado), **Caixa**, **PDV**, **Mesas** e o cruzamento em que o caixa não fecha com mesa aberta.
+ignorado), **Caixa**, **PDV**, **Mesas**, o **simulador do bot** e **Stripe em modo de teste**
+com SetupIntent, assinatura real e webhook assinado.
 
 Ela **nunca** roda contra produção. O banco vem de um projeto Supabase separado e descartável:
 
 1. Crie um projeto novo no Supabase (plano grátis serve).
-2. Copie o `.env.test.example` para `.env.test` e preencha com as credenciais dele.
+2. Copie o `.env.test.example` para `.env.test` e preencha com as credenciais dele e do Stripe
+   test-mode.
 3. Aplique o schema: `npx supabase db push --db-url <a DATABASE_URL do .env.test>`.
 
 No GitHub Actions, a mesma bateria roda na `main` e também pode ser disparada manualmente em
@@ -237,6 +239,11 @@ repositório:
 - `INTEGRACAO_SUPABASE_URL`
 - `INTEGRACAO_SUPABASE_ANON_KEY`
 - `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY`
+- `INTEGRACAO_STRIPE_SECRET_KEY` — chave `sk_test`, nunca `sk_live`.
+- `INTEGRACAO_STRIPE_PUBLISHABLE_KEY` — chave `pk_test`.
+- `INTEGRACAO_STRIPE_PRICE_ID` — price test-mode do plano Essencial.
+- `INTEGRACAO_STRIPE_PRICE_ID_COMPLETO` — price test-mode do plano Completo.
+- `INTEGRACAO_STRIPE_WEBHOOK_SECRET` — signing secret `whsec_...` do webhook de teste/CLI.
 
 Duas travas impedem o acidente, e as duas precisam passar: a marca `BANCO_DE_TESTE=1` no
 `.env.test`, e a comparação com o `.env` — se for o mesmo projeto Supabase, a bateria aborta

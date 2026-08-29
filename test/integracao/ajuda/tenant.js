@@ -73,6 +73,7 @@ function cardapioDeUmItem({ idItem = 101, nome = "Prato do Teste", preco = 10 } 
 }
 
 async function prepararLoja(emp, { cardapio, config } = {}) {
+  await store.ensure(emp.dir);
   await store.setCardapio(emp.dir, cardapio || cardapioDeUmItem());
   const atual = (await store.getConfig(emp.dir)) || {};
   await store.setConfig(

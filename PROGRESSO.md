@@ -20,7 +20,6 @@ _(nada no momento)_
 
 ### Em aberto
 
-- [ ] **(P2) Testes de integração — etapa 3: Stripe e bot** — Stripe em modo de teste, com evento e assinatura de verdade, para pegar mudança de formato de evento que o mock nunca pega. **Ressalva já levantada e aceita:** o WhatsApp real **não dá para automatizar** — número que recebe tráfego automatizado é banido, e o Baileys é biblioteca não-oficial. O que dá é automatizar o **simulador**, que exercita a mesma máquina de estados da conversa. Cobre a lógica, não a entrega da mensagem.
 - [ ] **(P3) Decidir se item fora do cardápio deveria responder 400 em vez de 409** — a rota `POST /api/c/:slug/pedido` trata o que `recalcularItens` lança como conflito de disponibilidade (409). Dá para argumentar que carrinho com item inexistente é corpo malformado (400). O teste de integração **congelou o comportamento atual**: ele avisa se mudar sem querer, mas não diz qual é o certo. Levantado ao escrever o teste e não resolvido, porque mudar código de produção não era o escopo daquela tarefa.
 
 - [ ] **(P3) A faixa da aba Pedidos mostra três zeros ao filtrar por "Cancelados"** — Pedidos 0, Faturamento R$ 0,00 e Ticket médio R$ 0,00, porque pedido cancelado não entra no faturamento. Está tecnicamente certo e não informa nada; o número útil naquele recorte seria o **valor cancelado**. Ficou de fora da correção de 24/08 de propósito: aquela só trocou rótulos, sem mexer em nenhum número.
@@ -56,6 +55,8 @@ _(nada no momento)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **Testes de integração, etapa 3: Stripe e bot** — a bateria `npm run test:integracao` agora cobre os dois pedaços que ainda estavam fora do sistema real. **Bot:** dois casos pelo simulador HTTP (`/api/simulador/reset` e `/api/simulador/mensagem`) provam saudação, menu, link limpo do cardápio sem `?p=`, entrada em atendente, silêncio enquanto está com atendente e retorno por `menu`; o WhatsApp real segue fora por decisão registrada, porque automatizar número real arrisca banimento e Baileys não é canal oficial. **Stripe:** um caso E2E em test-mode cria tenant descartável, abre `SetupIntent`, confirma com `pm_card_visa`, cria assinatura real do plano Completo, confere `/api/assinatura`, regride o estado local e reaplica o evento real `customer.subscription.created` assinado com `STRIPE_WEBHOOK_SECRET`; o reenvio do mesmo evento confirma a deduplicação do webhook. A etapa também corrigiu o helper de integração (`prepararLoja` agora aquece o cache antes de salvar cardápio/config), porque o simulador revelou que `config.mensagens` podia sumir no cache do teste. CI recebeu os secrets `INTEGRACAO_STRIPE_*` e o `.env.test.example` documenta os nomes sem valores. **Números:** 42 de 42 na bateria de integração, 504 de 504 na suíte rápida, `npm run test:ci` verde e `npm run check` cobrindo 116 arquivos. — 2026-08-29
 
 - [x] Estrutura base do bot (whatsapp-web.js + Express) — 2026-06-06
 

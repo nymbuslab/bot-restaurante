@@ -121,6 +121,19 @@ nem webhooks:
 > localhost:3000/api/stripe/webhook`, que gera um `whsec` de sessão (sandbox) — separado do webhook
 > de produção.
 
+## Teste automatizado de assinatura
+
+O `npm run test:integracao` também exercita o checkout próprio contra Stripe test-mode. A bateria
+usa `STRIPE_SECRET_KEY=sk_test...`, `STRIPE_PUBLISHABLE_KEY=pk_test...`, os dois `price_...` de
+teste e `STRIPE_WEBHOOK_SECRET=whsec_...` no `.env.test` ou nos secrets `INTEGRACAO_STRIPE_*` do
+GitHub Actions.
+
+O teste cria um tenant descartável, chama `POST /api/assinatura/setup-intent`, confirma o
+SetupIntent com o payment method oficial de teste `pm_card_visa`, cria uma assinatura real no
+Stripe test-mode e entrega ao app um evento `customer.subscription.created` assinado com o
+`whsec`. Depois reenvia o mesmo evento para congelar a deduplicação do webhook. Chaves `sk_live`
+e dados reais de cartão nunca entram nessa bateria.
+
 ## Go-live (teste → produção) — checklist ✅ CONCLUÍDO em 2026-06-18
 
 Mantido como referência (e para repetir ao criar um 2º plano / migrar de domínio). Passos:

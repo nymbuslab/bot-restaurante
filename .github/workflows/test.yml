@@ -36,6 +36,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.INTEGRACAO_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.INTEGRACAO_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.INTEGRACAO_STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY: ${{ secrets.INTEGRACAO_STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_PRICE_ID: ${{ secrets.INTEGRACAO_STRIPE_PRICE_ID }}
+          STRIPE_PRICE_ID_COMPLETO: ${{ secrets.INTEGRACAO_STRIPE_PRICE_ID_COMPLETO }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.INTEGRACAO_STRIPE_WEBHOOK_SECRET }}
         run: npm run test:integracao
 
       # ---- Aviso de quebra (só na main; PR e outros branches ficam de fora) ----

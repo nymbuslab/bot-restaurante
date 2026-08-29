@@ -58,6 +58,11 @@ if (usandoAmbienteCI) {
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_PUBLISHABLE_KEY",
+    "STRIPE_PRICE_ID",
+    "STRIPE_PRICE_ID_COMPLETO",
+    "STRIPE_WEBHOOK_SECRET",
   ]) {
     if (process.env[chave]) doArquivo[chave] = process.env[chave];
   }

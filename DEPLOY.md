@@ -241,9 +241,17 @@ não no Fly:
 - `INTEGRACAO_SUPABASE_URL`
 - `INTEGRACAO_SUPABASE_ANON_KEY`
 - `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY`
+- `INTEGRACAO_STRIPE_SECRET_KEY` — chave `sk_test`, nunca `sk_live`.
+- `INTEGRACAO_STRIPE_PUBLISHABLE_KEY` — chave `pk_test`.
+- `INTEGRACAO_STRIPE_PRICE_ID` — price test-mode do plano Essencial.
+- `INTEGRACAO_STRIPE_PRICE_ID_COMPLETO` — price test-mode do plano Completo.
+- `INTEGRACAO_STRIPE_WEBHOOK_SECRET` — signing secret `whsec_...` do webhook de teste/CLI.
 
 O banco precisa ter as migrations aplicadas antes do primeiro run: `npx supabase db push --db-url
 <INTEGRACAO_DATABASE_URL>`.
+
+Esses secrets são só para o GitHub Actions. Não reutilize as chaves live do Fly na bateria de
+integração: os testes criam assinatura e customer reais no Stripe test-mode e limpam tudo no fim.
 
 ### Comandos úteis do dia a dia
 
