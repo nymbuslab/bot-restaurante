@@ -58,3 +58,39 @@ test("o caminho de sucesso das configurações mantém o aviso de frete", () => 
   assert.match(c, /avisoFrete/,
     "o servidor devolve um aviso quando o frete por raio fica incoerente; não pode sumir");
 });
+
+test("movimentação do caixa mostra aviso quando o comprovante não entra na fila", () => {
+  const helper = trecho("function toastResultadoComImpressao(", "\n}\n\nasync function movimentoCaixa");
+  assert.match(helper, /avisoImpressao/,
+    "o helper precisa ler o campo que o servidor devolve quando a fila falha");
+  assert.match(helper, /toast\([^)]*"erro"\)/,
+    "aviso de comprovante precisa aparecer como alerta, não como sucesso comum");
+  assert.match(helper, /toast\(\s*sucesso[^)]*"erro"\)/,
+    "a confirmação de sucesso precisa sair JUNTO do aviso: quem lê só a falha acha que o movimento não entrou e repete a sangria ou o cancelamento");
+  const c = trecho("async function movimentoCaixa(", "\n// \"É dinheiro?\"");
+  assert.match(c, /await r\.json/,
+    "o handler precisa ler o corpo de sucesso, onde vem o avisoImpressao");
+  assert.match(c, /toastResultadoComImpressao/,
+    "o sucesso precisa passar pelo helper que transforma aviso de impressão em alerta visível");
+});
+
+test("cancelar pedido pago mostra aviso quando o comprovante não entra na fila", () => {
+  const c = trecho("// Botão de cancelar pedido", "\nasync function avisarCliente");
+  assert.match(c, /await r\.json/,
+    "o handler precisa ler o corpo de sucesso, onde vem o avisoImpressao");
+  assert.match(c, /toastResultadoComImpressao/,
+    "o sucesso do cancelamento precisa ler o corpo e mostrar o aviso de impressão");
+});
+
+test("aviso de comprovante do caixa se sustenta sozinho, sem repetir a confirmação", () => {
+  const servidor = fs.readFileSync(path.join(__dirname, "..", "src", "servidor.js"), "utf8");
+  const i = servidor.indexOf("async function enfileirarComprovanteCaixa(");
+  assert.ok(i > -1, "não encontrado: enfileirarComprovanteCaixa");
+  const bloco = servidor.slice(i, servidor.indexOf("\napp.post", i));
+  const msg = /erro: "([^"]+)"/.exec(bloco);
+  assert.ok(msg, "a função precisa devolver um texto de aviso quando a fila falha");
+  assert.doesNotMatch(msg[1], /registrad/i,
+    "quem confirma o movimento é a tela, que sabe se foi sangria, suprimento ou o pedido #N; repetir aqui daria duas confirmações na mesma frase");
+  assert.match(msg[1], /impress/i,
+    "a frase precisa dizer sozinha que o problema foi a impressão");
+});

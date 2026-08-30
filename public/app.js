@@ -4020,6 +4020,15 @@ async function estornarCaixa(id) {
   }
 }
 
+// O movimento financeiro deu certo; só o comprovante não entrou na fila. As duas
+// coisas precisam ser ditas: engolir a confirmação faria o operador achar que a
+// sangria ou o cancelamento também falhou, e aí ele repete a operação.
+function toastResultadoComImpressao(dados, sucesso) {
+  const aviso = dados && dados.avisoImpressao;
+  if (aviso) toast(sucesso + " " + aviso, "erro");
+  else toast(sucesso);
+}
+
 async function movimentoCaixa(tipo) {
   const titulo = tipo === "sangria" ? "Sangria (retirar dinheiro)" : "Suprimento (reforçar dinheiro)";
   const vals = await modalCaixa({
@@ -4033,7 +4042,11 @@ async function movimentoCaixa(tipo) {
   if (!vals) return;
   if (vals.cxMovValor <= 0) { toast("Informe um valor maior que zero."); return; }
   const r = await api("POST", "/api/caixa/movimento", { tipo, valor: vals.cxMovValor, descricao: vals.cxMovMotivo });
-  if (r && r.ok) { toast("Registrado."); carregarCaixa(); }
+  if (r && r.ok) {
+    const d = await r.json().catch(() => ({}));
+    toastResultadoComImpressao(d, "Registrado.");
+    carregarCaixa();
+  }
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não deu para registrar a movimentação. Tente de novo."); }
 }
 
@@ -5544,10 +5557,11 @@ function montarAcoes(p) {
         toast(d.erro || "Erro ao cancelar o pedido.", "erro");
         return;
       }
+      const d = await r.json().catch(() => ({}));
       p.status = "cancelado";
       const ci = pedidosCache.findIndex((x) => x.id === p.id);
       if (ci !== -1) pedidosCache[ci].status = "cancelado";
-      toast("Pedido #" + p.numero + " cancelado.");
+      toastResultadoComImpressao(d, "Pedido #" + p.numero + " cancelado.");
       fecharModalPedido();
       renderPedidos();
       // Pago: o caixa mudou (dedução) — atualiza a tela do caixa se estiver carregada.

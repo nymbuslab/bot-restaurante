@@ -2362,7 +2362,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 
 .toast {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 12px 16px;
   border-radius: var(--radius);
@@ -2377,7 +2377,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 }
 
 .toast.saindo { animation: toastOut 0.25s ease both; }
-.toast-ico { display: flex; flex: none; }
+/* O ícone acompanha a PRIMEIRA linha do texto, não o centro do bloco: aviso de duas
+   ou três linhas deixava o ícone flutuando no meio. A altura 1.5em espelha o
+   line-height do corpo, então o ícone de 16px centraliza na linha sem número mágico. */
+.toast-ico { display: flex; align-items: center; height: 1.5em; flex: none; }
 .toast-ico svg { display: block; }
 
 .toast.sucesso {

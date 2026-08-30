@@ -39,7 +39,7 @@ Teste antes do codigo. Duvida nova vira registro em `00-BLOQUEIOS.md`. Criterio 
 
 ## Definicao de pronto global
 
-A tela Configuracoes > Impressora salva tres toggles de comprovante. O servidor enfileira somente os tipos ativados. A falha de impressao nao desfaz o movimento financeiro. Testes focados e suites do projeto passam.
+A tela Configuracoes > Impressora salva tres toggles de comprovante. O servidor enfileira somente os tipos ativados. A falha de impressao nao desfaz o movimento financeiro e aparece no painel quando o comprovante de caixa nao entra na fila. Testes focados e suites do projeto passam.
 
 ## Como retomar uma sessao interrompida
 

@@ -2434,7 +2434,7 @@ async function enfileirarComprovanteCaixa(req, tipo, movimentos, extras) {
     return { solicitado: true, id };
   } catch (e) {
     console.error("enfileirar comprovante caixa:", e.message);
-    return { solicitado: true, erro: "Movimento registrado, mas não foi possível enviar o comprovante para impressão." };
+    return { solicitado: true, erro: "O comprovante não foi para a impressora. Confira o agente de impressão." };
   }
 }
 

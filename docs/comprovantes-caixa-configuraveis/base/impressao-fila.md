@@ -14,7 +14,7 @@ Polling do agente busca ate 50 trabalhos por vez; reserva expira em 30 segundos.
 
 ## Erros conhecidos e tratamento
 
-Falhas de enfileiramento de PDV, mesas e fechamento sao tratadas no servidor com `console.error` sem desfazer a acao principal. Fonte: `src/servidor.js` - acessado em 2026-08-29.
+Falhas de enfileiramento de PDV, mesas e fechamento sao tratadas no servidor com `console.error` sem desfazer a acao principal. Para comprovantes do caixa, as rotas de sangria, suprimento e cancelamento de pedido pago devolvem `avisoImpressao`, e o painel exibe esse aviso ao operador mesmo quando a acao financeira foi registrada. Fonte: `src/servidor.js`, `public/app.js` - acessado em 2026-08-30.
 
 ## Riscos para a nossa implementacao
 
