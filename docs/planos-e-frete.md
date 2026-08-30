@@ -295,8 +295,9 @@ que vêm do WhatsApp.
   agente e guarda em `detalhe_fechamento` p/ reimpressão.
 - **Regra:** **não fecha com consumo do turno em aberto** (guarda no servidor). Bloqueios separados:
   **mesas abertas** → atalho pra aba **Mesas** (recebe na mesa); **pedidos de delivery/local a receber**
-  (`mesa_id` nulo, criados desde a abertura) → atalho pra aba **Pedidos** em "A receber". Pedido
-  **cancelado não conta** (nunca é recebido).
+  do turno (`mesa_id` nulo, criados desde a abertura) → atalho pra aba **Pedidos** em "A receber".
+  Pedido antigo a receber aparece como aviso com total pendente e atalho pra Pedidos, sem bloquear o
+  caixa de hoje. Pedido **cancelado não conta** (nunca é recebido).
 - **Caixas anteriores:** os **3 últimos** fechamentos com resumo na linha (operador · total para
   conferência · Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
 - **Regras gerais:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);

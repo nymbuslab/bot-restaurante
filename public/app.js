@@ -4076,7 +4076,10 @@ function renderFechamentoCaixa(data) {
     : ((Number(recPorForma[f]) || 0) - (Number(cancPorForma[f]) || 0));
   const linhas = formas.map((f, i) => ({ forma: f, esperado: esperadoDe(f), id: "fcEm-" + i }));
 
-  const pendentes = Number(data.pedidosAReceber) || 0; // pedidos delivery/local a receber
+  const pendentes = Number(data.pedidosAReceber) || 0; // pedidos delivery/local a receber do turno
+  const antigos = data.pedidosAReceberAntigos || {};
+  const pendentesAntigos = Number(antigos.quantidade) || 0; // pedidos a receber anteriores ao turno
+  const totalAntigos = Number(antigos.total) || 0;
   const mesasAbertas = Number(data.mesasAbertas) || 0; // mesas com consumo em aberto
   const bloqueado = pendentes > 0 || mesasAbertas > 0;
   const operador = (data.caixa && data.caixa.operador) || "";
@@ -4119,6 +4122,14 @@ function renderFechamentoCaixa(data) {
           <span>Receba os pedidos do dia (aba Pedidos) antes de fechar o caixa.</span>
         </div>
         <button type="button" id="fcVerPedidos" class="secundario">Ver pedido${pendentes > 1 ? "s" : ""} a receber</button>
+      </div>` : ""}
+      ${pendentesAntigos > 0 ? `
+      <div class="fc-bloqueio fc-aviso">
+        <div class="fc-bloqueio-txt">
+          <strong>${pendentesAntigos} pedido${pendentesAntigos > 1 ? "s" : ""} antigo${pendentesAntigos > 1 ? "s" : ""} a receber.</strong>
+          <span>Total pendente: R$ ${fmtBRn(totalAntigos)}. O caixa de hoje pode fechar, mas esse pagamento continua pendente.</span>
+        </div>
+        <button type="button" id="fcVerPedidosAntigos" class="secundario">Ver pedido${pendentesAntigos > 1 ? "s" : ""} a receber</button>
       </div>` : ""}
       <div class="fc-conf">
         <table class="fc-conf-tab">
@@ -4222,6 +4233,7 @@ function renderFechamentoCaixa(data) {
     carregarCaixa();
   });
   if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", () => { destruirModal(); irParaPedidosAReceber(); });
+  if (pendentesAntigos > 0 && $("fcVerPedidosAntigos")) $("fcVerPedidosAntigos").addEventListener("click", () => { destruirModal(); irParaPedidosAReceber(); });
   if (mesasAbertas > 0 && $("fcVerMesas")) $("fcVerMesas").addEventListener("click", () => {
     destruirModal();
     const btn = document.querySelector("[data-aba='mesas']"); if (btn) btn.click();

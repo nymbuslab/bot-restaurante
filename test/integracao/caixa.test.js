@@ -18,6 +18,7 @@ const assert = require("node:assert/strict");
 
 const app = require("./ajuda/app");
 const tenant = require("./ajuda/tenant");
+const db = require("../../src/db");
 
 const PRECO = 10;
 const ID_ITEM = 101;
@@ -100,11 +101,8 @@ test("a trava: não fecha o caixa com pedido a receber", async () => {
   assert.equal(r.status, 400, "FECHOU COM VENDA A RECEBER (status " + r.status + ")");
   assert.match(String(r.corpo.erro), /a receber/i);
 
-  // NOTA: esta trava tem um furo conhecido, já registrado no PROGRESSO.md — ela
-  // conta só os pedidos criados DEPOIS da abertura do turno, então um pedido
-  // esquecido de dias anteriores fica invisível para ela. O caso acima cobre o
-  // caminho que funciona; o furo é decisão de produto em aberto, e este teste
-  // congela o comportamento ATUAL, não o desejado.
+  // Pedidos antigos a receber têm outro tratamento: aparecem como aviso, mas nao
+  // travam o fechamento do caixa de hoje.
 });
 
 test("receber com forma que a loja não oferece é recusado", async () => {
@@ -208,6 +206,23 @@ test("com tudo recebido, o caixa fecha e devolve o relatório", async () => {
 
   const e = await estado();
   assert.equal(e.caixa, null, "depois de fechar não pode sobrar caixa aberto");
+});
+
+test("pedido antigo a receber avisa, mas não bloqueia o fechamento de hoje", async () => {
+  const pedido = await criarPedidoAReceber();
+  await db.query("UPDATE pedidos SET criado_em = now() - interval '2 days' WHERE id = $1", [pedido.id]);
+
+  const abrir = await app.pedir("/api/caixa/abrir", { token: loja.token, corpo: { fundoTroco: 0, operador: "Turno novo" } });
+  assert.equal(abrir.status, 200, "falha ao abrir novo caixa: " + JSON.stringify(abrir.corpo));
+
+  const e = await estado();
+  assert.equal(e.pedidosAReceber, 0, "pedido antigo não deveria contar como pendência do turno");
+  assert.equal(e.pedidosAReceberAntigos.quantidade, 1, "pedido antigo deveria aparecer no aviso");
+  assert.equal(e.pedidosAReceberAntigos.total, TOTAL_PEDIDO);
+  assert.ok(e.pedidosAReceberAntigos.maisAntigoEm, "o aviso precisa trazer a data do pedido mais antigo");
+
+  const fechar = await app.pedir("/api/caixa/fechar", { token: loja.token, corpo: { contado: { Dinheiro: 0 } } });
+  assert.equal(fechar.status, 200, "pedido antigo a receber não deve travar o caixa de hoje: " + JSON.stringify(fechar.corpo));
 });
 
 test("o caixa é do Plano Completo: quem está no Essencial não entra", async () => {

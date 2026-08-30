@@ -38,6 +38,27 @@ async function _contarAReceber(empId, abertoEm) {
   return r.rows[0].n;
 }
 
+// Pedidos a receber anteriores ao turno atual nao bloqueiam o fechamento do caixa
+// de hoje, mas precisam aparecer: o recebimento deles entra no caixa aberto quando
+// for feito, entao deixar invisivel passava uma pendencia velha como se nao existisse.
+async function _resumoAReceberAntigos(empId, abertoEm) {
+  const r = await db.query(
+    `SELECT COUNT(*)::int AS quantidade,
+            COALESCE(SUM(total), 0)::numeric AS total,
+            MIN(criado_em) AS mais_antigo_em
+       FROM pedidos
+      WHERE empresa_id = $1 AND recebido_em IS NULL AND status <> 'cancelado'
+        AND mesa_id IS NULL AND criado_em < $2`,
+    [empId, abertoEm]
+  );
+  const row = r.rows[0] || {};
+  return {
+    quantidade: Number(row.quantidade) || 0,
+    total: Number(row.total) || 0,
+    maisAntigoEm: row.mais_antigo_em ? new Date(row.mais_antigo_em).toISOString() : null,
+  };
+}
+
 // Mesas com consumo em aberto (não-livres) — bloqueiam o fechamento do caixa
 // (o consumo ainda não entrou), mas com mensagem própria (feche na aba Mesas).
 async function _contarMesasAbertas(empId) {
@@ -461,6 +482,7 @@ async function resumo(dir) {
   );
   const empId = await empresaId(dir);
   const pedidosAReceber = await _contarAReceber(empId, caixa.aberto_em);
+  const pedidosAReceberAntigos = await _resumoAReceberAntigos(empId, caixa.aberto_em);
   const mesasAbertas = await _contarMesasAbertas(empId);
   return {
     caixa: {
@@ -472,6 +494,7 @@ async function resumo(dir) {
       obsAbertura: caixa.obs_abertura || null,
     },
     pedidosAReceber,
+    pedidosAReceberAntigos,
     mesasAbertas,
     resumo: calc.resumoCaixa(caixa, movimentos),
     movimentos: mov.rows.map((r) => ({

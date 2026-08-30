@@ -5050,8 +5050,10 @@ html.embed, html.embed body { background: var(--bg-primary); }
   margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
 }
 .fc-bloqueio { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px; background: var(--warning-subtle); border: 1px solid var(--warning); border-radius: var(--radius); }
+.fc-bloqueio.fc-aviso { background: var(--info-subtle); border-color: var(--info); }
 .fc-bloqueio-txt { display: flex; flex-direction: column; gap: 2px; }
 .fc-bloqueio-txt strong { color: var(--warning); }
+.fc-bloqueio.fc-aviso .fc-bloqueio-txt strong { color: var(--info); }
 .fc-bloqueio-txt span { font-size: 13px; color: var(--text-secondary); }
 .fc-bloqueio button { flex-shrink: 0; }
 @media (max-width: 560px) {

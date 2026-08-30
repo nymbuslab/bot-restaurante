@@ -105,7 +105,7 @@ test("comprovantes do caixa respeitam configuracao por tipo", async () => {
   assert.equal(trabalhos.length, 3, "deveria enfileirar um comprovante por acao configurada");
   assert.deepEqual(trabalhos.map((j) => j.tipo), ["caixa-comprovante", "caixa-comprovante", "caixa-comprovante"]);
   const textos = trabalhos.map((j) => j.vias.join("\n"));
-  assert.match(textos[0], /SUPRIMENTO[\s\S]*Valor\s+R\$ 15,00/);
-  assert.match(textos[1], /SANGRIA[\s\S]*Valor\s+- R\$ 5,00/);
-  assert.match(textos[2], /CANCELAMENTO[\s\S]*Pedido #[0-9]+[\s\S]*Valor\s+- R\$ 12,00/);
+  assert.ok(textos.some((t) => /SUPRIMENTO[\s\S]*Valor\s+R\$ 15,00/.test(t)), "faltou comprovante de suprimento");
+  assert.ok(textos.some((t) => /SANGRIA[\s\S]*Valor\s+- R\$ 5,00/.test(t)), "faltou comprovante de sangria");
+  assert.ok(textos.some((t) => /CANCELAMENTO[\s\S]*Pedido #[0-9]+[\s\S]*Valor\s+- R\$ 12,00/.test(t)), "faltou comprovante de cancelamento");
 });
