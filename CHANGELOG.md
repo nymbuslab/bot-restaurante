@@ -1040,3 +1040,11 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   relatório de fechamento.
 - O relatório 80mm troca "Total em Caixa" por "Dinheiro em Caixa" e "Total Conferência",
   evitando misturar dinheiro com PIX/cartão.
+
+## [1.2.1] — Mesa não deixa mais pagamento parcial virar sobra no caixa
+
+- Mesa com pagamento parcial registrado no caixa não pode mais ser cancelada inteira.
+- Cancelar item de mesa agora é recusado quando o novo total ficaria menor que o valor já
+  recebido. Antes esse caminho podia deixar dinheiro no caixa sem pedido válido equivalente.
+- A auditoria em produção encontrou divergências históricas de mesa em caixas antigos do
+  `sabor-d-casa`, mas os caixas recentes estavam batendo; a trava evita novas ocorrências.

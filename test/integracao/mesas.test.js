@@ -28,6 +28,7 @@ let loja;      // Plano Completo
 let vizinha;   // outra empresa no Completo, para o isolamento
 let essencial; // para o porteiro
 let mesaId;
+let mesaBloqueioId;
 
 before(async () => {
   loja = await tenant.criarEmpresa("mesas", { plano: "completo" });
@@ -68,6 +69,7 @@ test("criar mesas em lote", async () => {
   assert.equal(lista.length, 2, "esperava 2 mesas criadas");
   assert.ok(lista.every((m) => m.status === "livre"), "mesa recém-criada nasce livre");
   mesaId = lista[0].id;
+  mesaBloqueioId = lista[1].id;
 });
 
 test("não lança pedido em mesa que não foi aberta", async () => {
@@ -118,6 +120,50 @@ test("não paga a mesa sem pedir a conta antes", async () => {
   assert.equal(r.status, 400, "pagou sem a mesa estar em fechamento (status " + r.status + ")");
 });
 
+test("pagamento parcial impede cancelar item ou mesa sem ajustar o caixa", async () => {
+  const abrir = await app.pedir("/api/mesas/" + mesaBloqueioId + "/abrir", { token: loja.token, corpo: { pessoas: 1 } });
+  assert.equal(abrir.status, 200, "falha ao abrir mesa de bloqueio: " + JSON.stringify(abrir.corpo));
+
+  const lancar = await app.pedir("/api/mesas/" + mesaBloqueioId + "/pedido", {
+    token: loja.token,
+    corpo: { itens: [{ id: ID_ITEM, qtd: 3 }] },
+  });
+  assert.equal(lancar.status, 200, "falha ao lançar na mesa de bloqueio: " + JSON.stringify(lancar.corpo));
+
+  const parcial = await app.pedir("/api/mesas/" + mesaBloqueioId + "/receber-parcial", {
+    token: loja.token,
+    corpo: { pagamentos: [{ forma: "Dinheiro", valor: PRECO * 2 }] },
+  });
+  assert.equal(parcial.status, 200, "falha ao receber parcial: " + JSON.stringify(parcial.corpo));
+
+  const d = await detalhe(mesaBloqueioId);
+  const pedido = (d.pedidos || [])[0];
+  assert.ok(pedido && pedido.id, "detalhe da mesa precisava trazer o pedido para cancelar item");
+
+  const cancelarItem = await app.pedir("/api/mesas/" + mesaBloqueioId + "/cancelar-item", {
+    token: loja.token,
+    corpo: { pedidoId: pedido.id, itemIdx: 0 },
+  });
+  assert.equal(cancelarItem.status, 400, "cancelou item que deixaria recebido maior que total");
+  assert.match(String(cancelarItem.corpo.erro), /recebido|caixa|pagamento/i);
+
+  const cancelarMesa = await app.pedir("/api/mesas/" + mesaBloqueioId + "/cancelar", {
+    token: loja.token,
+    corpo: { motivo: "teste de auditoria" },
+  });
+  assert.equal(cancelarMesa.status, 400, "cancelou mesa que já tinha pagamento parcial");
+  assert.match(String(cancelarMesa.corpo.erro), /pagamento|caixa/i);
+
+  const conta = await app.pedir("/api/mesas/" + mesaBloqueioId + "/fechar-conta", { token: loja.token, metodo: "POST" });
+  assert.equal(conta.status, 200, "falha ao pedir conta da mesa de bloqueio: " + JSON.stringify(conta.corpo));
+
+  const pagar = await app.pedir("/api/mesas/" + mesaBloqueioId + "/pagar", {
+    token: loja.token,
+    corpo: { pagamentos: [{ forma: "Dinheiro", valor: PRECO }] },
+  });
+  assert.equal(pagar.status, 200, "falha ao fechar mesa de bloqueio: " + JSON.stringify(pagar.corpo));
+});
+
 test("pedir a conta, pagar, e a mesa volta a ficar livre", async () => {
   const conta = await app.pedir("/api/mesas/" + mesaId + "/fechar-conta", { token: loja.token, metodo: "POST" });
   assert.equal(conta.status, 200, "falha ao pedir a conta: " + JSON.stringify(conta.corpo));
@@ -138,7 +184,7 @@ test("pedir a conta, pagar, e a mesa volta a ficar livre", async () => {
 });
 
 test("com a mesa fechada, o caixa fecha", async () => {
-  const r = await app.pedir("/api/caixa/fechar", { token: loja.token, corpo: { contado: PRECO * 3, eletronico: 0 } });
+  const r = await app.pedir("/api/caixa/fechar", { token: loja.token, corpo: { contado: PRECO * 6, eletronico: 0 } });
   assert.equal(r.status, 200, "não fechou mesmo sem mesa aberta: " + JSON.stringify(r.corpo));
 });
 

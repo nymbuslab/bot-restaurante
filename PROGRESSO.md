@@ -20,8 +20,6 @@ _(nada no momento)_
 
 ### Em aberto
 
-- [ ] **(P1) Auditar rastreabilidade dos recebimentos de mesa no caixa** — recebimentos de mesa entram em `caixa_movimentos` por `mesa_id` e podem ficar com `pedido_id = null`; o fechamento bate com os movimentos, mas a conferência por número de pedido não reconcilia diretamente. Auditoria somente leitura no `sabor-d-casa` mostrou caixas recentes batendo contra snapshot, mas o caixa antigo #74 teve R$ 60,00 de movimento de mesa sem correspondência simples com pedidos válidos recebidos no período. Definir se o extrato deve reconciliar mesa→pedidos no relatório ou se o modelo deve persistir esse vínculo.
-
 - [ ] **(P3) Decidir se item fora do cardápio deveria responder 400 em vez de 409** — a rota `POST /api/c/:slug/pedido` trata o que `recalcularItens` lança como conflito de disponibilidade (409). Dá para argumentar que carrinho com item inexistente é corpo malformado (400). O teste de integração **congelou o comportamento atual**: ele avisa se mudar sem querer, mas não diz qual é o certo. Levantado ao escrever o teste e não resolvido, porque mudar código de produção não era o escopo daquela tarefa.
 
 - [ ] **(P3) A faixa da aba Pedidos mostra três zeros ao filtrar por "Cancelados"** — Pedidos 0, Faturamento R$ 0,00 e Ticket médio R$ 0,00, porque pedido cancelado não entra no faturamento. Está tecnicamente certo e não informa nada; o número útil naquele recorte seria o **valor cancelado**. Ficou de fora da correção de 24/08 de propósito: aquela só trocou rótulos, sem mexer em nenhum número.
@@ -57,6 +55,8 @@ _(nada no momento)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **Auditoria de rastreabilidade mesa→caixa fechou a brecha de pagamento parcial** — produção mostrou 6 caixas históricos do `sabor-d-casa` com movimentos de mesa maiores que os pedidos válidos (R$ 208,00 somados; mais recente #74, R$ 60,00), enquanto os caixas recentes #75–#95 batem. A causa reproduzível era: receber parcial na mesa, depois cancelar item/mesa e deixar `caixa_movimentos` sem pedido válido equivalente. O backend agora recusa cancelar mesa com pagamento registrado e recusa cancelar item quando o total restante ficaria menor que o recebido. Validação: 508/508 em `npm test`, 44/44 em `npm run test:integracao`, `npm run check` (116 arquivos) e teste focado 25/25 em `node --test test/mesas-db.test.js test/integracao/mesas.test.js`. — 2026-08-29
 
 - [x] **Caixa do dia passou a separar dinheiro físico, vendas líquidas e total de conferência** — auditoria no `sabor-d-casa` confirmou que o fechamento recalculado bate com os movimentos, mas a tela chamava de "Total em Caixa" um valor que incluía PIX/cartão e mostrava "Vendas por forma" em valores brutos enquanto o fechamento usava líquidos. O painel agora destaca o dinheiro físico esperado na gaveta, mostra vendas líquidas por forma, mantém o total geral como "Total para conferência" e o relatório 80mm lista cancelamentos/estornos como deduções. Validação: 506/506 em `npm test`, 43/43 em `npm run test:integracao`, `npm run check` (116 arquivos) e Playwright com mock do caso `sabor-d-casa` (R$ 91,81 dinheiro; R$ 451,81 conferência). — 2026-08-29
 

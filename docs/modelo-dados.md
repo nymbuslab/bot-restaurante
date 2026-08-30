@@ -374,7 +374,9 @@ criado_em
   rastro) e zera `recebido_em` — restrito a recebimento de pedido a-receber (web/PDV-Entrega/Retirada),
   **não** em Mesa/Balcão. Pedido "a receber" = `recebido_em IS NULL`.
 - **Recebimento por mesa:** entra no caixa com `mesa_id` e pode deixar `pedido_id = null`; isso entra
-  normalmente no fechamento, mas não reconcilia por número de pedido sem olhar a mesa/comanda.
+  normalmente no fechamento, mas não reconcilia por número de pedido sem olhar a mesa/comanda. Para
+  não criar sobra no caixa, mesa com pagamento registrado não pode ser cancelada inteira, e cancelar
+  item é recusado quando o total restante ficaria menor que o valor já recebido na sessão.
 - **Fechamento (conferência):** o operador informa o valor **em mãos por forma de pagamento**
   (Dinheiro, PIX, Crédito, Débito etc.). O servidor calcula o esperado líquido por forma, a diferença
   por forma e a diferença global. O **dinheiro esperado na gaveta** é `fundo + suprimentos +

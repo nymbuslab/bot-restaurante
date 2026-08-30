@@ -200,6 +200,36 @@ test("finalizarFechamento: não marca pedido cancelado como recebido", async () 
   });
 });
 
+test("cancelar: recusa mesa que já tem pagamento registrado no caixa", async () => {
+  await comPoolFake([
+    [/SELECT id, status, aberta_em FROM mesas/i, { rows: [{ id: 1, status: "ocupada", aberta_em: new Date("2026-08-20T18:00:00.000Z") }] }],
+    [/SELECT COALESCE\(SUM\(valor\), 0\) AS total/i, { rows: [{ total: 20 }] }],
+  ], async (c) => {
+    await assert.rejects(
+      () => mesasDb.cancelar("/x/slug-cancelar-pago", 1, {}),
+      /pagamento registrado|divergência no caixa/i
+    );
+    assert.equal(c.calls.filter((q) => /UPDATE pedidos SET status = 'cancelado'/i.test(q.sql)).length, 0);
+    assert.equal(c.calls.filter((q) => /UPDATE mesas SET status = 'livre'/i.test(q.sql)).length, 0);
+  });
+});
+
+test("cancelarItem: recusa item quando o total ficaria menor que o já recebido", async () => {
+  await comPoolFake([
+    [/SELECT id, status, aberta_em FROM mesas/i, { rows: [{ id: 1, status: "ocupada", aberta_em: new Date("2026-08-20T18:00:00.000Z") }] }],
+    [/SELECT p\.id, p\.numero, p\.itens/i, { rows: [{ id: 9, numero: 4, itens: [{ nome: "Prato", preco: 30, qtd: 1 }] }] }],
+    [/FROM caixa_movimentos/i, { rows: [{ total: 20 }] }],
+    [/SUM\(CASE WHEN p\.id = \$3/i, { rows: [{ total: 0 }] }],
+  ], async (c) => {
+    await assert.rejects(
+      () => mesasDb.cancelarItem("/x/slug-item-pago", 1, 9, 0, {}),
+      /menor que o valor já recebido/i
+    );
+    assert.equal(c.calls.filter((q) => /UPDATE pedidos SET itens/i.test(q.sql)).length, 0);
+    assert.equal(c.calls.filter((q) => /UPDATE pedidos SET itens='\\[\\]'::jsonb/i.test(q.sql)).length, 0);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Lançar rodada tem que travar a mesa e reconferir o status.
 //

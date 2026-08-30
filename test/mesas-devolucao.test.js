@@ -20,7 +20,10 @@ function comPoolFalso(pedidosRows, fn) {
     async query(sql, params) {
       calls.push({ sql, params });
       if (/SELECT id FROM empresas/i.test(sql)) return { rows: [{ id: "emp-uuid" }] };
+      if (/SELECT id, status, aberta_em FROM mesas/i.test(sql)) return { rows: [{ id: 5, status: "ocupada", aberta_em: new Date("2026-08-20T18:00:00.000Z") }] };
       if (/SELECT id, cardapio/i.test(sql)) return { rows: [{ id: "emp-uuid", cardapio: JSON.parse(JSON.stringify(CARDAPIO)) }] };
+      if (/FROM caixa_movimentos/i.test(sql)) return { rows: [{ total: 0 }] };
+      if (/SUM\(CASE WHEN p\.id = \$3/i.test(sql)) return { rows: [{ total: 999 }] };
       if (/FROM pedidos/i.test(sql)) return { rows: pedidosRows };
       return { rows: [], rowCount: 1 };
     },

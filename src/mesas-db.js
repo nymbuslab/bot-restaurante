@@ -343,6 +343,26 @@ async function cancelar(dir, id, { devolver = true } = {}) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    const mesa = await client.query(
+      "SELECT id, status, aberta_em FROM mesas WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, id]
+    );
+    if (!mesa.rows[0]) {
+      await client.query("ROLLBACK").catch(() => {});
+      return null;
+    }
+    if (mesa.rows[0].aberta_em) {
+      const recebido = await client.query(
+        `SELECT COALESCE(SUM(valor), 0) AS total
+           FROM caixa_movimentos
+          WHERE empresa_id = $1 AND mesa_id = $2 AND tipo = 'recebimento'
+            AND criado_em >= $3`,
+        [empId, id, mesa.rows[0].aberta_em]
+      );
+      if ((Number(recebido.rows[0].total) || 0) > 0.009) {
+        throw new Error("Esta mesa já tem pagamento registrado. Não é possível cancelar a mesa sem deixar divergência no caixa.");
+      }
+    }
     // Só os desta sessão: cancelar a mesa não pode devolver ao estoque item de um
     // cliente anterior. `FOR UPDATE OF p` porque o JOIN traz `mesas` junto e a trava
     // é dos pedidos.
@@ -577,14 +597,49 @@ async function cancelarItem(dir, mesaId, pedidoId, itemIdx, { devolver = true } 
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
+    const mesa = await client.query(
+      "SELECT id, status, aberta_em FROM mesas WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      [empId, mesaId]
+    );
+    if (!mesa.rows[0] || mesa.rows[0].status === "livre") throw new Error("Mesa não está aberta.");
+    if (mesa.rows[0].status === "fechando") throw new Error("Conta já iniciada. Reabra a mesa para cancelar itens.");
     const r = await client.query(
-      "SELECT id, numero, itens FROM pedidos WHERE id=$1 AND empresa_id=$2 AND mesa_id=$3 AND status<>'cancelado' FOR UPDATE",
+      `SELECT p.id, p.numero, p.itens
+         FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+        WHERE p.id = $1 AND p.empresa_id = $2 AND p.mesa_id = $3 AND ${DA_SESSAO}
+        FOR UPDATE OF p`,
       [pedidoId, empId, mesaId]
     );
     if (!r.rows[0]) throw new Error("Pedido não encontrado nesta mesa.");
     const itens = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
     if (itemIdx < 0 || itemIdx >= itens.length) throw new Error("Item não encontrado.");
     const [itemRemovido] = itens.splice(itemIdx, 1);
+    const novoTotal = !itens.length ? 0 : Math.round(itens.reduce((s, i) => {
+      const extras =
+        (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0) +
+        (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
+      return s + ((i.preco || 0) + extras) * (i.qtd || 1);
+    }, 0) * 100) / 100;
+    if (mesa.rows[0].aberta_em) {
+      const recebido = await client.query(
+        `SELECT COALESCE(SUM(valor), 0) AS total
+           FROM caixa_movimentos
+          WHERE empresa_id = $1 AND mesa_id = $2 AND tipo = 'recebimento'
+            AND criado_em >= $3`,
+        [empId, mesaId, mesa.rows[0].aberta_em]
+      );
+      const totalDepois = await client.query(
+        `SELECT COALESCE(SUM(CASE WHEN p.id = $3 THEN $4::numeric ELSE p.total END), 0) AS total
+           FROM pedidos p JOIN mesas m ON m.id = p.mesa_id AND m.empresa_id = p.empresa_id
+          WHERE p.empresa_id = $1 AND p.mesa_id = $2 AND ${DA_SESSAO}`,
+        [empId, mesaId, pedidoId, novoTotal]
+      );
+      const jaRecebido = Number(recebido.rows[0].total) || 0;
+      const totalRestante = Number(totalDepois.rows[0].total) || 0;
+      if (jaRecebido > totalRestante + 0.009) {
+        throw new Error("Este cancelamento deixaria o total da mesa menor que o valor já recebido no caixa.");
+      }
+    }
     let cardapioNovo = null;
     if (devolver) {
       cardapioNovo = await store.devolverEstoqueTx(client, dir, [itemRemovido], {
@@ -597,12 +652,6 @@ async function cancelarItem(dir, mesaId, pedidoId, itemIdx, { devolver = true } 
         [pedidoId]
       );
     } else {
-      const novoTotal = Math.round(itens.reduce((s, i) => {
-        const extras =
-          (i.opcionais || []).reduce((x, o) => x + (o.preco || 0) * (o.qtd || 1), 0) +
-          (i.variacoes || []).reduce((x, v) => x + (v.preco || 0) * (v.qtd || 1), 0);
-        return s + ((i.preco || 0) + extras) * (i.qtd || 1);
-      }, 0) * 100) / 100;
       await client.query(
         "UPDATE pedidos SET itens=$1::jsonb, total=$2 WHERE id=$3",
         [JSON.stringify(itens), novoTotal, pedidoId]

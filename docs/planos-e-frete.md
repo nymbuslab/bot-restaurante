@@ -293,6 +293,8 @@ que vêm do WhatsApp.
   conferência · Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
 - **Regras gerais:** **1 caixa aberto por vez** (índice único parcial `caixas_um_aberto_por_empresa`);
   receber/estornar exigem caixa aberto; **1 operador** (a conta do tenant); sangria/suprimento imutáveis.
+  Em mesa, pagamento parcial trava cancelamento da mesa inteira, e cancelar item só passa se o total
+  restante ainda cobrir o valor já recebido no caixa.
 - **Caixa vencido (virou o dia):** o caixa deve ser fechado ao fim do expediente / ao virar o dia.
   `caixaAberto` calcula `vencido` = `(aberto_em AT TIME ZONE 'America/Sao_Paulo')::date < hoje`. Enquanto
   vencido, o **PDV fica bloqueado** (`venderLocal` recusa + tela do PDV mostra "Feche o caixa de DD/MM");
