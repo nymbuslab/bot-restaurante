@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-08-29
+atualizado: 2026-08-30
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -55,6 +55,10 @@ _(nada no momento)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **Extrato do caixa agrupa venda cancelada em uma única linha visual** — a API continua devolvendo os movimentos separados para auditoria e fechamento, mas a tabela do caixa aberto agora condensa `recebimento` + `cancelamento/estorno` do mesmo pedido e forma como `Venda cancelada`/`Venda estornada`, com valor líquido `R$ 0,00` e detalhe do valor revertido. Validação em produção somente leitura no `sabor-d-casa`: pedidos `#691`, `#692` e `#694` aparecem como uma linha cada; totais seguem batendo (`R$ 91,81` dinheiro em caixa, `R$ 451,81` total para conferência). Validação: `node --test test/caixa-calc.test.js` (17/17), suíte focada de caixa (35/35), `npm run check` (119 arquivos), `npm test` (512/512) e Playwright visível sem erro de console. Sem desdobramento novo. — 2026-08-30
+
+- [x] **Comprovantes configuráveis para caixa** — Configurações > Impressora agora tem toggles para imprimir comprovantes de suprimento, sangria e cancelamento de pedido pago. A decisão fica em `config.impressao.caixa`; o servidor monta o texto 80mm em `public/comprovante-caixa.js` e enfileira `caixa-comprovante` só depois do movimento financeiro confirmar. O agente não ganhou regra de negócio nova. Validação: `node --test test/comprovante-caixa.test.js` (2/2), `node --test test/integracao/caixa-comprovantes.test.js` (1/1), `node --test test/comprovante-caixa.test.js test/caixa-devolucao.test.js test/caixa-trava.test.js` (9/9), integração caixa focada (12/12), `npm run check` (119 arquivos), `npm run test:integracao` (45/45) e `npm test` (510/510). Visual validado com Playwright visível usando usuário de teste: desktop 1366x768 e mobile 390x844, sem erro de console, sem overflow e com persistência/restauração dos toggles. — 2026-08-29
 
 - [x] **Auditoria de rastreabilidade mesa→caixa fechou a brecha de pagamento parcial** — produção mostrou 6 caixas históricos do `sabor-d-casa` com movimentos de mesa maiores que os pedidos válidos (R$ 208,00 somados; mais recente #74, R$ 60,00), enquanto os caixas recentes #75–#95 batem. A causa reproduzível era: receber parcial na mesa, depois cancelar item/mesa e deixar `caixa_movimentos` sem pedido válido equivalente. O backend agora recusa cancelar mesa com pagamento registrado e recusa cancelar item quando o total restante ficaria menor que o recebido. Validação: 508/508 em `npm test`, 44/44 em `npm run test:integracao`, `npm run check` (116 arquivos) e teste focado 25/25 em `node --test test/mesas-db.test.js test/integracao/mesas.test.js`. — 2026-08-29
 

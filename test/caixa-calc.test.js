@@ -139,6 +139,7 @@ test("esperadoPorForma: dinheiro = espécie inteira, resto = recebido líquido; 
 
 const fsCx = require("fs");
 const pathCx = require("path");
+const vmCx = require("vm");
 const appCx = fsCx.readFileSync(pathCx.join(__dirname, "..", "public", "app.js"), "utf8");
 
 function blocoCaixaAberto() {
@@ -180,4 +181,43 @@ test("o card de movimentacao mostra deducoes do turno", () => {
     "a linha só aparece quando há deducao — zero fixo polui o dia normal");
   assert.match(card, /Dinheiro em caixa/i);
   assert.match(card, /Total para conferência/i);
+});
+
+function helpersCaixaAberto() {
+  const i = appCx.indexOf("function ehMovimentoReversaoCaixa(");
+  assert.ok(i > -1, "helpers do extrato visual do caixa nao encontrados");
+  const fim = appCx.indexOf("\nfunction renderCaixaAberto", i);
+  assert.ok(fim > i, "fim dos helpers do extrato visual do caixa nao encontrado");
+  const ctx = {};
+  vmCx.runInNewContext(appCx.slice(i, fim) + "\nthis.movimentosCaixaVisiveis = movimentosCaixaVisiveis;", ctx);
+  return ctx;
+}
+
+test("extrato visual condensa venda e cancelamento do mesmo pedido em uma linha", () => {
+  const { movimentosCaixaVisiveis } = helpersCaixaAberto();
+  const linhas = movimentosCaixaVisiveis([
+    { tipo: "cancelamento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, cliente: "Balcao" },
+    { tipo: "sangria", valor: 6.99, descricao: "compra couve" },
+    { tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, cliente: "Balcao", estornavel: true },
+  ]);
+
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0].tipo, "sangria");
+  assert.equal(linhas[1].tipo, "recebimento");
+  assert.equal(linhas[1].tipoVisual, "venda_cancelada");
+  assert.equal(linhas[1].valorVisual, 0);
+  assert.equal(linhas[1].valorCanceladoVisual, 23);
+  assert.equal(linhas[1].estornavel, false);
+});
+
+test("extrato visual mantem cancelamento sem venda correspondente como linha propria", () => {
+  const { movimentosCaixaVisiveis } = helpersCaixaAberto();
+  const linhas = movimentosCaixaVisiveis([
+    { tipo: "cancelamento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23 },
+    { tipo: "recebimento", pedidoId: 11, numero: 78, forma: "PIX", valor: 30 },
+  ]);
+
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0].tipo, "cancelamento");
+  assert.equal(linhas[1].tipo, "recebimento");
 });

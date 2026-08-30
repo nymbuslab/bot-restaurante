@@ -373,6 +373,9 @@ criado_em
   seta `pedidos.recebido_em = now()`; **estornar** insere um movimento `estorno` (que deduz, deixando
   rastro) e zera `recebido_em` — restrito a recebimento de pedido a-receber (web/PDV-Entrega/Retirada),
   **não** em Mesa/Balcão. Pedido "a receber" = `recebido_em IS NULL`.
+- **Comprovantes avulsos:** `config.impressao.caixa` guarda os toggles `suprimento`, `sangria` e
+  `cancelamento`. Quando ligados, o servidor enfileira um `caixa-comprovante` em `impressao_fila`
+  depois do movimento confirmar. O texto sai de `public/comprovante-caixa.js`; nao ha coluna nova.
 - **Recebimento por mesa:** entra no caixa com `mesa_id` e pode deixar `pedido_id = null`; isso entra
   normalmente no fechamento, mas não reconcilia por número de pedido sem olhar a mesa/comanda. Para
   não criar sobra no caixa, mesa com pagamento registrado não pode ser cancelada inteira, e cancelar
@@ -389,6 +392,6 @@ criado_em
   fecha** com consumo em aberto: **mesas abertas** (bloqueio à parte, atalho pra Mesas) ou **pedidos
   de delivery/local a receber** (`mesa_id` nulo, criados desde a abertura). Pedido **cancelado não
   conta** (`_contarAReceber` exclui `status='cancelado'`).
-- Cálculos puros em `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`.
+- Cálculos puros em `src/caixa-calc.js`, `public/relatorio-caixa.js` e `public/comprovante-caixa.js`; orquestração em `src/caixa.js`.
   Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
   `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).

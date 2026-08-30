@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-08-29
+atualizado: 2026-08-30
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1048,3 +1048,16 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   recebido. Antes esse caminho podia deixar dinheiro no caixa sem pedido válido equivalente.
 - A auditoria em produção encontrou divergências históricas de mesa em caixas antigos do
   `sabor-d-casa`, mas os caixas recentes estavam batendo; a trava evita novas ocorrências.
+
+## [1.2.2] — Comprovantes configuráveis do caixa
+
+- Configurações → Impressora ganhou os controles para imprimir comprovantes de suprimento, sangria e cancelamento.
+- O servidor agora monta e enfileira o comprovante após o movimento financeiro confirmar, usando a fila do agente.
+- A configuração padrão fica desligada, preservando o comportamento atual até o restaurante ativar.
+
+## [1.2.3] — Extrato do caixa mais claro em venda cancelada
+
+- No extrato do caixa, uma venda cancelada aparece em uma única linha, como `Venda cancelada`,
+  com o valor líquido zerado e o valor cancelado em detalhe.
+- A movimentação real continua registrada separadamente por baixo, para auditoria e cálculo do
+  fechamento, mas o operador deixa de ver venda e cancelamento como dois históricos soltos.

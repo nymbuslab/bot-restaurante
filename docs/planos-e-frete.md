@@ -247,6 +247,10 @@ térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x, **Daruma DR700/DR800** e sim
   publicada (`GET /api/agente/versao-publicada`) e um guia caso o Windows exiba aviso (SmartScreen →
   "Executar assim mesmo"; Controle Inteligente/SAC → instalar por acesso remoto). Distribuição
   **manual pelo painel**; auto-update assinado é opcional (exige code signing).
+- **Comprovantes do caixa:** a sub-aba **Configurações → Impressora** salva `config.impressao.caixa`
+  com toggles para `suprimento`, `sangria` e `cancelamento`. Quando ligado, o servidor monta o texto
+  80mm em `public/comprovante-caixa.js` e enfileira como `caixa-comprovante` depois do movimento
+  financeiro confirmar. O agente não decide regra de negócio.
 - **Gating:** front por `planoAtual === "completo"`; Essencial vê a sub-aba com cadeado/upsell.
 
 ### Fora do escopo (futuro)
@@ -276,9 +280,13 @@ que vêm do WhatsApp.
   sangrias, cancelamentos/estornos, dinheiro em caixa e **Total para conferência**). O total para
   conferência soma dinheiro físico + eletrônico líquido; não é chamado de caixa porque inclui PIX/cartão.
   O **extrato do turno** segue em tabela (Hora/Nº/Tipo/Cliente/Valor/Forma; sangria destacada;
-  **Estornar** só em recebimento de pedido a-receber — web/PDV-Entrega/Retirada, **não** Mesa/Balcão —
+  venda + cancelamento/estorno do mesmo pedido aparece como uma única linha visual de venda cancelada/estornada,
+  enquanto o rastro bruto continua separado na API; **Estornar** só em recebimento de pedido a-receber — web/PDV-Entrega/Retirada, **não** Mesa/Balcão —
   que **deixa rastro** via movimento `estorno` que deduz em vez de apagar). Ações: **sangria/suprimento** (com motivo),
   **Caixas anteriores** e **Fechar caixa**.
+- **Comprovantes avulsos:** `config.impressao.caixa` decide se suprimento, sangria e cancelamento de
+  pedido pago geram comprovante para conferência. A impressão é melhor esforço: se a fila falhar, o
+  movimento financeiro continua registrado e o servidor retorna aviso quando possível.
 - **Fechamento = conferência simplificada:** tabela única por forma de pagamento
   (`Forma · Esperado · Em caixa · Diferença`). O operador digita só o valor **em mãos** por forma
   configurada (Dinheiro, PIX, Crédito, Débito etc.); a diferença calcula ao vivo por linha e no total.
@@ -305,7 +313,7 @@ que vêm do WhatsApp.
 - **Dados:** tabelas `caixas` (+ `operador`, `obs_abertura`, `contado_eletronico`, `detalhe_fechamento`
   jsonb com `contadoPorForma`/`esperadoPorForma`/`diferencaPorForma`) e `caixa_movimentos`
   (`recebimento|cancelamento|estorno|sangria|suprimento`) + coluna `pedidos.recebido_em`. Puros em
-  `src/caixa-calc.js` e `public/relatorio-caixa.js`; orquestração em `src/caixa.js`. Migrations
+  `src/caixa-calc.js`, `public/relatorio-caixa.js` e `public/comprovante-caixa.js`; orquestração em `src/caixa.js`. Migrations
   `20260620120000`/`20260620130000`/`20260620140000`.
 
 ## PDV — vendas no local (Plano Completo)
@@ -351,8 +359,8 @@ mobile). Coluna `pedidos.desconto` (migration `20260624140000`); puros em `src/p
 
 - Venda presencial **sem** caixa aberto e **item avulso** (fora do cardápio).
 - **Formas de pagamento detalhadas + taxa** (Crédito/Débito/PIX maquininha/conta; recebimento líquido) — ROADMAP P3.
-- **Conferência cega, justificativa de diferença, limite de gaveta, comprovante de sangria/suprimento,
-  tolerância de divergência, múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.
+- **Conferência cega, justificativa de diferença, limite de gaveta, tolerância de divergência e
+  múltiplos operadores/permissões** — gaps de mercado mapeados no ROADMAP P3.
 - Gaveta física, corte ESC/POS fino, TEF — dependem do **agente local** (ver ROADMAP).
 
 ---

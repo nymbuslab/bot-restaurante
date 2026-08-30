@@ -139,7 +139,7 @@ descartável.
       hoje ociosa) — toda quebra documentada para auditoria.
     - **Limite de gaveta + alerta de sangria de segurança:** config `limiteGaveta`; aviso no painel
       quando o dinheiro em caixa passa do teto.
-  - **P1:** comprovante de sangria/suprimento (impressão térmica); **tolerância de divergência**
+  - **P1:** **tolerância de divergência**
     configurável (não acusa falta/sobra abaixo de X); **fundo de troco no fechamento** (quanto fica de
     troco, sangra o resto); **relatório de quebras por período** (consolidado, hoje é por caixa).
   - **P2 (dependem de multi-usuário):** **múltiplos operadores + permissões/supervisor** (quem pode

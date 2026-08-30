@@ -1,0 +1,3 @@
+# Lacunas
+
+Nenhuma lacuna registrada.

@@ -346,12 +346,28 @@ async function cancelarRecebido(dir, pedidoId, { devolver = true } = {}) {
     if (!net.rows.length) {
       throw new Error("O recebimento deste pedido não está no caixa aberto (talvez de um caixa já fechado). Não é possível cancelar com reflexo no caixa.");
     }
+    const cancelamentos = [];
     for (const r of net.rows) {
-      await client.query(
+      const valorCancelado = Number(r.net != null ? r.net : r.valor) || 0;
+      const descricao = "Cancelamento pedido #" + numero;
+      const ins = await client.query(
         `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
-         VALUES ($1, $2, 'cancelamento', $3, $4, $5, $6)`,
-        [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Cancelamento pedido #" + numero]
+         VALUES ($1, $2, 'cancelamento', $3, $4, $5, $6)
+         RETURNING id, caixa_id, tipo, forma_pagamento, valor, pedido_id, descricao, criado_em`,
+        [caixa.id, empId, r.forma, valorCancelado, pedidoId, descricao]
       );
+      const mov = ins.rows[0] || {};
+      cancelamentos.push({
+        id: mov.id,
+        caixaId: mov.caixa_id || caixa.id,
+        tipo: mov.tipo || "cancelamento",
+        forma: mov.forma_pagamento || r.forma,
+        valor: Number(mov.valor != null ? mov.valor : valorCancelado) || 0,
+        pedidoId,
+        pedidoNumero: numero,
+        descricao: mov.descricao || descricao,
+        criadoEm: mov.criado_em ? new Date(mov.criado_em).toISOString() : new Date().toISOString(),
+      });
     }
     let cardapioNovo = null;
     if (devolver) {
@@ -365,7 +381,7 @@ async function cancelarRecebido(dir, pedidoId, { devolver = true } = {}) {
     );
     await client.query("COMMIT");
     if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
-    return { ok: true, cancelado: true };
+    return { ok: true, cancelado: true, cancelamentos };
   } catch (e) {
     // ROLLBACK guardado: mesmo padrão de pedidos.js — se a conexão já caiu, a
     // rejeição do ROLLBACK não pode escapar como unhandledRejection.

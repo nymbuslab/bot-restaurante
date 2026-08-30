@@ -1,0 +1,3 @@
+# Bloqueios
+
+Nenhum bloqueio registrado.

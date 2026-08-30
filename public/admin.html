@@ -780,6 +780,33 @@
               <a id="btn-baixar-impressora" class="primario" href="/downloads/nymbus-impressora.exe" download>Baixar Nymbus Impressora</a>
               <p class="campo-ajuda">Compatível com Windows. <span id="agente-versao"></span></p>
             </div>
+            <div class="card impressora-caixa">
+              <h3 class="impressora-card-titulo">Comprovantes do caixa</h3>
+              <p class="campo-ajuda">Escolha quais movimentos geram comprovante para conferência no fechamento.</p>
+              <div class="cfg-toggle-list" aria-label="Comprovantes do caixa">
+                <label class="cfg-toggle-card" for="cfgImpCaixaSuprimento">
+                  <span>
+                    <strong>Suprimento</strong>
+                    <small>Entrada de dinheiro para reforçar o troco.</small>
+                  </span>
+                  <span class="switch"><input type="checkbox" id="cfgImpCaixaSuprimento" /></span>
+                </label>
+                <label class="cfg-toggle-card" for="cfgImpCaixaSangria">
+                  <span>
+                    <strong>Sangria</strong>
+                    <small>Retirada de dinheiro da gaveta.</small>
+                  </span>
+                  <span class="switch"><input type="checkbox" id="cfgImpCaixaSangria" /></span>
+                </label>
+                <label class="cfg-toggle-card" for="cfgImpCaixaCancelamento">
+                  <span>
+                    <strong>Cancelamento</strong>
+                    <small>Pedido pago cancelado com dedução no caixa.</small>
+                  </span>
+                  <span class="switch"><input type="checkbox" id="cfgImpCaixaCancelamento" /></span>
+                </label>
+              </div>
+            </div>
             <div class="card">
               <h3 class="impressora-card-titulo">Como usar</h3>
               <ol class="impressora-passos">

@@ -45,6 +45,7 @@ const mesasDb = require("./mesas-db");  // CRUD + recebimento parcial/fechamento
 const impressaoFila = require("./impressao-fila"); // fila genérica consumida pelo agente
 const incidentes = require("./incidentes"); // histórico de incidentes (monitoramento)
 const Comanda = require("../public/comanda");      // dual-mode: monta as vias no servidor p/ enfileirar
+const ComprovanteCaixa = require("../public/comprovante-caixa"); // comprovantes avulsos do caixa
 
 const app = express();
 
@@ -1742,6 +1743,20 @@ function normalizarConfigServidor(body) {
       if (typeof body.mensagens[k] === "string") body.mensagens[k] = body.mensagens[k].slice(0, MAX_MSG_CONFIG);
     }
   }
+  if (body.impressao && typeof body.impressao === "object" && !Array.isArray(body.impressao)) {
+    body.impressao = Object.assign({}, body.impressao);
+    if (body.impressao.caixa && typeof body.impressao.caixa === "object" && !Array.isArray(body.impressao.caixa)) {
+      body.impressao.caixa = {
+        suprimento: body.impressao.caixa.suprimento === true,
+        sangria: body.impressao.caixa.sangria === true,
+        cancelamento: body.impressao.caixa.cancelamento === true,
+      };
+    } else if ("caixa" in body.impressao) {
+      body.impressao.caixa = { suprimento: false, sangria: false, cancelamento: false };
+    }
+  } else if ("impressao" in body && body.impressao != null) {
+    body.impressao = {};
+  }
   if (body.restaurante && typeof body.restaurante === "object") {
     for (const campo of ["capa", "logo"]) {
       const v = body.restaurante[campo];
@@ -2254,15 +2269,18 @@ app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
     const devolver = req.body?.devolver !== false;
     const pedido = await pedidos.lerPorId(req.tenantDir, id);
     if (!pedido) return res.status(404).json({ erro: "Pedido não encontrado." });
+    let avisoImpressao = null;
     if (pedido.recebidoEm) {
       // Pedido PAGO: cancela mantendo o rastro e deduz no caixa (exige caixa aberto).
       // Caixa é recurso do Plano Completo → gate de servidor.
       if (!(await exigeCaixa(req, res))) return;
-      await caixa.cancelarRecebido(req.tenantDir, id, { devolver });
+      const cancelado = await caixa.cancelarRecebido(req.tenantDir, id, { devolver });
+      const imp = await enfileirarComprovanteCaixa(req, "cancelamento", cancelado.cancelamentos || [], { pedido });
+      avisoImpressao = imp.erro || null;
     } else {
       await pedidos.cancelarPedido(req.tenantDir, id, { devolver });
     }
-    res.json({ ok: true, recebido: !!pedido.recebidoEm });
+    res.json({ ok: true, recebido: !!pedido.recebidoEm, avisoImpressao });
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao cancelar o pedido." });
   }
@@ -2365,9 +2383,68 @@ app.post("/api/caixa/estornar/:pedidoId", exigeAuth, async (req, res) => {
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
+function configComprovanteCaixa(cfg) {
+  const c = cfg && cfg.impressao && cfg.impressao.caixa;
+  return c && typeof c === "object" && !Array.isArray(c) ? c : {};
+}
+
+function dadosComprovanteCaixa(tipo, mov, cfg, caixaAtual, extras) {
+  mov = mov || {};
+  extras = extras || {};
+  const pedido = extras.pedido || {};
+  return {
+    restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
+    tipo,
+    caixaId: mov.caixaId || mov.caixa_id || (caixaAtual && caixaAtual.id),
+    operador: (caixaAtual && caixaAtual.operador) || "",
+    pedidoId: mov.pedidoId || mov.pedido_id || pedido.id || null,
+    pedidoNumero: mov.pedidoNumero || mov.numero || pedido.numero || null,
+    mesa: mov.mesa || "",
+    forma: mov.forma || mov.forma_pagamento || "",
+    formas: mov.formas || null,
+    valor: Number(mov.valor) || 0,
+    descricao: mov.descricao || "",
+    criadoEm: mov.criadoEm || mov.criado_em || new Date().toISOString(),
+  };
+}
+
+function normalizarMovimentosComprovante(tipo, movimentos, extras) {
+  const lista = Array.isArray(movimentos) ? movimentos.filter(Boolean) : [movimentos].filter(Boolean);
+  if (tipo !== "cancelamento" || lista.length <= 1) return lista;
+  const primeiro = lista[0] || {};
+  const total = lista.reduce((s, m) => s + (Number(m.valor) || 0), 0);
+  return [Object.assign({}, primeiro, {
+    valor: total,
+    forma: "",
+    formas: lista.map((m) => ({ forma: m.forma || m.forma_pagamento || "Outros", valor: Number(m.valor) || 0 })),
+    pedidoNumero: primeiro.pedidoNumero || (extras && extras.pedido && extras.pedido.numero),
+  })];
+}
+
+async function enfileirarComprovanteCaixa(req, tipo, movimentos, extras) {
+  try {
+    await store.ensure(req.tenantDir);
+    const cfg = store.getConfig(req.tenantDir) || {};
+    if (configComprovanteCaixa(cfg)[tipo] !== true) return { solicitado: false };
+    const caixaAtual = await caixa.caixaAberto(req.tenantDir);
+    const vias = normalizarMovimentosComprovante(tipo, movimentos, extras)
+      .map((mov) => ComprovanteCaixa.montarComprovanteCaixa(dadosComprovanteCaixa(tipo, mov, cfg, caixaAtual, extras)));
+    if (!vias.length) return { solicitado: false };
+    const id = await impressaoFila.enfileirar(req.tenantDir, "caixa-comprovante", vias);
+    return { solicitado: true, id };
+  } catch (e) {
+    console.error("enfileirar comprovante caixa:", e.message);
+    return { solicitado: true, erro: "Movimento registrado, mas não foi possível enviar o comprovante para impressão." };
+  }
+}
+
 app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
-  try { res.json(await caixa.registrarMovimento(req.tenantDir, { tipo: req.body.tipo, valor: req.body.valor, descricao: req.body.descricao })); }
+  try {
+    const mov = await caixa.registrarMovimento(req.tenantDir, { tipo: req.body.tipo, valor: req.body.valor, descricao: req.body.descricao });
+    const imp = await enfileirarComprovanteCaixa(req, mov.tipo, mov);
+    res.json(Object.assign({}, mov, { avisoImpressao: imp.erro || null }));
+  }
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 

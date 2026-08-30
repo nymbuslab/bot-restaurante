@@ -3274,6 +3274,9 @@ function resumirHorarios(horarios) {
 
 function preencherConfig() {
   const c = configAtual;
+  if (!c.restaurante) c.restaurante = {};
+  if (!c.atendimento) c.atendimento = {};
+  if (!c.mensagens) c.mensagens = {};
   $("cfgNome").value = c.restaurante.nome || "";
   $("cfgTelefone").value = c.restaurante.telefone || "";
   // Identidade visual (capa + logo do cardápio web)
@@ -3334,6 +3337,7 @@ function preencherConfig() {
   atualizarChipStatus(realAberto);
   renderHorarios();
   renderPagamentos();
+  renderComprovantesCaixa();
   renderImpressoraGate(); // sub-aba Impressora: Completo vê o download; Essencial, o upsell
 }
 
@@ -3393,6 +3397,48 @@ function renderPagamentos() {
     })
   );
 }
+
+function configCaixaComprovantes() {
+  if (!configAtual.impressao || typeof configAtual.impressao !== "object" || Array.isArray(configAtual.impressao)) {
+    configAtual.impressao = {};
+  }
+  if (!configAtual.impressao.caixa || typeof configAtual.impressao.caixa !== "object" || Array.isArray(configAtual.impressao.caixa)) {
+    configAtual.impressao.caixa = {};
+  }
+  return configAtual.impressao.caixa;
+}
+
+function setToggleComprovanteCaixa(id, ligado) {
+  const el = $(id);
+  if (!el) return;
+  el.checked = !!ligado;
+  const card = el.closest(".cfg-toggle-card");
+  if (card) card.classList.toggle("on", !!ligado);
+}
+
+function renderComprovantesCaixa() {
+  const c = configCaixaComprovantes();
+  setToggleComprovanteCaixa("cfgImpCaixaSuprimento", c.suprimento === true);
+  setToggleComprovanteCaixa("cfgImpCaixaSangria", c.sangria === true);
+  setToggleComprovanteCaixa("cfgImpCaixaCancelamento", c.cancelamento === true);
+}
+
+function lerComprovantesCaixaDoDOM() {
+  return {
+    suprimento: !!(($("cfgImpCaixaSuprimento") || {}).checked),
+    sangria: !!(($("cfgImpCaixaSangria") || {}).checked),
+    cancelamento: !!(($("cfgImpCaixaCancelamento") || {}).checked),
+  };
+}
+
+["cfgImpCaixaSuprimento", "cfgImpCaixaSangria", "cfgImpCaixaCancelamento"].forEach((id) => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener("change", () => {
+    const card = el.closest(".cfg-toggle-card");
+    if (card) card.classList.toggle("on", el.checked);
+  });
+});
 
 // Recalcula AO VIVO o texto de horário (campo read-only) e o badge a partir da
 // tabela de horários + toggle. O texto é gerado automaticamente — sem botão.
@@ -3489,8 +3535,10 @@ $("btnSalvarConfig").addEventListener("click", async (e) => {
   if (!configAtual.mensagens.pedidoPronto) configAtual.mensagens.pedidoPronto = {};
   configAtual.mensagens.pedidoPronto.entrega  = $("cfgMsgProntoEntrega").value;
   configAtual.mensagens.pedidoPronto.retirada = $("cfgMsgProntoRetirada").value;
-  // A config de impressão (serial/corte/sem-acento) agora vive no app agente; o
-  // painel não a edita mais. configAtual.impressao é preservado como veio do banco.
+  configCaixaComprovantes();
+  configAtual.impressao.caixa = lerComprovantesCaixaDoDOM();
+  // A config física da impressora (serial/corte/sem-acento) vive no app agente; o
+  // painel só decide quais comprovantes de caixa o servidor deve enfileirar.
   const btn = e.currentTarget;
   btn.disabled = true;
   btn.textContent = "Salvando...";
@@ -3727,6 +3775,72 @@ async function abrirCaixa() {
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não foi possível abrir o caixa. Confira os valores e tente de novo."); }
 }
 
+function ehMovimentoReversaoCaixa(m) {
+  return m && (m.tipo === "cancelamento" || m.tipo === "estorno");
+}
+
+function chavePedidoFormaCaixa(m) {
+  if (!m || m.pedidoId == null) return "";
+  return String(m.pedidoId) + "\u0001" + String(m.forma || "");
+}
+
+function movimentosCaixaVisiveis(movimentos) {
+  const lista = Array.isArray(movimentos) ? movimentos : [];
+  const recebidoPorChave = new Map();
+  lista.forEach((m) => {
+    if (!m || m.tipo !== "recebimento") return;
+    const chave = chavePedidoFormaCaixa(m);
+    if (!chave) return;
+    recebidoPorChave.set(chave, (recebidoPorChave.get(chave) || 0) + (Number(m.valor) || 0));
+  });
+
+  const reversaoPorChave = new Map();
+  const reversoesComVenda = new Set();
+  lista.forEach((m, idx) => {
+    if (!ehMovimentoReversaoCaixa(m)) return;
+    const chave = chavePedidoFormaCaixa(m);
+    if (!chave || !recebidoPorChave.has(chave)) return;
+    const atual = reversaoPorChave.get(chave) || { valor: 0, tipos: new Set() };
+    atual.valor += Number(m.valor) || 0;
+    atual.tipos.add(m.tipo);
+    reversaoPorChave.set(chave, atual);
+    reversoesComVenda.add(idx);
+  });
+
+  const restanteReversao = new Map();
+  reversaoPorChave.forEach((info, chave) => {
+    restanteReversao.set(chave, { valor: info.valor, tipos: new Set(info.tipos) });
+  });
+
+  return lista.reduce((saida, m, idx) => {
+    if (reversoesComVenda.has(idx)) return saida;
+    if (!m || m.tipo !== "recebimento") {
+      saida.push(m);
+      return saida;
+    }
+
+    const chave = chavePedidoFormaCaixa(m);
+    const reversao = chave ? restanteReversao.get(chave) : null;
+    const valor = Number(m.valor) || 0;
+    const cancelado = Math.min(valor, reversao ? (Number(reversao.valor) || 0) : 0);
+    if (cancelado <= 0) {
+      saida.push(m);
+      return saida;
+    }
+
+    reversao.valor = Math.max(0, (Number(reversao.valor) || 0) - cancelado);
+    const liquido = Math.max(0, Math.round((valor - cancelado) * 100) / 100);
+    const estornado = reversao.tipos && reversao.tipos.has("estorno");
+    saida.push(Object.assign({}, m, {
+      estornavel: false,
+      tipoVisual: liquido > 0 ? "venda_ajustada" : (estornado ? "venda_estornada" : "venda_cancelada"),
+      valorVisual: liquido,
+      valorCanceladoVisual: Math.round(cancelado * 100) / 100,
+    }));
+    return saida;
+  }, []);
+}
+
 function renderCaixaAberto(data) {
   const cont = $("caixaConteudo");
   const r = data.resumo;
@@ -3762,28 +3876,45 @@ function renderCaixaAberto(data) {
     .map((f) => `<div class="caixa-linha"><span>${escapar(f)}</span><span>R$ ${fmtBRn(valorLiquidoForma(f))}</span></div>`)
     .join("");
 
-  // Extrato do turno: recebimentos (estornáveis) + cancelamentos + sangrias/suprimentos.
-  const tipoLabel = { recebimento: "Venda", sangria: "Sangria", suprimento: "Suprimento", cancelamento: "Cancelamento", estorno: "Estorno" };
+  // Extrato do turno: a API continua trazendo todos os movimentos para auditoria;
+  // visualmente, venda e reversão do mesmo pedido viram uma única linha.
+  const tipoLabel = {
+    recebimento: "Venda",
+    sangria: "Sangria",
+    suprimento: "Suprimento",
+    cancelamento: "Cancelamento",
+    estorno: "Estorno",
+    venda_cancelada: "Venda cancelada",
+    venda_estornada: "Venda estornada",
+    venda_ajustada: "Venda ajustada",
+  };
   const ehNeg = (t) => t === "sangria" || t === "cancelamento" || t === "estorno";
-  const linhasMov = (data.movimentos || []).map((m) => {
+  const linhasMov = movimentosCaixaVisiveis(data.movimentos || []).map((m) => {
     const neg = ehNeg(m.tipo);
-    const rowCls = m.tipo === "recebimento" ? "" : ("cx-row-mov" + (neg ? " cx-row-sangria" : ""));
+    const visual = m.tipoVisual || m.tipo;
+    const rowCls = m.tipoVisual ? "cx-row-mov cx-row-cancelada"
+      : (m.tipo === "recebimento" ? "" : ("cx-row-mov" + (neg ? " cx-row-sangria" : "")));
     const temPedido = m.tipo === "recebimento" || m.tipo === "cancelamento" || m.tipo === "estorno";
     const num = (temPedido && m.numero != null) ? "#" + m.numero : "—";
-    const cliente = (m.tipo === "recebimento") ? escapar(m.cliente || m.descricao || "—")
+    const clienteBase = (m.tipo === "recebimento") ? escapar(m.cliente || m.descricao || "—")
       : ((m.tipo === "cancelamento" || m.tipo === "estorno") ? escapar(m.cliente || m.descricao || tipoLabel[m.tipo])
         : (m.descricao ? escapar(m.descricao) : "—"));
-    const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(m.valor);
+    const detalheReversao = m.valorCanceladoVisual > 0
+      ? `<span class="cx-mov-detalhe">${m.tipoVisual === "venda_estornada" ? "Estornado" : "Cancelado"}: R$ ${fmtBRn(m.valorCanceladoVisual)}</span>`
+      : "";
+    const cliente = clienteBase + detalheReversao;
+    const valorLinha = m.valorVisual != null ? m.valorVisual : m.valor;
+    const valorTxt = (neg ? "−R$ " : "R$ ") + fmtBRn(valorLinha);
     // Pago (entregue) e Troco: só em recebimento COM rastreio (Fase 2+); senão "—".
     const pagoTxt = (m.tipo === "recebimento" && m.valorPago != null) ? "R$ " + fmtBRn(m.valorPago) : "—";
     const trocoTxt = (m.tipo === "recebimento" && m.troco != null && m.troco > 0) ? "R$ " + fmtBRn(m.troco) : "—";
     const forma = (temPedido && m.forma) ? escapar(m.forma) : "—";
-    const acao = m.estornavel
+    const acao = m.estornavel && !m.tipoVisual
       ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
     return `<tr class="${rowCls}">
       <td class="cx-td-hora">${dataHoraCurta(m.quando)}</td>
       <td>${num}</td>
-      <td>${tipoLabel[m.tipo] || m.tipo}</td>
+      <td>${tipoLabel[visual] || visual}</td>
       <td>${cliente}</td>
       <td class="caixa-tab-valor${neg ? " caixa-tab-neg" : ""}">${valorTxt}</td>
       <td class="cx-td-num">${pagoTxt}</td>
