@@ -8,6 +8,15 @@
         "value": "plus jakarta sans",
         "createdAt": "2026-08-16T03:53:52.206Z",
         "reason": "Fonte da marca Nymbus Pedidos, estabelecida em docs/design-system.md linha 3 e usada em todo o produto (o design system ate documenta a largura dos numerais dela). Trocar a fonte e decisao de marca do dono, nao ajuste de tela."
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "design/canvas/MenuDeAcoes.dc.html"
+        ],
+        "createdAt": "2026-08-30T14:16:41.332Z",
+        "reason": "Prancheta e recorte fiel da tabela de Movimentacao que ja existe no produto: 11/12/13/14px lidos do public/style.css real. Nao tem tipo grande porque e um fragmento de tabela, sem cabecalho de tela. Alterar a escala faria o prototipo mentir sobre o produto."
       }
     ]
   }

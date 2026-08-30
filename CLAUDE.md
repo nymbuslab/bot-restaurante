@@ -35,7 +35,7 @@ Idioma do projeto: **português (Brasil)**. Mensagens, comentários e UI em pt-B
 - `qrcode` / `qrcode-terminal` (QR de conexão — data URL no painel + impressão no terminal)
 - `stripe` (assinatura — ver [docs/assinatura-stripe.md](docs/assinatura-stripe.md))
 - Front-end em HTML/CSS/JS puro (sem framework)
-- **Google Stitch MCP** (`npx @_davideast/stitch-mcp`) — gerador de layout de tela via IA. **Sempre** que for criar uma nova tela, seção visual ou alterar o layout de uma tela existente no front-end, usar o Stitch MCP para gerar/propor o HTML e as referências de estilo, salvo quando a mudança for puramente estrutural (ex.: mover blocos de HTML existentes, renomear classes). A chave da API está nas variáveis de ambiente (`STITCH_API_KEY`).
+- **Claude Design** (skill `design`) — protótipo de tela. **Sempre** que for criar tela nova, seção visual ou alterar o layout de uma tela existente, desenhar antes e mostrar ao dono, salvo quando a mudança for puramente estrutural (ex.: mover blocos de HTML existentes, renomear classes). **Semear a prancheta com os tokens REAIS de `public/style.css`** (o design system do projeto é aquele arquivo, não um cadastro na ferramenta) e guardar os `.dc.html` em `design/canvas/`, versionados. **Fallback:** se o Claude Design falhar, usar o `stitch` MCP, que segue configurado em `.opencode/opencode.json` (`STITCH_API_KEY`).
 
 > **App stateless — NADA é gravado em disco.** Tudo no Supabase: dados em Postgres (`empresas`,
 > `pedidos`, `config`/`cardapio` jsonb), contas no Auth, **sessões do WhatsApp** na tabela

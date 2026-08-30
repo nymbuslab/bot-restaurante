@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: #0F1117; color: #F0F2FA; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #A589EA; } a:hover { color: #7150D0; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+
+<div style="padding: 24px; background: #0F1117;">
+
+  <p style="margin: 0 0 14px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; font-weight: 600;">Alternativa: menu por linha</p>
+
+  <div style="background: #1A1D27; border: 1px solid #2E3247; border-radius: 10px; padding: 4px 18px 8px;">
+    <table style="width: 100%; border-collapse: collapse; min-width: 660px;">
+      <thead>
+        <tr>
+          <th style="text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; padding: 8px 12px 8px 0; font-weight: 600;">Hora</th>
+          <th style="text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; padding: 8px 12px 8px 0; font-weight: 600;">Nº</th>
+          <th style="text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; padding: 8px 12px 8px 0; font-weight: 600;">Tipo</th>
+          <th style="text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; padding: 8px 12px 8px 0; font-weight: 600;">Cliente</th>
+          <th style="text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; padding: 8px 12px 8px 0; font-weight: 600;">Valor</th>
+          <th style="text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8B92B3; padding: 8px 12px 8px 0; font-weight: 600;">Forma</th>
+          <th style="padding: 8px 0 8px 0;"></th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr style="color: #A589EA;">
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738; white-space: nowrap;">07:58</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">—</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Sangria</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Retirada para o banco</td>
+          <td class="num" style="padding: 9px 12px 9px 0; border-top: 1px solid #242738; text-align: right; white-space: nowrap; color: #EF4444;">−R$ 80,00</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">—</td>
+          <td style="padding: 9px 0 9px 0; border-top: 1px solid #242738; text-align: right; width: 1%; white-space: nowrap; position: relative;">
+            <button aria-label="Ações da linha" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; cursor: pointer; background: #222533; color: #F0F2FA; border: 1px solid #8B92B3; border-radius: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+            <div style="position: absolute; top: 42px; right: 0; z-index: 5; background: #2A2E3F; border: 1px solid #2E3247; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); padding: 6px; min-width: 214px; text-align: left;">
+              <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px; background: #222533; color: #F0F2FA; font-size: 13px; font-weight: 500;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                <span>Reimprimir comprovante</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <tr style="color: #8B92B3;">
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738; white-space: nowrap;">07:44</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">#694</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Venda cancelada</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Joana Ribeiro<span style="display: block; margin-top: 2px; font-size: 12px; color: #EF4444;">Cancelado: R$ 23,00</span></td>
+          <td class="num" style="padding: 9px 12px 9px 0; border-top: 1px solid #242738; text-align: right; white-space: nowrap; color: #F0F2FA;">R$ 0,00</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Dinheiro</td>
+          <td style="padding: 9px 0 9px 0; border-top: 1px solid #242738; text-align: right; width: 1%; white-space: nowrap;">
+            <button aria-label="Ações da linha" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; cursor: pointer; background: transparent; color: #8B92B3; border: 1px solid #2E3247; border-radius: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738; white-space: nowrap; color: #8B92B3;">07:31</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">#693</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Recebimento</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Carlos Menezes</td>
+          <td class="num" style="padding: 9px 12px 9px 0; border-top: 1px solid #242738; text-align: right; white-space: nowrap;">R$ 120,00</td>
+          <td style="padding: 9px 12px 9px 0; border-top: 1px solid #242738;">Crédito</td>
+          <td style="padding: 9px 0 9px 0; border-top: 1px solid #242738; text-align: right; width: 1%; white-space: nowrap;">
+            <button aria-label="Ações da linha" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; cursor: pointer; background: transparent; color: #8B92B3; border: 1px solid #2E3247; border-radius: 6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin: 16px 0 0; font-size: 13px; color: #8B92B3; max-width: 660px;">O menu esconde a ação atrás de um clique a mais e some com o botão Estornar, que hoje fica visível na linha. Vale se a coluna for ganhar outras ações depois.</p>
+
+</div>
+</x-dc>
+</body>
+</html>

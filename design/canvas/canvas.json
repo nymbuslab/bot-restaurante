@@ -1,0 +1,10 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1160, "h": 1000, "title": "Caixa aberto - icone direto" },
+    { "file": "MenuDeAcoes.dc.html", "x": 1280, "y": 0, "w": 780, "h": 480, "title": "Alternativa - menu por linha" }
+  ],
+  "annotations": [
+    { "id": "nota-teste", "x": 0, "y": -150, "w": 640, "text": "Teste do Claude Design. Tokens lidos do public/style.css real (roxo #6344BC, superficie #1A1D27, borda #2E3247, Plus Jakarta Sans).\n\nA coluna de acoes ja existe hoje na tabela e fica vazia em sangria, suprimento e cancelamento. O icone ocupa esse espaco, sem coluna nova." }
+  ],
+  "launch": { "view": "canvas" }
+}

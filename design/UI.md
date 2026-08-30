@@ -18,8 +18,10 @@ HTML, CSS, JS e rotas novas quando fizer sentido pro produto. A régua:
   dado/rota por trás: implementar a rota (modo feature) ou adaptar a tela — **nunca exibir
   dado falso/inventado**.
 
-Os protótipos são referência **visual**, não código (o export do Stitch não entra; o stack é
-HTML/CSS/JS puro, sem framework).
+Os protótipos são referência **visual**, não código. Desde 30/08/2026 eles são feitos no
+**Claude Design** (skill `design`) e ficam em `design/canvas/`, semeados com os tokens reais de
+`public/style.css`. Mesmo assim o `.dc.html` não vira arquivo do produto: o stack é HTML/CSS/JS
+puro, sem framework, e a implementação segue o design system, não o export.
 
 ---
 

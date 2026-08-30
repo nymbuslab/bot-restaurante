@@ -20,3 +20,9 @@ baileys-*/
 # Agente de impressão (Electron) — artefatos de build
 agente-impressora/dist/
 agente-impressora/vendor/
+
+# Protótipos (Claude Design): a FONTE são os .dc.html + canvas.json, que vão para o
+# git. O .html publicado carrega o editor junto (~2,5 MB cada) e é regenerável a
+# partir da fonte, então fica de fora para não inchar o repositório a cada revisão.
+design/canvas/*.html
+!design/canvas/*.dc.html
