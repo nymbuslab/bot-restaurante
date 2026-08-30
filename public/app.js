@@ -4042,11 +4042,44 @@ async function movimentoCaixa(tipo) {
 // telas do mesmo produto podiam discordar sobre a mesma forma de pagamento.
 function ehFormaDinheiro(f) { return window.Pagamentos.ehDinheiro(f); }
 
+function dataInputBR(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d).reduce((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {});
+  return [partes.year, partes.month, partes.day].filter(Boolean).join("-");
+}
+
 // Leva à aba Pedidos já filtrada em "A receber" (atalho do bloqueio de fechamento).
-function irParaPedidosAReceber() {
+function irParaPedidosAReceber(opts = {}) {
   const sel = $("filtroPagamento");
   if (sel) sel.value = "areceber";
   filtros.pagamento = "areceber";
+  if (opts.desde) {
+    const desde = dataInputBR(opts.desde);
+    if (desde) {
+      filtros.periodo = "custom";
+      filtros.dataIni = desde;
+      filtros.dataFim = "";
+      const ini = $("dataIni");
+      const fim = $("dataFim");
+      if (ini) ini.value = filtros.dataIni;
+      if (fim) fim.value = "";
+      if ($("filtroPeriodo")) {
+        $("filtroPeriodo").querySelectorAll(".filtro-chip").forEach((b) => {
+          b.classList.toggle("ativo", b.dataset.periodo === "custom");
+        });
+      }
+      if ($("filtroDatas")) $("filtroDatas").style.display = "";
+    }
+  }
   paginaPedidos = 1;
   const btn = document.querySelector('.sidebar [data-aba="pedidos"]');
   if (btn) btn.click();
@@ -4233,7 +4266,7 @@ function renderFechamentoCaixa(data) {
     carregarCaixa();
   });
   if (pendentes > 0 && $("fcVerPedidos")) $("fcVerPedidos").addEventListener("click", () => { destruirModal(); irParaPedidosAReceber(); });
-  if (pendentesAntigos > 0 && $("fcVerPedidosAntigos")) $("fcVerPedidosAntigos").addEventListener("click", () => { destruirModal(); irParaPedidosAReceber(); });
+  if (pendentesAntigos > 0 && $("fcVerPedidosAntigos")) $("fcVerPedidosAntigos").addEventListener("click", () => { destruirModal(); irParaPedidosAReceber({ desde: antigos.maisAntigoEm }); });
   if (mesasAbertas > 0 && $("fcVerMesas")) $("fcVerMesas").addEventListener("click", () => {
     destruirModal();
     const btn = document.querySelector("[data-aba='mesas']"); if (btn) btn.click();
