@@ -210,6 +210,74 @@ test("extrato visual condensa venda e cancelamento do mesmo pedido em uma linha"
   assert.equal(linhas[1].estornavel, false);
 });
 
+test("extrato visual prende estorno no recebimento antigo quando pedido foi recebido de novo", () => {
+  const { movimentosCaixaVisiveis } = helpersCaixaAberto();
+  const linhas = movimentosCaixaVisiveis([
+    { id: 3, tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, cliente: "Balcao", estornavel: true },
+    { id: 2, tipo: "estorno", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, cliente: "Balcao" },
+    { id: 1, tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, cliente: "Balcao", estornavel: true },
+  ]);
+
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0].tipo, "recebimento");
+  assert.equal(linhas[0].id, 3);
+  assert.equal(linhas[0].estornavel, true);
+  assert.equal(linhas[0].tipoVisual, undefined);
+  assert.equal(linhas[1].tipo, "recebimento");
+  assert.equal(linhas[1].id, 1);
+  assert.equal(linhas[1].tipoVisual, "venda_estornada");
+  assert.equal(linhas[1].valorVisual, 0);
+  assert.equal(linhas[1].valorCanceladoVisual, 23);
+  assert.equal(linhas[1].estornavel, false);
+});
+
+test("extrato visual tolera movimento nulo ao ordenar", () => {
+  const { movimentosCaixaVisiveis } = helpersCaixaAberto();
+  const linhas = movimentosCaixaVisiveis([
+    { id: 2, tipo: "cancelamento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23 },
+    null,
+    { id: 1, tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, estornavel: true },
+  ]);
+
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0], null);
+  assert.equal(linhas[1].tipoVisual, "venda_cancelada");
+  assert.equal(linhas[1].estornavel, false);
+});
+
+test("extrato visual usa data quando algum movimento nao tem id valido", () => {
+  const { movimentosCaixaVisiveis } = helpersCaixaAberto();
+  const linhas = movimentosCaixaVisiveis([
+    { id: 3, quando: "2026-08-30T12:10:00.000Z", tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, estornavel: true },
+    { id: null, quando: "2026-08-30T12:05:00.000Z", tipo: "estorno", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23 },
+    { id: 1, quando: "2026-08-30T12:00:00.000Z", tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 23, estornavel: true },
+  ]);
+
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0].id, 3);
+  assert.equal(linhas[0].estornavel, true);
+  assert.equal(linhas[1].id, 1);
+  assert.equal(linhas[1].tipoVisual, "venda_estornada");
+  assert.equal(linhas[1].estornavel, false);
+});
+
+test("extrato visual mantem sobra de estorno maior que os recebimentos casados", () => {
+  const { movimentosCaixaVisiveis } = helpersCaixaAberto();
+  const linhas = movimentosCaixaVisiveis([
+    { id: 2, tipo: "estorno", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 30 },
+    { id: 1, tipo: "recebimento", pedidoId: 10, numero: 77, forma: "Dinheiro", valor: 20, estornavel: true },
+  ]);
+
+  assert.equal(linhas.length, 2);
+  assert.equal(linhas[0].tipo, "estorno");
+  assert.equal(linhas[0].valor, 10);
+  assert.equal(linhas[1].tipo, "recebimento");
+  assert.equal(linhas[1].tipoVisual, "venda_estornada");
+  assert.equal(linhas[1].valorVisual, 0);
+  assert.equal(linhas[1].valorCanceladoVisual, 20);
+  assert.equal(linhas[1].estornavel, false);
+});
+
 test("extrato visual mantem cancelamento sem venda correspondente como linha propria", () => {
   const { movimentosCaixaVisiveis } = helpersCaixaAberto();
   const linhas = movimentosCaixaVisiveis([

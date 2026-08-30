@@ -129,6 +129,7 @@ test("receber em dinheiro lança o movimento e zera o a receber", async () => {
   assert.equal(e.pedidosAReceber, 0, "depois de receber, não deveria sobrar pedido a receber");
   const recebimento = e.movimentos.find((m) => m.tipo === "recebimento" && m.pedidoId === pedido.id);
   assert.ok(recebimento, "o recebimento não apareceu no extrato do turno");
+  assert.ok(recebimento.id, "o extrato precisa expor o id do movimento para parear estornos");
   assert.equal(recebimento.valor, TOTAL_PEDIDO);
   assert.equal(recebimento.forma, "Dinheiro");
 });

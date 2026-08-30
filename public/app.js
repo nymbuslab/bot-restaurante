@@ -3784,58 +3784,105 @@ function chavePedidoFormaCaixa(m) {
   return String(m.pedidoId) + "\u0001" + String(m.forma || "");
 }
 
+function idMovimentoCaixa(m) {
+  if (!m || m.id == null || m.id === "") return null;
+  const n = Number(m.id);
+  return Number.isFinite(n) ? n : null;
+}
+
+function tempoMovimentoCaixa(m) {
+  if (!m || !m.quando) return null;
+  const t = Date.parse(m.quando);
+  return Number.isNaN(t) ? null : t;
+}
+
+function ordemCronologicaMovimentosCaixa(lista) {
+  const indices = lista.map((_, idx) => idx);
+  if (indices.length && indices.every((idx) => idMovimentoCaixa(lista[idx]) != null)) {
+    return indices.sort((a, b) => idMovimentoCaixa(lista[a]) - idMovimentoCaixa(lista[b]));
+  }
+
+  if (indices.length && indices.every((idx) => tempoMovimentoCaixa(lista[idx]) != null)) {
+    return indices.sort((a, b) => tempoMovimentoCaixa(lista[a]) - tempoMovimentoCaixa(lista[b]) || b - a);
+  }
+
+  return indices.sort((a, b) => b - a);
+}
+
+function arredCaixa(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
 function movimentosCaixaVisiveis(movimentos) {
   const lista = Array.isArray(movimentos) ? movimentos : [];
-  const recebidoPorChave = new Map();
-  lista.forEach((m) => {
-    if (!m || m.tipo !== "recebimento") return;
+  const recebimentosPorChave = new Map();
+  const ajustesPorRecebimento = new Map();
+  const reversoesComVenda = new Set();
+  const sobraPorReversao = new Map();
+  ordemCronologicaMovimentosCaixa(lista).forEach((idx) => {
+    const m = lista[idx];
     const chave = chavePedidoFormaCaixa(m);
     if (!chave) return;
-    recebidoPorChave.set(chave, (recebidoPorChave.get(chave) || 0) + (Number(m.valor) || 0));
-  });
 
-  const reversaoPorChave = new Map();
-  const reversoesComVenda = new Set();
-  lista.forEach((m, idx) => {
+    if (m && m.tipo === "recebimento") {
+      const pendentes = recebimentosPorChave.get(chave) || [];
+      pendentes.push({ idx, restante: arredCaixa(m.valor), cancelado: 0, tipos: new Set() });
+      recebimentosPorChave.set(chave, pendentes);
+      return;
+    }
+
     if (!ehMovimentoReversaoCaixa(m)) return;
-    const chave = chavePedidoFormaCaixa(m);
-    if (!chave || !recebidoPorChave.has(chave)) return;
-    const atual = reversaoPorChave.get(chave) || { valor: 0, tipos: new Set() };
-    atual.valor += Number(m.valor) || 0;
-    atual.tipos.add(m.tipo);
-    reversaoPorChave.set(chave, atual);
-    reversoesComVenda.add(idx);
-  });
-
-  const restanteReversao = new Map();
-  reversaoPorChave.forEach((info, chave) => {
-    restanteReversao.set(chave, { valor: info.valor, tipos: new Set(info.tipos) });
+    const pendentes = recebimentosPorChave.get(chave) || [];
+    let restante = arredCaixa(m.valor);
+    let consumido = 0;
+    while (restante > 0 && pendentes.length) {
+      const recebimento = pendentes[pendentes.length - 1];
+      const cancelado = Math.min(recebimento.restante, restante);
+      if (cancelado <= 0) {
+        pendentes.pop();
+        continue;
+      }
+      recebimento.restante = arredCaixa(recebimento.restante - cancelado);
+      recebimento.cancelado = arredCaixa(recebimento.cancelado + cancelado);
+      recebimento.tipos.add(m.tipo);
+      restante = arredCaixa(restante - cancelado);
+      consumido = arredCaixa(consumido + cancelado);
+      ajustesPorRecebimento.set(recebimento.idx, recebimento);
+      if (recebimento.restante <= 0) pendentes.pop();
+    }
+    if (consumido > 0) {
+      const sobra = arredCaixa(restante);
+      if (sobra > 0) sobraPorReversao.set(idx, sobra);
+      else reversoesComVenda.add(idx);
+    }
   });
 
   return lista.reduce((saida, m, idx) => {
     if (reversoesComVenda.has(idx)) return saida;
+    if (sobraPorReversao.has(idx)) {
+      saida.push(Object.assign({}, m, { valor: sobraPorReversao.get(idx) }));
+      return saida;
+    }
     if (!m || m.tipo !== "recebimento") {
       saida.push(m);
       return saida;
     }
 
-    const chave = chavePedidoFormaCaixa(m);
-    const reversao = chave ? restanteReversao.get(chave) : null;
+    const ajuste = ajustesPorRecebimento.get(idx);
     const valor = Number(m.valor) || 0;
-    const cancelado = Math.min(valor, reversao ? (Number(reversao.valor) || 0) : 0);
+    const cancelado = Math.min(valor, ajuste ? (Number(ajuste.cancelado) || 0) : 0);
     if (cancelado <= 0) {
       saida.push(m);
       return saida;
     }
 
-    reversao.valor = Math.max(0, (Number(reversao.valor) || 0) - cancelado);
-    const liquido = Math.max(0, Math.round((valor - cancelado) * 100) / 100);
-    const estornado = reversao.tipos && reversao.tipos.has("estorno");
+    const liquido = Math.max(0, arredCaixa(valor - cancelado));
+    const estornado = ajuste.tipos && ajuste.tipos.has("estorno");
     saida.push(Object.assign({}, m, {
       estornavel: false,
       tipoVisual: liquido > 0 ? "venda_ajustada" : (estornado ? "venda_estornada" : "venda_cancelada"),
       valorVisual: liquido,
-      valorCanceladoVisual: Math.round(cancelado * 100) / 100,
+      valorCanceladoVisual: arredCaixa(cancelado),
     }));
     return saida;
   }, []);
