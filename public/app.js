@@ -3645,6 +3645,7 @@ function fmtBRn(n) { n = Number(n) || 0; return (n < 0 ? "-" : "") + Dinheiro.fo
 
 const SVG_CAIXA_REGISTRADORA = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="10" width="18" height="11" rx="1.5"/><path d="M5 10V6a2 2 0 0 1 2-2h7l3 3v3"/><line x1="7" y1="14" x2="9" y2="14"/><line x1="11.5" y1="14" x2="13.5" y2="14"/><line x1="16" y1="14" x2="18" y2="14"/><line x1="7" y1="17.5" x2="9" y2="17.5"/><line x1="11.5" y1="17.5" x2="13.5" y2="17.5"/><line x1="16" y1="17.5" x2="18" y2="17.5"/></svg>`;
 const SVG_OPERADOR = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+const SVG_REIMPRIMIR_CAIXA = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`;
 
 // Modal acessível com campos (substitui window.prompt). Resolve com um objeto
 // { id: valor } ou null se cancelar. Campos `dinheiro` usam a máscara e devolvem
@@ -3779,6 +3780,19 @@ function ehMovimentoReversaoCaixa(m) {
   return m && (m.tipo === "cancelamento" || m.tipo === "estorno");
 }
 
+// Qual movimento reimprimir a partir da LINHA que o operador vê, que nem sempre é o
+// movimento que tem comprovante. Numa venda cancelada a linha visível é o RECEBIMENTO
+// (o cancelamento foi condensado nela e sumiu da tabela), e recebimento não tem
+// comprovante: procurar só por `m.tipo` deixava a reimpressão do cancelamento
+// inalcançável pela tela, que é justamente o caso para o qual o servidor reagrupa.
+function idReimpressaoCaixa(m) {
+  if (!m || typeof ComprovanteCaixa === "undefined" || !ComprovanteCaixa.podeReimprimirComprovante) return null;
+  if (m.id != null && ComprovanteCaixa.podeReimprimirComprovante(m.tipo)) return m.id;
+  const rev = (m.reversoes || []).find((r) =>
+    r && r.id != null && ComprovanteCaixa.podeReimprimirComprovante(r.tipo));
+  return rev ? rev.id : null;
+}
+
 function chavePedidoFormaCaixa(m) {
   if (!m || m.pedidoId == null) return "";
   return String(m.pedidoId) + "\u0001" + String(m.forma || "");
@@ -3826,7 +3840,7 @@ function movimentosCaixaVisiveis(movimentos) {
 
     if (m && m.tipo === "recebimento") {
       const pendentes = recebimentosPorChave.get(chave) || [];
-      pendentes.push({ idx, restante: arredCaixa(m.valor), cancelado: 0, tipos: new Set() });
+      pendentes.push({ idx, restante: arredCaixa(m.valor), cancelado: 0, tipos: new Set(), reversoes: [] });
       recebimentosPorChave.set(chave, pendentes);
       return;
     }
@@ -3845,6 +3859,11 @@ function movimentosCaixaVisiveis(movimentos) {
       recebimento.restante = arredCaixa(recebimento.restante - cancelado);
       recebimento.cancelado = arredCaixa(recebimento.cancelado + cancelado);
       recebimento.tipos.add(m.tipo);
+      // Guarda QUAL movimento reverteu esta venda. A linha condensada esconde o
+      // cancelamento, e sem este rastro a tela perde o id que a reimpressão pede.
+      if (m.id != null && !recebimento.reversoes.some((r) => r.id === m.id)) {
+        recebimento.reversoes.push({ id: m.id, tipo: m.tipo });
+      }
       restante = arredCaixa(restante - cancelado);
       consumido = arredCaixa(consumido + cancelado);
       ajustesPorRecebimento.set(recebimento.idx, recebimento);
@@ -3883,6 +3902,7 @@ function movimentosCaixaVisiveis(movimentos) {
       tipoVisual: liquido > 0 ? "venda_ajustada" : (estornado ? "venda_estornada" : "venda_cancelada"),
       valorVisual: liquido,
       valorCanceladoVisual: arredCaixa(cancelado),
+      reversoes: (ajuste.reversoes || []).slice(),
     }));
     return saida;
   }, []);
@@ -3956,8 +3976,12 @@ function renderCaixaAberto(data) {
     const pagoTxt = (m.tipo === "recebimento" && m.valorPago != null) ? "R$ " + fmtBRn(m.valorPago) : "—";
     const trocoTxt = (m.tipo === "recebimento" && m.troco != null && m.troco > 0) ? "R$ " + fmtBRn(m.troco) : "—";
     const forma = (temPedido && m.forma) ? escapar(m.forma) : "—";
+    const idReimpressao = idReimpressaoCaixa(m);
     const acao = m.estornavel && !m.tipoVisual
-      ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>` : "";
+      ? `<button class="secundario mini caixa-estornar" data-id="${m.pedidoId}">Estornar</button>`
+      : (idReimpressao != null
+        ? `<button type="button" class="caixa-reimprimir" data-id="${idReimpressao}" aria-label="Reimprimir comprovante" title="Reimprimir comprovante">${SVG_REIMPRIMIR_CAIXA}</button>`
+        : "");
     return `<tr class="${rowCls}">
       <td class="cx-td-hora">${dataHoraCurta(m.quando)}</td>
       <td>${num}</td>
@@ -4045,6 +4069,8 @@ function renderCaixaAberto(data) {
 
   cont.querySelectorAll(".caixa-estornar").forEach((b) =>
     b.addEventListener("click", () => estornarCaixa(b.dataset.id)));
+  cont.querySelectorAll(".caixa-reimprimir").forEach((b) =>
+    b.addEventListener("click", () => reimprimirComprovanteCaixa(b)));
   $("btnSangria").addEventListener("click", () => movimentoCaixa("sangria"));
   $("btnSuprimento").addEventListener("click", () => movimentoCaixa("suprimento"));
   $("btnHistCaixa").addEventListener("click", verHistoricoCaixa);
@@ -4095,6 +4121,25 @@ async function movimentoCaixa(tipo) {
     carregarCaixa();
   }
   else { const d = r ? await r.json().catch(() => ({})) : {}; toast(d.erro || "Não deu para registrar a movimentação. Tente de novo."); }
+}
+
+async function reimprimirComprovanteCaixa(botao) {
+  if (!botao || !botao.dataset || !botao.dataset.id) return;
+  botao.disabled = true;
+  try {
+    const r = await api("POST", "/api/caixa/movimento/" + botao.dataset.id + "/reimprimir", {});
+    if (!r) return;
+    if (r.ok) {
+      toast("Comprovante enviado para impressão.");
+      return;
+    }
+    const d = await r.json().catch(() => ({}));
+    toast(d.erro || "Não foi possível reimprimir o comprovante. Tente de novo.", "erro");
+  } catch (_) {
+    toast("Sem conexão com o servidor. O comprovante não foi enviado.", "erro");
+  } finally {
+    botao.disabled = false;
+  }
 }
 
 // "É dinheiro?" — regra ÚNICA, a mesma que o servidor usa para validar a venda.

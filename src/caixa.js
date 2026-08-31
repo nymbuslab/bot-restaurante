@@ -514,6 +514,62 @@ async function resumo(dir) {
   };
 }
 
+async function lerMovimentoComprovante(dir, movimentoId) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `SELECT m.id, m.caixa_id, m.tipo, m.forma_pagamento, m.valor, m.pedido_id,
+            m.descricao, m.criado_em, m.mesa_id,
+            c.operador,
+            p.numero AS pedido_numero
+       FROM caixa_movimentos m
+       JOIN caixas c ON c.id = m.caixa_id AND c.empresa_id = m.empresa_id
+       LEFT JOIN pedidos p ON p.id = m.pedido_id AND p.empresa_id = m.empresa_id
+      WHERE m.empresa_id = $1 AND m.id = $2`,
+    [empId, Number(movimentoId) || 0]
+  );
+  const m = r.rows[0];
+  if (!m) return null;
+  const base = {
+    id: m.id,
+    caixaId: m.caixa_id,
+    tipo: m.tipo,
+    forma: m.forma_pagamento || "",
+    valor: Number(m.valor) || 0,
+    pedidoId: m.pedido_id,
+    pedidoNumero: m.pedido_numero,
+    descricao: m.descricao || "",
+    criadoEm: m.criado_em ? new Date(m.criado_em).toISOString() : null,
+    operador: m.operador || "",
+    // `mesa` fica DE FORA de propósito: o comprovante imprime esse campo como
+    // "Mesa: X", e o caminho original (enfileirarComprovanteCaixa) nunca o preenche
+    // nestes tipos. Mapear `mesa_id` aqui faria a via reimpressa sair diferente da
+    // original assim que um cancelamento passasse a carregar mesa, que é exatamente
+    // o que esta feature promete não fazer.
+  };
+  if (m.tipo === "cancelamento" && m.pedido_id != null) {
+    const irmaos = await db.query(
+      `SELECT id, forma_pagamento, valor, descricao, criado_em
+         FROM caixa_movimentos
+        WHERE empresa_id = $1 AND caixa_id = $2 AND pedido_id = $3 AND tipo = 'cancelamento'
+        ORDER BY id ASC`,
+      [empId, m.caixa_id, m.pedido_id]
+    );
+    if (irmaos.rows.length > 1) {
+      const primeiro = irmaos.rows[0] || {};
+      base.id = primeiro.id || base.id;
+      base.forma = "";
+      base.valor = irmaos.rows.reduce((s, row) => s + (Number(row.valor) || 0), 0);
+      base.formas = irmaos.rows.map((row) => ({
+        forma: row.forma_pagamento || "Outros",
+        valor: Number(row.valor) || 0,
+      }));
+      base.descricao = primeiro.descricao || base.descricao;
+      base.criadoEm = primeiro.criado_em ? new Date(primeiro.criado_em).toISOString() : base.criadoEm;
+    }
+  }
+  return base;
+}
+
 // Formas eletrônicas do relatório = união das configuradas (menos dinheiro) com as
 // que de fato tiveram recebimento — espelha a regra do front (corrige Pix fora da
 // config) e mantém a montagem do relatório com dados do servidor.
@@ -706,5 +762,5 @@ function esquecer(slug) { delete idCache[slug]; }
 
 module.exports = {
   caixaAberto, abrirCaixa, receberPedido, venderLocal, estornarRecebimento, cancelarRecebido, registrarMovimento,
-  resumo, fecharCaixa, listarCaixas, detalheCaixa, esquecer,
+  resumo, lerMovimentoComprovante, fecharCaixa, listarCaixas, detalheCaixa, esquecer,
 };

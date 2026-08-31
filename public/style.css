@@ -4952,6 +4952,32 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .caixa-tab-valor { white-space: nowrap; }   /* tabular-nums vem da regra única do topo */
 .caixa-tab-neg { color: var(--error); }
 .caixa-tab-acao { text-align: right; width: 1%; white-space: nowrap; }
+.caixa-reimprimir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.caixa-reimprimir:hover:not(:disabled),
+.caixa-reimprimir:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  background: var(--accent-subtle);
+}
+.caixa-reimprimir:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+/* Sem isto o ícone some: como item de flex o SVG encolhe até 0 de largura e o botão
+   fica um quadrado vazio. Mesmo `flex: none` que .toast-ico e .cx-aviso-vencido svg. */
+.caixa-reimprimir svg { flex: none; }
 
 /* ---- Caixa aberto — layout estilo PDV (dark) ---- */
 .cx-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 20px; margin-bottom: 12px; }

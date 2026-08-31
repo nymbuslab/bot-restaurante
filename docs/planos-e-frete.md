@@ -250,7 +250,8 @@ térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x, **Daruma DR700/DR800** e sim
 - **Comprovantes do caixa:** a sub-aba **Configurações → Impressora** salva `config.impressao.caixa`
   com toggles para `suprimento`, `sangria` e `cancelamento`. Quando ligado, o servidor monta o texto
   80mm em `public/comprovante-caixa.js` e enfileira como `caixa-comprovante` depois do movimento
-  financeiro confirmar. O agente não decide regra de negócio.
+  financeiro confirmar. A reimpressão manual pelo extrato do caixa usa o mesmo texto e re-enfileira o
+  comprovante mesmo que o toggle automático esteja desligado. O agente não decide regra de negócio.
 - **Gating:** front por `planoAtual === "completo"`; Essencial vê a sub-aba com cadeado/upsell.
 
 ### Fora do escopo (futuro)
@@ -287,7 +288,12 @@ que vêm do WhatsApp.
   **Caixas anteriores** e **Fechar caixa**.
 - **Comprovantes avulsos:** `config.impressao.caixa` decide se suprimento, sangria e cancelamento de
   pedido pago geram comprovante para conferência. A impressão é melhor esforço: se a fila falhar, o
-  movimento financeiro continua registrado e o servidor retorna aviso quando possível.
+  movimento financeiro continua registrado e o servidor retorna aviso quando possível. No extrato do
+  caixa, sangria, suprimento e cancelamento exibem um ícone de impressora para reimprimir o mesmo
+  comprovante 80mm. A rota `POST /api/caixa/movimento/:id/reimprimir` exige Plano Completo, Caixa e
+  Impressão, valida o movimento do tenant, rejeita tipos sem comprovante, aplica uma janela curta
+  contra clique duplo e re-enfileira `caixa-comprovante`; cancelamentos divididos são reagrupados pelo
+  `pedido_id`.
 - **Fechamento = conferência simplificada:** tabela única por forma de pagamento
   (`Forma · Esperado · Em caixa · Diferença`). O operador digita só o valor **em mãos** por forma
   configurada (Dinheiro, PIX, Crédito, Débito etc.); a diferença calcula ao vivo por linha e no total.

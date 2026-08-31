@@ -63,6 +63,10 @@
     return tipo === "sangria" || tipo === "cancelamento" ? "- " : "";
   }
 
+  function podeReimprimirComprovante(tipo) {
+    return tipo === "sangria" || tipo === "suprimento" || tipo === "cancelamento";
+  }
+
   function montarComprovanteCaixa(d) {
     d = d || {};
     const tipo = String(d.tipo || "");
@@ -90,5 +94,5 @@
     return linhas.join("\n");
   }
 
-  return { montarComprovanteCaixa, fmtBR };
+  return { montarComprovanteCaixa, fmtBR, podeReimprimirComprovante };
 });

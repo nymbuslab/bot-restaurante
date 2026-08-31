@@ -47,6 +47,9 @@ const incidentes = require("./incidentes"); // histórico de incidentes (monitor
 const Comanda = require("../public/comanda");      // dual-mode: monta as vias no servidor p/ enfileirar
 const ComprovanteCaixa = require("../public/comprovante-caixa"); // comprovantes avulsos do caixa
 
+const JANELA_REIMPRESSAO_CAIXA_MS = 5000;
+const ultimasReimpressoesCaixa = new Map();
+
 const app = express();
 
 // Atrás do proxy do Fly.io (1 hop): confia no X-Forwarded-* para obter o IP real
@@ -2396,7 +2399,7 @@ function dadosComprovanteCaixa(tipo, mov, cfg, caixaAtual, extras) {
     restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
     tipo,
     caixaId: mov.caixaId || mov.caixa_id || (caixaAtual && caixaAtual.id),
-    operador: (caixaAtual && caixaAtual.operador) || "",
+    operador: mov.operador || (caixaAtual && caixaAtual.operador) || "",
     pedidoId: mov.pedidoId || mov.pedido_id || pedido.id || null,
     pedidoNumero: mov.pedidoNumero || mov.numero || pedido.numero || null,
     mesa: mov.mesa || "",
@@ -2446,6 +2449,38 @@ app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
     res.json(Object.assign({}, mov, { avisoImpressao: imp.erro || null }));
   }
   catch (e) { res.status(400).json({ erro: e.message }); }
+});
+
+app.post("/api/caixa/movimento/:id/reimprimir", exigeAuth, async (req, res) => {
+  if (!(await exigeCaixa(req, res))) return;
+  if (!(await exigeImpressao(req, res))) return;
+  try {
+    const mov = await caixa.lerMovimentoComprovante(req.tenantDir, Number(req.params.id));
+    if (!mov) return res.status(404).json({ erro: "Movimento não encontrado." });
+    if (!ComprovanteCaixa.podeReimprimirComprovante(mov.tipo)) {
+      return res.status(400).json({ erro: "Este movimento não tem comprovante para reimprimir." });
+    }
+    const chaveJanela = req.slug + ":" + (Number(req.params.id) || 0);
+    const agora = Date.now();
+    // Descarta as janelas já vencidas antes de olhar a atual. Sem isto o Map só
+    // cresce: uma entrada por par (restaurante, movimento) reimpresso, para sempre,
+    // num processo que fica dias no ar.
+    ultimasReimpressoesCaixa.forEach((quando, chave) => {
+      if (agora - quando >= JANELA_REIMPRESSAO_CAIXA_MS) ultimasReimpressoesCaixa.delete(chave);
+    });
+    const ultimo = ultimasReimpressoesCaixa.get(chaveJanela) || 0;
+    if (agora - ultimo < JANELA_REIMPRESSAO_CAIXA_MS) {
+      return res.status(429).json({ erro: "Aguarde alguns segundos antes de reimprimir este comprovante de novo." });
+    }
+    await store.ensure(req.tenantDir);
+    const cfg = store.getConfig(req.tenantDir) || {};
+    const via = ComprovanteCaixa.montarComprovanteCaixa(dadosComprovanteCaixa(mov.tipo, mov, cfg, null, {}));
+    await impressaoFila.enfileirar(req.tenantDir, "caixa-comprovante", [via]);
+    ultimasReimpressoesCaixa.set(chaveJanela, agora);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao reimprimir comprovante." });
+  }
 });
 
 app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {

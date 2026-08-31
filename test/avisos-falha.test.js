@@ -34,6 +34,20 @@ test("estornar recebimento avisa quando falha", () => {
   assert.match(c, /\.erro/, "a mensagem do servidor diz o motivo (ex.: caixa já fechado)");
 });
 
+test("reimprimir comprovante do caixa desabilita durante o envio e mostra resultado", () => {
+  const c = trecho("async function reimprimirComprovanteCaixa(", "\n// \"Ã‰ dinheiro?\"");
+  const iDisabled = c.indexOf("disabled = true");
+  const iRota = c.indexOf("/reimprimir");
+  const iFinally = c.indexOf("finally");
+  const iReabilita = c.indexOf("disabled = false", iFinally);
+  assert.ok(iDisabled > -1 && iRota > -1 && iDisabled < iRota,
+    "o botao precisa desabilitar antes de chamar a rota");
+  assert.ok(iFinally > -1 && iReabilita > iFinally,
+    "a reabilitacao precisa ficar dentro do finally");
+  assert.match(c, /toast\([^)]*impress/i, "sucesso precisa avisar que foi para impressao");
+  assert.match(c, /toast\([^)]*"erro"\)/, "falha da rota precisa aparecer como erro");
+});
+
 test("estornar recebimento sobrevive à queda de rede", () => {
   const c = trecho("async function estornarCaixa(", "\n}");
   assert.match(c, /catch/, "api() lança quando o fetch falha");

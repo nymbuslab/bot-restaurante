@@ -376,6 +376,8 @@ criado_em
 - **Comprovantes avulsos:** `config.impressao.caixa` guarda os toggles `suprimento`, `sangria` e
   `cancelamento`. Quando ligados, o servidor enfileira um `caixa-comprovante` em `impressao_fila`
   depois do movimento confirmar. O texto sai de `public/comprovante-caixa.js`; nao ha coluna nova.
+  A reimpressão manual pelo extrato relê `caixa_movimentos` por `id`, reagrupa cancelamentos
+  divididos pelo `pedido_id` e usa o índice parcial `caixa_movimentos_pedido_id_idx`.
 - **Recebimento por mesa:** entra no caixa com `mesa_id` e pode deixar `pedido_id = null`; isso entra
   normalmente no fechamento, mas não reconcilia por número de pedido sem olhar a mesa/comanda. Para
   não criar sobra no caixa, mesa com pagamento registrado não pode ser cancelada inteira, e cancelar

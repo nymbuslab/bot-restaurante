@@ -41,3 +41,13 @@ test("comprovante de cancelamento traz pedido e forma quando existirem", () => {
   assert.match(txt, /Forma:\s+PIX/);
   assert.match(txt, /Valor\s+- R\$ 17,00/);
 });
+
+test("podeReimprimirComprovante aceita somente movimentos com comprovante", () => {
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante("sangria"), true);
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante("suprimento"), true);
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante("cancelamento"), true);
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante("recebimento"), false);
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante("estorno"), false);
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante(""), false);
+  assert.equal(ComprovanteCaixa.podeReimprimirComprovante(undefined), false);
+});
