@@ -5142,14 +5142,14 @@ function previaItens(itens) {
 // ticket consideram só pedidos NÃO cancelados (consistente com o Dashboard); "pedidos" e
 // "cancelados" são disjuntos e somam o total da lista.
 function resumoPedidos(lista) {
-  let pedidos = 0, faturamento = 0, cancelados = 0;
+  let pedidos = 0, faturamento = 0, cancelados = 0, valorCancelado = 0;
   for (const p of lista) {
-    if (p.status === "cancelado") { cancelados++; continue; }
+    if (p.status === "cancelado") { cancelados++; valorCancelado += p.total || 0; continue; }
     pedidos++;
     faturamento += p.total || 0;
   }
   const ticket = pedidos ? faturamento / pedidos : 0;
-  return { pedidos, faturamento, ticket, cancelados };
+  return { pedidos, faturamento, ticket, cancelados, valorCancelado };
 }
 
 // O rótulo do dinheiro acompanha o filtro de pagamento. A faixa descreve a lista
@@ -5168,9 +5168,15 @@ function resumoPedidosHtml(lista) {
   // no Essencial o seletor fica escondido e a lista não é recortada, então renomear
   // ali deixaria o rótulo prometendo um recorte que não aconteceu.
   const rotulo = (planoAtual === "completo" && ROTULO_FATURAMENTO[filtros.pagamento]) || "Faturamento";
+  // Filtrando só "Cancelados", a lista inteira é de pedidos cancelados: Faturamento
+  // (que soma só os NÃO cancelados) sempre bate zero, tecnicamente certo e inútil
+  // nesse recorte. O número que importa ali é quanto foi cancelado.
+  const naCancelados = planoAtual === "completo" && filtros.pagamento === "cancelados";
   return `<div class="pedidos-resumo">
     ${cel("Pedidos", String(r.pedidos))}
-    ${cel(rotulo, "R$ " + moedaBR(r.faturamento))}
+    ${naCancelados
+      ? cel("Valor cancelado", "R$ " + moedaBR(r.valorCancelado))
+      : cel(rotulo, "R$ " + moedaBR(r.faturamento))}
     ${cel("Ticket médio", "R$ " + moedaBR(r.ticket))}
     ${cel("Cancelados", String(r.cancelados), r.cancelados > 0 ? "alerta" : "")}
   </div>`;
