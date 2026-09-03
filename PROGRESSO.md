@@ -20,8 +20,6 @@ _(nada no momento)_
 
 ### Em aberto
 
-- [ ] **(P2, com o dono) Confirmar com o cliente se o comprovante reimpresso está saindo na térmica** — a implementação foi validada por testes, fila e Playwright em desktop/mobile, mas a D-08 deixou a conferência do papel como operacional. **Status em 31/08: o dono vai perguntar ao cliente se está imprimindo.** O caso que mais vale conferir é o **cancelamento dividido em duas formas**, porque é o único que o servidor reagrupa antes de montar o papel: sangria e suprimento saem de um movimento só. Depende do hardware do restaurante, então não tem prazo técnico.
-
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
 - [ ] **(P2) Extrato geral do restaurante** — hoje o histórico é sempre por produto, dentro da gaveta. Um extrato único, com todos os movimentos do restaurante e filtro por tipo e período, responderia "o que mudou no estoque hoje" sem abrir produto por produto. Ficou de fora da 3/4 de propósito: a gaveta responde a pergunta comum, e o geral só vale a pena se fizer falta.
@@ -55,6 +53,8 @@ _(nada no momento)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **Confirmado: comprovante reimpresso sai na térmica**, incluindo o caso mais crítico (cancelamento dividido em duas formas de pagamento, onde sangria e suprimento saem de um único movimento reagrupado). O dono confirmou com o cliente que a impressão está funcionando. Fecha a última pendência operacional da reimpressão de comprovantes pelo extrato do caixa. — 2026-09-02
 
 - [x] **Faixa da aba Pedidos deixa de mostrar três zeros ao filtrar por "Cancelados"** — filtrar por Cancelados restringe a lista a pedidos cancelados, e o resumo contava "Pedidos", "Faturamento" e "Ticket médio" só sobre os não cancelados: os três batiam zero por definição, tecnicamente certo e inútil naquele recorte. A célula de Faturamento agora vira **"Valor cancelado"** nesse filtro, somando o total dos pedidos cancelados da lista, seguindo o mesmo mecanismo que já trocava o rótulo para "A receber"/"Recebido". Só se aplica no Plano Completo, onde o filtro existe; no Essencial a tela segue mostrando Faturamento normal. Novo `test/pedidos-resumo.test.js` (4 testes) trava o comportamento nos dois planos e nos dois filtros. Validação: `npm test` (527/527), `npm run check` (123 arquivos), `npm run test:ci` (527/527). — 2026-09-02
 
