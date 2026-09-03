@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo — Item de cozinha sem complemento abre modal de observação (PDV/Mesas)</title>
+<style>
+  :root {
+    --bg-app: #f5f4f0;
+    --bg-surface: #ffffff;
+    --bg-elevated: #faf9f5;
+    --border: #e2e0d8;
+    --border-subtle: #ebe9e1;
+    --text-primary: #1c1a17;
+    --text-secondary: #6b675e;
+    --accent: #b3451f;
+    --accent-contrast: #ffffff;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow-lg: 0 24px 60px rgba(28, 26, 23, 0.24);
+    --success: #2f7d4f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    padding: 24px;
+  }
+  .intro {
+    max-width: 860px;
+    margin: 0 auto 20px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .intro h1 { margin: 0 0 6px; font-size: 16px; }
+  .intro code { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  .grid {
+    max-width: 860px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+  }
+  .card-titulo { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 0 0 10px; }
+
+  /* ---- Grade do PDV (trecho real) ---- */
+  .pdv-tile {
+    display: flex; gap: 12px; align-items: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(28,26,23,0.04);
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .pdv-tile:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(28,26,23,0.10); }
+  .pdv-tile.cursor { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pdv-tile-cursor-dot {
+    position: absolute; width: 0; height: 0; border-left: 10px solid transparent;
+    border-right: 10px solid transparent; border-top: 12px solid var(--accent);
+  }
+  .pdv-tile-img {
+    width: 48px; height: 48px; border-radius: 8px; background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle); flex: none;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .pdv-tile-corpo { flex: 1; }
+  .pdv-tile-nome { font-weight: 700; font-size: 14px; }
+  .pdv-tile-preco { display: block; font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .pdv-tile-selo {
+    font-size: 10px; font-weight: 800; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 99px; padding: 2px 7px; white-space: nowrap;
+  }
+
+  /* ---- Modal PDV (reutilizado, sem alteração visual) ---- */
+  .overlay {
+    position: relative; background: rgba(20,18,15,0.45);
+    border-radius: var(--radius-lg); padding: 0;
+  }
+  .modal {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+  .m-x { float: right; margin: 12px; border: none; background: none; font-size: 18px; color: var(--text-secondary); cursor: pointer; }
+  .pdv-m-head { padding: 18px 18px 6px; }
+  .pdv-m-nome { font-size: 18px; font-weight: 800; margin: 0 40px 0 0; }
+  .pdv-m-preco { font-size: 15px; color: var(--text-secondary); margin-top: 2px; }
+  .pdv-m-obs-cab {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-elevated); padding: 12px 18px; margin-top: 12px;
+    border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+  .pdv-m-obs-tit { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+  .pdv-m-obs-count { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+  .pdv-m-obs-wrap { padding: 12px 18px; }
+  .pdv-m-obs-wrap textarea {
+    width: 100%; min-height: 56px; background: var(--bg-elevated);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-primary); padding: 10px 12px; font-family: inherit; font-size: 14px; resize: vertical;
+  }
+  .pdv-m-obs-wrap textarea:focus { outline: none; border-color: var(--accent); }
+  .pdv-m-bar {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    background: var(--bg-surface); border-top: 1px solid var(--border);
+  }
+  .pdv-stepper-qtd {
+    display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; flex: none;
+  }
+  .pdv-stepper-qtd button { border: none; background: var(--bg-elevated); width: 34px; height: 48px; cursor: pointer; font-size: 16px; }
+  .pdv-stepper-qtd input { width: 44px; height: 48px; text-align: center; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); font-size: 15px; }
+  .pdv-m-add {
+    flex: 1; height: 48px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px; font-weight: 800; font-size: 15px; color: var(--accent-contrast);
+    background: var(--accent); border: none; border-radius: var(--radius); cursor: pointer;
+  }
+
+  .legenda {
+    margin-top: 14px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+  }
+  .badge { display: inline-block; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; font-size: 12px; margin-top: 6px; }
+  .badge.ok { color: var(--success); border-color: var(--success); font-weight: 700; }
+  .seta { text-align: center; color: var(--accent); font-size: 22px; font-weight: 800; margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Item de cozinha sem complemento → abre modal de observação (PDV / Mesas)</h1>
+  <p>
+    Hoje, um item marcado como <code>cozinha: true</code> SEM grupo de complemento, ao ser clicado
+    no PDV (ou numa Mesa, que reutiliza a mesma grade), entra direto no carrinho sem chance de
+    observação. Com esta mudança, o clique passa a abrir o <strong>modal de item já existente</strong>
+    (reaproveitado sem alteração visual), no qual a seção <em>Observação</em> fica acessível para itens
+    simples. Nenhuma tela nova; só a condição de abertura do modal muda
+    (<code>pdvTileClick</code> e <code>pdvVariacaoClick</code>).
+  </p>
+</div>
+
+<div class="grid">
+
+  <!-- Painel: PDV com o produto -->
+  <div class="card">
+    <p class="card-titulo">PDV — grade de produtos</p>
+    <div class="pdv-tile cursor" style="position: relative;">
+      <div class="pdv-tile-cursor-dot" style="position:absolute; top:-12px; left:20px;"></div>
+      <div class="pdv-tile-img">🍱</div>
+      <div class="pdv-tile-corpo">
+        <div class="pdv-tile-nome">Marmitex</div>
+        <span class="pdv-tile-preco">R$ 18,90</span>
+      </div>
+      <span class="pdv-tile-selo">Imprime na cozinha</span>
+    </div>
+    <div class="seta">▼</div>
+    <div style="text-align:center; font-size:13px; color:var(--text-secondary); margin-bottom:6px;">
+      Clique agora abre o modal de item (antes empilhava direto no carrinho).
+    </div>
+  </div>
+
+  <!-- Modal reaproveitado -->
+  <div class="card">
+    <p class="card-titulo">Modal de item (reutilizado — sem mudança visual)</p>
+    <div class="overlay" style="padding:12px;">
+      <div class="modal">
+        <button class="m-x" aria-label="Fechar">✕</button>
+        <div class="pdv-m-head">
+          <h3 class="pdv-m-nome">Marmitex</h3>
+          <div class="pdv-m-preco">R$ 18,90</div>
+        </div>
+        <div class="pdv-m-obs-cab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="pdv-m-obs-tit">Observação</span>
+          <span class="pdv-m-obs-count">0/200</span>
+        </div>
+        <div class="pdv-m-obs-wrap">
+          <textarea rows="2" maxlength="200" placeholder="Ex.: sem cebola, ponto da carne…"></textarea>
+        </div>
+        <div class="pdv-m-bar">
+          <div class="pdv-stepper-qtd">
+            <button aria-label="Diminuir">−</button>
+            <input type="text" inputmode="numeric" value="1" aria-label="Quantidade">
+            <button aria-label="Aumentar">+</button>
+          </div>
+          <button class="pdv-m-add"><span>Adicionar</span><span>R$ 18,90</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <span class="badge ok">✓ Observação persistida e impressa na via da cozinha (Obs: …)</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

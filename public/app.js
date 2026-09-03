@@ -6005,7 +6005,7 @@ function pdvMontarTile(item, variacao) {
 // Clique num tile de sabor (resultado de busca): adiciona a variação direto ao carrinho.
 // Se o pai tiver opcionais/composição, cai no modal (não dá p/ pular essas escolhas).
 function pdvVariacaoClick(item, v) {
-  if (pdvGruposDoItem(item).length) { abrirPdvItemModal(item, null); return; }
+  if (pdvGruposDoItem(item).length || item.cozinha === true) { abrirPdvItemModal(item, null); return; }
   // Agrupa se já houver a MESMA variação sozinha no carrinho (soma a quantidade da linha).
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao
     && !(l.composicao && l.composicao.length)
@@ -6044,7 +6044,7 @@ function pdvTileClick(item) {
   const bib = pdvGruposDoItem(item);
   const vars = (window.Variacoes ? window.Variacoes.normalizarVariacoes(item.variacoes) : []);
   const ehKg = item.unidade === "kg";
-  if (bib.length || vars.length || ehKg) { abrirPdvItemModal(item, null); return; }
+  if (bib.length || vars.length || ehKg || item.cozinha === true) { abrirPdvItemModal(item, null); return; }
   // Item simples: soma na linha existente (sem opcionais/obs/composição) ou cria nova.
   const ex = pdvCart.find((l) => l.id === item.id && !l.opcionais.length && !l.observacao && !(l.composicao && l.composicao.length));
   if (ex) ex.qtd += 1;
