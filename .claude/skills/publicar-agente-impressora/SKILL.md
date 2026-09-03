@@ -1,12 +1,14 @@
 ---
 name: publicar-agente-impressora
-description: >-
+description: >
   Gera o instalador (.exe) do Agente de Impressão Nymbus (app Electron em
   `agente-impressora/`) e o publica como release no GitHub, de onde o painel serve por
   proxy. Use SEMPRE que precisar buildar/rebuildar/gerar/atualizar/publicar o agente de
   impressão, lançar uma nova versão do agente, ou distribuir correções do app do agente
   aos restaurantes — inclusive quando o usuário disser só "buildar o agente", "gerar o
-  instalador", "nova versão do agente" ou "publicar o .exe".
+  instalador", "nova versão do agente" ou "publicar o .exe". Também use para pedidos como
+  "finalizar release do agente", "subir instalador", "atualizar agente de impressão" ou
+  "distribuir nova versão do app desktop".
 ---
 
 # Publicar o Agente de Impressão
@@ -35,15 +37,20 @@ Sem o bump, o painel não detecta atualização e a tag da release fica ambígua
 que mudou desde a última versão (vira as notas da release no passo 3).
 
 ### 2. Rode os testes do agente
-```bash
+Em PowerShell ou Bash/Git Bash:
+
+```powershell
 cd agente-impressora
 node --test test/*.test.js
 ```
+
 Use o glob `test/*.test.js` (o script `npm test` do agente é `node --test test/`, que
 falha em algumas versões do Node por resolver `test/` como módulo).
 
 ### 3. Build do instalador
-```bash
+Em PowerShell ou Bash/Git Bash:
+
+```powershell
 cd agente-impressora
 npm install            # garante electron / electron-builder / serialport
 npm run dist           # = node copy-shared.js && electron-builder
@@ -58,13 +65,31 @@ Confirme que o `.exe` saiu com a versão certa antes de publicar.
 ### 4. Publique a release no GitHub
 O proxy resolve `releases/latest` e pega o asset que casa com `/\.exe$/i`; a versão
 exibida é a `tag_name` (sem o "v"). Crie a release com a tag da versão e anexe o `.exe`:
+
+Em PowerShell:
+
+```powershell
+cd agente-impressora
+$versao = "0.2.5"
+$notas = "Descreva aqui o que mudou."
+gh release create "v$versao" "dist/Nymbus Impressora Setup $versao.exe" `
+  --repo nymbuslab/bot-restaurante `
+  --title "Agente de Impressão v$versao" `
+  --notes "$notas"
+```
+
+Em Bash/Git Bash:
+
 ```bash
 cd agente-impressora
-gh release create v<versão> "dist/Nymbus Impressora Setup <versão>.exe" \
+VERSAO="0.2.5"
+NOTAS="Descreva aqui o que mudou."
+gh release create "v${VERSAO}" "dist/Nymbus Impressora Setup ${VERSAO}.exe" \
   --repo nymbuslab/bot-restaurante \
-  --title "Agente de Impressão v<versão>" \
-  --notes "<o que mudou>"
+  --title "Agente de Impressão v${VERSAO}" \
+  --notes "${NOTAS}"
 ```
+
 A release precisa ficar como **latest** — não marque como pre-release nem draft (senão
 `releases/latest` não a resolve). O nome do asset precisa terminar em `.exe`.
 
@@ -74,6 +99,15 @@ A release precisa ficar como **latest** — não marque como pre-release nem dra
   reinicie o app do servidor para limpar).
 - No painel, **Configurações → Impressora** mostra a versão publicada e o botão de download.
 - Baixe pelo painel e confirme que instala.
+
+## Checklist antes de encerrar
+
+- [ ] A versão em `agente-impressora/package.json` foi incrementada.
+- [ ] Os testes do agente passaram com `node --test test/*.test.js`.
+- [ ] O `.exe` foi gerado em `agente-impressora/dist/` com a versão certa.
+- [ ] A release foi publicada como latest, sem draft e sem pre-release.
+- [ ] O endpoint `/api/agente/versao-publicada` mostrou a nova versão ou está dentro do cache de 10 min.
+- [ ] O download pelo painel foi conferido.
 
 ## Notas importantes
 - **Sem code signing**, o Windows mostra o aviso "editor desconhecido" (SmartScreen). O

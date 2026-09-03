@@ -1,6 +1,6 @@
 ---
 name: copy-nymbus
-description: >-
+description: >
   Voz de marca e método de copywriting de venda da Nymbus Pedidos (sistema de gestão para
   restaurantes: pedidos, PDV, caixa, mesas e cardápio; o WhatsApp é um canal de pedido, não
   a promessa central). Use SEMPRE que for escrever, reescrever, revisar ou
@@ -9,7 +9,9 @@ description: >-
   WhatsApp, e-mails transacionais, textos de onboarding, estados vazios e mensagens de
   erro. Acione mesmo quando o pedido for só "resume esse texto", "deixa mais curto",
   "melhora essa frase" ou "escreve a copy dessa seção". Garante tom consistente, foco em
-  benefício e a regra dura de NÃO usar travessão (—) como conector.
+  benefício e a regra dura de NÃO usar travessão (—) como conector. Também use quando o
+  usuário pedir copy, microcopy, texto de interface, texto de produto, CTA, headline,
+  mensagem de erro, estado vazio ou texto com a voz da Nymbus.
 ---
 
 # Copywriting da Nymbus Pedidos
