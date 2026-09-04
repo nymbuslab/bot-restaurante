@@ -149,17 +149,32 @@ function blocoCaixaAberto() {
   return appCx.slice(i, fim === -1 ? undefined : fim);
 }
 
-test("o cabecalho mostra dinheiro em caixa, nao o total com PIX/cartao", () => {
+test("o cabecalho mostra o total para conferencia (dinheiro + eletronico), honestamente rotulado", () => {
   const b = blocoCaixaAberto();
-  const i = b.indexOf("cx-formula");
-  assert.ok(i > -1, "legenda da fórmula não encontrada");
-  const legenda = b.slice(i, i + 220);
-  assert.match(b, /Dinheiro em caixa:/i);
-  assert.match(legenda, /Vendas em dinheiro/i);
-  assert.doesNotMatch(legenda, /cart[aã]o\/Pix/i,
+  // Título grande do cabeçalho: o valor combinado (dinheiro + eletrônico), com um
+  // rótulo que diz exatamente isso — ao contrário do bug antigo ("Total em Caixa"
+  // incluindo PIX/cartão), aqui o nome do título já avisa que é a conferência geral.
+  const i = b.indexOf("cx-total");
+  assert.ok(i > -1, "título do cabeçalho não encontrado");
+  const titulo = b.slice(i, i + 200);
+  assert.match(titulo, /Total para conferência:/i);
+  const j = b.indexOf("cx-formula");
+  assert.ok(j > -1, "legenda da fórmula não encontrada");
+  const legenda = b.slice(j, j + 120);
+  assert.match(legenda, /Dinheiro em caixa \+ eletrônico líquido/i);
+});
+
+test("dinheiro fisico (Dinheiro em caixa) continua com formula propria, sem PIX/cartao misturado", () => {
+  const b = blocoCaixaAberto();
+  // O valor puramente físico (o que precisa bater na gaveta) segue existindo,
+  // rotulado à parte, com a fórmula que soma só dinheiro — essa é a garantia que
+  // o bug antigo quebrava (rótulo de dinheiro físico com valor que incluía PIX/cartão).
+  const i = b.indexOf("cx-box-rotulo\">Dinheiro em caixa<");
+  assert.ok(i > -1, "quadro de Dinheiro em caixa não encontrado");
+  const bloco = b.slice(i, i + 220);
+  assert.match(bloco, /Inicial \+ suprimentos \+ dinheiro líquido/i);
+  assert.doesNotMatch(bloco, /cart[aã]o\/Pix/i,
     "dinheiro em caixa nao pode incluir recebimento eletronico");
-  assert.match(b, /Total para conferência:/i,
-    "o total geral ainda precisa aparecer, mas com outro nome");
 });
 
 test("vendas por forma usam valores liquidos, nao brutos", () => {
@@ -180,7 +195,10 @@ test("o card de movimentacao mostra deducoes do turno", () => {
   assert.match(card, /cancelamentos\s*>\s*0/,
     "a linha só aparece quando há deducao — zero fixo polui o dia normal");
   assert.match(card, /Dinheiro em caixa/i);
-  assert.match(card, /Total para conferência/i);
+  // "Total para conferência" saiu deste card: já é o título do cabeçalho, e repetir
+  // aqui embaixo duplicava o mesmo número duas vezes na mesma tela.
+  assert.doesNotMatch(card, /Total para conferência/i,
+    "total para conferencia nao deve mais se repetir dentro deste card");
 });
 
 function helpersCaixaAberto() {

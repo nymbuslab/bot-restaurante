@@ -4014,13 +4014,12 @@ function renderCaixaAberto(data) {
     <div class="cx-header">
       <div>
         <span class="cx-badge">Caixa aberto</span>
-        <h2 class="cx-total">Dinheiro em caixa: R$ ${fmtBRn(dinheiroEmCaixa)}</h2>
-        <span class="cx-formula">Valor inicial + Suprimentos + Vendas em dinheiro − Sangrias − Cancelamentos em dinheiro</span>
+        <h2 class="cx-total">Total para conferência: R$ ${fmtBRn(totalConferencia)}</h2>
+        <span class="cx-formula">Dinheiro em caixa + eletrônico líquido</span>
       </div>
       <div class="cx-header-meta">
         <span>Operador: <b>${data.caixa.operador ? escapar(data.caixa.operador) : "—"}</b></span>
         <span>Aberto em: ${dataHoraCurta(data.caixa.abertoEm)}</span>
-        <span>Total para conferência: <b>R$ ${fmtBRn(totalConferencia)}</b></span>
       </div>
     </div>
 
@@ -4056,11 +4055,6 @@ function renderCaixaAberto(data) {
           <span class="cx-box-rotulo">Dinheiro em caixa</span>
           <span class="cx-box-formula">Inicial + suprimentos + dinheiro líquido − sangrias</span>
           <span class="cx-box-valor">R$ ${fmtBRn(dinheiroEmCaixa)}</span>
-        </div>
-        <div class="cx-box">
-          <span class="cx-box-rotulo">Total para conferência</span>
-          <span class="cx-box-formula">Dinheiro em caixa + eletrônico líquido</span>
-          <span class="cx-box-valor">R$ ${fmtBRn(totalConferencia)}</span>
         </div>
       </div>
     </div>
