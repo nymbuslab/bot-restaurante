@@ -56,6 +56,10 @@ commits:
     commit: 1cd12bc
   - task: null
     commit: cb139da
+  - task: null
+    commit: 12deb85
+  - task: null
+    commit: 0ad803b
 modulo_afetado: [public, test]
 arquivos_alterados: [.gitignore, PROGRESSO.md, docs/design-system/AUDIT.md, docs/design-system/DESIGN-SYSTEM.md, docs/design-system/RESUMO.md, docs/legado/manual/correcoes-auditoria-design-system.md, docs/legado/raio/correcoes-auditoria-design-system.md, docs/sprintx/features/correcoes-auditoria-design-system/00-AUDITORIA.md, docs/sprintx/features/correcoes-auditoria-design-system/00-BLOQUEIOS.md, docs/sprintx/features/correcoes-auditoria-design-system/00-DECISOES.md, docs/sprintx/features/correcoes-auditoria-design-system/FECHAMENTO.md, docs/sprintx/features/correcoes-auditoria-design-system/ORQUESTRADOR.md, docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-INDICE.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-LACUNAS.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-toasts-e-botoes-fechar.md, docs/sprintx/features/correcoes-auditoria-design-system/base/01-contraste-cor.md, docs/sprintx/features/correcoes-auditoria-design-system/base/02-estados-carregamento-e-erro.md, docs/sprintx/features/correcoes-auditoria-design-system/base/03-cardapio-estados-vazios.md, docs/sprintx/features/correcoes-auditoria-design-system/base/04-campo-vs-auth-campo.md, docs/sprintx/features/correcoes-auditoria-design-system/base/05-heading-painel-master.md, docs/sprintx/features/correcoes-auditoria-design-system/base/06-button-mini-touch.md, docs/sprintx/features/correcoes-auditoria-design-system/base/07-pdv-breakpoint.md, docs/sprintx/features/correcoes-auditoria-design-system/base/08-abas-configuracoes-editor.md, docs/sprintx/features/correcoes-auditoria-design-system/base/09-padroes-de-teste-frontend.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/fases.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/sprint.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/tasks.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/fases.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/sprint.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/tasks.md, public/admin-master.html, public/admin.html, public/app.js, public/style.css, test/apoio/arquivo-estatico.js, test/arquivo-estatico.test.js, test/design-system-botoes-fechar.test.js, test/design-system-campo-auth-campo.test.js, test/design-system-cardapio-busca-vazia.test.js, test/design-system-cardapio-vazio.test.js, test/design-system-carregando.test.js, test/design-system-contraste.test.js, test/design-system-editor-tabs.test.js, test/design-system-erro-rede.test.js, test/design-system-heading-master.test.js, test/design-system-mini-lista.test.js, test/design-system-pdv-breakpoint.test.js, test/design-system-toast.test.js]
 faixa_atencao: []
@@ -64,7 +68,7 @@ atencao:
   olho_obrigatorio: 0
   leitura_rapida: 0
   dispensavel: 0
-portao: bloqueado
+portao: pronto
 desvios:
   - arquivo: .gitignore
     motivo: alterado (linha docs/eventos/ do scaffold da sprintx, F1) sem estar declarado em nenhuma task
@@ -76,6 +80,7 @@ pr_estado: null
 criado_em: 2026-09-05
 atualizado_em: 2026-09-05
 entregue_em: null
+
 ---
 
 # Entrega — Correção dos achados de design system (Alto, Médio e Baixo)
@@ -94,19 +99,19 @@ mudanças já feitas, para então organizá-las em commits.
 | Pacote de QA | ainda não gerado (E5 não rodou) |
 | Classificação da atenção | ainda não gerada (E3 não rodou) |
 | Trabalho de origem | [docs/sprintx/features/correcoes-auditoria-design-system/](../../sprintx/features/correcoes-auditoria-design-system/) |
-| Raio de impacto (legadox) | [docs/legado/raio/correcoes-auditoria-design-system.md](../../legado/raio/correcoes-auditoria-design-system.md) — ALTO |
-| Roteiro de teste manual (legadox) | [docs/legado/manual/correcoes-auditoria-design-system.md](../../legado/manual/correcoes-auditoria-design-system.md) |
-| Primeiro portão E2 (histórico) | [docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md](../../sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md) — BLOQUEADO |
+| Raio de impacto (legadox) | [docs/legado/raio/correcoes-auditoria-design-system.md](../../legado/raio/correcoes-auditoria-design-system.md) — ALTO, aprovado |
+| Roteiro de teste manual (legadox) | [docs/legado/manual/correcoes-auditoria-design-system.md](../../legado/manual/correcoes-auditoria-design-system.md) — ainda não executado |
+| Portão E2 (histórico completo) | [docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md](../../sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md) — 1ª rodada BLOQUEADA, 2ª rodada PRONTO |
 | Pull request | não aberto |
 
 ## Estado da entrega
 
-- Portão de prontidão: primeira rodada BLOQUEADA (sem branch/commits, sem raio). O E0 (esta abertura) e o E1 (22 commits abaixo) resolveram a parte de versionamento; o raio já foi calculado (ALTO) e a aprovação humana já foi dada pelo dono do projeto em 2026-09-05.
-- Commits: 22 — 13 por task (harness + as 12 correções, cada uma com seu arquivo de teste), 1 por task para `admin-master.html` (única sem conflito de arquivo), 3 agrupados por arquivo compartilhado (`style.css`, `admin.html`, `app.js` — ver aviso abaixo), 2 para os desvios (`.gitignore`, `PROGRESSO.md`) e 3 de documentação (design-system, sprintx, legado).
+- Portão de prontidão: **PRONTO** na reauditoria (a primeira rodada bloqueou por falta de branch/commits e de raio de impacto; ambos resolvidos pelo E0/E1 desta abertura retroativa e pela Camada 2 do legadox).
+- Commits: 24 — 13 por task (harness + as 12 correções, cada uma com seu arquivo de teste), 1 por task para `admin-master.html` (única sem conflito de arquivo), 3 agrupados por arquivo compartilhado (`style.css`, `admin.html`, `app.js` — ver aviso abaixo), 2 para os desvios (`.gitignore`, `PROGRESSO.md`, aprovados pelo dono) e 5 de documentação (design-system, sprintx, legado × 2, registro da entrega).
 - Atenção humana: E3 ainda não rodou.
 - Push: não feito.
 - Pull request: não aberto.
-- Falta para o merge: reexecução do E2 (este documento é seguido por ela), E3, E4, E5, E6 (push), E7 (PR).
+- Falta para o merge: E3, E4, E5, E6 (push), E7 (PR) — e, fora do fluxo da mergex, a execução do roteiro de teste manual (pelo menos os Casos 1-7, bloqueantes) antes do merge.
 
 ## Avisos
 

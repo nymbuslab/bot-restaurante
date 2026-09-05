@@ -1,29 +1,34 @@
 ```
-mergex E2 — PORTÃO DE PRONTIDÃO
-Trabalho: correcoes-auditoria-design-system   Branch: main (nenhuma branch de trabalho existe)   Data: 2026-09-05
+mergex E2 — PORTÃO DE PRONTIDÃO (reauditoria)
+Trabalho: correcoes-auditoria-design-system   Branch: feature/correcoes-auditoria-design-system (base: main)   Data: 2026-09-05
 
-RESULTADO: BLOQUEADO
+RESULTADO: PRONTO
 ```
 
-## Pré-requisito não atendido (antes das dez verificações)
+## O que mudou desde a primeira rodada (histórico em `docs/entregas/.../ENTREGA.md`)
 
-`docs/entregas/correcoes-auditoria-design-system/ENTREGA.md` **não existe** — o E0 (abertura)
-nunca rodou. A sessão que executou a F6 implementou as 13 tasks diretamente em `main`, sem
-criar branch e sem commitar task por task (`git log` não tem nenhum commit desta feature; `git
-status` mostra tudo como alteração não commitada, direto na working tree de `main`, que já
-rastreia `origin/main`).
+A primeira rodada deste portão (2026-09-05, manhã) bloqueou por dois motivos: nenhuma branch/commit
+existia (E0/E1 nunca rodaram) e o modo legado estava ativo sem raio de impacto calculado (V8).
+Desde então:
 
-Isso viola as regras invioláveis 1 ("a branch nasce com o trabalho, não no fim") e 3 ("cada task
-concluída com suíte verde vira um commit próprio") da mergex. Como o comando pedido é
-explicitamente **só o E2** ("não commite, não suba nada, não abra PR"), não criei branch nem
-commitei nada — apenas rodei as dez verificações possíveis contra a árvore de trabalho atual
-(equivalente ao fallback "branch base indisponível" de `references/02-prontidao.md`).
+- **E0 rodou**: branch `feature/correcoes-auditoria-design-system` criada a partir de `main`,
+  carregando o trabalho já implementado.
+- **E1 rodou**: 24 commits — 13 limpos por task (harness + as 12 correções, cada uma com seu
+  próprio arquivo de teste `test/design-system-*.test.js`, sem colisão de arquivo), 1 por task
+  para `public/admin-master.html` (única sem conflito), 3 agrupados por arquivo compartilhado
+  (`public/style.css`, `public/admin.html`, `public/app.js` — ver aviso), 2 para os desvios
+  (`.gitignore`, `PROGRESSO.md`, aprovados explicitamente pelo dono) e 5 de documentação
+  (design-system, sprintx, legado × 2, e o registro da própria entrega).
+- **Raio de impacto calculado** (`docs/legado/raio/correcoes-auditoria-design-system.md`): faixa
+  **ALTO**, determinado por 74 chamadores de `toast()` em `public/app.js` e por tocar a zona
+  Financeiro (gate de PDV/Mesas/Caixa). Nenhuma migração de banco nem dado histórico afetado.
+- **Roteiro de teste manual gerado** (`docs/legado/manual/correcoes-auditoria-design-system.md`):
+  17 casos, os 7 primeiros bloqueantes, cobrindo o teste do gate que motivou o raio ALTO.
+- **Aprovação humana registrada**: Pabllo Martins (dono do projeto), 2026-09-05, ciente dos
+  riscos declarados (gate a conferir pelo roteiro manual; orçamento de mudança excedido por o
+  raio ter sido calculado depois da execução).
 
-**Isto sozinho já bloquearia a entrega**, independente do resultado das dez verificações: hoje
-não há como abrir PR, nem dar push, nem isolar este trabalho de qualquer outro que também esteja
-mexendo em `main`.
-
-## As dez verificações
+## As dez verificações (reauditoria)
 
 | # | Verificação | Resultado |
 |---|---|---|
@@ -34,82 +39,41 @@ mexendo em `main`.
 | V5 | QA da runx aprovado | n/a |
 | V6 | Auditoria da sprintx aprovada | OK |
 | V7 | Bloqueio aberto no escopo entregue | OK |
-| V8 | Modo legado: raio, caracterização, reversão, orçamento, aprovação | FALHA |
-| V9 | Arquivo alterado fora da lista declarada | FALHA |
+| V8 | Modo legado: raio, caracterização, reversão, orçamento, aprovação | OK (com aviso) |
+| V9 | Arquivo alterado fora da lista declarada | OK (com aviso) |
 | V10 | Segredo, credencial ou dado real de cliente | OK |
 
-## O que falta
-
-```
-V8 — FALHA: modo legado ativo sem raio de impacto calculado para este trabalho
-  docs/legado/PERFIL.md existe no repositório ("a existência deste arquivo é o gatilho do modo
-  legado") — todo trabalho com conjunto de arquivos alvo definido deveria ter passado pela
-  Camada 2 (avaliador-de-raio) antes do plano. Este trabalho (correcoes-auditoria-design-system)
-  não tem nenhum raio registrado.
-  Sub-itens:
-    - Raio calculado: FALHA — nenhum arquivo de raio para este trabalho.
-    - Caracterização: FALHA — não verificável sem o raio (ausência de prova não é prova).
-    - Reversão: FALHA — nenhum plano de reversão registrado em ORQUESTRADOR.md, 00-DECISOES.md
-      ou FECHAMENTO.md.
-    - Orçamento: n/a — nenhum orçamento de mudança foi declarado (feature não passou pela F3.5).
-    - Aprovação humana: FALHA — não verificável sem o raio (se vier ALTO, precisaria de
-      aprovação explícita do dono, que não está registrada).
-  Onde corrigir: docs/legado/ (novo arquivo de raio para este trabalho) e
-  docs/sprintx/features/correcoes-auditoria-design-system/00-DECISOES.md ou ORQUESTRADOR.md
-  (plano de reversão)
-  O que fazer: rodar o avaliador-de-raio (legadox-raio) sobre os arquivos desta feature
-  (public/app.js, public/admin.html, public/admin-master.html, public/style.css) e registrar o
-  resultado; se der BAIXO (esperado — nenhuma das 6 zonas de risco declaradas em PERFIL.md é
-  tocada por esta feature, que é só front-end de apresentação), documentar isso explicitamente
-  em vez de deixar a lacuna; escrever um plano de reversão de uma linha (ex.: "reverter os 4
-  arquivos de código e remover os 14 arquivos de teste novos restaura o estado anterior; nenhuma
-  migração de banco envolvida")
-
-V9 — FALHA: 2 arquivos alterados fora da lista declarada em qualquer task
-  .gitignore — modificado (+3 linhas: comentário e a entrada "docs/eventos/"), não aparece em
-  nenhum arquivos.cria/arquivos.altera de nenhuma das 13 tasks
-  PROGRESSO.md — modificado (+2 linhas: o item de fechamento movido para "✅ Concluído"), não
-  aparece em nenhuma task
-  Onde corrigir: docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/tasks.md e
-  sprint-02/tasks.md (se decidir declarar os dois retroativamente), ou reverter as duas
-  alterações se forem consideradas fora de escopo
-  O que fazer: nenhuma das duas mudanças é suspeita — .gitignore ganhou a linha `docs/eventos/`
-  como parte do scaffold da própria sprintx (F1, exigido pelo método) e PROGRESSO.md foi
-  atualizado seguindo a convenção do projeto de fechar a tarefa no arquivo de progresso; ainda
-  assim, nenhuma task declarou esses dois arquivos, então o portão os reporta como desvio
-  (regra 6: nunca maquiar). Não é um problema de segurança nem de escopo indevido — é uma
-  lacuna de rastreabilidade do plano.
-```
+Nenhuma verificação deu FALHA.
 
 ## Avisos
 
-- **Nenhuma branch de trabalho existe.** Tudo está direto em `main`, que rastreia
-  `origin/main`. Enquanto isso não for corrigido (E0 + backfill de commits por task, ou um
-  commit único documentando a situação), não há como isolar este trabalho de qualquer outro
-  em andamento no mesmo repositório, nem abrir PR nele.
-- `docs/design-system/` (cartografia + `AUDIT.md`) e `docs/sprintx/` (o plano inteiro desta
-  feature) estão como arquivos não rastreados (`??` no `git status`) — não são código de
-  produção, são a documentação do próprio trabalho e da auditoria que o motivou; não contam
-  como desvio de V9, mas também precisam ser commitados quando a branch/commits forem
-  corrigidos.
-- `npm test` (573 passed, 0 failed) e `npm run check` (141 arquivos OK) foram reexecutados
-  agora, de forma independente do que `tasks.md`/`FECHAMENTO.md` registram, e batem exatamente
-  com o que está documentado.
-- `FECHAMENTO.md` registra, na seção "Ressalva — conferência visual", que a conferência visual
-  manual das 4 tasks puramente visuais (T-02.03, T-02.09, T-02.10, T-02.11) não foi feita por
-  falta de ferramenta de renderização na sessão que executou a F6 — exatamente a exceção
-  documentada em `ORQUESTRADOR.md` (seção 7). Isso não é uma falha do portão (o teste estático
-  de cada uma está verde), mas fica registrado como pendência de QA humano antes de considerar
-  a feature 100% validada visualmente.
-- T-02.07 passou a alterar também `public/style.css` (além de `public/app.js`), diferente da
-  declaração original do plano — `tasks.md` já foi atualizado para refletir isso (o campo
-  `arquivos.altera` da task já lista os dois arquivos), então isto não é uma falha de V9, só um
-  registro de que o plano foi ajustado durante a execução (removendo a regra CSS antiga de
-  `.cardapio-vazio-busca`, citada no `FECHAMENTO.md`).
+- **V8, sub-item Orçamento (Camada 5):** o orçamento ALTO (2 arquivos/40 linhas por task) foi
+  excedido — o trabalho tocou 4 arquivos de produção com 96 inserções/48 remoções ao todo. Isso
+  é o efeito esperado de calcular o raio DEPOIS da execução (não havia orçamento governando em
+  tempo real). O dono aprovou explicitamente essa exceção, registrada em
+  `docs/legado/raio/correcoes-auditoria-design-system.md`. Não bloqueia esta entrega; é um
+  aprendizado de processo para o próximo trabalho que tocar estes arquivos: calcular o raio
+  ANTES do plano.
+- **V9:** `.gitignore` e `PROGRESSO.md` foram alterados fora de qualquer task declarada nas 13
+  tasks do plano. Diferente do fluxo padrão (deixar o desvio sem commit até alguém decidir), o
+  dono já decidiu explicitamente incluir os dois, cientes de que são inofensivos (scaffold da
+  sprintx e atualização do progresso do projeto) — commitados em separado
+  (`b8c97d8`, `d81ffa9`) e documentados em `desvios` no `ENTREGA.md`. Registrando como aviso, não
+  como falha, porque a decisão humana que a regra exige já foi tomada e está no histórico.
+- **Backfill de commits para 3 arquivos compartilhados:** `public/style.css` (`99b4c18`),
+  `public/admin.html` (`e3d4bfd`) e `public/app.js` (`bd31fa2`) foram commitados um por ARQUIVO,
+  não um por TASK, porque a implementação já existia inteira quando a branch foi aberta (sem
+  histórico incremental por task para separar os hunks com segurança). É um desvio deliberado e
+  disclosed da regra 3 ("um commit por task"), específico desta abertura retroativa — trabalhos
+  futuros executados ao vivo pela mergex (E0 no início, E1 a cada task) não têm esse problema,
+  porque cada commit nasce do diff incremental real daquela task.
+- **Conferência visual pendente:** o roteiro de teste manual existe, mas ainda não foi executado
+  por uma pessoa (ver `docs/legado/manual/correcoes-auditoria-design-system.md`, seção "Registro
+  do resultado", em branco). Os Casos 1 a 7 (o teste do gate financeiro) são bloqueantes para
+  considerar o raio ALTO plenamente coberto — recomendado executá-los antes do merge, mesmo com
+  o portão técnico já `PRONTO`.
 
 ---
 
-**BLOQUEADO** → `portao: bloqueado`. O fluxo da mergex encerra aqui: nenhuma classificação de
-atenção humana (E3), nenhuma descrição de PR (E4), nenhum pacote de QA (E5), nenhum push (E6),
-nenhum PR (E7). Nada foi desfeito, nada foi descartado, nada foi maquiado — o trabalho continua
-exatamente como está na árvore de `main`.
+**PRONTO** → `portao: pronto` no `ENTREGA.md`. Segue para o E3 (classificação de atenção
+humana).
