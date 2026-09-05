@@ -179,6 +179,13 @@ Critério de desempate quando duas formas convivem na mesma pasta: não se aplic
 > Áreas onde errar não é bug, é processo.
 > Toda zona tocada por um trabalho dispara a Camada 11 e implica raio ALTO.
 
+**Validador padrão (decisão de 2026-09-05):** Pabllo Martins, dono do projeto, foi designado
+validador padrão das seis zonas abaixo — fecha a lacuna L-01 do `LACUNAS.md` (não havia
+`CODEOWNERS` nem papel de revisor distinto documentado; o histórico de commits mostra autor
+único). A cada trabalho que tocar uma destas zonas, as demais perguntas da Camada 11 (impacto
+fiscal/contratual, dado histórico, aviso a cliente, janela de manutenção, processo manual)
+continuam obrigatórias e específicas daquele trabalho — só o "quem valida" já vem resolvido.
+
 ### Zona: Financeiro (caixa e PDV)
 
 Pastas e arquivos que a compõem:
@@ -188,7 +195,7 @@ Pastas e arquivos que a compõem:
 - `public/comprovante-caixa.js`, `public/relatorio-caixa.js`, `public/comanda.js` (impressos)
 - `supabase/migrations/20260620120000_caixa.sql`, `20260620130000_caixa_abertura.sql`, `20260620140000_caixa_fechamento_detalhe.sql`, `20260704130000_caixa_valor_pago_troco.sql`, `20260830150000_indice_caixa_movimentos_pedido.sql` (schema)
 
-Quem valida uma mudança aqui: NÃO DETERMINADO (histórico de commits mostra um único autor — Pabllo Martins — sem `CODEOWNERS` nem menção de papel de revisor em `docs/`)
+Quem valida uma mudança aqui: **Pabllo Martins (dono do projeto)** — designado como validador padrão de todas as seis zonas de risco em 2026-09-05 (autor único do histórico de commits, sem `CODEOWNERS` nem papel de revisor distinto documentado). Ver nota no início desta seção.
 
 Perguntas obrigatórias adicionais desta zona, além das seis mínimas da Camada 11:
 1. A mudança altera o cálculo do valor esperado em espécie ou da diferença (`src/caixa-calc.js`) ou só a apresentação do relatório?
@@ -201,7 +208,7 @@ Pastas e arquivos que a compõem:
 - `src/servidor.js:148` (endpoint de webhook), `src/servidor.js:556-642`, `:1106-1165` (rotas de assinatura)
 - `supabase/migrations/20260612181500_assinatura_billing.sql` (schema de billing)
 
-Quem valida uma mudança aqui: NÃO DETERMINADO
+Quem valida uma mudança aqui: **Pabllo Martins (dono do projeto)** — designado como validador padrão de todas as seis zonas de risco em 2026-09-05. Ver nota no início desta seção.
 
 Perguntas obrigatórias adicionais desta zona, além das seis mínimas da Camada 11:
 1. A mudança altera a idempotência do webhook (dedup por id do evento) ou o mapeamento de status de assinatura?
@@ -214,7 +221,7 @@ Pastas e arquivos que a compõem:
 - `src/empresas.js` (`resolverPorToken`, `acessoLiberado`, `tenantDir`)
 - `src/supabase.js` (cliente Supabase Auth)
 
-Quem valida uma mudança aqui: NÃO DETERMINADO
+Quem valida uma mudança aqui: **Pabllo Martins (dono do projeto)** — designado como validador padrão de todas as seis zonas de risco em 2026-09-05. Ver nota no início desta seção.
 
 Perguntas obrigatórias adicionais desta zona, além das seis mínimas da Camada 11:
 1. A mudança afeta o escopo de `req.slug`/`req.tenantDir` de forma que um tenant possa enxergar dado de outro (isolamento multi-tenant)?
@@ -228,7 +235,7 @@ Pastas e arquivos que a compõem:
 - `src/servidor.js:1813-1897` (rotas `/api/conta`, exportar, excluir)
 - `docs/lgpd/` (política documentada)
 
-Quem valida uma mudança aqui: NÃO DETERMINADO
+Quem valida uma mudança aqui: **Pabllo Martins (dono do projeto)** — designado como validador padrão de todas as seis zonas de risco em 2026-09-05. Ver nota no início desta seção.
 
 Perguntas obrigatórias adicionais desta zona, além das seis mínimas da Camada 11:
 1. A mudança altera prazo de retenção ou o que é anonimizado versus o que é apagado (pedidos são anonimizados, clientes são removidos — são tratamentos diferentes, ver `index.js:57-59`)?
@@ -241,7 +248,7 @@ Pastas e arquivos que a compõem:
 - `src/frete.js` (frete por raio/bairro, Geoapify/Haversine)
 - `src/pdv.js` (recálculo de venda com quilo/opcionais/desconto)
 
-Quem valida uma mudança aqui: NÃO DETERMINADO
+Quem valida uma mudança aqui: **Pabllo Martins (dono do projeto)** — designado como validador padrão de todas as seis zonas de risco em 2026-09-05. Ver nota no início desta seção.
 
 Perguntas obrigatórias adicionais desta zona, além das seis mínimas da Camada 11:
 1. O preço final ainda é recalculado 100% no servidor, sem nenhum campo de valor aceito cru do cliente?
@@ -254,7 +261,7 @@ Pastas e arquivos que a compõem:
 - Pedidos já recebidos/anonimizados (`src/pedidos.js`, coluna `pedidos.recebido_em`)
 - Auditoria (`src/auditoria.js`)
 
-Quem valida uma mudança aqui: NÃO DETERMINADO
+Quem valida uma mudança aqui: **Pabllo Martins (dono do projeto)** — designado como validador padrão de todas as seis zonas de risco em 2026-09-05. Ver nota no início desta seção.
 
 Perguntas obrigatórias adicionais desta zona, além das seis mínimas da Camada 11:
 1. A mudança precisa recalcular ou reexibir um registro já fechado/anonimizado, e se sim, o dado de origem ainda existe para isso?
