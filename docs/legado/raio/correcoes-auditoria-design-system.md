@@ -237,14 +237,26 @@ Efeitos que não se desfazem: nenhum — mudança 100% em arquivos de front-end 
 
 ## Aprovação humana (regra 9)
 
-PENDENTE — o trabalho não avança para o plano sem esta aprovação.
+**APROVADO.**
 
-Aprovado por: —
-Data: —
-O que foi aprovado: —
+Aprovado por: Pabllo Martins (dono do projeto — validador padrão da zona Financeiro, ver Camada 11)
+Data: 2026-09-05
+O que foi aprovado: a correção dos 12 achados de design system (Alto/Médio/Baixo), já
+implementada e testada (`npm test` 573/573, `npm run check` 141 arquivos OK), segue para o
+portão de prontidão da mergex (E2) e para o merge, com o raio ALTO e os riscos abaixo cientes e
+aceitos — incluindo o orçamento de mudança (2 arquivos/40 linhas por task) ter sido excedido
+retroativamente, já que o raio só foi calculado depois da execução (não havia orçamento
+governando a execução em tempo real).
 Riscos declarados no momento da aprovação:
-- Reordenação do gate de acesso a PDV/Mesas/Caixa (`hidden=`) precisa de conferência visual antes de produção (ver Camada 11, pergunta 6)
-- Trabalho já foi implementado e testado (573/573) antes deste raio existir; a aprovação aqui é para autorizar o fluxo seguir para o portão de prontidão da mergex (E2/V8) com o raio devidamente registrado, não para re-autorizar a escrita de código já feita
+- Reordenação do gate de acesso a PDV/Mesas/Caixa (`hidden=`) precisa de conferência visual
+  antes de produção (ver Camada 11, pergunta 6, e o roteiro manual — Casos 1 a 7, bloqueantes).
+- Trabalho já foi implementado e testado (573/573) antes deste raio existir; a aprovação aqui é
+  para autorizar o fluxo seguir para o portão de prontidão da mergex (E2/V8) com o raio
+  devidamente registrado, não para re-autorizar a escrita de código já feita.
+- Orçamento de mudança (Camada 5) excedido — 4 arquivos de produção tocados no total, contra o
+  teto de 2 arquivos/40 linhas por task que teria valido se o raio existisse antes do plano.
+  Aceito como exceção pontual desta abertura retroativa; próximos trabalhos que tocarem estes
+  mesmos arquivos devem calcular o raio ANTES do plano, não depois.
 
 ---
 
