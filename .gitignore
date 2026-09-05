@@ -17,6 +17,9 @@ baileys-*/
 # Artefatos de validação visual (Playwright MCP)
 .playwright-mcp/
 
+# Rastro de eventos da sprintx/runx (local de quem executou, cresce rápido, sem merge)
+docs/eventos/
+
 # Agente de impressão (Electron) — artefatos de build
 agente-impressora/dist/
 agente-impressora/vendor/
