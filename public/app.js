@@ -106,6 +106,9 @@ function toast(msg, tipo = "sucesso") {
   const container = $("toast-container");
   const el = document.createElement("div");
   el.className = `toast ${tipo}`;
+  if (tipo === "erro") {
+    el.setAttribute("role", "alert");
+  }
   const ico = document.createElement("span");
   ico.className = "toast-ico";
   ico.innerHTML = tipo === "erro" ? ICO_ALERTA : ICO_CHECK;
@@ -2295,6 +2298,20 @@ function renderCardapio() {
   renderCardapioMetricas();
   const c = $("cardapioContainer");
   c.innerHTML = "";
+  if (!cardapioAtual.categorias || cardapioAtual.categorias.length === 0) {
+    c.innerHTML =
+      '<div class="estado-vazio">' +
+        '<h3>Seu cardápio ainda está vazio</h3>' +
+        '<p class="sub">Crie sua primeira categoria para começar a cadastrar os produtos.</p>' +
+        '<button type="button" class="secundario" id="btnCardIrCategorias">Ir para Categorias</button>' +
+      '</div>';
+    const b = $("btnCardIrCategorias");
+    if (b) b.addEventListener("click", () => {
+      const nav = document.querySelector("nav button[data-aba='categorias']");
+      if (nav) nav.click();
+    });
+    return;
+  }
   const termo = cardapioBusca.trim();
   let totalMostrado = 0;
   cardapioAtual.categorias.forEach((cat, ci) => {
@@ -2357,13 +2374,13 @@ function renderCardapio() {
         <span class="il-disp il-cel" data-label="Disponível"><span class="toggle"><input type="checkbox" ${item.disponivel ? "checked" : ""} ${item.arquivado ? "disabled" : ""} class="itDisp" data-c="${ci}" data-i="${ii}" /></span></span>
         <span class="il-acoes">
           ${item.arquivado
-            ? `<button class="mini" data-restore-item="${ci}-${ii}" aria-label="Restaurar item" title="Restaurar">
+            ? `<button class="mini mini-lista" data-restore-item="${ci}-${ii}" aria-label="Restaurar item" title="Restaurar">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
               </button>`
-            : `<button class="mini" data-edit-item="${ci}-${ii}" aria-label="Editar item">
+            : `<button class="mini mini-lista" data-edit-item="${ci}-${ii}" aria-label="Editar item">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>`}
-          <button class="perigo mini" data-del-item="${ci}-${ii}" aria-label="Excluir item">
+          <button class="perigo mini mini-lista" data-del-item="${ci}-${ii}" aria-label="Excluir item">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </span>
@@ -2380,7 +2397,11 @@ function renderCardapio() {
     grid.appendChild(addLinha);
   });
   if (termo && totalMostrado === 0) {
-    c.innerHTML = `<p class="cardapio-vazio-busca">Nenhum item encontrado para "<strong>${escapar(termo)}</strong>".</p>`;
+    c.innerHTML =
+      '<div class="estado-vazio">' +
+        '<p>Nenhum item encontrado para <strong>' + escapar(termo) + '</strong>.</p>' +
+        '<span class="sub">Verifique a grafia ou tente outro termo.</span>' +
+      '</div>';
   }
   ligarEventosCardapio();
 }
@@ -2546,8 +2567,9 @@ async function abrirEditorItem(ci, ii) {
     editorVariacoes = (typeof Variacoes !== "undefined" ? Variacoes.normalizarVariacoes(it.variacoes) : []);
   }
   // Abre na aba Principal
-  $("editor-tabs-nav").querySelectorAll(".editor-tab").forEach((t) => t.classList.remove("ativo"));
+  $("editor-tabs-nav").querySelectorAll(".editor-tab").forEach((t) => { t.classList.remove("ativo"); t.setAttribute("aria-selected", "false"); });
   $("editor-tabs-nav").querySelector('[data-tab="principal"]').classList.add("ativo");
+  $("editor-tabs-nav").querySelector('[data-tab="principal"]').setAttribute("aria-selected", "true");
   document.querySelectorAll(".editor-panel").forEach((p) => p.classList.remove("ativo"));
   document.getElementById("panel-principal").classList.add("ativo");
 
@@ -2741,8 +2763,9 @@ $("editor-tabs-nav").addEventListener("click", (e) => {
   if (!tab) return;
   const tabName = tab.dataset.tab;
   if (!tabName) return;
-  $("editor-tabs-nav").querySelectorAll(".editor-tab").forEach((t) => t.classList.remove("ativo"));
+  $("editor-tabs-nav").querySelectorAll(".editor-tab").forEach((t) => { t.classList.remove("ativo"); t.setAttribute("aria-selected", "false"); });
   tab.classList.add("ativo");
+  tab.setAttribute("aria-selected", "true");
   document.querySelectorAll(".editor-panel").forEach((p) => p.classList.remove("ativo"));
   const panel = document.getElementById("panel-" + tabName);
   if (panel) panel.classList.add("ativo");
@@ -3713,11 +3736,11 @@ async function carregarCaixa() {
   // O gate é decidido pela RESPOSTA da API (autoritativa), não pelo `planoAtual`
   // — que pode ainda não ter carregado na navegação inicial (evita cadeado falso).
   $("caixaLock").hidden = true;
-  $("caixaConteudo").hidden = true;
+  $("caixaConteudo").hidden = false;
+  $("caixaConteudo").innerHTML = '<p class="sub">Carregando…</p>';
   const r = await api("GET", "/api/caixa");
   if (!r) return; // 401 já redirecionou
-  if (r.status === 403) { $("caixaLock").hidden = false; return; } // sem Plano Completo
-  $("caixaConteudo").hidden = false;
+  if (r.status === 403) { $("caixaConteudo").hidden = true; $("caixaLock").hidden = false; return; } // sem Plano Completo
   if (!r.ok) { $("caixaConteudo").innerHTML = "<p class='sub'>Falha ao carregar o caixa.</p>"; return; }
   renderCaixa(await r.json());
 }
@@ -4851,6 +4874,7 @@ let listaPedidosAtual = []; // lista filtrada atual (para paginar sem refazer o 
 // Só busca os pedidos do tenant; o recorte (período/tipo/busca) e as métricas
 // são calculados no front em renderPedidos() a partir deste conjunto.
 async function carregarPedidos() {
+  $("pedidosContainer").innerHTML = '<div class="estado-vazio"><p class="sub">Carregando…</p></div>';
   try {
     // O servidor recorta pela janela do período (fuso BR) — não baixa mais o
     // histórico inteiro. Os demais filtros (tipo/canal/busca/pagamento) seguem no cliente.
@@ -5891,18 +5915,19 @@ function pdvPrecoLinha(l) { return pdvPrecoUnit(l) * (Number(l.qtd) || 0); }
 function pdvTotal() { return pdvCart.reduce((s, l) => s + pdvPrecoLinha(l), 0); }
 
 async function carregarPdv() {
-  $("pdvLock").hidden = true; $("pdvSemCaixa").hidden = true; $("pdvVencido").hidden = true; $("pdvConteudo").hidden = true; $("pdvFab").hidden = true;
+  $("pdvLock").hidden = true; $("pdvSemCaixa").hidden = true; $("pdvVencido").hidden = true; $("pdvErroRede").hidden = true; $("pdvConteudo").hidden = false; $("pdvFab").hidden = true;
+  $("pdvGrid").innerHTML = '<p class="pdv-vazio">Carregando…</p>';
   const r = await api("GET", "/api/caixa"); // gate (403) + status do caixa, numa chamada
   if (!r) return; // 401 já redirecionou
-  if (r.status === 403) { $("pdvLock").hidden = false; return; }
-  if (!r.ok) { $("pdvSemCaixa").hidden = false; return; }
+  if (r.status === 403) { $("pdvConteudo").hidden = true; $("pdvLock").hidden = false; return; }
+  if (!r.ok) { $("pdvConteudo").hidden = true; $("pdvErroRede").hidden = false; return; }
   const data = await r.json();
   pdvFormasPg = (Array.isArray(data.formasPagamento) && data.formasPagamento.length) ? data.formasPagamento : ["Dinheiro"];
-  if (!data.caixa) { $("pdvSemCaixa").hidden = false; return; } // exige caixa aberto
+  if (!data.caixa) { $("pdvConteudo").hidden = true; $("pdvSemCaixa").hidden = false; return; } // exige caixa aberto
   if (data.caixa.vencido) { // caixa de outro dia: bloqueia venda até fechar
     const dia = new Date(data.caixa.abertoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
     $("pdvVencidoSub").textContent = "Há um caixa aberto de " + dia + ". Feche-o no Caixa e abra um novo para vender hoje.";
-    $("pdvVencido").hidden = false; return;
+    $("pdvConteudo").hidden = true; $("pdvVencido").hidden = false; return;
   }
   // Garante o cardápio carregado (a aba PDV pode ser a primeira a abrir).
   if (!cardapioAtual || !cardapioAtual.categorias || !cardapioAtual.categorias.length) {
@@ -6812,6 +6837,7 @@ async function finalizarVendaPdv() {
 if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => abrirUpsell("pdv"));
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
 if ($("btnPdvVencidoCaixa")) $("btnPdvVencidoCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
+if ($("btnPdvErroRede")) $("btnPdvErroRede").addEventListener("click", () => carregarPdv().catch(() => {}));
 if ($("pdvBusca")) {
   let pdvBuscaTimer;
   $("pdvBusca").addEventListener("input", (e) => {
@@ -7159,24 +7185,26 @@ async function carregarMesas() {
   $("mesasLock").hidden = true;
   $("mesasSemCaixa").hidden = true;
   $("mesasVencido").hidden = true;
-  $("mesasConteudo").hidden = true;
+  $("mesasErroRede").hidden = true;
+  $("mesasConteudo").hidden = false;
+  $("mesasGrade").innerHTML = '<p class="sub" style="text-align:center;padding:32px 0">Carregando…</p>';
   if ($("mesasSoFecharAviso")) $("mesasSoFecharAviso").hidden = true;
   mesaState.caixaVencido = false;
 
   try {
     // Gate: Plano Completo via GET /api/caixa (retorna 403 se não Completo)
     const rCaixa = await api("GET", "/api/caixa");
-    if (!rCaixa || rCaixa.status === 403) { $("mesasLock").hidden = false; return; }
+    if (!rCaixa || rCaixa.status === 403) { $("mesasConteudo").hidden = true; $("mesasLock").hidden = false; return; }
     const caixaData = rCaixa.ok ? await rCaixa.json() : {};
-    if (!caixaData.caixa) { $("mesasSemCaixa").hidden = false; return; }
+    if (!caixaData.caixa) { $("mesasConteudo").hidden = true; $("mesasSemCaixa").hidden = false; return; }
     // Caixa do dia anterior aberto (vencido): modo "só fechar" — carrega as mesas para
     // fechar/receber as abertas (quebra o deadlock caixa↔mesa), mas bloqueia abrir/lançar.
     mesaState.caixaVencido = !!caixaData.caixa.vencido;
     if (mesaState.caixaVencido && $("mesasSoFecharAviso")) $("mesasSoFecharAviso").hidden = false;
 
     const rMesas = await api("GET", "/api/mesas");
-    if (!rMesas || rMesas.status === 403) { $("mesasLock").hidden = false; return; }
-    if (!rMesas.ok) { toast("Erro ao carregar mesas.", "erro"); $("mesasSemCaixa").hidden = false; return; }
+    if (!rMesas || rMesas.status === 403) { $("mesasConteudo").hidden = true; $("mesasLock").hidden = false; return; }
+    if (!rMesas.ok) { $("mesasConteudo").hidden = true; $("mesasErroRede").hidden = false; return; }
     const mesasData = await rMesas.json();
     mesaState.lista = mesasData.mesas || [];
     if (mesasData.alertaParadaMin != null) mesaState.alertaParadaMin = mesasData.alertaParadaMin;
@@ -7184,6 +7212,7 @@ async function carregarMesas() {
     renderMesasGrade();
   } catch (e) {
     toast("Erro ao conectar. Tente recarregar a página.", "erro");
+    $("mesasConteudo").hidden = true;
     $("mesasSemCaixa").hidden = false;
   }
 }
@@ -8203,6 +8232,7 @@ function mesasInitListeners() {
   $("mesasPagarBg").addEventListener("click", function () { $("mesasPagarOverlay").hidden = true; });
   $("btnMesasIrCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
   $("btnMesasVencidoCaixa").addEventListener("click", function () { document.querySelector("[data-aba='caixa']").click(); });
+  $("btnMesasErroRede").addEventListener("click", function () { carregarMesas().catch(function () {}); });
   $("btnVerPlanosMesas").addEventListener("click", function () { abrirUpsell("mesas"); });
 }
 
