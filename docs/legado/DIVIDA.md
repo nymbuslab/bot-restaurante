@@ -35,7 +35,7 @@ Atualizado em: 2026-09-05
 
 | Data | Arquivo | Evidência | Método de verificação | Trabalho de origem |
 |---|---|---|---|---|
-| {{AAAA-MM-DD}} | `{{caminho/relativo/arquivo.ext}}` | {{nenhum chamador fora dos testes | rota comentada | sem ocorrência em log nos últimos N dias}} | {{grep | análise estática | telemetria}} | {{trabalho_id}} |
+| 2026-09-05 | `src/stripe.js` (exports `stripe`, `PRICE_ID`, `PRICE_ID_COMPLETO`, `PUBLISHABLE_KEY`) | Nenhum chamador fora do próprio arquivo — `src/servidor.js` (único importador do módulo, `const stripeBilling = require("./stripe")`) só acessa `.CONFIGURADO`, `.PLANO_INFO` e as funções (`criarCheckout`, `criarPortal` etc.); os 4 exports acima nunca aparecem como `stripeBilling.X` em nenhum arquivo | `grep -rn "\bSIMBOLO\b" --include=*.js src public index.js` por símbolo, um a um (Camada 1, L-06) | legadox (Camada 1, extensão de L-06) |
 
 ---
 

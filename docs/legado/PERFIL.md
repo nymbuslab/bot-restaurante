@@ -30,7 +30,7 @@ Região mapeada: o repositório inteiro (`index.js`, `src/`, `public/`, `supabas
 | bcryptjs | 3.0.3 | `package-lock.json`, `package.json:24` |
 | multer | 2.1.1 | `package-lock.json`, `package.json:31` |
 | dotenv | 16.6.1 | `package-lock.json`, `package.json:26` |
-| Banco de dados | PostgreSQL gerenciado (Supabase) — versão do motor NÃO DETERMINADO (não há arquivo no repo que a declare; é infraestrutura externa) | `src/db.js:7` (uso do driver `pg`), `supabase/migrations/` (schema) |
+| Banco de dados | PostgreSQL **17.6** (aarch64, gerenciado pelo Supabase) | `SELECT version()` consultado direto no Postgres de produção em 2026-09-05 (infraestrutura externa, sem arquivo no repo que a declare) |
 | Front-end | HTML/CSS/JS puro, sem framework nem bundler (nenhuma dependência de build em `package.json`) | `package.json` (ausência de `devDependencies` de bundler), `public/*.html` |
 
 Versão travada por: `Dockerfile:1` (`FROM node:22-slim`). Não há `.nvmrc` nem `.tool-versions` no repositório (confirmado por ausência de arquivo). `fly.toml` não fixa versão de runtime, só recursos de VM (`fly.toml:34-37`).
@@ -76,7 +76,16 @@ Versão travada por: `Dockerfile:1` (`FROM node:22-slim`). Não há `.nvmrc` nem
 - `impressao_fila` (tabela Postgres) é uma fila poll-based via HTTP, não mensageria: o servidor grava o texto pronto (`src/impressao-fila.js`) e um app externo (Electron, `agente-impressora/`) busca e marca como impresso via rota HTTP:
   - `src/servidor.js:459` — devolve pendentes (`impressaoFila.pendentes`)
   - `src/servidor.js:467` — marca impresso (`impressaoFila.marcarImpresso`)
-- `agente-impressora/` é um projeto Electron separado dentro do mesmo repositório; não foi varrido arquivo a arquivo nesta Camada 1 (ver LACUNAS).
+- `agente-impressora/` é um projeto Electron separado dentro do mesmo repositório, mapeado em 2026-09-05 (fecha L-04):
+  - **Ponto de entrada:** `agente-impressora/main/main.js` — app desktop (Tray + janela), inicia o poll após login (`did-finish-load`).
+  - **`main/poller.js`** — dois loops HTTP a cada ~3s: `processarFila` (fila genérica `GET /api/agente/fila`, PDV/Mesas/Caixa/reimpressão — texto **já vem pronto do servidor**, o agente só decodifica ESC/POS) e `umCiclo` (delivery, `GET /api/agente/pendentes` — o agente **monta o texto localmente**).
+  - **`main/print-job.js`** — usa `montarJob`/`montarJobDeVias`, que chamam `Comanda.montarComanda`/`montarCozinha` de **`agente-impressora/vendor/comanda.js`** — uma **cópia vendorizada** de `public/comanda.js`, sincronizada só em build (`copy-shared.js`, chamado por `npm run dist`), **nunca automaticamente**. Isso significa que uma correção em `public/comanda.js` só chega ao caminho de delivery do agente depois de um novo release publicado (skill `publicar-agente-impressora`) — o caminho da fila genérica (PDV/Mesas/Caixa) não sofre disso, porque usa o texto já renderizado pelo servidor.
+  - **`main/transporte.js`** + `main/impressora/{rede,serial,usb}.js` — envio ESC/POS por rede (porta 9100), serial (COM) ou USB (fila do Windows), uma conexão por job.
+  - **`main/api.js`** / **`main/auth.js`** — cliente HTTP com Bearer + retry em 401, sessão renovável.
+  - **`main/config.js`** — config local da impressora (porta/corte/acento), persistida no disco do usuário.
+  - **`renderer/`** — UI da janela (login, status, configuração), isolada do `main` por `contextIsolation`.
+  - **Testes:** `agente-impressora/test/*.test.js` (18 casos — `montarJob`, `parseAlvoRede`, `validarConfigImpressora`), rodam com `node --test test/*.test.js` (o `npm test` do agente, `node --test test/`, falha em algumas versões do Node).
+  - **Distribuição:** `.exe` gerado por `electron-builder` (NSIS), publicado como GitHub Release; o painel serve por proxy (`GET /downloads/nymbus-impressora.exe`). Auto-update **desligado de propósito** (sem code signing) — atualização é manual pelo painel.
 
 ### Webhooks recebidos
 - `src/servidor.js:148` — `POST /api/stripe/webhook` (raw body, antes do `express.json`), valida assinatura do Stripe e despacha para `src/stripe.js`.
@@ -141,16 +150,17 @@ Cobertura global: 74,78% linhas / 74,38% branch / 76,57% funções (apenas dos a
 | `src/store.js` | 81,23% | Parcial |
 | `src/pedidos.js` | 65,07% | Parcial — muita lógica de consulta/relatório não exercitada por unit |
 | `src/estoque-db.js` | 71,01% | Parcial |
-| `src/caixa.js` (37KB, zona financeira) | 37,34% | Baixa — grandes blocos de abertura/fechamento/movimentação (linhas 200 a 759) não exercitados pelos testes unitários; a cobertura real desse fluxo depende de `test/integracao/caixa.test.js` e `test/integracao/caixa-comprovantes.test.js`, que não foram executados nesta varredura (tocam banco real, fora do escopo permitido aqui) |
-| `src/empresas.js` | 34,15% | Baixa — autenticação/tenant, mesma ressalva do item acima (integração cobre parte) |
+| `src/caixa.js` (37KB, zona financeira) | 37,34% unitário / **90,08% com integração** | A suíte `test/integracao/*.test.js` (54 testes, contra Postgres real de teste) exercita a maior parte dos fluxos de abertura/fechamento/movimentação que o unitário não alcança |
+| `src/empresas.js` | 34,15% unitário / **69,31% com integração** | Autenticação/tenant, exercitada pelos 5 casos de isolamento entre empresas |
 | `src/clientes.js` | 30,41% | Baixa |
 | `src/impressao-fila.js` | 32,38% | Baixa |
 | `src/auditoria.js` (zona LGPD) | 35,29% | Baixa — só as funções `limparAntigos`/`registrar` parcialmente exercitadas |
-| `src/servidor.js` (3217 linhas, camada de rotas) | não aparece no relatório de cobertura unitário — nenhuma linha desse arquivo foi executada pelos 532 testes de `test/*.test.js` | A cobertura de rota HTTP vem inteiramente de `test/integracao/*.test.js`, não executado nesta varredura. Tratar como cobertura ausente para efeito de raio, nos termos do Passo 5 do reference |
-| `src/multi-bot.js`, `src/fluxo.js`, `src/wa-auth.js`, `src/email.js`, `src/incidentes.js`, `src/plataforma.js`, `src/stripe.js`, `src/cep.js` | não aparecem no relatório — 0% de cobertura pelos testes unitários | Possível cobertura via `test/integracao/stripe.test.js`/`bot.test.js`, não executado aqui |
+| `src/servidor.js` (3217 linhas, camada de rotas) | 0% unitário / **51,13% com integração** | A cobertura de rota HTTP vem quase inteiramente de `test/integracao/*.test.js` — medido em 2026-09-05 (ver nota metodológica) |
+| `src/stripe.js` | 0% unitário / **57,93% com integração** | `test/integracao/stripe.test.js` exercita checkout, webhook e reaplicação de estado |
+| `src/multi-bot.js`, `src/fluxo.js`, `src/wa-auth.js`, `src/email.js`, `src/incidentes.js`, `src/plataforma.js`, `src/cep.js` | 0% unitário; **não exercitados nem pela integração** (22-31% na medição de integração, restos de import transitivo, não teste direto) | Cobertura real ausente — nenhuma suíte hoje exercita estes diretamente |
 | `public/app.js` (429KB), `public/admin.js`, `public/cardapio.js`, `public/app-admin.js`, `public/cadastro.js`, `public/login.js` | não aparecem no relatório — não são exercitados por `node --test` | Cobertura ausente do ponto de vista de teste automatizado; validação desses arquivos é manual/visual, segundo o próprio `CLAUDE.md` |
 
-Nota metodológica: `npm run test:integracao` (a bateria que exercita `src/servidor.js` via HTTP contra um Postgres real) não foi executada nesta varredura — o roteiro operacional da Camada 1 proíbe rodar scripts que escrevam em banco. Isso significa que a cobertura real de `servidor.js`, `caixa.js`, `empresas.js` etc. é maior do que o número unitário isolado sugere, mas essa cobertura adicional não foi medida aqui e não deve ser assumida. Tratar como lacuna (ver LACUNAS L-02).
+Nota metodológica (L-02, fechada em 2026-09-05): `npm run test:integracao` foi executado com `--experimental-test-coverage` isolado (54/54 testes) contra o Postgres de teste descartável do `.env.test` — não o de produção. Os números acima ("com integração") vêm dessa execução isolada, e são reais, não estimados. **Não foi obtido um número único combinando unitário + integração na mesma instrumentação**: uma tentativa de rodar as duas suítes juntas (com `PERMITIR_BANCO_EM_TESTE=1` ligado para liberar a integração) travou por mais de 20 minutos — risco identificado: esse flag também desliga a trava anti-produção que alguns testes unitários pressupõem ligada, e o processo foi encerrado antes de investigar a fundo, por prudência. Os dois números separados (unitário e integração) já respondem o que a lacuna original pedia: `servidor.js`/`caixa.js`/`empresas.js`/`stripe.js` têm cobertura real muito maior do que o unitário isolado sugeria.
 
 ---
 
