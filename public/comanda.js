@@ -89,13 +89,15 @@
       });
       (i.variacoes || []).forEach((v) => linhas.push("   " + ((v.qtd && v.qtd > 1) ? v.qtd + "x " : "") + (v.nome || "")));
       opcionaisLinhas(i.opcionais).forEach((l) => linhas.push(l));
-      if (i.observacao && i.observacao.trim()) linhas.push("   Obs: " + i.observacao.trim());
+      if (i.observacao && i.observacao.trim()) {
+        quebrar("Obs: " + i.observacao.trim(), LARGURA - 3).forEach((l) => linhas.push("   " + l));
+      }
       linhas.push("");
     });
     if (linhas[linhas.length - 1] === "") linhas.pop();
     linhas.push(sep("-"));
     if (pedido.observacao && pedido.observacao.trim()) {
-      linhas.push("Obs. geral: " + pedido.observacao.trim());
+      quebrar("Obs. geral: " + pedido.observacao.trim(), LARGURA).forEach((l) => linhas.push(l));
     }
     linhas.push(sep("="));
     return linhas.join("\n");
