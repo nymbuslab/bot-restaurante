@@ -2287,6 +2287,21 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 .pag-btn:disabled { opacity: 0.4; cursor: default; }
 .pag-reticencias { color: var(--text-disabled); padding: 0 2px; }
 
+/* Botão "Carregar mais" (lista de Pedidos — mesmo container para tabela e cards) */
+.ped-mais {
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ped-mais:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
 /* ---------- Loading spinner ---------- */
 .load {
   display: inline-block;

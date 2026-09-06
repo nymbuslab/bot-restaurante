@@ -4202,7 +4202,7 @@ function irParaPedidosAReceber(opts = {}) {
       if ($("filtroDatas")) $("filtroDatas").style.display = "";
     }
   }
-  paginaPedidos = 1;
+  pedidosVisiveis = LIMITE_INICIAL_PEDIDOS;
   const btn = document.querySelector('.sidebar [data-aba="pedidos"]');
   if (btn) btn.click();
 }
@@ -4866,10 +4866,12 @@ function ligarTooltipBarras(el) {
 let pedidosCache = [];
 const filtros = { periodo: "hoje", tipo: "todos", canal: "todos", busca: "", dataIni: "", dataFim: "", pagamento: "todos" };
 
-// Paginação da lista
-const PEDIDOS_POR_PAGINA = 10;
-let paginaPedidos = 1;
-let listaPedidosAtual = []; // lista filtrada atual (para paginar sem refazer o cálculo)
+// "Carregar mais": mostra 30 pedidos de cara e soma 20 a cada clique, sem nunca
+// renderizar o período inteiro de uma vez. A conta vive em PaginacaoPedidos.
+const LIMITE_INICIAL_PEDIDOS = 30;
+const INCREMENTO_PEDIDOS = 20;
+let pedidosVisiveis = LIMITE_INICIAL_PEDIDOS;
+let listaPedidosAtual = []; // lista filtrada atual (para crescer sem refazer o cálculo)
 
 // Só busca os pedidos do tenant; o recorte (período/tipo/busca) e as métricas
 // são calculados no front em renderPedidos() a partir deste conjunto.
@@ -5211,40 +5213,6 @@ function dataHoraFmt(criadoEm) {
   return `${d.toLocaleDateString("pt-BR")}, ${hora}`;
 }
 
-// Páginas visíveis com janela em torno da atual (… quando há muitas)
-function paginasVisiveis(atual, total) {
-  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
-  const set = new Set([1, total, atual, atual - 1, atual + 1]);
-  const arr = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
-  const out = [];
-  arr.forEach((n, i) => {
-    out.push(n);
-    if (i < arr.length - 1 && arr[i + 1] - n > 1) out.push("…");
-  });
-  return out;
-}
-
-function paginacaoHtml(total, totalPaginas, ini, qtdNaPagina) {
-  if (totalPaginas <= 1) return ""; // cabe tudo numa página → sem paginação
-  const de = ini + 1, ate = ini + qtdNaPagina;
-  let botoes = `<button class="pag-btn pag-seta" data-pag="${paginaPedidos - 1}" ${paginaPedidos === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`;
-  for (const n of paginasVisiveis(paginaPedidos, totalPaginas)) {
-    botoes += n === "…"
-      ? `<span class="pag-reticencias">…</span>`
-      : `<button class="pag-btn ${n === paginaPedidos ? "ativo" : ""}" data-pag="${n}">${n}</button>`;
-  }
-  botoes += `<button class="pag-btn pag-seta" data-pag="${paginaPedidos + 1}" ${paginaPedidos === totalPaginas ? "disabled" : ""} aria-label="Próxima página">›</button>`;
-  return `<div class="pedidos-paginacao">
-    <span class="pag-info">Mostrando ${de}–${ate} de ${total} pedidos</span>
-    <div class="pag-controles">${botoes}</div>
-  </div>`;
-}
-
-function irParaPagina(n) {
-  paginaPedidos = n;
-  renderListaPedidos(listaPedidosAtual);
-}
-
 // Reaplica a animação de entrada (remove a classe, força reflow, readiciona).
 function animarTroca(el) {
   if (!el) return;
@@ -5311,12 +5279,10 @@ function renderListaPedidos(lista) {
     return;
   }
 
-  // Paginação: fatia a lista filtrada na página atual
-  const totalPaginas = Math.ceil(lista.length / PEDIDOS_POR_PAGINA);
-  if (paginaPedidos > totalPaginas) paginaPedidos = totalPaginas;
-  if (paginaPedidos < 1) paginaPedidos = 1;
-  const ini = (paginaPedidos - 1) * PEDIDOS_POR_PAGINA;
-  const pagina = lista.slice(ini, ini + PEDIDOS_POR_PAGINA);
+  // "Carregar mais": mostra a contagem visível atual da lista filtrada (nunca o
+  // período inteiro de uma vez). A conta vive em PaginacaoPedidos.
+  const visiveis = PaginacaoPedidos.contagemInicial(lista.length, pedidosVisiveis);
+  const pagina = lista.slice(0, visiveis);
 
   // Resumo do recorte atual (não cancelados p/ faturamento/ticket) acima da lista.
   const resumo = resumoPedidosHtml(lista);
@@ -5362,7 +5328,17 @@ function renderListaPedidos(lista) {
   });
   cards += "</div>";
 
-  cont.innerHTML = resumo + tabela + cards + paginacaoHtml(lista.length, totalPaginas, ini, pagina.length);
+  // Botão "Carregar mais" no fim da lista: aparece só enquanto há pedidos além
+  // dos visíveis (mesmo container para a tabela do desktop e os cards do celular).
+  const temMais = PaginacaoPedidos.temMais(visiveis, lista.length);
+  const paginacao = temMais
+    ? `<div class="pedidos-paginacao">
+        <span class="pag-info">Mostrando ${visiveis} de ${lista.length} pedidos</span>
+        <button type="button" class="ped-mais" data-carregar-mais="1">Carregar mais</button>
+      </div>`
+    : "";
+
+  cont.innerHTML = resumo + tabela + cards + paginacao;
 
   // Linha (desktop) ou card (mobile) → abre o detalhe existente. Mouse E teclado
   // (Enter/Espaço): `e.target === el` garante que o Enter num botão de ação interno
@@ -5392,31 +5368,31 @@ function renderListaPedidos(lista) {
     })
   );
 
-  // Controles de paginação
-  cont.querySelectorAll("[data-pag]").forEach((b) =>
-    b.addEventListener("click", () => {
-      const n = +b.dataset.pag;
-      if (n >= 1 && n <= totalPaginas && n !== paginaPedidos) irParaPagina(n);
-    })
-  );
+  // "Carregar mais": cresce a contagem visível e re-renderiza a partir do array
+  // já em memória (sem nova requisição ao servidor).
+  const btnMais = cont.querySelector("[data-carregar-mais]");
+  if (btnMais) btnMais.addEventListener("click", () => {
+    pedidosVisiveis = PaginacaoPedidos.proximaContagem(pedidosVisiveis, INCREMENTO_PEDIDOS, listaPedidosAtual.length);
+    renderListaPedidos(listaPedidosAtual);
+  });
 }
 
-// Handlers dos filtros (recalculam sem refazer fetch; voltam para a página 1).
+// Handlers dos filtros (recalculam sem refazer fetch; voltam para a contagem inicial).
 $("filtroPeriodo").addEventListener("click", (e) => {
   const btn = e.target.closest(".filtro-chip");
   if (!btn) return;
   filtros.periodo = btn.dataset.periodo;
   $("filtroPeriodo").querySelectorAll(".filtro-chip").forEach((b) => b.classList.toggle("ativo", b === btn));
   $("filtroDatas").style.display = filtros.periodo === "custom" ? "" : "none";
-  paginaPedidos = 1;
+  pedidosVisiveis = LIMITE_INICIAL_PEDIDOS;
   carregarPedidos(); // período mudou → re-busca a janela no servidor
 });
-$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; paginaPedidos = 1; carregarPedidos(); });
-$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; paginaPedidos = 1; carregarPedidos(); });
-$("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; paginaPedidos = 1; renderPedidos(true); });
-$("filtroCanal").addEventListener("change", (e) => { filtros.canal = e.target.value; paginaPedidos = 1; renderPedidos(true); });
-$("filtroPagamento").addEventListener("change", (e) => { filtros.pagamento = e.target.value; paginaPedidos = 1; renderPedidos(true); });
-$("buscaPedido").addEventListener("input", (e) => { filtros.busca = e.target.value; paginaPedidos = 1; renderPedidos(); });
+$("dataIni").addEventListener("change", (e) => { filtros.dataIni = e.target.value; pedidosVisiveis = LIMITE_INICIAL_PEDIDOS; carregarPedidos(); });
+$("dataFim").addEventListener("change", (e) => { filtros.dataFim = e.target.value; pedidosVisiveis = LIMITE_INICIAL_PEDIDOS; carregarPedidos(); });
+$("filtroTipo").addEventListener("change", (e) => { filtros.tipo = e.target.value; pedidosVisiveis = LIMITE_INICIAL_PEDIDOS; renderPedidos(true); });
+$("filtroCanal").addEventListener("change", (e) => { filtros.canal = e.target.value; pedidosVisiveis = LIMITE_INICIAL_PEDIDOS; renderPedidos(true); });
+$("filtroPagamento").addEventListener("change", (e) => { filtros.pagamento = e.target.value; pedidosVisiveis = LIMITE_INICIAL_PEDIDOS; renderPedidos(true); });
+$("buscaPedido").addEventListener("input", (e) => { filtros.busca = e.target.value; pedidosVisiveis = LIMITE_INICIAL_PEDIDOS; renderPedidos(); });
 
 // Ícones neutros (Lucide) para o detalhe
 const ICO_USER = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
