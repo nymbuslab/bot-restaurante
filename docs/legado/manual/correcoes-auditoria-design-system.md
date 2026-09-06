@@ -444,20 +444,22 @@ Nenhum dado novo necessário — use os itens já cadastrados no cardápio de te
 
 | Caso | Executado por | Data | Resultado | Observação |
 |---|---|---|---|---|
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
-| 4 | | | | |
-| 5 | | | | |
-| 6 | | | | |
-| 7 | | | | |
-| 8 | | | | |
-| 9 | | | | |
-| 10 | | | | |
-| 11 | | | | |
-| 12 | | | | |
-| 13 | | | | |
-| 14 | | | | |
-| 15 | | | | |
-| 16 | | | | |
-| 17 | | | | |
+| 1 | Pabllo Martins | 2026-09-05 | OK | |
+| 2 | Pabllo Martins | 2026-09-05 | OK | |
+| 3 | Pabllo Martins | 2026-09-05 | OK | |
+| 4 | Pabllo Martins | 2026-09-05 | OK | |
+| 5 | Pabllo Martins | 2026-09-05 | OK | |
+| 6 | Pabllo Martins | 2026-09-05 | OK | |
+| 7 | Pabllo Martins | 2026-09-05 | OK | |
+| 8 | Pabllo Martins | 2026-09-05 | OK | |
+| 9 | Pabllo Martins | 2026-09-05 | OK | |
+| 10 | Pabllo Martins | 2026-09-05 | OK | |
+| 11 | Pabllo Martins | 2026-09-05 | OK | |
+| 12 | Pabllo Martins | 2026-09-05 | OK | |
+| 13 | Pabllo Martins | 2026-09-05 | OK | |
+| 14 | Pabllo Martins | 2026-09-05 | OK | |
+| 15 | Pabllo Martins | 2026-09-05 | OK | |
+| 16 | Pabllo Martins | 2026-09-05 | OK | |
+| 17 | Pabllo Martins | 2026-09-05 | OK | |
+
+Veredito: todos os 17 casos conferidos e aprovados, incluindo os 7 bloqueantes (gate de PDV/Mesas/Caixa). Confirmado pelo dono do projeto em 2026-09-05, sem observação de colateral.
