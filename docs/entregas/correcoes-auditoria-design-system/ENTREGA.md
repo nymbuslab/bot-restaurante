@@ -60,8 +60,12 @@ commits:
     commit: 12deb85
   - task: null
     commit: 0ad803b
+  - task: null
+    commit: 45b78df
+  - task: null
+    commit: d0abef1
 modulo_afetado: [public, test]
-arquivos_alterados: [.gitignore, PROGRESSO.md, docs/design-system/AUDIT.md, docs/design-system/DESIGN-SYSTEM.md, docs/design-system/RESUMO.md, docs/entregas/correcoes-auditoria-design-system/ENTREGA.md, docs/legado/manual/correcoes-auditoria-design-system.md, docs/legado/raio/correcoes-auditoria-design-system.md, docs/sprintx/features/correcoes-auditoria-design-system/00-AUDITORIA.md, docs/sprintx/features/correcoes-auditoria-design-system/00-BLOQUEIOS.md, docs/sprintx/features/correcoes-auditoria-design-system/00-DECISOES.md, docs/sprintx/features/correcoes-auditoria-design-system/FECHAMENTO.md, docs/sprintx/features/correcoes-auditoria-design-system/ORQUESTRADOR.md, docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-INDICE.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-LACUNAS.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-toasts-e-botoes-fechar.md, docs/sprintx/features/correcoes-auditoria-design-system/base/01-contraste-cor.md, docs/sprintx/features/correcoes-auditoria-design-system/base/02-estados-carregamento-e-erro.md, docs/sprintx/features/correcoes-auditoria-design-system/base/03-cardapio-estados-vazios.md, docs/sprintx/features/correcoes-auditoria-design-system/base/04-campo-vs-auth-campo.md, docs/sprintx/features/correcoes-auditoria-design-system/base/05-heading-painel-master.md, docs/sprintx/features/correcoes-auditoria-design-system/base/06-button-mini-touch.md, docs/sprintx/features/correcoes-auditoria-design-system/base/07-pdv-breakpoint.md, docs/sprintx/features/correcoes-auditoria-design-system/base/08-abas-configuracoes-editor.md, docs/sprintx/features/correcoes-auditoria-design-system/base/09-padroes-de-teste-frontend.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/fases.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/sprint.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/tasks.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/fases.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/sprint.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/tasks.md, public/admin-master.html, public/admin.html, public/app.js, public/style.css, test/apoio/arquivo-estatico.js, test/arquivo-estatico.test.js, test/design-system-botoes-fechar.test.js, test/design-system-campo-auth-campo.test.js, test/design-system-cardapio-busca-vazia.test.js, test/design-system-cardapio-vazio.test.js, test/design-system-carregando.test.js, test/design-system-contraste.test.js, test/design-system-editor-tabs.test.js, test/design-system-erro-rede.test.js, test/design-system-heading-master.test.js, test/design-system-mini-lista.test.js, test/design-system-pdv-breakpoint.test.js, test/design-system-toast.test.js]
+arquivos_alterados: [.gitignore, PROGRESSO.md, docs/design-system/AUDIT.md, docs/design-system/DESIGN-SYSTEM.md, docs/design-system/RESUMO.md, docs/entregas/correcoes-auditoria-design-system/ATENCAO.md, docs/entregas/correcoes-auditoria-design-system/ENTREGA.md, docs/entregas/correcoes-auditoria-design-system/QA-PACOTE.md, docs/legado/manual/correcoes-auditoria-design-system.md, docs/legado/raio/correcoes-auditoria-design-system.md, docs/sprintx/features/correcoes-auditoria-design-system/00-AUDITORIA.md, docs/sprintx/features/correcoes-auditoria-design-system/00-BLOQUEIOS.md, docs/sprintx/features/correcoes-auditoria-design-system/00-DECISOES.md, docs/sprintx/features/correcoes-auditoria-design-system/FECHAMENTO.md, docs/sprintx/features/correcoes-auditoria-design-system/ORQUESTRADOR.md, docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-INDICE.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-LACUNAS.md, docs/sprintx/features/correcoes-auditoria-design-system/base/00-toasts-e-botoes-fechar.md, docs/sprintx/features/correcoes-auditoria-design-system/base/01-contraste-cor.md, docs/sprintx/features/correcoes-auditoria-design-system/base/02-estados-carregamento-e-erro.md, docs/sprintx/features/correcoes-auditoria-design-system/base/03-cardapio-estados-vazios.md, docs/sprintx/features/correcoes-auditoria-design-system/base/04-campo-vs-auth-campo.md, docs/sprintx/features/correcoes-auditoria-design-system/base/05-heading-painel-master.md, docs/sprintx/features/correcoes-auditoria-design-system/base/06-button-mini-touch.md, docs/sprintx/features/correcoes-auditoria-design-system/base/07-pdv-breakpoint.md, docs/sprintx/features/correcoes-auditoria-design-system/base/08-abas-configuracoes-editor.md, docs/sprintx/features/correcoes-auditoria-design-system/base/09-padroes-de-teste-frontend.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/fases.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/sprint.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-01/tasks.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/fases.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/sprint.md, docs/sprintx/features/correcoes-auditoria-design-system/sprint-02/tasks.md, public/admin-master.html, public/admin.html, public/app.js, public/style.css, test/apoio/arquivo-estatico.js, test/arquivo-estatico.test.js, test/design-system-botoes-fechar.test.js, test/design-system-campo-auth-campo.test.js, test/design-system-cardapio-busca-vazia.test.js, test/design-system-cardapio-vazio.test.js, test/design-system-carregando.test.js, test/design-system-contraste.test.js, test/design-system-editor-tabs.test.js, test/design-system-erro-rede.test.js, test/design-system-heading-master.test.js, test/design-system-mini-lista.test.js, test/design-system-pdv-breakpoint.test.js, test/design-system-toast.test.js]
 faixa_atencao:
   - arquivo: .gitignore
     faixa: alta
@@ -73,7 +77,11 @@ faixa_atencao:
     faixa: alta
   - arquivo: docs/design-system/RESUMO.md
     faixa: alta
+  - arquivo: docs/entregas/correcoes-auditoria-design-system/ATENCAO.md
+    faixa: alta
   - arquivo: docs/entregas/correcoes-auditoria-design-system/ENTREGA.md
+    faixa: alta
+  - arquivo: docs/entregas/correcoes-auditoria-design-system/QA-PACOTE.md
     faixa: alta
   - arquivo: docs/legado/manual/correcoes-auditoria-design-system.md
     faixa: alta
@@ -165,7 +173,7 @@ faixa_atencao:
     faixa: baixa
 raio: alto
 atencao:
-  olho_obrigatorio: 36
+  olho_obrigatorio: 38
   leitura_rapida: 1
   dispensavel: 13
 portao: pronto
@@ -196,8 +204,8 @@ mudanças já feitas, para então organizá-las em commits.
 | O quê | Onde |
 |---|---|
 | Descrição do pull request | ainda não gerada (E4 não rodou) |
-| Pacote de QA | ainda não gerado (E5 não rodou) |
-| Classificação da atenção | [docs/entregas/correcoes-auditoria-design-system/ATENCAO.md](ATENCAO.md) — 36 olho obrigatório, 1 leitura rápida, 13 dispensável |
+| Pacote de QA | [docs/entregas/correcoes-auditoria-design-system/QA-PACOTE.md](QA-PACOTE.md) — 17 casos, 7 bloqueantes, ainda não executado |
+| Classificação da atenção | [docs/entregas/correcoes-auditoria-design-system/ATENCAO.md](ATENCAO.md) — 38 olho obrigatório, 1 leitura rápida, 13 dispensável |
 | Trabalho de origem | [docs/sprintx/features/correcoes-auditoria-design-system/](../../sprintx/features/correcoes-auditoria-design-system/) |
 | Raio de impacto (legadox) | [docs/legado/raio/correcoes-auditoria-design-system.md](../../legado/raio/correcoes-auditoria-design-system.md) — ALTO, aprovado |
 | Roteiro de teste manual (legadox) | [docs/legado/manual/correcoes-auditoria-design-system.md](../../legado/manual/correcoes-auditoria-design-system.md) — ainda não executado |
@@ -208,10 +216,11 @@ mudanças já feitas, para então organizá-las em commits.
 
 - Portão de prontidão: **PRONTO** na reauditoria (a primeira rodada bloqueou por falta de branch/commits e de raio de impacto; ambos resolvidos pelo E0/E1 desta abertura retroativa e pela Camada 2 do legadox).
 - Commits: 24 — 13 por task (harness + as 12 correções, cada uma com seu arquivo de teste), 1 por task para `admin-master.html` (única sem conflito de arquivo), 3 agrupados por arquivo compartilhado (`style.css`, `admin.html`, `app.js` — ver aviso abaixo), 2 para os desvios (`.gitignore`, `PROGRESSO.md`, aprovados pelo dono) e 5 de documentação (design-system, sprintx, legado × 2, registro da entrega).
-- Atenção humana: E3 rodou (`revisor-diff`) — 50 arquivos classificados, **36 olho obrigatório, 1 leitura rápida, 13 dispensável** (ver `ATENCAO.md`). Os 4 arquivos de produção (`public/app.js`, `public/admin.html`, `public/admin-master.html`, `public/style.css`) e os 32 documentos de processo caem em olho obrigatório: os primeiros por virem do raio ALTO (o gate de PDV/Mesas/Caixa em `app.js`/`admin.html` continua sem cobertura de execução real, só teste estático de texto), os segundos por não se encaixarem em nenhum critério O/L/D — regra de desempate, não indício de defeito.
+- Atenção humana: E3 rodou (`revisor-diff`) — 52 arquivos classificados, **38 olho obrigatório, 1 leitura rápida, 13 dispensável** (ver `ATENCAO.md`). Os 4 arquivos de produção (`public/app.js`, `public/admin.html`, `public/admin-master.html`, `public/style.css`) e os 34 documentos de processo caem em olho obrigatório: os primeiros por virem do raio ALTO (o gate de PDV/Mesas/Caixa em `app.js`/`admin.html` continua sem cobertura de execução real, só teste estático de texto), os segundos por não se encaixarem em nenhum critério O/L/D — regra de desempate, não indício de defeito.
+- Pacote de QA: E5 rodou — `QA-PACOTE.md` com os 17 casos completos, sem jargão técnico, pronto para uma pessoa executar sem ler código.
 - Push: não feito.
 - Pull request: não aberto.
-- Falta para o merge: E4, E5, E6 (push), E7 (PR) — e, fora do fluxo da mergex, a execução do roteiro de teste manual (pelo menos os Casos 1-7, bloqueantes) antes do merge.
+- Falta para o merge: E4, E6 (push), E7 (PR) — e, fora do fluxo da mergex, a execução do roteiro de teste manual (pelo menos os Casos 1-7, bloqueantes) antes do merge.
 
 ## Avisos
 

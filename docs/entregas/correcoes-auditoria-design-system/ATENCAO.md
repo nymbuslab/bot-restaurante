@@ -3,7 +3,9 @@
 Branch: `feature/correcoes-auditoria-design-system` → `main`
 Data: 2026-09-05
 
-**50 arquivos — 36 olho obrigatório, 1 leitura rápida, 13 dispensável**
+**52 arquivos — 38 olho obrigatório, 1 leitura rápida, 13 dispensável**
+
+(Recontagem após a própria E3 e a E5 gravarem `ATENCAO.md` e `QA-PACOTE.md` na pasta da entrega — os dois entram na mesma classificação dos demais documentos de processo, abaixo.)
 
 A classificação é derivada de evidência registrada, nunca de sensação.
 Tamanho de diff não é critério.
@@ -32,7 +34,9 @@ Nenhum destes é código executável, migração, contrato público, dado pessoa
 | `docs/design-system/AUDIT.md` | A | +167 | Sem critério O/L/D aplicável. Documentação de auditoria de design, sem código. |
 | `docs/design-system/DESIGN-SYSTEM.md` | A | +284 | Sem critério O/L/D aplicável. Cartografia do design system, sem código. |
 | `docs/design-system/RESUMO.md` | A | +19 | Sem critério O/L/D aplicável. |
+| `docs/entregas/correcoes-auditoria-design-system/ATENCAO.md` | A | (este arquivo) | Sem critério O/L/D aplicável. A própria classificação do E3. |
 | `docs/entregas/correcoes-auditoria-design-system/ENTREGA.md` | A | +136 | Sem critério O/L/D aplicável. Registro da própria entrega. |
+| `docs/entregas/correcoes-auditoria-design-system/QA-PACOTE.md` | A | +434 | Sem critério O/L/D aplicável. Pacote de QA (E5), roteiro de teste manual embutido. |
 | `docs/legado/manual/correcoes-auditoria-design-system.md` | A | +463 | Sem critério O/L/D aplicável. Roteiro de teste manual — os Casos 1-7 (bloqueantes) ainda não foram executados por uma pessoa. |
 | `docs/legado/raio/correcoes-auditoria-design-system.md` | A | +267 | Sem critério O/L/D aplicável. É o próprio cálculo de raio ALTO e a aprovação humana que sustentam esta classificação. |
 | `docs/sprintx/features/.../00-AUDITORIA.md` | A | +62 | Sem critério O/L/D aplicável. Veredito da auditoria F5: SIM. |
