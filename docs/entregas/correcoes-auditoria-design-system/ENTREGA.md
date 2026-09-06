@@ -184,7 +184,7 @@ desvios:
     motivo: alterado (fechamento do item no progresso do projeto) sem estar declarado em nenhuma task
 push_feito: true
 pr_url: https://github.com/nymbuslab/bot-restaurante/pull/6
-pr_estado: aberto
+pr_estado: merged
 criado_em: 2026-09-05
 atualizado_em: 2026-09-05
 entregue_em: 2026-09-05
@@ -210,7 +210,7 @@ mudanças já feitas, para então organizá-las em commits.
 | Roteiro de teste manual (legadox) | [docs/legado/manual/correcoes-auditoria-design-system.md](../../legado/manual/correcoes-auditoria-design-system.md) — ainda não executado |
 | Portão E2 (histórico completo) | [docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md](../../sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md) — 1ª rodada BLOQUEADA, 2ª rodada PRONTO |
 | Descrição do pull request | [docs/entregas/correcoes-auditoria-design-system/PR.md](PR.md) |
-| Pull request | [#6](https://github.com/nymbuslab/bot-restaurante/pull/6) — rascunho |
+| Pull request | [#6](https://github.com/nymbuslab/bot-restaurante/pull/6) — **integrado (merged) em 2026-09-06** |
 
 ## Estado da entrega
 
@@ -220,8 +220,9 @@ mudanças já feitas, para então organizá-las em commits.
 - Pacote de QA: E5 rodou — `QA-PACOTE.md` com os 17 casos completos, sem jargão técnico, pronto para uma pessoa executar sem ler código.
 - Descrição do PR: E4 rodou — `PR.md` gravado, com a lista completa de arquivos, raio ALTO em destaque e a classificação de atenção humana.
 - Push: feito — `origin/feature/correcoes-auditoria-design-system` aponta para o mesmo commit do local.
-- Pull request: aberto como **rascunho** — [#6](https://github.com/nymbuslab/bot-restaurante/pull/6) (rascunho porque o pacote de QA ainda não foi aprovado por um humano).
-- Falta para o merge: a execução do roteiro de teste manual (pelo menos os Casos 1-7, bloqueantes) e a revisão humana do PR — nenhuma das duas é automática, e `/mergex-revisar` só roda por chamada explícita.
+- Pull request: **integrado (merged)** — [#6](https://github.com/nymbuslab/bot-restaurante/pull/6), em 2026-09-06, por `/mergex-revisar` com confirmação explícita do dono do projeto (incluindo a confirmação nomeada dos 4 arquivos em olho obrigatório).
+- Roteiro de teste manual: executado e aprovado pelo dono em 2026-09-05, os 17 casos (ver `docs/legado/manual/correcoes-auditoria-design-system.md`).
+- Falta para o merge: nada — a entrega está completa e integrada em `main`.
 
 ## Avisos
 
