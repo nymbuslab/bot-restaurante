@@ -960,6 +960,13 @@
         <button type="button" class="primario" id="btnPdvVencidoCaixa">Ir para o Caixa</button>
       </div>
 
+      <div class="pdv-semcaixa" id="pdvErroRede" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <h3>Não deu para carregar</h3>
+        <p class="sub">A conexão com o servidor falhou. Verifique a internet e tente de novo.</p>
+        <button type="button" class="primario" id="btnPdvErroRede">Tentar de novo</button>
+      </div>
+
       <div class="pdv" id="pdvConteudo" hidden>
         <div class="pdv-cats" id="pdvCats" role="tablist" aria-label="Categorias"></div>
         <div class="pdv-produtos">
@@ -1046,6 +1053,13 @@
         <h3>Feche o caixa do dia anterior</h3>
         <p class="sub">Há um caixa aberto de outro dia. Feche-o no Caixa e abra um novo para usar Mesas hoje.</p>
         <button type="button" class="primario" id="btnMesasVencidoCaixa">Ir para o Caixa</button>
+      </div>
+      <!-- estado: erro de rede/servidor no carregamento -->
+      <div class="pdv-semcaixa" id="mesasErroRede" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <h3>Não deu para carregar</h3>
+        <p class="sub">A conexão com o servidor falhou. Verifique a internet e tente de novo.</p>
+        <button type="button" class="primario" id="btnMesasErroRede">Tentar de novo</button>
       </div>
       <!-- conteúdo principal -->
       <div id="mesasConteudo" hidden>
@@ -1560,7 +1574,7 @@
   </div>
 
   <!-- Toast container -->
-  <div id="toast-container"></div>
+  <div id="toast-container" aria-live="polite"></div>
 
   <!-- Gate de assinatura: cobre o painel quando não há acesso (sem trial/assinatura ativa) -->
   <div id="gate-overlay" class="gate-overlay" style="display:none">
@@ -1682,7 +1696,7 @@
           <h3 id="pedido-numero"></h3>
           <span id="pedido-quando" class="sub"></span>
         </div>
-        <button class="secundario mini" id="pedido-fechar">✕</button>
+        <button class="secundario mini" id="pedido-fechar" aria-label="Fechar">✕</button>
       </div>
       <div id="pedido-detalhe-corpo"></div>
       <div class="ped-rodape">
@@ -1722,7 +1736,7 @@
           <h3>QR Code do cardápio</h3>
           <span class="sub">Aponte a câmera do celular para abrir o cardápio</span>
         </div>
-        <button class="secundario mini" id="qr-fechar">✕</button>
+        <button class="secundario mini" id="qr-fechar" aria-label="Fechar">✕</button>
       </div>
       <div class="qr-corpo">
         <img id="qr-img" class="qr-img" alt="QR Code do cardápio digital" />
@@ -1743,14 +1757,14 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           <h3 id="editor-titulo">Editar item</h3>
         </div>
-        <button class="secundario mini" id="editor-fechar">✕</button>
+        <button class="secundario mini" id="editor-fechar" aria-label="Fechar">✕</button>
       </div>
 
       <!-- NAV DE ABAS -->
-      <div class="editor-tabs" id="editor-tabs-nav">
-        <button type="button" class="editor-tab ativo" data-tab="principal">Principal</button>
-        <button type="button" class="editor-tab" data-tab="opcionais">Complementos</button>
-        <button type="button" class="editor-tab" data-tab="variacoes">Variações</button>
+      <div class="editor-tabs" id="editor-tabs-nav" role="tablist">
+        <button type="button" class="editor-tab ativo" data-tab="principal" role="tab" aria-selected="true">Principal</button>
+        <button type="button" class="editor-tab" data-tab="opcionais" role="tab">Complementos</button>
+        <button type="button" class="editor-tab" data-tab="variacoes" role="tab">Variações</button>
       </div>
 
       <!-- PAINEL PRINCIPAL -->
@@ -1866,7 +1880,7 @@
     <div class="modal-caixa cartao-caixa">
       <div class="cartao-header">
         <h3>Adicionar cartão</h3>
-        <button class="secundario mini" id="cartao-fechar" type="button">✕</button>
+        <button class="secundario mini" id="cartao-fechar" type="button" aria-label="Fechar">✕</button>
       </div>
       <form id="cartao-form">
         <div id="cartao-payment" class="co-payment"><!-- Stripe injeta o Payment Element aqui --></div>

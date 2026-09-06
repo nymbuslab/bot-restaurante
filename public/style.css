@@ -12,6 +12,10 @@
   --text-primary: #F0F2FA;
   --text-secondary: #8B92B3;
   --text-disabled: #4A5068;
+  /* Texto secundario sobre fundo overlay escuro: o --text-secondary cheio da
+     4,39:1 em texto pequeno sobre --bg-overlay, abaixo do minimo AA (4,5:1).
+     Este da 5,27:1, no mesmo papel que --accent-fg/--error-fg cumprem. */
+  --text-secondary-fg: #9AA1BF;
 
   --accent: #6344BC;
   --accent-hover: #7150D0;
@@ -227,12 +231,18 @@ h3 {
   gap: 6px;
 }
 
+.campo label,
 .auth-campo label {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.campo label {
+  display: block;
+  margin-bottom: 5px;
 }
 
 .input-wrap {
@@ -994,6 +1004,14 @@ button.perigo:hover {
 
 button.mini { padding: 6px 12px; font-size: 12px; }
 
+/* Variante de linha de tabela: alvo de toque maior (>= 36px) para botoes de acao,
+   herdando a base de button.mini acima. */
+button.mini-lista,
+button.mini.mini-lista {
+  padding: 9px 12px;
+  min-height: 36px;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1013,16 +1031,6 @@ button:disabled {
 /* ---------- Campos de formulário ---------- */
 .campo { margin-bottom: 14px; }
 .campo:last-child { margin-bottom: 0; }
-
-.campo label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 5px;
-}
 
 .linha { display: flex; gap: 12px; flex-wrap: wrap; }
 .linha > .campo { flex: 1; min-width: 140px; }
@@ -1212,10 +1220,6 @@ button:disabled {
   font-size: 13px; color: var(--text-secondary); cursor: pointer;
 }
 .cardapio-arq-toggle input { accent-color: var(--accent); cursor: pointer; }
-.cardapio-vazio-busca {
-  text-align: center; color: var(--text-secondary); padding: 28px 12px; font-size: 14px;
-}
-
 /* ---------- Cardápio: tabela de itens (Gestão de Itens) ---------- */
 .editor-dica { font-size: 12px; color: var(--text-secondary); margin: 6px 0 0; line-height: 1.4; }
 
@@ -5458,7 +5462,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-pg-confirmar { padding: 13px 24px; font-size: 15px; }
 
 /* Responsivo */
-@media (max-width: 980px) {
+@media (max-width: 1100px) {
   .pdv { grid-template-columns: 116px 1fr 320px; gap: 14px; }
 }
 @media (max-width: 860px) {
@@ -5985,7 +5989,7 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   white-space: nowrap;
   flex-shrink: 0;
 }
-.mesa-status-badge.s-livre { background: var(--bg-overlay); color: var(--text-secondary); }
+.mesa-status-badge.s-livre { background: var(--bg-overlay); color: var(--text-secondary-fg); }
 .mesa-status-badge.s-ocupada { background: var(--success-subtle); color: var(--success); }
 .mesa-status-badge.s-pediu_conta { background: var(--warning-subtle); color: var(--warning); }
 .mesa-status-badge.s-fechando { background: var(--accent-subtle); color: var(--accent-fg); }
