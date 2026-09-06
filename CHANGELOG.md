@@ -1061,3 +1061,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   com o valor líquido zerado e o valor cancelado em detalhe.
 - A movimentação real continua registrada separadamente por baixo, para auditoria e cálculo do
   fechamento, mas o operador deixa de ver venda e cancelamento como dois históricos soltos.
+
+## [1.2.4] — Painel mais acessível e mais fácil de usar com leitor de tela
+
+- Avisos de sucesso e erro (toasts) agora são lidos em voz alta por leitores de tela.
+- Botões de fechar (✕) das janelas de detalhe, QR Code, editor de item e cartão passam a
+  anunciar "Fechar".
+- PDV e Mesas avisam claramente quando cai a conexão, em vez de confundir com "caixa fechado".
+- Cardápio sem categoria e busca sem resultado mostram uma mensagem amigável, com atalho para
+  resolver.
+- Botões de editar/excluir do Cardápio ficam mais fáceis de tocar no celular.

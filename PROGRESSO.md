@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-09-05
+atualizado: 2026-09-06
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -19,6 +19,9 @@ _(nada no momento)_
 ## 📋 Próximos Passos
 
 ### Em aberto
+
+- [ ] **(P1) Paginação fixa da tela de Pedidos** — a lista sempre mostra 10 linhas, mesmo em monitor grande, obrigando a clicar "próxima página" com metade da tela vazia. Trocar por paginação adaptativa (calcular quantas linhas cabem na altura disponível) ou "carregar mais"/scroll infinito. Achado (Bloqueio) da auditoria de design system, `docs/design-system/AUDIT.md` — ficou de fora da correção dos 12 achados Alto/Médio/Baixo por ser um item maior, tratado à parte.
+- [ ] **(P1) Confirmação de exclusão sem o nome do item** — excluir item, categoria, grupo ou mesa mostra só "Excluir item?"/"Excluir categoria?" etc., sem dizer qual — clicar na linha errada apaga "às cegas". O próprio código já faz certo em outro lugar (`public/app.js:1198`, parar de controlar estoque, interpola o nome) — replicar esse padrão nos 4 fluxos de exclusão (`app.js:2258`, `:344`, `:480`, `:7976`). Achado (Bloqueio) da mesma auditoria de design system.
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
@@ -53,6 +56,8 @@ _(nada no momento)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **(mergex) Entrega e integração das correções de design system** — a correção abaixo (13 tasks, 573/573) foi organizada retroativamente pelo método mergex, já que a F6 tinha rodado direto na `main`, sem branch nem commit: branch `feature/correcoes-auditoria-design-system` aberta, commits separados por task/arquivo, portão de prontidão (E2) `PRONTO`. Raio de impacto calculado pela legadox saiu **ALTO** (o `toast()` do painel tem 74 chamadores, muito acima do limiar, e a mudança tocou o gate que decide quando PDV/Mesas/Caixa liberam venda) — aprovado explicitamente pelo dono, ciente do risco. Roteiro de teste manual (17 casos, 7 bloqueantes, sem jargão técnico) gerado e **executado e aprovado por Pabllo Martins** (17/17 OK) antes do merge. Classificação de atenção humana (E3): 38 arquivos em olho obrigatório (4 de código de produção + 34 de documentação de processo, por regra de desempate), 1 leitura rápida, 13 dispensável — ver `docs/entregas/correcoes-auditoria-design-system/`. PR #6 revisado via `/mergex-revisar`, com confirmação nomeada dos 4 arquivos de código em olho obrigatório, e **integrado (merged) na `main`** em 2026-09-06 (commit de merge `f01ee77`). — 2026-09-06
 
 - [x] **(P1) Corrigidos os 12 achados Alto/Médio/Baixo da auditoria de design system** — a correção rodou nas sprints 01 e 02 do orquestrador `docs/sprintx/features/correcoes-auditoria-design-system/`, método sprintx (teste vermelho → implementação verde), e está documentada na íntegra lá (ORQUESTRADOR.md, tasks.md das duas sprints, base, FECHAMENTO.md). O que cada achado virou: **Alto #1** toast com `aria-live="polite"` + `role="alert"`; **Alto #2** `aria-label="Fechar"` nos 4 botões `✕` (`#qr-fechar`/`#editor-fechar`/`#cartao-fechar` + o 4º de D-09); **Alto #3** token novo `--text-secondary-fg` (5,27:1 sobre `--bg-overlay`, acima do AA 4,5) e `.mesa-status-badge.s-livre` passou a usá-lo; **Alto #4** "Carregando…" nas 4 telas (Pedidos/PDV/Mesas/Caixa) antes do fetch; **Alto #5** erro de rede no PDV/Mesas virou bloco próprio com botão "Tentar de novo" (D-02), distinto de "caixa fechado"; **Alto #6** cardápio de tenant novo mostra estado vazio com CTA "Ir para Categorias". **Médio #1** `.campo` e `.auth-campo` passaram a compartilhar um único bloco de label (5 propriedades) mantendo o layout dos containers; **Médio #2** os 4 títulos de aba do painel master viraram `h2.am-titulo` (fica só 1 `h1` na área autenticada); **Médio #3** busca vazia do Cardápio usa o componente `.estado-vazio` (`.cardapio-vazio-busca` removido do JS e do CSS); **Médio #4** `button.mini-lista` novo com `min-height:36px` para os 3 botões de ação de item do cardápio; **Médio #5** breakpoint do PDV subiu de 980px para 1100px, alinhado ao da sidebar. **Baixo #1** abas do editor ganharam `role="tablist"`/`role="tab"` com `aria-selected` dinâmico. 13 arquivos de teste novos (`test/design-system-*.test.js` + `test/arquivo-estatico.test.js` da sprint-01). Validação: `npm test` (573/573), `npm run check` (141 arquivos). Conferência visual das tasks puramente visuais registrada como ressalva (tool de renderização indisponível na sessão) — ver `FECHAMENTO.md`. — 2026-09-05
 
