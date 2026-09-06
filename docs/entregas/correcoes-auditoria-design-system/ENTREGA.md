@@ -184,7 +184,7 @@ desvios:
     motivo: alterado (fechamento do item no progresso do projeto) sem estar declarado em nenhuma task
 push_feito: true
 pr_url: https://github.com/nymbuslab/bot-restaurante/pull/6
-pr_estado: rascunho
+pr_estado: aberto
 criado_em: 2026-09-05
 atualizado_em: 2026-09-05
 entregue_em: 2026-09-05
