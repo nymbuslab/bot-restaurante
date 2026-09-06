@@ -7,7 +7,7 @@ entregue_por: mergex
 titulo: Correcao dos achados de design system (Alto, Medio e Baixo)
 tipo_trabalho: feature
 tipo_ocorrencia: null
-estado: aberto
+estado: entregue
 versionado: true
 branch: feature/correcoes-auditoria-design-system
 branch_base: main
@@ -182,12 +182,12 @@ desvios:
     motivo: alterado (linha docs/eventos/ do scaffold da sprintx, F1) sem estar declarado em nenhuma task
   - arquivo: PROGRESSO.md
     motivo: alterado (fechamento do item no progresso do projeto) sem estar declarado em nenhuma task
-push_feito: false
-pr_url: null
-pr_estado: null
+push_feito: true
+pr_url: https://github.com/nymbuslab/bot-restaurante/pull/6
+pr_estado: rascunho
 criado_em: 2026-09-05
 atualizado_em: 2026-09-05
-entregue_em: null
+entregue_em: 2026-09-05
 
 ---
 
@@ -203,14 +203,14 @@ mudanças já feitas, para então organizá-las em commits.
 
 | O quê | Onde |
 |---|---|
-| Descrição do pull request | ainda não gerada (E4 não rodou) |
 | Pacote de QA | [docs/entregas/correcoes-auditoria-design-system/QA-PACOTE.md](QA-PACOTE.md) — 17 casos, 7 bloqueantes, ainda não executado |
 | Classificação da atenção | [docs/entregas/correcoes-auditoria-design-system/ATENCAO.md](ATENCAO.md) — 38 olho obrigatório, 1 leitura rápida, 13 dispensável |
 | Trabalho de origem | [docs/sprintx/features/correcoes-auditoria-design-system/](../../sprintx/features/correcoes-auditoria-design-system/) |
 | Raio de impacto (legadox) | [docs/legado/raio/correcoes-auditoria-design-system.md](../../legado/raio/correcoes-auditoria-design-system.md) — ALTO, aprovado |
 | Roteiro de teste manual (legadox) | [docs/legado/manual/correcoes-auditoria-design-system.md](../../legado/manual/correcoes-auditoria-design-system.md) — ainda não executado |
 | Portão E2 (histórico completo) | [docs/sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md](../../sprintx/features/correcoes-auditoria-design-system/PORTAO-E2.md) — 1ª rodada BLOQUEADA, 2ª rodada PRONTO |
-| Pull request | não aberto |
+| Descrição do pull request | [docs/entregas/correcoes-auditoria-design-system/PR.md](PR.md) |
+| Pull request | [#6](https://github.com/nymbuslab/bot-restaurante/pull/6) — rascunho |
 
 ## Estado da entrega
 
@@ -218,9 +218,10 @@ mudanças já feitas, para então organizá-las em commits.
 - Commits: 24 — 13 por task (harness + as 12 correções, cada uma com seu arquivo de teste), 1 por task para `admin-master.html` (única sem conflito de arquivo), 3 agrupados por arquivo compartilhado (`style.css`, `admin.html`, `app.js` — ver aviso abaixo), 2 para os desvios (`.gitignore`, `PROGRESSO.md`, aprovados pelo dono) e 5 de documentação (design-system, sprintx, legado × 2, registro da entrega).
 - Atenção humana: E3 rodou (`revisor-diff`) — 52 arquivos classificados, **38 olho obrigatório, 1 leitura rápida, 13 dispensável** (ver `ATENCAO.md`). Os 4 arquivos de produção (`public/app.js`, `public/admin.html`, `public/admin-master.html`, `public/style.css`) e os 34 documentos de processo caem em olho obrigatório: os primeiros por virem do raio ALTO (o gate de PDV/Mesas/Caixa em `app.js`/`admin.html` continua sem cobertura de execução real, só teste estático de texto), os segundos por não se encaixarem em nenhum critério O/L/D — regra de desempate, não indício de defeito.
 - Pacote de QA: E5 rodou — `QA-PACOTE.md` com os 17 casos completos, sem jargão técnico, pronto para uma pessoa executar sem ler código.
-- Push: não feito.
-- Pull request: não aberto.
-- Falta para o merge: E4, E6 (push), E7 (PR) — e, fora do fluxo da mergex, a execução do roteiro de teste manual (pelo menos os Casos 1-7, bloqueantes) antes do merge.
+- Descrição do PR: E4 rodou — `PR.md` gravado, com a lista completa de arquivos, raio ALTO em destaque e a classificação de atenção humana.
+- Push: feito — `origin/feature/correcoes-auditoria-design-system` aponta para o mesmo commit do local.
+- Pull request: aberto como **rascunho** — [#6](https://github.com/nymbuslab/bot-restaurante/pull/6) (rascunho porque o pacote de QA ainda não foi aprovado por um humano).
+- Falta para o merge: a execução do roteiro de teste manual (pelo menos os Casos 1-7, bloqueantes) e a revisão humana do PR — nenhuma das duas é automática, e `/mergex-revisar` só roda por chamada explícita.
 
 ## Avisos
 
