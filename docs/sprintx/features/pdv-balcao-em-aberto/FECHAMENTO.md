@@ -54,21 +54,20 @@ test:integracao` → 67 passed, 0 failed (baseline 54 + 13 novos do `pedidos-com
 `test/integracao/pedidos-comanda.test.js` (T-01.01/02.01/02.03/04.02/04.03).
 Harness de front: `test/apoio/pdv-modal-harness.js`.
 
-## Ressalva — portão de design e conferência visual
+## Ressalva — portão de design e conferência visual (RESOLVIDA em 12/09)
 
-Duas pendências foram registradas em `PROGRESSO.md` (Próximos Passos):
+As duas pendências registradas em `PROGRESSO.md` foram fechadas em 12/09/2026:
 
-1. O **portão de design** da sprint-03 (`ORQUESTRADOR.md`, Seção 5 — exigência de aprovação
-   explícita do dono antes do código de tela) **não foi cumprido na forma**: o protótipo
-   (Claude Design) do tile "Comanda", do banner "Acrescentando à Comanda #NN" e do botão
-   "Acrescentar item" foi gerado e apresentado, mas ficou **sem aprovação explícita** do dono.
-2. UI nova **não validada visualmente** — sem tool de renderização nesta sessão → "build passou,
-   UI não validada" (regra do `CLAUDE.md`). Os testes de front são de lógica pura via harness
-   (`vm.runInNewContext` sobre `public/app.js` real), não de DOM/execução.
-
-Também seguem pendentes `npm run test:ci` (suíte a partir de pasta vazia) e o commit do
-trabalho, que está **não commitado** no working tree (junto de mudanças pré-existentes de
-Telegram/relatórios/caixa).
+1. O **portão de design** da sprint-03 (`ORQUESTRADOR.md`, Seção 5) foi cumprido: protótipo
+   (`design/canvas/pdv-comanda.dc.html`) renderizado (desktop + mobile, via Playwright) e
+   **aprovado explicitamente pelo dono** — com **revisão de design** que mudou a forma: o
+   tipo de venda saiu do modal "Finalizar venda" (tiles) e virou **seletor na lateral do
+   carrinho** (`[Balcão] [Comanda] [Entrega]`); **Retirada foi removida do PDV** (segue no
+   cardápio web e no histórico) e o campo "Cliente (opcional)" saiu da lateral (nome só na
+   Entrega, via overlay). Banner corrigido para "Acrescentando **à** Comanda #NN".
+   `test/pdv-comanda-tile.test.js` reescrito para o novo fluxo (T-03.01).
+2. UI validada visualmente pelo dono nas capturas renderizadas do protótipo aprovado; o
+   build passou (`npm test` 717/717, `check` 157).
 
 ## Divergências não esperadas
 

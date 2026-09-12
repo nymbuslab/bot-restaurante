@@ -161,10 +161,16 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
 - **No celular:** as tres acoes saem da linha e ficam na gaveta, que ocupa a tela inteira.
 
 ### 11. Comanda no PDV — CONCLUIDO (Plano Completo)
-- **Feito:** o Cobrar do PDV ganhou o 4o tipo de venda, Comanda, ao lado de Balcao/Entrega/Retirada.
-  O pedido nasce **a receber** (sem bloco de pagamento) com o botao "Abrir Comanda"; ao reabrir pelo
-  **Acrescentar item** do modal do pedido, o cabecalho da aba muda para "Acrescentar a comanda" e o
-  site entra no modo "Acrescentando a Comanda #NN". 
+- **Feito (desenho aprovado pelo dono em 12/09, revisao do portao de design):** o tipo de venda e
+  escolhido num **seletor na lateral do carrinho** (`[Balcão] [Comanda] [Entrega]`, `#pdvTipo`) ANTES
+  do Cobrar — o modal "Finalizar venda" **nao repete os tiles**, so monta o bloco do tipo escolhido.
+  **Retirada nao existe no PDV** (segue no cardapio web e no historico) e o campo "Cliente (opcional)"
+  saiu da lateral (nome so na Entrega, via overlay). Nos modos Mesa e Acrescentar a Comanda o seletor
+  some (`#pdvTipoBloco[hidden]`) e volta ao sair.
+- **Comanda:** o pedido nasce **a receber** (sem bloco de pagamento) com o botao "Abrir Comanda"; ao
+  reabrir pelo **Acrescentar item** do modal do pedido, o cabecalho da aba muda e o site entra no modo
+  "Acrescentando à Comanda #NN" (banner com o mesmo visual do modo mesa; Cobrar vira "Acrescentar à
+  Comanda").
 - **Fluxo:** reabrir pelo pedido na aba Pedidos (botao **Acrescentar item**, vale para qualquer pedido
   a receber, nao so Comanda), montar a rodada e acrescentar; a cozinha recebe so a via nova. Fechamento
   pelo **Receber pagamento** de sempre.
@@ -172,7 +178,7 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
   `FOR UPDATE`); tipo gravado em `tipo_entrega`; sem cupom na abertura (via so de cozinha).
 - **Limites:** a comanda abre e reabre pelo fluxo existente (modal do pedido), sem tela propria de
   comandas em aberto; abrir uma de cada vez (como o modo mesa); cancelar item ja enviado a cozinha
-  pede confirmacao extra. Portao de design do tile/banner/botao em aprovacao.
+  pede confirmacao extra. Prototipo da revisao em `design/canvas/pdv-comanda.dc.html`.
 - **No celular:** os mesmos componentes do PDV; o banner e o botao seguem o modal em tela cheia.
 
 ---

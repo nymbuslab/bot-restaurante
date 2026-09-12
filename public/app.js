@@ -5943,6 +5943,7 @@ async function carregarPdv() {
   renderPdvCategorias();
   renderPdvProdutos();
   renderPdvCarrinho();
+  pdvRenderTipo();
 }
 
 function pdvCategorias() { return ((cardapioAtual && cardapioAtual.categorias) || []).filter((c) => c && c.ativo !== false); }
@@ -6425,7 +6426,7 @@ function pdvAcharItem(id) {
 let pdvPagamentos = []; // [{ forma, valor }] adicionados (tendência)
 let pdvFormaSel = null;
 let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
-let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada' | 'Comanda'
+let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Comanda' | 'Entrega' (Retirada não existe no PDV)
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
 
 function pdvEhDinheiro(f) { return window.Pagamentos.ehDinheiro(f); } // mesma regra do servidor (public/pagamentos.js)
@@ -6469,7 +6470,7 @@ function abrirPdvPagar() {
   pdvPagamentos = [];
   pdvFormaSel = pdvFormasPg[0] || "Dinheiro";
   pdvDescTipoSel = (pdvDesconto && pdvDesconto.tipo) || "valor";
-  pdvTipoEntrega = "Balcão";
+  // O tipo de venda é escolhido no seletor da lateral ANTES de Cobrar; o modal só honra ele.
   pdvEntrega = null;
   renderPdvPagar();
   $("pdvPagarOverlay").hidden = false; // a11y.js foca o modal ao abrir
@@ -6477,10 +6478,35 @@ function abrirPdvPagar() {
 function fecharPdvPagar() { $("pdvPagarOverlay").hidden = true; }
 function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (Number(p.valor) || 0), 0) * 100) / 100; }
 
+// Tipo de venda — seletor na lateral do carrinho (Balcão/Comanda/Entrega no PDV).
+// Retirada continua existindo no cardápio web e no histórico, só não no PDV.
+const pdvTipos = ["Balcão", "Comanda", "Entrega"];
+function pdvTipoHtml() {
+  return pdvTipos.map((t) =>
+    '<button type="button"' + (pdvTipoEntrega === t ? ' class="ativo"' : "") + ' data-tipo="' + t + '">' + t + "</button>"
+  ).join("");
+}
+function pdvRenderTipo() {
+  const cont = $("pdvTipo");
+  if (!cont) return;
+  cont.innerHTML = pdvTipoHtml();
+  cont.querySelectorAll("[data-tipo]").forEach((b) => b.addEventListener("click", () => {
+    if (pdvTipoEntrega === b.dataset.tipo) return;
+    pdvTipoEntrega = b.dataset.tipo;
+    pdvRenderTipo();
+  }));
+}
+// Nos modos Mesa e Acrescentar à Comanda o tipo é fixo (não faz sentido trocar),
+// então o seletor some e volta ao sair do modo.
+function pdvOcultarTipoVenda() { const b = $("pdvTipoBloco"); if (b) b.hidden = true; }
+function pdvMostrarTipoVenda() { const b = $("pdvTipoBloco"); if (b) { b.hidden = false; pdvRenderTipo(); } }
+
 function renderPdvPagar() {
   const total = pdvTotalCobrar();
-  // Só Balcão recebe na hora (paga no caixa). Entrega/Retirada/Comanda vão para
+  // Só Balcão recebe na hora (paga no caixa). Entrega/Comanda vão para
   // Pedidos como "a receber" — sem bloco de pagamento; o recebimento é feito depois.
+  // O tipo de venda já foi definido no seletor da lateral, então o modal não repete
+  // os tiles: só mostra o bloco do tipo escolhido.
   const ehBalcao = pdvTipoEntrega === "Balcão";
   const tiles = pdvFormasPg.map((f) =>
     '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
@@ -6495,19 +6521,9 @@ function renderPdvPagar() {
     '<div class="pdv-pg-grid">' +
       '<div class="pdv-pg-main">' +
         '<h3 class="pdv-modal-titulo">Finalizar venda</h3>' +
-        '<div class="pdv-tve-bloco">' +
-          '<span class="pdv-ops-tit">Tipo de venda</span>' +
-          '<div class="pdv-tve">' +
-            ["Balcão", "Entrega", "Retirada", "Comanda"].map((t) =>
-              '<button type="button" class="' + (pdvTipoEntrega === t ? "ativo" : "") + '" data-tve="' + t + '">' + t + "</button>"
-            ).join("") +
-          "</div>" +
-          (pdvTipoEntrega === "Entrega"
-            ? '<div class="pdv-entrega-resumo" id="pdvEntregaResumo"></div>'
-            : pdvTipoEntrega === "Retirada"
-            ? '<label class="pdv-campo pdv-tve-tel"><span>Telefone (opcional)</span><input id="pdvRetiradaTel" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>'
-            : "") +
-        "</div>" +
+        (pdvTipoEntrega === "Entrega"
+          ? '<div class="pdv-entrega-resumo" id="pdvEntregaResumo"></div>'
+          : "") +
         (ehBalcao
           ? '<span class="pdv-ops-tit">Forma de pagamento</span>' +
             '<div class="pdv-formas">' + tiles + "</div>" +
@@ -6536,19 +6552,10 @@ function renderPdvPagar() {
     "</div>";
   $("pdvPagarCaixa").innerHTML = html;
 
-  // Tipo de venda: Balcão / Entrega / Retirada (re-renderiza p/ mostrar o bloco certo).
-  $("pdvPagarCaixa").querySelectorAll("[data-tve]").forEach((b) => b.addEventListener("click", () => {
-    if (pdvTipoEntrega === b.dataset.tve) return;
-    pdvTipoEntrega = b.dataset.tve;
-    renderPdvPagar();
-  }));
+  // Tipo de venda já definido na lateral (seletor) — o modal só mostra o bloco certo.
   if (pdvTipoEntrega === "Entrega") {
     pdvRenderEntregaResumo();
     const eb = $("pdvEntregaBtn"); if (eb) eb.addEventListener("click", abrirPdvEntrega);
-  }
-  if (pdvTipoEntrega === "Retirada") {
-    const rt = $("pdvRetiradaTel");
-    if (rt) rt.addEventListener("input", () => { pdvEntrega = pdvEntrega || {}; pdvEntrega.telefone = rt.value; });
   }
   const fz = $("pdvFreteZerar");
   if (fz) fz.addEventListener("click", () => {
@@ -6687,7 +6694,7 @@ function abrirPdvEntrega() {
     '<button class="pdv-modal-x" type="button" data-pdv-close="entrega" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
     '<h3 class="pdv-modal-titulo">Endereço de entrega</h3>' +
     '<div class="pdv-ent-grid">' +
-      '<label class="pdv-campo pdv-ent-nome"><span>Nome do cliente</span><input id="pdvEntNome" type="text" placeholder="Nome" value="' + pdvEsc((pdvEntrega && pdvEntrega.nome) || ($("pdvCliente") ? $("pdvCliente").value : "")) + '" /></label>' +
+      '<label class="pdv-campo pdv-ent-nome"><span>Nome do cliente</span><input id="pdvEntNome" type="text" placeholder="Nome" value="' + pdvEsc((pdvEntrega && pdvEntrega.nome) || "") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-tel"><span>Telefone</span><input id="pdvEntTelefone" type="text" inputmode="numeric" placeholder="(00) 00000-0000" value="' + pdvEsc((pdvEntrega && pdvEntrega.telefone) || "") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-cep"><span>CEP</span><input id="pdvEntCep" type="text" inputmode="numeric" placeholder="00000-000" value="' + v("cep") + '" /></label>' +
       '<label class="pdv-campo pdv-ent-logr"><span>Rua</span><input id="pdvEntLogradouro" type="text" placeholder="Logradouro" value="' + v("logradouro") + '" /></label>' +
@@ -6730,13 +6737,11 @@ async function pdvConfirmarEntrega() {
   if (!r.ok) { toast(d.erro || "Não foi possível calcular o frete. Confira o endereço e tente de novo.", "erro"); return; }
   if (d.incompleto) { toast("Para o frete por raio, informe CEP e número.", "erro"); return; }
   // Fora da área: não prossegue com frete grátis em silêncio — o operador decide
-  // (Retirada/Balcão ou corrigir o endereço). Mantém o overlay aberto.
-  if (d.foraDaArea) { toast("Endereço fora da área de entrega. Use Retirada/Balcão ou ajuste o endereço.", "erro"); return; }
+  // (entrega em outro endereço ou Balcão). Mantém o overlay aberto.
+  if (d.foraDaArea) { toast("Endereço fora da área de entrega. Use Balcão ou ajuste o endereço.", "erro"); return; }
   let taxa = Number(d.valor_frete) || 0;
   const endereco = window.EnderecoCep ? window.EnderecoCep.comporEndereco(campos) : (campos.logradouro + ", " + campos.numero);
   pdvEntrega = { endereco, enderecoCampos: campos, nome, telefone, taxaEntrega: taxa };
-  // Espelha o nome no campo Cliente da venda (consistência no cabeçalho/pedido).
-  if (nome && $("pdvCliente")) $("pdvCliente").value = nome;
   fecharPdvEntrega();
   renderPdvPagar();
 }
@@ -6800,12 +6805,10 @@ async function finalizarVendaPdv() {
     const cpf = (($("pdvCpf") || {}).value || "").replace(/\D/g, "");
     observacao = cpf ? ("CPF na nota: " + cpf) : "";
   }
-  // Telefone: Entrega vem do overlay; Retirada do campo do bloco.
-  const telefone = pdvTipoEntrega === "Retirada" && $("pdvRetiradaTel")
-    ? $("pdvRetiradaTel").value
-    : (pdvEntrega && pdvEntrega.telefone) || "";
+  // Telefone: só a Entrega tem (vem do overlay); Comanda/Balcão vão sem contato.
+  const telefone = (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
-    cliente: ($("pdvCliente").value || "").trim(),
+    cliente: ((pdvTipoEntrega === "Entrega" && pdvEntrega && pdvEntrega.nome) || "").trim(),
     itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), grupos: (l.grupos || []), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
@@ -6830,7 +6833,7 @@ async function finalizarVendaPdv() {
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
   toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
-  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; $("pdvCliente").value = "";
+  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; pdvRenderTipo();
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
@@ -6854,7 +6857,7 @@ function pedidoModoAtivar(d) {
     banner.className = "pdv-mesa-banner";
     banner.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6M9 16h6"/></svg>' +
-      '<span>Acrescentando a Comanda <strong>#' + pdvEsc(pedidoModoNumero) + '</strong></span>' +
+      '<span>Acrescentando à Comanda <strong>#' + pdvEsc(pedidoModoNumero) + '</strong></span>' +
       '<button type="button" class="secundario mini" id="pdvPedidoCancelar">Cancelar</button>';
     if (abaPdv) abaPdv.insertBefore(banner, abaPdv.firstChild);
     var cancelBtn = $("pdvPedidoCancelar");
@@ -6862,6 +6865,7 @@ function pedidoModoAtivar(d) {
   }
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Acrescentar à Comanda";
+  pdvOcultarTipoVenda();
   pdvTituloModoPedido(true);
   pdvCart = []; pdvDesconto = null; renderPdvCarrinho();
   pdvLimparBusca(); // contexto novo: não herda o filtro da venda anterior
@@ -6879,6 +6883,7 @@ function pedidoModoDesativar(voltarParaPedidos) {
   if (banner) banner.remove();
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Cobrar";
+  pdvMostrarTipoVenda();
   pdvTituloModoPedido(false);
   renderPdvCarrinho();
   if (voltarParaPedidos !== false && idPedido) {
@@ -7882,6 +7887,7 @@ function ativarMesaModoPdv() {
   }
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Enviar para Mesa";
+  pdvOcultarTipoVenda();
   // O cabeçalho é do balcão e prometia "cobre e a venda entra no caixa", que é
   // justamente o que NÃO acontece aqui: a rodada vai para a conta e só é cobrada
   // no fechamento da mesa.
@@ -7903,6 +7909,7 @@ function desativarMesaModoPdv(voltarParaMesa) {
   if (banner) banner.remove();
   var cobrar = $("pdvCobrar");
   if (cobrar) cobrar.textContent = "Cobrar";
+  pdvMostrarTipoVenda();
   pdvTituloModoMesa(false);
   renderPdvCarrinho();
   if (voltarParaMesa !== false && idMesa) {

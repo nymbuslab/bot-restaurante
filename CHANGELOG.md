@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-09-11
+atualizado: 2026-09-12
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1101,3 +1101,14 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   já usam.
 - Cancelar um item que já foi para a cozinha agora pede uma confirmação extra avisando, antes de
   confirmar o cancelamento.
+
+## [1.2.8] — Tipo de venda do PDV escolhido na tela de lançamento
+
+- O tipo de venda (Balcão, Comanda, Entrega) passa a ser escolhido na lateral do carrinho, antes
+  do botão Cobrar; a tela "Finalizar venda" não repete a escolha, só mostra o que falta daquele
+  tipo (pagamento no Balcão, endereço na Entrega, abertura sem cobrança na Comanda).
+- A Retirada saiu do PDV: continua disponível no cardápio web, e os pedidos de Retirada já
+  feitos seguem aparecendo na aba Pedidos normalmente.
+- O campo "Cliente (opcional)" saiu da lateral do PDV; o nome do cliente passa a ser informado
+  junto do endereço na entrega.
+- O aviso do modo de acréscimo passou a escrever certo: "Acrescentando à Comanda #NN".

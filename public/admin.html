@@ -983,7 +983,10 @@
             <h3>Venda atual</h3>
             <button type="button" class="pdv-cart-fechar" id="pdvCartFechar" aria-label="Fechar carrinho"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
-          <label class="pdv-cliente"><span>Cliente (opcional)</span><input id="pdvCliente" type="text" placeholder="Balcão" autocomplete="off" /></label>
+          <div class="pdv-tve-bloco" id="pdvTipoBloco">
+            <span class="pdv-ops-tit">Tipo de venda</span>
+            <div class="pdv-tve" id="pdvTipo" role="group" aria-label="Tipo de venda"></div>
+          </div>
           <div class="pdv-cart-itens" id="pdvCartItens"></div>
           <div class="pdv-cart-rodape">
             <div class="pdv-tot-linha" id="pdvSubLinha" hidden><span>Subtotal</span><span id="pdvSubtotal">R$ 0,00</span></div>

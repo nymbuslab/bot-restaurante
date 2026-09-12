@@ -1,0 +1,255 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Comanda no PDV — portão de design (sprint-03) · revisão do dono 12/09</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: #0F1117; color: #F0F2FA; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: #A589EA; }
+
+    /* Tokens espelhando public/style.css (design system real do projeto). */
+    :root {
+      --bg-primary: #0F1117;
+      --bg-surface: #1A1D27;
+      --bg-elevated: #222533;
+      --bg-overlay: #2A2E3F;
+
+      --border: #2E3247;
+      --border-subtle: #242738;
+
+      --text-primary: #F0F2FA;
+      --text-secondary: #8B92B3;
+
+      --accent: #6344BC;
+      --accent-hover: #7150D0;
+      --accent-fg: #A589EA;
+      --accent-subtle: rgba(99,68,188,0.16);
+
+      --success: #22C55E;
+      --error: #EF4444;
+      --error-fg: #F87171;
+      --warning: #EAB308;
+
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3);
+
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+    }
+  </style>
+</helmet>
+
+<div style="padding: 28px; background: #0F1117; max-width: 900px; margin: 0 auto;">
+
+  <!-- Rótulo da prancha -->
+  <div style="margin-bottom: 24px;">
+    <h1 style="margin: 0 0 4px; font-size: 18px; font-weight: 700;">Comanda no PDV — revisão do dono (12/09)</h1>
+    <p style="margin: 0; font-size: 13px; color: #8B92B3;">Portão de design da sprint-03 (ORQUESTRADOR.md, Seção 5) com o desenho revisado: o tipo de venda sai do modal "Finalizar venda" e vira seletor na tela de lançamento. Decisões do dono: <b style="color:#F0F2FA;">[Balcão] [Comanda] [Entrega]</b>, <b style="color:#F0F2FA;">Retirada sai só do PDV</b> (continua no cardápio web e no histórico) e <b style="color:#F0F2FA;">campo "Cliente" removido do PDV</b>. Tokens reais de <code style="color:#A589EA;">public/style.css</code>; o seletor herda o visual dos tiles existentes (<code style="color:#A589EA;">.pdv-tve</code>).</p>
+  </div>
+
+  <!-- ============ ESTADO 1 — LATERAL DO PDV: TIPO NA TELA DE LANÇAMENTO ============ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">1 · Lançamento — tipo na lateral do PDV (substitui o campo "Cliente")</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start;">
+
+        <!-- cart lateral (aside.pdv-carrinho) -->
+        <div style="width:300px; border:1px solid #2E3247; border-radius:var(--radius-lg); background:#14161F; overflow:hidden; flex-shrink:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #242738;">
+            <h3 style="margin:0; font-size:14px; font-weight:700;">Venda atual</h3>
+          </div>
+          <div style="padding:12px 14px; border-bottom:1px solid #242738;">
+            <span style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin-bottom:8px;">Tipo de venda</span>
+            <!-- seletor: 3 colunas, mesmo visual de .pdv-tve -->
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
+              <button style="cursor:pointer; padding:8px 0; border:1px solid #6344BC; border-radius:6px; background:rgba(99,68,188,0.16); color:#A589EA; font-size:12px; font-weight:600; font-family:inherit;">Balcão</button>
+              <button style="cursor:pointer; padding:8px 0; border:1px solid #2E3247; border-radius:6px; background:#222533; color:#8B92B3; font-size:12px; font-weight:600; font-family:inherit;">Comanda</button>
+              <button style="cursor:pointer; padding:8px 0; border:1px solid #2E3247; border-radius:6px; background:#222533; color:#8B92B3; font-size:12px; font-weight:600; font-family:inherit;">Entrega</button>
+            </div>
+          </div>
+          <div style="padding:12px 14px;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin-bottom:8px;">Itens</div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#F0F2FA;"><span>1x X-Burger</span><span>R$ 24,00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#F0F2FA;"><span>1x Refrigerante lata</span><span>R$ 8,00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#8B92B3;"><span>Subtotal</span><span>R$ 32,00</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; border-top:1px solid #2E3247; margin-top:8px; padding-top:8px;"><span style="font-size:12px; color:#8B92B3;">Total</span><strong style="font-size:16px; font-variant-numeric:tabular-nums;">R$ 32,00</strong></div>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button style="flex:1; cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; font-family:inherit; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Cancelar</button>
+              <button style="flex:1.4; cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:6px;">Cobrar</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:280px; font-size:13px; color:#8B92B3;">
+          <p style="margin:0 0 10px;">O seletor ocupa o lugar do antigo campo <b style="color:#F0F2FA;">"Cliente (opcional)"</b> (placeholder "Balcão").</p>
+          <p style="margin:0 0 10px;">O toque troca o <b style="color:#F0F2FA;">tipo da venda</b> antes de cobrar. Padrão continua <b style="color:#F0F2FA;">Balcão</b> (venda direta: lança, fecha e cobra).</p>
+          <p style="margin:0;"><b style="color:#F0F2FA;">Retirada</b> não aparece no PDV (decisão): a Comanda cobre pedido a receber sem endereço. No cardápio web e no histórico, Retirada continua existindo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ESTADO 2 — COMANDA SELECIONADO NA LATERAL ============ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">2 · Lançamento — "Comanda" selecionado</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="width:300px; border:1px solid #2E3247; border-radius:var(--radius-lg); background:#14161F; overflow:hidden;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #242738;">
+          <h3 style="margin:0; font-size:14px; font-weight:700;">Venda atual</h3>
+        </div>
+        <div style="padding:12px 14px; border-bottom:1px solid #242738;">
+          <span style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin-bottom:8px;">Tipo de venda</span>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
+            <button style="cursor:pointer; padding:8px 0; border:1px solid #2E3247; border-radius:6px; background:#222533; color:#8B92B3; font-size:12px; font-weight:600; font-family:inherit;">Balcão</button>
+            <button style="cursor:pointer; padding:8px 0; border:1px solid #6344BC; border-radius:6px; background:rgba(99,68,188,0.16); color:#A589EA; font-size:12px; font-weight:600; font-family:inherit;">Comanda</button>
+            <button style="cursor:pointer; padding:8px 0; border:1px solid #2E3247; border-radius:6px; background:#222533; color:#8B92B3; font-size:12px; font-weight:600; font-family:inherit;">Entrega</button>
+          </div>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin-bottom:8px;">Itens</div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#F0F2FA;"><span>2x X-Burger</span><span>R$ 48,00</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#F0F2FA;"><span>1x Refrigerante lata</span><span>R$ 8,00</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; border-top:1px solid #2E3247; margin-top:8px; padding-top:8px;"><span style="font-size:12px; color:#8B92B3;">Total</span><strong style="font-size:16px; font-variant-numeric:tabular-nums;">R$ 56,00</strong></div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button style="flex:1; cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; font-family:inherit; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Cancelar</button>
+            <button style="flex:1.4; cursor:pointer; padding:9px 0; font-size:13px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:6px;">Cobrar</button>
+          </div>
+        </div>
+      </div>
+      <p style="margin:10px 0 0; font-size:12px; color:#8B92B3;">Trocar de tipo enquanto lança é livre (o rodapé não muda). No modo <b style="color:#F0F2FA;">mesa</b> ou <b style="color:#F0F2FA;">acrescentando à comanda</b>, o seletor some: o tipo vem da mesa/comanda já aberta.</p>
+    </div>
+  </div>
+
+  <!-- ============ ESTADO 3 — MODAL SEM TILES: SÓ O BLOCO DO TIPO ============ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">3 · "Finalizar venda" — sem tiles; só o bloco do tipo escolhido (3 variações)</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+
+        <!-- Balcão -->
+        <div style="flex:1; min-width:260px; border:1px solid #2E3247; border-radius:var(--radius-lg); background:#1A1D27; overflow:hidden;">
+          <div style="padding:12px 16px; border-bottom:1px solid #242738;"><b style="font-size:14px;">Finalizar venda</b></div>
+          <div style="padding:12px 16px;">
+            <span style="display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin-bottom:8px;">Forma de pagamento</span>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; margin-bottom:8px;">
+              <button style="cursor:pointer; padding:7px 0; border:1px solid #6344BC; border-radius:6px; background:rgba(99,68,188,0.16); color:#A589EA; font-size:12px; font-weight:600; font-family:inherit;">Pix</button>
+              <button style="cursor:pointer; padding:7px 0; border:1px solid #2E3247; border-radius:6px; background:#222533; color:#8B92B3; font-size:12px; font-weight:600; font-family:inherit;">Dinheiro</button>
+              <button style="cursor:pointer; padding:7px 0; border:1px solid #2E3247; border-radius:6px; background:#222533; color:#8B92B3; font-size:12px; font-weight:600; font-family:inherit;">Cartão</button>
+            </div>
+            <div style="font-size:12px; color:#F0F2FA; padding:3px 0;">Pago <b style="float:right; font-variant-numeric:tabular-nums;">R$ 32,00</b></div>
+            <div style="font-size:12px; color:#EAB308; font-weight:700; padding:3px 0;">Falta <b style="float:right; font-variant-numeric:tabular-nums;">R$ 0,00</b></div>
+            <div style="font-size:12px; color:#8B92B3; padding:3px 0;">Troco <b style="float:right; font-variant-numeric:tabular-nums;">R$ 0,00</b></div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #242738;">
+            <button style="cursor:pointer; padding:9px 16px; font-size:12px; font-weight:600; font-family:inherit; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Voltar</button>
+            <button style="cursor:pointer; padding:9px 18px; font-size:12px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:6px;">Confirmar pagamento</button>
+          </div>
+          <div style="border-top:1px solid #242738; padding:8px 16px; font-size:11px; color:#8B92B3;">herdado: <b style="color:#A589EA;">Balcão</b></div>
+        </div>
+
+        <!-- Comanda -->
+        <div style="flex:1; min-width:260px; border:1px solid #2E3247; border-radius:var(--radius-lg); background:#1A1D27; overflow:hidden;">
+          <div style="padding:12px 16px; border-bottom:1px solid #242738;"><b style="font-size:14px;">Finalizar venda</b></div>
+          <div style="padding:12px 16px;">
+            <div style="display:flex; align-items:flex-start; gap:8px; background:rgba(99,68,188,0.16); border:1px solid rgba(99,68,188,.35); border-radius:10px; padding:10px 12px; font-size:12px; color:#A589EA;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>Sem cobrança agora: o pedido vai para a aba <b>Pedidos</b> como <b>a receber</b>. O recebimento é feito depois.</span>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #242738;">
+            <button style="cursor:pointer; padding:9px 16px; font-size:12px; font-weight:600; font-family:inherit; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Voltar</button>
+            <button style="cursor:pointer; padding:9px 18px; font-size:12px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:6px;">Abrir Comanda</button>
+          </div>
+          <div style="border-top:1px solid #242738; padding:8px 16px; font-size:11px; color:#8B92B3;">herdado: <b style="color:#A589EA;">Comanda</b> · CTA vira "Abrir Comanda"</div>
+        </div>
+
+        <!-- Entrega -->
+        <div style="flex:1; min-width:260px; border:1px solid #2E3247; border-radius:var(--radius-lg); background:#1A1D27; overflow:hidden;">
+          <div style="padding:12px 16px; border-bottom:1px solid #242738;"><b style="font-size:14px;">Finalizar venda</b></div>
+          <div style="padding:12px 16px;">
+            <button style="width:100%; cursor:pointer; padding:9px 0; font-size:12px; font-weight:600; font-family:inherit; background:rgba(99,68,188,0.16); color:#A589EA; border:1px solid rgba(99,68,188,.35); border-radius:6px;">Preencher endereço</button>
+            <div style="display:flex; align-items:flex-start; gap:8px; background:rgba(99,68,188,0.16); border:1px solid rgba(99,68,188,.35); border-radius:10px; padding:10px 12px; font-size:12px; color:#A589EA; margin-top:8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>Sem cobrança agora: vai para <b>Pedidos</b> como <b>a receber</b> após preencher o endereço.</span>
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #242738;">
+            <button style="cursor:pointer; padding:9px 16px; font-size:12px; font-weight:600; font-family:inherit; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Voltar</button>
+            <button style="cursor:pointer; padding:9px 18px; font-size:12px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:6px;">Enviar para Pedidos</button>
+          </div>
+          <div style="border-top:1px solid #242738; padding:8px 16px; font-size:11px; color:#8B92B3;">herdado: <b style="color:#A589EA;">Entrega</b> · O overlay de endereço/frete continua abrindo daqui</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ESTADO 4 — BANNER DO MODO ACRÉSCIMO + CTA ============ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">4 · PDV em modo acréscimo — banner + CTA relabelado</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <!-- banner (pdv-mesa-banner, real public/style.css:6316) -->
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; background:#6344BC; color:#fff; border-radius:10px; font-size:14px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6M9 16h6"/></svg>
+          <span>Acrescentando <strong>à</strong> Comanda <strong>#42</strong></span>
+          <span style="margin-left:auto; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; white-space:nowrap; cursor:pointer; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600;">Cancelar</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+          <span style="font-size:12px; color:#8B92B3;">Botão de venda (PDV):</span>
+          <button style="cursor:pointer; padding:12px 22px; font-size:14px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:8px;">Acrescentar à Comanda</button>
+        </div>
+      </div>
+      <p style="margin:10px 0 0; font-size:12px; color:#8B92B3;">Banner idêntico à tarja do <b style="color:#F0F2FA;">modo mesa</b> já aprovado (<code style="color:#A589EA;">pdv-mesa-banner</code>). Texto proposto: "Acrescentando <b style="color:#A589EA;">à</b> Comanda #NN" (hoje o código grava "a"). O <b style="color:#A589EA;">Cobrar</b> vira "Acrescentar à Comanda" e o seletor de tipo some no modo acréscimo.</p>
+    </div>
+  </div>
+
+  <!-- ============ ESTADO 5 — BOTÃO "ACRESCENTAR ITEM" NO MODAL DO PEDIDO ============ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">5 · Modal de detalhe do pedido — botão "Acrescentar item"</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="box-shadow: var(--shadow-md); border:1px solid #2E3247; border-radius:var(--radius-lg); background:#1A1D27; max-width:480px;">
+        <div style="padding:16px 18px; border-bottom:1px solid #242738;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <span style="font-size:15px; font-weight:700;">#42</span>
+            <span style="font-size:12px; color:#8B92B3;">Comanda · a receber</span>
+          </div>
+        </div>
+        <div style="padding:14px 18px;">
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin-bottom:8px;">Itens do pedido</div>
+          <div style="display:flex; justify-content:space-between; font-size:14px; padding:5px 0; color:#F0F2FA;"><span>2x X-Burger</span><span>R$ 48,00</span></div>
+          <div style="display:flex; justify-content:space-between; font-size:14px; padding:5px 0; color:#F0F2FA;"><span>1x Refrigerante lata</span><span>R$ 8,00</span></div>
+        </div>
+        <div style="padding:0 18px 16px; display:flex; justify-content:flex-end;">
+          <button style="display:inline-flex; align-items:center; gap:7px; cursor:pointer; padding:9px 16px; font-size:13px; font-weight:600; font-family:inherit; background:#6344BC; color:#fff; border:1px solid transparent; border-radius:6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Acrescentar item
+          </button>
+        </div>
+      </div>
+      <p style="margin:10px 0 0; font-size:12px; color:#8B92B3;">Sem mudança em relação ao desenho anterior: aparece só quando o pedido está <b style="color:#F0F2FA;">a receber</b> e abre o modo acréscimo do Estado 4.</p>
+    </div>
+  </div>
+
+  <!-- ================= SUBSTITUIÇÕES vs IMPLEMENTAÇÃO ATUAL ================= -->
+  <div style="border:1px dashed #2E3247; border-radius:10px; background:transparent; padding:14px 16px; font-size:12px; color:#8B92B3;">
+    <b style="color:#F0F2FA;">O que muda na implementação atual (após aprovação)</b>
+    <ul style="margin:6px 0 0 18px; padding:0;">
+      <li><code style="color:#A589EA;">public/admin.html:986</code> — campo "Cliente (opcional)" sai; entra o seletor de tipo.</li>
+      <li><code style="color:#A589EA;">public/app.js:6501</code> — tiles saem do modal <code style="color:#A589EA;">renderPdvPagar</code>; o tipo passa a vir da lateral.</li>
+      <li>Retirada: some do PDV (tile, campo de telefone, texto do erro de área); dados <code style="color:#A589EA;">tipo_entrega='Retirada'</code> seguem exibindo no histórico e o cardápio web mantém o tipo.</li>
+      <li>Texto do banner: "Acrescentando <b style="color:#A589EA;">à</b> Comanda #NN" (correção "a" → "à").</li>
+    </ul>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

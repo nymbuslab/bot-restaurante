@@ -331,9 +331,12 @@ que vêm do WhatsApp.
 Aba **PDV** no painel (gate `temPdv`, front+back) para registrar venda de balcão. **Exige caixa
 aberto** (senão mostra "Abra o caixa para vender"). Fluxo: grade de produtos (chips de categoria +
 busca) → toque adiciona ao carrinho; itens com **grupo da biblioteca**, **variações** ou por **kg** abrem um mini-modal
-(peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **tipo de venda** (Balcão/Comanda/Entrega/Retirada),
-**desconto** (R$ ou %), **pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e
-**CPF na nota** (opcional).
+(peso/adicionais/observação). O **tipo de venda** é escolhido num **seletor na lateral do carrinho**
+(`[Balcão] [Comanda] [Entrega]`, `#pdvTipo` — aprovação do dono em 12/09: o modal não repete os tiles)
+ANTES do **Cobrar**, que abre a tela de pagamento já no tipo escolhido: **desconto** (R$ ou %),
+**pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e **CPF na nota** (opcional).
+**Retirada não existe no PDV** (segue como opção do cardápio web e no histórico); nos modos Mesa e
+Acrescentar à Comanda o seletor some (o tipo é fixo nesses modos).
 
 **Entrega no PDV:** escolhendo **Entrega**, um botão abre o overlay de endereço (CEP autopreenche
 logradouro/bairro/cidade/UF via `window.EnderecoCep`; número, complemento, telefone). O **frete** é
@@ -341,8 +344,8 @@ logradouro/bairro/cidade/UF via `window.EnderecoCep`; número, complemento, tele
 geocode + Haversine + faixa) e entra como linha **Frete** no RESUMO (`Total = Subtotal − Desconto +
 Frete`), com **lixeira** para zerar (cortesia) em endereço **dentro** da área. **"Fora da área"
 bloqueia** (front mantém o overlay aberto + aviso; servidor responde 400) — o operador decide
-Retirada/Balcão ou ajusta o endereço, em vez de cobrar 0 em silêncio; `incompleto` (CEP/número)
-também avisa. **Retirada** = sem endereço/frete (telefone opcional). O servidor é a fonte de verdade
+Balcão ou ajusta o endereço, em vez de cobrar 0 em silêncio; `incompleto` (CEP/número)
+também avisa. O servidor é a fonte de verdade
 do frete: aceita do cliente **apenas** 0 (cortesia) ou o valor calculado (`pdv.freteEfetivo`).
 
 Ao finalizar (`POST /api/pdv/vender`): o servidor **recalcula** a venda pelo cardápio (`src/pdv.js`,
@@ -354,12 +357,14 @@ depende do **tipo de venda** (todos com `origem='pdv'` e **baixa de estoque ATÔ
   **1 movimento de recebimento por forma** no caixa; aparece no **Caixa** (Vendas líquidas por forma).
   Imprime
   **cozinha (se houver item marcado) + cupom**.
-- **Entrega / Retirada** (sem cobrança agora): pedido nasce **"a receber"** (`recebido_em` nulo), **sem
-  caixa**; vai para **Pedidos** e o recebimento é feito **depois** (botão Receber). Impressão: **Entrega**
-  = cozinha (se houver) + cupom (tem os dados da entrega); **Retirada** = **só cozinha**. Na tela
-  Finalizar venda esses tipos **não pedem pagamento** (o botão vira "Enviar para Pedidos").
+- **Entrega** (sem cobrança agora): pedido nasce **"a receber"** (`recebido_em` nulo), **sem
+  caixa**; vai para **Pedidos** e o recebimento é feito **depois** (botão Receber). Impressão: cozinha
+  (se houver) + cupom (tem os dados da entrega). Na tela Finalizar venda esse tipo **não pede
+  pagamento** (o botão vira "Enviar para Pedidos"). **Retirada não é tipo de venda do PDV**: pedidos
+  de Retirada continuam nascendo pelo **cardápio web** (mesmo caminho "a receber", impressão só de
+  cozinha) e seguem aparecendo no histórico/Pedidos normalmente.
 - **Comanda** (pedido em aberto, sem cobrança na abertura): nasce **"a receber"** como
-  Entrega/Retirada (`recebido_em` nulo, sem caixa) e **não imprime cupom** (D-14) — quando há item de
+  a Entrega (`recebido_em` nulo, sem caixa) e **não imprime cupom** (D-14) — quando há item de
   cozinha, sai só a via de cozinha. O atendente reabre o pedido pela aba **Pedidos** (modal de detalhe)
   e usa **"Acrescentar item"** — vale para **qualquer pedido a receber**, não só Comanda (D-07) — que
   leva o PDV ao modo "Acrescentando à Comanda #NN" e chama a rota nova `POST /api/pedidos/:id/itens`

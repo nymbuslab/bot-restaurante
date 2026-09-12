@@ -5328,8 +5328,6 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-cart-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; }
 .pdv-cart-head h3 { margin: 0; font-size: 15px; }
 .pdv-cart-fechar { display: none; background: var(--bg-elevated); color: var(--text-secondary); border: none; width: 32px; height: 32px; border-radius: 50%; padding: 0; align-items: center; justify-content: center; }
-.pdv-cliente { display: flex; flex-direction: column; gap: 4px; padding: 0 16px 8px; }
-.pdv-cliente span { font-size: 11px; color: var(--text-secondary); }
 .pdv-cart-itens { flex: 1; overflow-y: auto; padding: 6px 16px; min-height: 80px; }
 .pdv-cart-vazio { color: var(--text-secondary); text-align: center; font-size: 13px; padding: 28px 8px; }
 
@@ -5524,12 +5522,12 @@ html.embed, html.embed body { background: var(--bg-primary); }
 .pdv-frete-zerar { background: transparent; border: none; color: var(--text-secondary); width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
 .pdv-frete-zerar:hover { background: var(--error-subtle); color: var(--error); }
 
-/* Tipo de venda (Balcão/Entrega/Retirada) + endereço de entrega no PDV */
-.pdv-tve-bloco { margin-bottom: 18px; }
+/* Tipo de venda (Balcão/Comanda/Entrega) no PDV: seletor na lateral do carrinho */
+.pdv-tve-bloco { padding: 0 16px; margin-bottom: 8px; }
+.pdv-tve-bloco[hidden] { display: none; }
 .pdv-tve { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .pdv-tve button { padding: 10px 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elevated); color: var(--text-secondary); font-size: 13px; font-weight: 600; }
 .pdv-tve button.ativo { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent-fg); }
-.pdv-tve-tel { margin: 12px 0 0; }
 .pdv-entrega-resumo { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .pdv-entrega-vazio { font-size: 12px; color: var(--text-secondary); margin: 0; }
 .pdv-entrega-contato { font-size: 12px; font-weight: 600; color: var(--text-primary); }
