@@ -5550,7 +5550,7 @@ function abrirModalPedido(p) {
     if (btnAdd) {
       btnAdd.addEventListener("click", () => {
         fecharModalPedido();
-        pedidoModoAtivar({ id: p.id, numero: p.numero });
+        pedidoModoAtivar({ id: p.id, numero: p.numero, cliente: p.cliente });
       });
     }
   }
@@ -6428,6 +6428,7 @@ let pdvFormaSel = null;
 let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
 let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Comanda' | 'Entrega' (Retirada não existe no PDV)
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
+let pdvComandaId = ""; // identificação opcional da Comanda (nome/mesa/referência) → pedidos.cliente
 
 function pdvEhDinheiro(f) { return window.Pagamentos.ehDinheiro(f); } // mesma regra do servidor (public/pagamentos.js)
 
@@ -6529,7 +6530,10 @@ function renderPdvPagar() {
             '<div class="pdv-formas">' + tiles + "</div>" +
             '<div class="pdv-pg-add-row"><div class="campo-prefixo pdv-pg-campo"><span class="campo-prefixo-moeda">R$</span><input id="pdvPgValor" type="text" inputmode="numeric" placeholder="0,00" /></div><button type="button" class="pdv-pg-addbtn" id="pdvPgAdd">Adicionar</button><button type="button" class="pdv-desc-acao' + (pdvDesconto ? " ativo" : "") + '" id="pdvDescBtn">Desconto</button></div>' +
             '<div class="pdv-pg-lista" id="pdvPgLista"></div>'
-          : '<div class="pdv-areceber-nota"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Sem cobrança agora: o pedido vai para a aba <strong>Pedidos</strong> como <strong>a receber</strong>. O recebimento é feito depois.</span></div>') +
+          : '<div class="pdv-areceber-nota"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Sem cobrança agora: o pedido vai para a aba <strong>Pedidos</strong> como <strong>a receber</strong>. O recebimento é feito depois.</span></div>' +
+            (pdvTipoEntrega === "Comanda"
+              ? '<label class="pdv-campo pdv-comanda-id"><span>Identificação (opcional)</span><input id="pdvComandaId" type="text" placeholder="Nome, mesa ou referência" autocomplete="off" value="' + pdvEsc(pdvComandaId || "") + '" /></label>'
+              : "")) +
       "</div>" +
       '<aside class="pdv-pg-resumo-box">' +
         '<span class="pdv-ops-tit">Resumo do pedido</span>' +
@@ -6557,6 +6561,9 @@ function renderPdvPagar() {
     pdvRenderEntregaResumo();
     const eb = $("pdvEntregaBtn"); if (eb) eb.addEventListener("click", abrirPdvEntrega);
   }
+  // Identificação da Comanda fica em memória: sobrevive a Voltar/Cobrar e vira pedidos.cliente.
+  const comandaId = $("pdvComandaId");
+  if (comandaId) comandaId.addEventListener("input", () => { pdvComandaId = comandaId.value; });
   const fz = $("pdvFreteZerar");
   if (fz) fz.addEventListener("click", () => {
     if (pdvEntrega) pdvEntrega.taxaEntrega = 0;
@@ -6808,7 +6815,8 @@ async function finalizarVendaPdv() {
   // Telefone: só a Entrega tem (vem do overlay); Comanda/Balcão vão sem contato.
   const telefone = (pdvEntrega && pdvEntrega.telefone) || "";
   const body = {
-    cliente: ((pdvTipoEntrega === "Entrega" && pdvEntrega && pdvEntrega.nome) || "").trim(),
+    // Entrega: nome do overlay. Comanda: identificação opcional (nome/mesa/referência).
+    cliente: ((pdvTipoEntrega === "Entrega" && pdvEntrega && pdvEntrega.nome) || (pdvTipoEntrega === "Comanda" && pdvComandaId) || "").trim(),
     itens: pdvCart.map((l) => ({ id: l.id, qtd: l.qtd, composicao: (l.composicao || []), opcionais: (l.opcionais || []).map((o) => ({ nome: o.nome, qtd: o.qtd })), grupos: (l.grupos || []), variacoes: (l.variacoes || []).map((v) => ({ id: v.id, qtd: v.qtd })), observacao: l.observacao })),
     desconto: pdvDesconto,
     pagamentos: registrados,
@@ -6833,7 +6841,7 @@ async function finalizarVendaPdv() {
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
   toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
-  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; pdvRenderTipo();
+  pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; pdvComandaId = ""; pdvRenderTipo();
   fecharPdvPagar();
   $("pdvCarrinho").classList.remove("aberto");
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
@@ -6857,7 +6865,7 @@ function pedidoModoAtivar(d) {
     banner.className = "pdv-mesa-banner";
     banner.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6M9 16h6"/></svg>' +
-      '<span>Acrescentando à Comanda <strong>#' + pdvEsc(pedidoModoNumero) + '</strong></span>' +
+      pedidoModoBannerSpan(pedidoModoNumero, d.cliente) +
       '<button type="button" class="secundario mini" id="pdvPedidoCancelar">Cancelar</button>';
     if (abaPdv) abaPdv.insertBefore(banner, abaPdv.firstChild);
     var cancelBtn = $("pdvPedidoCancelar");
@@ -6871,6 +6879,12 @@ function pedidoModoAtivar(d) {
   pdvLimparBusca(); // contexto novo: não herda o filtro da venda anterior
   var pdvBtn = document.querySelector("nav button[data-aba='pdv']");
   if (pdvBtn) pdvBtn.click();
+}
+
+// Texto do banner do modo acréscimo: o número sempre, a identificação quando existe
+// (confirma ao atendente que é a comanda certa antes de lançar a rodada).
+function pedidoModoBannerSpan(numero, cliente) {
+  return '<span>Acrescentando à Comanda <strong>#' + pdvEsc(numero) + '</strong>' + (cliente ? " · " + pdvEsc(cliente) : "") + '</span>';
 }
 
 function pedidoModoDesativar(voltarParaPedidos) {

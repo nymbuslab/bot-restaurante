@@ -50,6 +50,8 @@ function carregarHarness() {
     renderPdvCarrinho: () => {},
     pdvLimparBusca: () => {},
     carregarPedidos: undefined,
+    pdvEsc: (s) => String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
   };
 
   vm.runInNewContext(app.slice(iniModo, fimModo), ctx);
@@ -109,4 +111,21 @@ test("T-03.02 carrinho vazio não dispara a chamada", async () => {
   await h.ctx.pedidoLancarDoPdv();
   assert.deepEqual(h.apiCalls, []);
   assert.equal(h.chamadas.abrirPdvPagar, 0);
+});
+
+test("T-03.02 o banner do modo acréscimo mostra a identificação da comanda quando existe", () => {
+  const h = carregarHarness();
+  const com = h.ctx.pedidoModoBannerSpan("7", "Maria");
+  assert.match(com, /#7/, "o número da comanda aparece sempre");
+  assert.match(com, / · Maria/, "a identificação aparece depois do número");
+  const sem = h.ctx.pedidoModoBannerSpan("7", "");
+  assert.match(sem, /#7/);
+  assert.doesNotMatch(sem, / · /, "sem identificação não aparece o separador solto");
+});
+
+test("T-03.02 a identificação do banner é escapada como o resto da tela", () => {
+  const h = carregarHarness();
+  const com = h.ctx.pedidoModoBannerSpan("7", '<b>Maria</b>');
+  assert.ok(com.includes("&lt;b&gt;Maria&lt;/b&gt;"), "HTML precisa ser escapado");
+  assert.ok(!com.includes("<b>"), "não pode injetar tag no banner");
 });

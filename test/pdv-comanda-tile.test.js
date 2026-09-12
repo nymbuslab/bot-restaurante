@@ -37,6 +37,7 @@ function renderizar(setup) {
     pdvPagamentos: [],
     pdvEntrega: null,
     pdvTipoEntrega: "Balcão",
+    pdvComandaId: "",
     pdvPrecoLinha: (l) => Number(l.precobase || l.qtd) * (Number(l.qtd) || 1),
     pdvTotalCobrar: () => 42.5,
     pdvPagoTotal: () => 0,
@@ -89,6 +90,16 @@ test("T-03.01 Comanda monta a tela como a receber, sem bloco de pagamento e com 
   assert.match(html, />Abrir Comanda<\/button>/, "o botão final precisa rotular Abrir Comanda");
   assert.doesNotMatch(html, /Forma de pagamento|pdv-formas|pdv-pg-addbtn/, "com Comanda não pode haver bloco de pagamento");
   assert.match(html, /pdv-areceber-nota/, "Comanda segue o caminho a receber");
+});
+
+test("T-03.01 só a Comanda oferece o campo de identificação opcional", () => {
+  const comanda = renderizar({ pdvTipoEntrega: "Comanda" }).renderPagar();
+  assert.match(comanda, /id="pdvComandaId"/, "o campo de identificação precisa existir no modal da Comanda");
+  assert.match(comanda, /Identificação \(opcional\)/);
+  const entrega = renderizar({ pdvTipoEntrega: "Entrega" }).renderPagar();
+  assert.doesNotMatch(entrega, /pdvComandaId/, "a Entrega não tem identificação (o nome vem do endereço)");
+  const balcao = renderizar({ pdvTipoEntrega: "Balcão" }).renderPagar();
+  assert.doesNotMatch(balcao, /pdvComandaId/, "o Balcão não tem identificação");
 });
 
 test("T-03.01 Entrega continua com o rótulo Enviar para Pedidos", () => {

@@ -1112,3 +1112,10 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - O campo "Cliente (opcional)" saiu da lateral do PDV; o nome do cliente passa a ser informado
   junto do endereço na entrega.
 - O aviso do modo de acréscimo passou a escrever certo: "Acrescentando à Comanda #NN".
+
+## [1.2.9] — Identificação opcional na Comanda do PDV
+
+- Ao abrir uma Comanda no PDV, o atendente pode anotar uma identificação opcional (nome, mesa ou
+  referência); ela preenche o campo Cliente do pedido na aba Pedidos.
+- Ao acrescentar itens a uma comanda, o aviso no topo do PDV mostra a identificação junto do número
+  ("Acrescentando à Comanda #42 · Maria"), confirmando que é a comanda certa antes de lançar.

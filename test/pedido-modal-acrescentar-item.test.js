@@ -123,5 +123,6 @@ test("T-03.03 clicar em Acrescentar item ativa o modo comanda com id e numero do
   assert.equal(h.chamadas.modoAtivar.length, 1, "pedidoModoAtivar deve ser chamada uma vez");
   assert.equal(h.chamadas.modoAtivar[0].id, 42, "deve ativar com o id do pedido");
   assert.equal(h.chamadas.modoAtivar[0].numero, 7, "deve ativar com o numero da comanda");
-  assert.equal(h.chamadas.fechar, 1, "o modal do pedido deve fechar ao ativar o modo");
+  assert.equal(h.chamadas.modoAtivar[0].cliente, "Maria", "leva a identificacao para o banner do modo");
+  assert.equal(h.chamadas.fechar, 1, "o modal do pedido deve fechar ao ativar o modo");;
 });

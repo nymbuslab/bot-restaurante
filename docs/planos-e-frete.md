@@ -365,7 +365,10 @@ depende do **tipo de venda** (todos com `origem='pdv'` e **baixa de estoque ATÔ
   cozinha) e seguem aparecendo no histórico/Pedidos normalmente.
 - **Comanda** (pedido em aberto, sem cobrança na abertura): nasce **"a receber"** como
   a Entrega (`recebido_em` nulo, sem caixa) e **não imprime cupom** (D-14) — quando há item de
-  cozinha, sai só a via de cozinha. O atendente reabre o pedido pela aba **Pedidos** (modal de detalhe)
+  cozinha, sai só a via de cozinha. No modal de abertura há uma **identificação opcional**
+  (nome/mesa/referência, `#pdvComandaId`) gravada em `pedidos.cliente` — o campo **Cliente** da aba
+  Pedidos — que também volta no banner do modo acréscimo ("Acrescentando à Comanda #NN · Maria").
+  O atendente reabre o pedido pela aba **Pedidos** (modal de detalhe)
   e usa **"Acrescentar item"** — vale para **qualquer pedido a receber**, não só Comanda (D-07) — que
   leva o PDV ao modo "Acrescentando à Comanda #NN" e chama a rota nova `POST /api/pedidos/:id/itens`
   (`acrescentarItens` em `src/pedidos.js`: UPDATE incremental com `FOR UPDATE`, 409 de estoque); a

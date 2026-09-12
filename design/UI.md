@@ -171,6 +171,10 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
   reabrir pelo **Acrescentar item** do modal do pedido, o cabecalho da aba muda e o site entra no modo
   "Acrescentando à Comanda #NN" (banner com o mesmo visual do modo mesa; Cobrar vira "Acrescentar à
   Comanda").
+- **Identificacao da comanda (12/09, sugestao do dono):** o modal da Comanda traz o campo opcional
+  **"Identificação (opcional)"** (`#pdvComandaId`, placeholder "Nome, mesa ou referência"), gravado em
+  `pedidos.cliente` — e o que preenche o campo **Cliente** do pedido na aba Pedidos. O banner do modo
+  acrescimo mostra "Acrescentando à Comanda #NN · <identificação>" quando ela existe.
 - **Fluxo:** reabrir pelo pedido na aba Pedidos (botao **Acrescentar item**, vale para qualquer pedido
   a receber, nao so Comanda), montar a rodada e acrescentar; a cozinha recebe so a via nova. Fechamento
   pelo **Receber pagamento** de sempre.
