@@ -5532,9 +5532,28 @@ function abrirModalPedido(p) {
           <div class="ped-resumo-total"><span>Total</span><span>R$ ${moedaBR(p.total)}</span></div>
         </div>
       </div>
-    </div>`;
+    </div>
+    ${podeModificar
+      ? `<div class="ped-acoes-extra">
+          <button type="button" class="primario" id="btn-acrescentar-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Acrescentar item
+          </button>
+        </div>`
+      : ""}`;
 
   montarAcoes(p);
+
+  // Reabre uma comanda em aberto no PDV para acrescentar mais itens (modo comanda).
+  if (podeModificar) {
+    const btnAdd = $("pedido-detalhe-corpo").querySelector("#btn-acrescentar-item");
+    if (btnAdd) {
+      btnAdd.addEventListener("click", () => {
+        fecharModalPedido();
+        pedidoModoAtivar({ id: p.id, numero: p.numero });
+      });
+    }
+  }
 
   // Wiring dos botões de cancelar item individual
   if (podeModificar) {
@@ -5542,7 +5561,17 @@ function abrirModalPedido(p) {
       btn.addEventListener("click", async function (e) {
         e.stopPropagation();
         var idx = Number(btn.dataset.itemIdx);
-        var nome = (pedidoModalAtual.itens[idx] || {}).nome || "item";
+        var item = pedidoModalAtual.itens[idx] || {};
+        var nome = item.nome || "item";
+        // Item que já foi pra cozinha: aviso extra antes da confirmação (D-08).
+        // Quem preparou pode já estar cozinhando — cancelar aqui desperdiça.
+        if (item.cozinha === true) {
+          var okKitchen = await confirmar(
+            "Já foi para a cozinha",
+            "\"" + nome + "\" já foi enviado à cozinha e pode estar em preparo. Cancelar mesmo assim?"
+          );
+          if (!okKitchen) return;
+        }
         var r0 = await confirmarComOpcao(
           "Cancelar item?",
           "Remover \"" + nome + "\" do pedido. Esta ação não pode ser desfeita.",
@@ -6396,7 +6425,7 @@ function pdvAcharItem(id) {
 let pdvPagamentos = []; // [{ forma, valor }] adicionados (tendência)
 let pdvFormaSel = null;
 let pdvDescTipoSel = "valor"; // tipo do desconto na tela de pagamento ('valor'|'pct')
-let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada'
+let pdvTipoEntrega = "Balcão"; // 'Balcão' | 'Entrega' | 'Retirada' | 'Comanda'
 let pdvEntrega = null; // { endereco, enderecoCampos, telefone, taxaEntrega } | null
 
 function pdvEhDinheiro(f) { return window.Pagamentos.ehDinheiro(f); } // mesma regra do servidor (public/pagamentos.js)
@@ -6450,8 +6479,8 @@ function pdvPagoTotal() { return Math.round(pdvPagamentos.reduce((s, p) => s + (
 
 function renderPdvPagar() {
   const total = pdvTotalCobrar();
-  // Só Balcão recebe na hora (paga no caixa). Entrega/Retirada vão para Pedidos como
-  // "a receber" — sem bloco de pagamento; o recebimento é feito depois.
+  // Só Balcão recebe na hora (paga no caixa). Entrega/Retirada/Comanda vão para
+  // Pedidos como "a receber" — sem bloco de pagamento; o recebimento é feito depois.
   const ehBalcao = pdvTipoEntrega === "Balcão";
   const tiles = pdvFormasPg.map((f) =>
     '<button type="button" class="pdv-forma' + (f === pdvFormaSel ? " ativo" : "") + '" data-forma="' + pdvEsc(f) + '">' + pdvIconeForma(f) + "<span>" + pdvEsc(f) + "</span></button>"
@@ -6469,7 +6498,7 @@ function renderPdvPagar() {
         '<div class="pdv-tve-bloco">' +
           '<span class="pdv-ops-tit">Tipo de venda</span>' +
           '<div class="pdv-tve">' +
-            ["Balcão", "Entrega", "Retirada"].map((t) =>
+            ["Balcão", "Entrega", "Retirada", "Comanda"].map((t) =>
               '<button type="button" class="' + (pdvTipoEntrega === t ? "ativo" : "") + '" data-tve="' + t + '">' + t + "</button>"
             ).join("") +
           "</div>" +
@@ -6503,7 +6532,7 @@ function renderPdvPagar() {
     "</div>" +
     '<div class="pdv-pg-acoes">' +
       '<button type="button" class="secundario" id="pdvVoltar">Voltar</button>' +
-      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehBalcao ? "Confirmar pagamento" : "Enviar para Pedidos") + "</button>" +
+      '<button type="button" class="pdv-pg-confirmar" id="pdvFinalizar" disabled>' + (ehBalcao ? "Confirmar pagamento" : pdvTipoEntrega === "Comanda" ? "Abrir Comanda" : "Enviar para Pedidos") + "</button>" +
     "</div>";
   $("pdvPagarCaixa").innerHTML = html;
 
@@ -6749,8 +6778,8 @@ function pdvPagarRecalc() {
   if ($("pdvPgTroco")) $("pdvPgTroco").textContent = pdvMoney(troco);
   // Entrega exige endereço definido antes de fechar a venda.
   const entregaOk = pdvTipoEntrega !== "Entrega" || !!(pdvEntrega && pdvEntrega.endereco);
-  // Balcão: precisa quitar (falta 0 + ao menos 1 pagamento). Entrega/Retirada: sem
-  // pagamento — basta o endereço (Entrega) / sempre ok (Retirada).
+  // Balcão: precisa quitar (falta 0 + ao menos 1 pagamento). Entrega/Retirada/Comanda:
+  // sem pagamento — basta o endereço (Entrega) / sempre ok (Retirada/Comanda).
   // Total 0 (cortesia/100% de desconto): finaliza sem exigir pagamento.
   const pode = pdvTipoEntrega === "Balcão"
     ? (total <= 0.001 ? entregaOk : (falta <= 0.001 && pdvPagamentos.length && entregaOk))
@@ -6809,6 +6838,103 @@ async function finalizarVendaPdv() {
   renderPdvCarrinho();
 }
 
+/* ---- Modo PDV acrescentando à comanda (pedido em aberto) ---- */
+var pedidoModoId = null; // id do pedido em aberto sendo acrescentado
+var pedidoModoNumero = ""; // número da comanda (rótulo do banner)
+
+function pedidoModoAtivar(d) {
+  if (!d || !d.id) return;
+  pedidoModoId = d.id;
+  pedidoModoNumero = d.numero;
+  // Banner no topo do PDV (mesma tarja visual do modo mesa).
+  if (!$("pdvPedidoBanner")) {
+    var abaPdv = $("aba-pdv");
+    var banner = document.createElement("div");
+    banner.id = "pdvPedidoBanner";
+    banner.className = "pdv-mesa-banner";
+    banner.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6M9 16h6"/></svg>' +
+      '<span>Acrescentando a Comanda <strong>#' + pdvEsc(pedidoModoNumero) + '</strong></span>' +
+      '<button type="button" class="secundario mini" id="pdvPedidoCancelar">Cancelar</button>';
+    if (abaPdv) abaPdv.insertBefore(banner, abaPdv.firstChild);
+    var cancelBtn = $("pdvPedidoCancelar");
+    if (cancelBtn) cancelBtn.addEventListener("click", function () { pedidoModoDesativar(true); });
+  }
+  var cobrar = $("pdvCobrar");
+  if (cobrar) cobrar.textContent = "Acrescentar à Comanda";
+  pdvTituloModoPedido(true);
+  pdvCart = []; pdvDesconto = null; renderPdvCarrinho();
+  pdvLimparBusca(); // contexto novo: não herda o filtro da venda anterior
+  var pdvBtn = document.querySelector("nav button[data-aba='pdv']");
+  if (pdvBtn) pdvBtn.click();
+}
+
+function pedidoModoDesativar(voltarParaPedidos) {
+  var idPedido = pedidoModoId;
+  pedidoModoId = null;
+  pedidoModoNumero = "";
+  pdvCart = []; pdvDesconto = null;
+  pdvLimparBusca(); // sai do modo: PDV volta com a grade limpa
+  var banner = $("pdvPedidoBanner");
+  if (banner) banner.remove();
+  var cobrar = $("pdvCobrar");
+  if (cobrar) cobrar.textContent = "Cobrar";
+  pdvTituloModoPedido(false);
+  renderPdvCarrinho();
+  if (voltarParaPedidos !== false && idPedido) {
+    var pedNavBtn = document.querySelector("nav button[data-aba='pedidos']");
+    if (pedNavBtn) pedNavBtn.click();
+    if (typeof carregarPedidos === "function") carregarPedidos();
+  }
+}
+
+// Cabeçalho da aba PDV troca no modo comanda (o HTML estático é o estado de balcão,
+// para onde a tela volta ao sair do modo — mesmo princípio de pdvTituloModoMesa).
+function pdvTituloModoPedido(ligado) {
+  var h = $("pdvTitulo");
+  var s = $("pdvSubtitulo");
+  if (h) h.textContent = ligado ? "Acrescentar à comanda" : "Venda no balcão";
+  if (s) {
+    s.textContent = ligado
+      ? "Monte a rodada e acrescente à comanda. Ela continua em aberto na aba Pedidos."
+      : "Monte o pedido, cobre e a venda entra no caixa.";
+  }
+}
+
+async function pedidoLancarDoPdv() {
+  if (!pdvCart.length) { toast("Carrinho vazio.", "aviso"); return; }
+  var btn = $("pdvCobrar");
+  if (btn) btn.disabled = true;
+  try {
+    var itens = pdvCart.map(function (l) {
+      return {
+        id: l.id, qtd: l.qtd,
+        composicao: l.composicao || [],
+        opcionais: (l.opcionais || []).map(function (o) { return { nome: o.nome, qtd: o.qtd }; }),
+        grupos: l.grupos || [],
+        variacoes: (l.variacoes || []).map(function (v) { return { id: v.id, qtd: v.qtd }; }),
+        observacao: l.observacao || ""
+      };
+    });
+    var r = await api("POST", "/api/pedidos/" + pedidoModoId + "/itens", { itens: itens });
+    if (!r || !r.ok) {
+      var e = (r && await r.json().catch(function () { return {}; })) || {};
+      toast(e.erro || "Erro ao acrescentar à comanda. Confira os itens e tente de novo.", "erro");
+      return;
+    }
+    toast("Itens acrescentados à comanda!");
+    // A via da cozinha (só a rodada nova) é enfileirada no servidor e impressa pelo agente.
+    pedidoModoDesativar(false);
+    var pedNavBtn = document.querySelector("nav button[data-aba='pedidos']");
+    if (pedNavBtn) pedNavBtn.click();
+    if (typeof carregarPedidos === "function") carregarPedidos();
+  } catch (err) {
+    toast("Erro ao acrescentar à comanda.", "erro");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // ---- Wiring do PDV ----
 if ($("btnVerPlanosPdv")) $("btnVerPlanosPdv").addEventListener("click", () => abrirUpsell("pdv"));
 if ($("btnPdvIrCaixa")) $("btnPdvIrCaixa").addEventListener("click", () => { const b = document.querySelector("nav button[data-aba='caixa']"); if (b) b.click(); });
@@ -6829,7 +6955,7 @@ function pdvLimparBusca() {
   pdvCatAtiva = null;
   if ($("pdvBusca")) $("pdvBusca").value = "";
 }
-if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", function () { if (mesaModoId) mesaLancarDoPdv(); else abrirPdvPagar(); });
+if ($("pdvCobrar")) $("pdvCobrar").addEventListener("click", function () { if (mesaModoId) mesaLancarDoPdv(); else if (pedidoModoId) pedidoLancarDoPdv(); else abrirPdvPagar(); });
 if ($("pdvCancelar")) $("pdvCancelar").addEventListener("click", async () => {
   if (pdvCart.length) {
     const ok = await confirmar("Cancelar venda?", "Isso esvazia o carrinho atual. Esta ação não pode ser desfeita.", "Cancelar venda");

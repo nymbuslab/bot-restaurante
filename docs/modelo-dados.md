@@ -120,9 +120,12 @@ troco_para (numeric; só no cardápio web e só em dinheiro: quanto o cliente va
 origem (text 'web' | 'pdv' | 'mesa'; de onde o pedido entrou — escopa o alerta de
   "novo pedido" e a impressão do agente ao 'web', e dá o "Canal" na lista de Pedidos)
 ```
-`tipo_entrega` = `Entrega` | `Retirada` | **`Balcão`**. No **PDV** (`origem='pdv'`):
-**Balcão** nasce `recebido_em` (paga na hora, cai no caixa); **Entrega/Retirada** nascem
-**a receber** (`recebido_em` nulo — recebimento feito depois em Pedidos). No PDV o `total`
+`tipo_entrega` = `Entrega` | `Retirada` | `Balcão` | **`Comanda`**. No **PDV** (`origem='pdv'`):
+**Balcão** nasce `recebido_em` (paga na hora, cai no caixa); **Entrega/Retirada/Comanda** nascem
+**a receber** (`recebido_em` nulo — recebimento feito depois em Pedidos). **Comanda** é o pedido "em
+aberto": o PDV abre sem cobrança nem cupom (D-14), e itens são acrescentados depois por
+`acrescentarItens` (`src/pedidos.js`, rota `POST /api/pedidos/:id/itens` — via de cozinha só da
+rodada nova), fechando pelo "Receber pagamento" já existente. No PDV o `total`
 é o líquido (subtotal − `desconto`).
 Colunas em snake_case no banco; `pedidos.js` mapeia para camelCase (`tipoEntrega`,
 `criadoEm`, etc.) que o painel/bot esperam. `avisado_em` = timestamp do aviso

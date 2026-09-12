@@ -330,7 +330,7 @@ que vêm do WhatsApp.
 Aba **PDV** no painel (gate `temPdv`, front+back) para registrar venda de balcão. **Exige caixa
 aberto** (senão mostra "Abra o caixa para vender"). Fluxo: grade de produtos (chips de categoria +
 busca) → toque adiciona ao carrinho; itens com **grupo da biblioteca**, **variações** ou por **kg** abrem um mini-modal
-(peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **tipo de venda** (Balcão/Entrega/Retirada),
+(peso/adicionais/observação). Botão **Cobrar** → tela de pagamento com **tipo de venda** (Balcão/Comanda/Entrega/Retirada),
 **desconto** (R$ ou %), **pagamento dividido** (várias formas, soma = total), **troco** (dinheiro) e
 **CPF na nota** (opcional).
 
@@ -357,6 +357,15 @@ depende do **tipo de venda** (todos com `origem='pdv'` e **baixa de estoque ATÔ
   caixa**; vai para **Pedidos** e o recebimento é feito **depois** (botão Receber). Impressão: **Entrega**
   = cozinha (se houver) + cupom (tem os dados da entrega); **Retirada** = **só cozinha**. Na tela
   Finalizar venda esses tipos **não pedem pagamento** (o botão vira "Enviar para Pedidos").
+- **Comanda** (pedido em aberto, sem cobrança na abertura): nasce **"a receber"** como
+  Entrega/Retirada (`recebido_em` nulo, sem caixa) e **não imprime cupom** (D-14) — quando há item de
+  cozinha, sai só a via de cozinha. O atendente reabre o pedido pela aba **Pedidos** (modal de detalhe)
+  e usa **"Acrescentar item"** — vale para **qualquer pedido a receber**, não só Comanda (D-07) — que
+  leva o PDV ao modo "Acrescentando à Comanda #NN" e chama a rota nova `POST /api/pedidos/:id/itens`
+  (`acrescentarItens` em `src/pedidos.js`: UPDATE incremental com `FOR UPDATE`, 409 de estoque); a
+  cozinha recebe **só a via da rodada nova**. Fechamento pelo botão **"Receber pagamento"** do modal de
+  detalhe (mesmo caminho de Entrega/Retirada, zero código novo). Cancelar item já enviado à cozinha pede
+  o segundo aviso.
 
 As vias vão para `impressao_fila` (tipo `pdv`, ordem cozinha→cupom) e saem pelo **agente**. O PDV
 **nunca** abre o modal de "novo pedido" — esse alerta é escopado **no servidor** aos pedidos de

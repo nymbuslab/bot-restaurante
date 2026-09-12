@@ -94,7 +94,13 @@ if (fs.existsSync(path.join(limpo, ".env"))) fs.unlinkSync(path.join(limpo, ".en
 
 console.log("Rodando " + arquivos.length + " arquivo(s) de integração contra o banco do .env.test.\n");
 
-const r = spawnSync(process.execPath, ["--test", ...arquivos], {
+// Os arquivos de integração tocam um Postgres real e o Session pooler do
+// Supabase limita a ~15 conexões simultâneas (pool_size). Rodar os 10+ arquivos
+// em paralelo por padrão estourava o balde (`EMAXCONNSESSION`) e derrubava casos
+// legítimos de OUTROS arquivos, não só o novo. `--test-concurrency=3` mantém o
+// paralelismo (cada arquivo ainda roda os seus casos em sequência) sem formar
+// fila de conexão no servidor.
+const r = spawnSync(process.execPath, ["--test", "--test-concurrency=3", ...arquivos], {
   cwd: limpo,
   stdio: "inherit",
   env: ambiente,

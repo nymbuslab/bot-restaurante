@@ -2303,6 +2303,78 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
   }
 });
 
+// Acréscimo de itens a um pedido AINDA EDITÁVEL (não recebido, não cancelado) —
+// o caminho que abre a Comanda e volta para acrescentar mais antes de fechar.
+// Replica o pipeline de POST /api/mesas/:id/pedido: recalcula no servidor, valida
+// estoque ANTES (409), baixa estoque atomicamente, faz UPDATE incremental na
+// MESMA linha (append itens + soma total) e enfileira SÓ os itens da rodada nova
+// para a cozinha. A via é a mesma de PDV avulso ("pdv"), rótulo livre na fila.
+app.post("/api/pedidos/:id/itens", exigeAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (!Array.isArray(b.itens) || !b.itens.length) return res.status(400).json({ erro: "A lista de itens está vazia." });
+
+    const id = Number(req.params.id);
+    const pedidoAtual = await pedidos.lerPorId(req.tenantDir, id);
+    if (!pedidoAtual) return res.status(404).json({ erro: "Pedido não encontrado." });
+    if (pedidoAtual.recebidoEm || pedidoAtual.status === "cancelado") {
+      return res.status(400).json({ erro: "Pedido não encontrado, já recebido ou cancelado." });
+    }
+
+    await store.ensure(req.tenantDir);
+    const cardapio = store.getCardapio(req.tenantDir);
+
+    // Recalcula antes de validar: o estoque é conferido sobre o que a rodada vai
+    // realmente tirar, não sobre o payload cru (o porquê está no cardápio web).
+    const recalc = pdv.recalcularVenda(cardapio, b.itens);
+    const { itens, subtotal } = recalc;
+    if (recalc.excedentes.length) {
+      return res.status(400).json({ erro: cardapioWeb.mensagemExcedente(recalc.excedentes) });
+    }
+    const estCheck = estoque.validarEstoque(cardapio, itens);
+    if (!estCheck.ok) return res.status(409).json({ erro: estCheck.erro });
+
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Mesmos itens que a rodada grava (ver o porquê na baixa do cardápio web).
+      const { cardapio: novoCardapio, movimentoIds } = await store.baixarEstoqueTx(client, req.tenantDir, itens);
+      await pedidos.acrescentarItens(req.tenantDir, id, { itens, subtotal }, client);
+      await store.amarrarPedidoTx(client, movimentoIds, id, pedidoAtual.numero);
+      await client.query("COMMIT");
+      store.sincronizarCardapio(req.tenantDir, novoCardapio);
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      if (e.code === "ESTOQUE") return res.status(409).json({ erro: e.message });
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    // Enfileira a via da cozinha SÓ da rodada nova (best-effort, fora da transação).
+    // Mesmo padrão do lançamento de mesa: a via lista apenas os itens acrescidos,
+    // sem repetir o que a cozinha já preparou.
+    try {
+      const cozItens = itensDeCozinha(cardapio, itens);
+      if (cozItens.length) {
+        const cfg = store.getConfig(req.tenantDir) || {};
+        const pedCoz = {
+          numero: pedidoAtual.numero,
+          criadoEm: new Date().toISOString(),
+          tipoEntrega: pedidoAtual.tipoEntrega || "Balcão",
+          itens: cozItens,
+        };
+        await impressaoFila.enfileirar(req.tenantDir, "pdv", [Comanda.montarCozinha(pedCoz, cfg)]);
+      }
+    } catch (e) { console.error("enfileirar impressão acréscimo:", e.message); }
+
+    const atualizado = await pedidos.lerPorId(req.tenantDir, id);
+    res.json(atualizado);
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao acrescentar itens ao pedido." });
+  }
+});
+
 // Reimpressão manual: re-enfileira a comanda (cozinha + cupom) do pedido para o
 // agente. Substitui o antigo "Imprimir comanda" do navegador.
 app.post("/api/pedidos/:id/reimprimir", exigeAuth, async (req, res) => {
@@ -2621,7 +2693,7 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
     // Mesma régua da rota do cardápio web: sem isso o nome ia cru para o banco
     // (qualquer tipo, qualquer tamanho) num campo que a comanda imprime.
     const cliente = String(b.cliente || "").trim().slice(0, 120);
-    const tipoEntrega = ["Entrega", "Retirada"].includes(b.tipoEntrega) ? b.tipoEntrega : "Balcão";
+    const tipoEntrega = ["Entrega", "Retirada", "Comanda"].includes(b.tipoEntrega) ? b.tipoEntrega : "Balcão";
     let endereco = "", telefone = "", taxaEntrega = 0;
     if (tipoEntrega === "Entrega") {
       endereco = String(b.endereco || "").trim().slice(0, 300);
@@ -2694,13 +2766,13 @@ app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
 
     // Impressão automática pelo agente (best-effort: nunca derruba a venda já gravada).
     // A via da COZINHA só quando há itens marcados "Imprime na cozinha". O CUPOM da
-    // venda sai para Balcão e Entrega (tem os dados); Retirada imprime SÓ a cozinha.
+    // venda sai para Balcão e Entrega; Retirada e Comanda imprimem SÓ a cozinha.
     try {
       const cfg = store.getConfig(req.tenantDir) || {};
       const cozItens = itensDeCozinha(cardapio, itens);
       const vias = [];
       if (cozItens.length) vias.push(Comanda.montarCozinha({ ...pedido, itens: cozItens }, cfg));
-      if (tipoEntrega !== "Retirada") vias.push(Comanda.montarCupom(pedido, cfg));
+      if (tipoEntrega !== "Retirada" && tipoEntrega !== "Comanda") vias.push(Comanda.montarCupom(pedido, cfg));
       if (vias.length) await impressaoFila.enfileirar(req.tenantDir, "pdv", vias);
     } catch (e) { console.error("enfileirar impressão PDV:", e.message); }
 

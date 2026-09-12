@@ -360,6 +360,48 @@ async function contarVendasDoItem(dir, itemId) {
   return r.rows[0] ? r.rows[0].n : 0;
 }
 
+// Acrescenta itens a um pedido ainda editável (não recebido, não cancelado) —
+// padrão open check para Comanda avulsa. Faz UPDATE incremental na MESMA linha
+// (append em `itens`, soma em `total`), exatamente como mesasDb.lancarItens faz
+// para rodadas de mesa. `client` opcional: quando passado, roda DENTRO da
+// transação do chamador; sem ele, abre transação própria. Devolve o pedido
+// atualizado (id, numero, itens, total).
+async function acrescentarItens(dir, pedidoId, { itens = [], subtotal = 0 } = {}, client) {
+  const empId = await empresaId(dir);
+  const proprio = !client;
+  let handle = client;
+  if (proprio) {
+    handle = await db.pool.connect();
+    await handle.query("BEGIN");
+  }
+  try {
+    const r = await handle.query(
+      `SELECT id, numero, itens, total FROM pedidos
+        WHERE empresa_id = $1 AND id = $2 AND recebido_em IS NULL AND status <> 'cancelado' FOR UPDATE`,
+      [empId, pedidoId]
+    );
+    if (!r.rows[0]) throw new Error("Pedido não encontrado, já recebido ou cancelado.");
+    const itensAntigos = Array.isArray(r.rows[0].itens) ? [...r.rows[0].itens] : [];
+    const todosItens = [...itensAntigos, ...(itens || [])];
+    const novoTotal = Math.round((Number(r.rows[0].total) + Number(subtotal || 0)) * 100) / 100;
+    await handle.query("UPDATE pedidos SET itens = $1::jsonb, total = $2 WHERE id = $3", [
+      JSON.stringify(todosItens), novoTotal, pedidoId,
+    ]);
+    if (proprio) await handle.query("COMMIT");
+    return {
+      id: r.rows[0].id,
+      numero: r.rows[0].numero,
+      itens: todosItens,
+      total: novoTotal,
+    };
+  } catch (e) {
+    if (proprio) await handle.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    if (proprio) handle.release();
+  }
+}
+
 // ---- Dashboard: agregados calculados no BANCO (não traz o histórico ao cliente) ----
 // Tudo no fuso America/Sao_Paulo (agrupa por dia/mês local do dono). Faturamento =
 // venda de PRODUTOS = `total - taxa_entrega` (o frete não é receita), excluindo
@@ -455,4 +497,4 @@ async function dashboardRaw(dir) {
   };
 }
 
-module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, dashboardRaw };
+module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, acrescentarItens, dashboardRaw };
