@@ -27,10 +27,10 @@ async function empresaId(dir) {
 }
 
 // Conta pedidos do turno (criados desde a abertura do caixa) ainda NÃO recebidos.
-// Base da regra "todos os pedidos precisam ser recebidos antes de fechar".
-// Pedidos de DELIVERY/local (mesa_id NULL) ainda a receber no turno. Exclui
-// cancelados (nunca recebem → travavam o fechamento) e mesas (contadas à parte:
-// mesa se recebe na própria mesa, não pela aba Pedidos).
+// Usado pelo RESUMO da tela (pendência do turno); o gate de fechamento usa
+// _contarAReceberTotal (qualquer data). Pedidos de DELIVERY/local (mesa_id NULL)
+// ainda a receber no turno. Exclui cancelados (nunca recebem → travavam o
+// fechamento) e mesas (contadas à parte: mesa se recebe na própria mesa).
 async function _contarAReceber(empId, abertoEm) {
   const r = await db.query(
     `SELECT COUNT(*)::int AS n FROM pedidos
@@ -41,9 +41,24 @@ async function _contarAReceber(empId, abertoEm) {
   return r.rows[0].n;
 }
 
-// Pedidos a receber anteriores ao turno atual nao bloqueiam o fechamento do caixa
-// de hoje, mas precisam aparecer: o recebimento deles entra no caixa aberto quando
-// for feito, entao deixar invisivel passava uma pendencia velha como se nao existisse.
+// Conta QUALQUER pedido a receber (do turno ou de dias anteriores). Base da regra
+// "todos os pedidos precisam ser recebidos antes de fechar": o caixa não fecha com
+// pendência em aberto de nenhuma data. Antes (até 2026-09-12) o fechamento só
+// considerava o turno; a contagem nova é usada APENAS no gate (OC-2026-0001).
+async function _contarAReceberTotal(empId) {
+  const r = await db.query(
+    `SELECT COUNT(*)::int AS n FROM pedidos
+      WHERE empresa_id = $1 AND recebido_em IS NULL AND status <> 'cancelado'
+        AND mesa_id IS NULL`,
+    [empId]
+  );
+  return r.rows[0].n;
+}
+
+// Pedidos a receber anteriores ao turno atual aparecem no resumo (o recebimento
+// deles entra no caixa aberto quando for feito): se ficassem invisiveis, uma
+// pendencia velha passaria como se nao existisse. O FECHAMENTO, porem, considera
+// QUALQUER pendencia via _contarAReceberTotal — o caixa só fecha com tudo recebido.
 async function _resumoAReceberAntigos(empId, abertoEm) {
   const r = await db.query(
     `SELECT COUNT(*)::int AS quantidade,
@@ -741,12 +756,13 @@ async function fecharCaixa(dir, { contado, contagem, eletronico }) {
     const caixa = cxRes.rows[0];
     if (!caixa) throw new Error("Não há caixa aberto.");
 
-    // Regra de negócio: não fecha com consumo do turno ainda em aberto.
+    // Regra de negócio: não fecha com consumo ainda em aberto (do turno ou de dias
+    // anteriores — um pedido a receber antigo deixa o caixa de hoje pendente).
     const mesasAbertas = await _contarMesasAbertas(empId);
     if (mesasAbertas > 0) {
       throw new Error(`Há ${mesasAbertas} mesa(s) aberta(s). Feche as mesas (na aba Mesas) antes de fechar o caixa.`);
     }
-    const aReceber = await _contarAReceber(empId, caixa.aberto_em);
+    const aReceber = await _contarAReceberTotal(empId);
     if (aReceber > 0) {
       throw new Error(`Há ${aReceber} pedido(s) com pagamento a receber. Receba todos antes de fechar o caixa.`);
     }

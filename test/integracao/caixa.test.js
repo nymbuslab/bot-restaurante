@@ -101,8 +101,8 @@ test("a trava: não fecha o caixa com pedido a receber", async () => {
   assert.equal(r.status, 400, "FECHOU COM VENDA A RECEBER (status " + r.status + ")");
   assert.match(String(r.corpo.erro), /a receber/i);
 
-  // Pedidos antigos a receber têm outro tratamento: aparecem como aviso, mas nao
-  // travam o fechamento do caixa de hoje.
+  // Pedidos antigos a receber (dias anteriores ao turno) também bloqueiam o
+  // fechamento desde 2026-09-12 (OC-2026-0001) — teste próprio mais abaixo.
 });
 
 test("receber com forma que a loja não oferece é recusado", async () => {
@@ -209,7 +209,7 @@ test("com tudo recebido, o caixa fecha e devolve o relatório", async () => {
   assert.equal(e.caixa, null, "depois de fechar não pode sobrar caixa aberto");
 });
 
-test("pedido antigo a receber avisa, mas não bloqueia o fechamento de hoje", async () => {
+test("pedido antigo a receber também bloqueia o fechamento do caixa", async () => {
   const pedido = await criarPedidoAReceber();
   await db.query("UPDATE pedidos SET criado_em = now() - interval '2 days' WHERE id = $1", [pedido.id]);
 
@@ -223,7 +223,8 @@ test("pedido antigo a receber avisa, mas não bloqueia o fechamento de hoje", as
   assert.ok(e.pedidosAReceberAntigos.maisAntigoEm, "o aviso precisa trazer a data do pedido mais antigo");
 
   const fechar = await app.pedir("/api/caixa/fechar", { token: loja.token, corpo: { contado: { Dinheiro: 0 } } });
-  assert.equal(fechar.status, 200, "pedido antigo a receber não deve travar o caixa de hoje: " + JSON.stringify(fechar.corpo));
+  assert.equal(fechar.status, 400, "pedido antigo a receber precisa travar o caixa de hoje: " + JSON.stringify(fechar.corpo));
+  assert.match(fechar.corpo.error || fechar.corpo.erro || "", /a receber/i, "mensagem deve apontar os pedidos a receber");
 });
 
 test("o caixa é do Plano Completo: quem está no Essencial não entra", async () => {
