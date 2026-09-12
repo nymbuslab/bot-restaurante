@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-08-30
+atualizado: 2026-09-11
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1071,3 +1071,33 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - Cardápio sem categoria e busca sem resultado mostram uma mensagem amigável, com atalho para
   resolver.
 - Botões de editar/excluir do Cardápio ficam mais fáceis de tocar no celular.
+
+## [1.2.5] — Lista de Pedidos carrega mais itens de uma vez
+
+- A tela de Pedidos mostra 30 pedidos de cara (em vez de 10) e ganhou um botão "Carregar
+  mais" no lugar dos números de página.
+- Vale tanto no computador quanto no celular.
+
+## [1.2.6] — Relatórios do Telegram personalizáveis por cliente
+
+- A ficha do cliente no admin-master ganhou a aba "Relatórios Telegram", com checkboxes para
+  escolher quais relatórios cada restaurante recebe: fechamento de caixa, estoque e um alerta
+  novo de cancelamento de venda.
+- O fechamento de caixa no Telegram ficou bem mais completo: operador, data/hora, quantidade e
+  valor por forma de pagamento, e se o caixa faltou ou sobrou em cada forma.
+- O alerta de estoque baixo passou a separar "Estoque zerado" de "Estoque mínimo", em vez de uma
+  lista única.
+- Novo alerta: quando uma venda já paga é cancelada ou estornada acima de um valor mínimo (a
+  margem é configurável por restaurante), o dono recebe um aviso no Telegram.
+
+## [1.2.7] — Comanda: pedido em aberto no PDV
+
+- O PDV ganhou um novo tipo de venda, "Comanda": o pedido fica em aberto (como uma mesa), sem
+  cobrança nem cupom na abertura, para o cliente pedir mais depois.
+- Para acrescentar itens, o atendente abre o pedido na aba Pedidos e toca em "Acrescentar item"
+  (vale para qualquer pedido ainda a receber, não só Comanda). A cozinha recebe só a via com os
+  itens novos, sem reimprimir o pedido inteiro.
+- Fechamento continua na mesma tela de sempre: o botão "Receber pagamento" que Entrega/Retirada
+  já usam.
+- Cancelar um item que já foi para a cozinha agora pede uma confirmação extra avisando, antes de
+  confirmar o cancelamento.

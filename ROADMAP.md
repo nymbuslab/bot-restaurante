@@ -160,6 +160,18 @@ descartável.
     > **Fiscal (NFC-e/SAT) e fiado seguem fora**, e o fiado foi inclusive removido do produto.
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
     Planilha de Fluxo, CR Sistemas, RP Info, Eccosys.
+- [x] **Relatórios via Telegram para o dono do restaurante** — ✅ **entregue**: fechamento de caixa
+  detalhado (operador, quantidade+valor por forma, diferença por forma), estoque em duas seções
+  (zerado/mínimo) e alerta de cancelamento/estorno com margem mínima em R$, tudo configurável por
+  checkbox na ficha do tenant (admin-master). Ver `docs/sprintx/features/relatorios-telegram/` e
+  `docs/sprintx/features/personalizacao-relatorios-telegram/`, `CHANGELOG.md`.
+- [ ] **Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — sinalizado
+  pelo dono ao evoluir os relatórios de Telegram (2026-09-07): depois do fechamento de caixa/estoque/
+  cancelamento, ele quer receber também faturamento mensal e DRE, e cogita integrar IA para
+  análise/resumo desses números. Precisa de descoberta própria: faturamento mensal e DRE são tipos de
+  relatório novos, com gatilho próprio (job mensal), diferente dos atuais que dependem do evento de
+  fechar caixa. A arquitetura de toggle por tipo de relatório (`config.telegram.tipos`) já foi
+  desenhada pensando em caber esses tipos futuros sem redesenho.
 - [ ] App mobile para o atendente receber pedidos
 - [x] **Observabilidade / monitoramento** — ✅ **entregue**: aba **Monitoramento** no painel master — **Fase 1** (Banco/App/Bots/Fila ao vivo via `GET /api/admin/diagnostico` + log da causa dos 500 de auth) e **Fase 2** (tabela `incidentes` + histórico no painel) — mais **monitor de uptime externo** (UptimeRobot no `/health`, 2 camadas: cliente + app direto). Ver `CHANGELOG.md` v0.79.0.
 - [x] **Limpeza ativa de sessões abandonadas (bot)** — ✅ **concluído**: `sessoes.limparExpiradas()` varre o Map e descarta as sessões inativas há +30min, agendada a cada 10min no `index.js` (no lugar da expiração só-lazy, que nunca limpava conversa abandonada). Sem mudança de comportamento; só libera RAM. Ver `CHANGELOG.md` v0.24.0.

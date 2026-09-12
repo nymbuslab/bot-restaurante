@@ -160,6 +160,21 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
   Insumos, etapa 4/4). Quantidade **nao e dinheiro**: sem mascara monetaria, `Estoque.formatarQtd`.
 - **No celular:** as tres acoes saem da linha e ficam na gaveta, que ocupa a tela inteira.
 
+### 11. Comanda no PDV — CONCLUIDO (Plano Completo)
+- **Feito:** o Cobrar do PDV ganhou o 4o tipo de venda, Comanda, ao lado de Balcao/Entrega/Retirada.
+  O pedido nasce **a receber** (sem bloco de pagamento) com o botao "Abrir Comanda"; ao reabrir pelo
+  **Acrescentar item** do modal do pedido, o cabecalho da aba muda para "Acrescentar a comanda" e o
+  site entra no modo "Acrescentando a Comanda #NN". 
+- **Fluxo:** reabrir pelo pedido na aba Pedidos (botao **Acrescentar item**, vale para qualquer pedido
+  a receber, nao so Comanda), montar a rodada e acrescentar; a cozinha recebe so a via nova. Fechamento
+  pelo **Receber pagamento** de sempre.
+- **Dados/rotas:** `POST /api/pedidos/:id/itens` (`acrescentarItens` em `src/pedidos.js`, UPDATE com
+  `FOR UPDATE`); tipo gravado em `tipo_entrega`; sem cupom na abertura (via so de cozinha).
+- **Limites:** a comanda abre e reabre pelo fluxo existente (modal do pedido), sem tela propria de
+  comandas em aberto; abrir uma de cada vez (como o modo mesa); cancelar item ja enviado a cozinha
+  pede confirmacao extra. Portao de design do tile/banner/botao em aprovacao.
+- **No celular:** os mesmos componentes do PDV; o banner e o botao seguem o modal em tela cheia.
+
 ---
 
 ## Status e ordem
