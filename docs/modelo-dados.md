@@ -395,10 +395,11 @@ criado_em
   reimpressão, com linhas separadas de **Dinheiro em Caixa** e **Total Conferência**. O backend ainda
   aceita o payload legado `{ contagem, eletronico }` para front em cache. **Não
   fecha** com consumo em aberto: **mesas abertas** (bloqueio à parte, atalho pra Mesas) ou **pedidos
-  de delivery/local a receber do turno** (`mesa_id` nulo, criados desde a abertura). Pedido
-  **cancelado não conta** (`_contarAReceber` exclui `status='cancelado'`). Pedido a receber anterior
-  ao turno atual aparece no fechamento como aviso com quantidade, total e atalho pra Pedidos em
-  "A receber" com período personalizado desde o pedido mais antigo, mas não bloqueia o caixa de hoje.
+  de delivery/local a receber de qualquer data** (`mesa_id` nulo; o gate usa `_contarAReceberTotal`,
+  sem recorte por turno). Pedido **cancelado não conta** (exclui `status='cancelado'`). Pedido a
+  receber anterior ao turno também bloqueia o fechamento e aparece no resumo como aviso com
+  quantidade, total e atalho pra Pedidos em "A receber" com período personalizado desde o pedido mais
+  antigo.
 - Cálculos puros em `src/caixa-calc.js`, `public/relatorio-caixa.js` e `public/comprovante-caixa.js`; orquestração em `src/caixa.js`.
   Migrations `20260620120000_caixa.sql`, `20260620130000` (operador/obs_abertura),
   `20260620140000` (contado_eletronico/detalhe_fechamento). RLS no padrão (revoke anon/authenticated).

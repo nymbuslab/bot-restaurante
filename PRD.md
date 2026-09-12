@@ -113,7 +113,7 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 - **Caixa do dia**: abertura com fundo de troco, recebimento por pedido, sangria e suprimento,
   estorno de recebimento errado e cancelamento com rastro. O fechamento é uma conferência direta
   por forma de pagamento (esperado, contado e diferença) e gera o relatório 80mm. Não fecha com
-  venda do turno a receber nem com mesa aberta.
+  venda a receber (nem de turnos anteriores) nem com mesa aberta.
 
 ### 5.7 Impressão térmica (Plano Completo)
 

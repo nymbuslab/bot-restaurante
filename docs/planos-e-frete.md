@@ -300,11 +300,12 @@ que vêm do WhatsApp.
   Ao fechar, o servidor recalcula tudo, **monta o relatório 80mm** (fonte única; vendas líquidas por
   forma, movimentos, dinheiro em caixa, total para conferência e diferença global), enfileira para o
   agente e guarda em `detalhe_fechamento` p/ reimpressão.
-- **Regra:** **não fecha com consumo do turno em aberto** (guarda no servidor). Bloqueios separados:
+- **Regra:** **não fecha com consumo em aberto** (guarda no servidor). Bloqueios separados:
   **mesas abertas** → atalho pra aba **Mesas** (recebe na mesa); **pedidos de delivery/local a receber**
-  do turno (`mesa_id` nulo, criados desde a abertura) → atalho pra aba **Pedidos** em "A receber".
-  Pedido antigo a receber aparece como aviso com total pendente e atalho pra Pedidos em "A receber",
-  abrindo período personalizado desde o pedido mais antigo, sem bloquear o caixa de hoje. Pedido
+  de QUALQUER data (`mesa_id` nulo, ainda não recebidos) → atalho pra aba **Pedidos** em "A receber".
+  Pedido antigo a receber também bloqueia o fechamento (um pedido a receber esquecido de outro dia
+  deixa o caixa de hoje pendente); no resumo ele aparece como aviso com total pendente e atalho pra
+  Pedidos em "A receber", abrindo período personalizado desde o pedido mais antigo. Pedido
   **cancelado não conta** (nunca é recebido).
 - **Caixas anteriores:** os **3 últimos** fechamentos com resumo na linha (operador · total para
   conferência · Fechado · diferença), clicável p/ **reabrir o relatório** (toggle).
