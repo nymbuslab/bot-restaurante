@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa, esperadoPorForma } = require("../src/caixa-calc");
+const { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa, esperadoPorForma, contagemPorForma, diferencaPorForma } = require("../src/caixa-calc");
 
 const caixa = { fundo_troco: 100 };
 const movs = [
@@ -121,6 +121,68 @@ test("esperadoPorForma: dinheiro = espécie inteira, resto = recebido líquido; 
   // soma por forma bate com o total em caixa (invariante)
   const somaForma = formas.reduce((s, f) => s + esp[f], 0);
   assert.equal(somaForma, totalEmCaixa(c, r)); // 100 + 110 + 10 - 25 - 5 = 190
+});
+
+// ---------------------------------------------------------------------------
+// T-01.02 — contagemPorForma(movimentos): QUANTIDADE de transações tipo
+// recebimento por forma (D-01). O Telegram passa a mostrar volume, não só valor.
+// ---------------------------------------------------------------------------
+
+test("T-01.02 contagemPorForma: conta só recebimentos por forma", () => {
+  const movs = [
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 50 },
+    { tipo: "recebimento", forma_pagamento: "PIX", valor: 20 },
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 30 },
+    { tipo: "cancelamento", forma_pagamento: "Dinheiro", valor: 50 }, // ignorado
+    { tipo: "suprimento", valor: 10 },                                // ignorado
+  ];
+  assert.deepEqual(contagemPorForma(movs), { Dinheiro: 2, PIX: 1 });
+});
+
+test("T-01.02 contagemPorForma: lista vazia retorna {} e soma bate com o número de recebimentos", () => {
+  assert.deepEqual(contagemPorForma([]), {});
+  const movs = [
+    { tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 1 },
+    { tipo: "recebimento", forma_pagamento: "PIX", valor: 2 },
+    { tipo: "recebimento", forma_pagamento: "PIX", valor: 3 },
+    { tipo: "cancelamento", forma_pagamento: "PIX", valor: 4 },
+  ];
+  const c = contagemPorForma(movs);
+  const soma = Object.values(c).reduce((s, n) => s + n, 0);
+  assert.equal(soma, 3, "soma das contagens = número de recebimentos passados");
+});
+
+test("T-01.02 contagemPorForma: nunca altera o array de entrada", () => {
+  const movs = [{ tipo: "recebimento", forma_pagamento: "Dinheiro", valor: 1 }];
+  const copia = JSON.parse(JSON.stringify(movs));
+  contagemPorForma(movs);
+  assert.deepEqual(movs, copia, "entrada imutável (função pura)");
+});
+
+// ---------------------------------------------------------------------------
+// T-01.03 — diferencaPorForma(contadoPorForma, esperadoPorForma): sobrou/faltou
+// POR FORMA (D-04). O Telegram aponta qual forma teve problema, não só o total.
+// ---------------------------------------------------------------------------
+
+test("T-01.03 diferencaPorForma: contado - esperado por forma", () => {
+  assert.deepEqual(
+    diferencaPorForma({ Dinheiro: 105 }, { Dinheiro: 100, PIX: 20 }),
+    { Dinheiro: 5, PIX: -20 }
+  );
+});
+
+test("T-01.03 diferencaPorForma: toda forma dos dois lados aparece no resultado", () => {
+  const r = diferencaPorForma({ Dinheiro: 105, PIX: 20, Crédito: 40 }, { Dinheiro: 100, PIX: 20, Débito: 50 });
+  assert.deepEqual(Object.keys(r).sort(), ["Crédito", "Dinheiro", "Débito", "PIX"]);
+  assert.equal(r.Crédito, 40, "forma só no contado = contado - 0");
+  assert.equal(r.Débito, -50, "forma só no esperado = 0 - esperado");
+  assert.equal(r.PIX, 0);
+});
+
+test("T-01.03 diferencaPorForma: vazio nunca lança", () => {
+  assert.deepEqual(diferencaPorForma({}, {}), {});
+  assert.deepEqual(diferencaPorForma(null, { Dinheiro: 10 }), { Dinheiro: -10 });
+  assert.deepEqual(diferencaPorForma({ Dinheiro: 10 }, null), { Dinheiro: 10 });
 });
 
 

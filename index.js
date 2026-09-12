@@ -23,6 +23,8 @@ const auditoria = require("./src/auditoria");
 const incidentes = require("./src/incidentes");
 const estoqueDb = require("./src/estoque-db");
 const multiBot = require("./src/multi-bot");
+const store = require("./src/store");
+const telegram = require("./src/telegram");
 const PORTA = process.env.PORT || 3000;
 
 // Higiene diária: remove sessões de clientes (`session:*`) inativas há +90 dias.
@@ -140,6 +142,47 @@ function limparSessoesMemoria() {
   }
 }
 setInterval(limparSessoesMemoria, 10 * 60 * 1000);   // a cada 10min
+
+// Resolução de vínculo do Telegram (relatórios do caixa/estoque): o dono abre o
+// link `t.me/<bot>?start=<código>` e manda /start <código> no bot; este job faz
+// polling do getUpdates e casa o chatId ao tenant. Sem TELEGRAM_BOT_TOKEN vira
+// no-op (buscarUpdates devolve []). Boot + 30min. A função vincular injetada no
+// resolverVinculos chama store.ensure ANTES de store.getConfig porque o cache
+// pode estar frio para um tenant que ninguém tocou ainda no processo, e mergeia
+// SÓ a chave telegram (store.setConfig faz replace total do jsonb) — apagando
+// codigoVinculacao ao gravar o chatId, porque o código é de USO ÚNICO (D-08):
+// sem apagar, quem descobrisse o link no futuro poderia sequestrar o vínculo.
+// `telegramOffset` guarda o maior update_id já visto: sem avançar o offset, o
+// getUpdates devolve o MESMO lote para sempre a cada rodada.
+let telegramOffset;
+async function pollTelegram() {
+  try {
+    if (!telegram.CONFIGURADO) return;
+    const updates = await telegram.buscarUpdates(telegramOffset);
+    if (!updates || !updates.length) return;
+    telegramOffset = telegram.proximoOffset(updates) || telegramOffset;
+    const resolvidos = await telegram.resolverVinculos(
+      updates,
+      empresas.buscarPorCodigoVinculacaoTelegram,
+      async (slug, chatId) => {
+        const dir = empresas.tenantDir(slug);
+        await store.ensure(dir);
+        const cfg = store.getConfig(dir);
+        const telegramRestante = { ...(cfg.telegram || {}) };
+        delete telegramRestante.codigoVinculacao;
+        const novoCfg = { ...cfg, telegram: { ...telegramRestante, chatId } };
+        await store.setConfig(dir, novoCfg);
+      }
+    );
+    if (resolvidos.length > 0) {
+      console.log(`🤖 Telegram: ${resolvidos.length} vínculo(s) resolvido(s).`);
+    }
+  } catch (e) {
+    console.error("Telegram polling falhou (ignorado):", e.message);
+  }
+}
+setTimeout(pollTelegram, 90_000);               // 90s após o boot
+setInterval(pollTelegram, 30 * 60 * 1000);      // a cada 30min
 
 // Restaura os bots no boot: após um deploy/restart, os tenants que estavam
 // conectados voltam sozinhos (sem QR), em vez de ficarem offline até alguém

@@ -53,6 +53,30 @@ function totalContagem(contagem) {
   return centavos / 100;
 }
 
+// QUANTIDADE de transações tipo 'recebimento' por forma (D-01) — o volume que o
+// Telegram passa a mostrar junto do valor. Só recebimento entra (cancelamento/
+// estorno/suprimento/sangria não são venda). Lista vazia → {}.
+function contagemPorForma(movimentos) {
+  const out = {};
+  for (const m of movimentos || []) {
+    if (m.tipo !== "recebimento") continue;
+    const forma = m.forma_pagamento || "Outros";
+    out[forma] = (out[forma] || 0) + 1;
+  }
+  return out;
+}
+
+// Diferença por forma (D-04): contado − esperado por forma. Forma presente só de
+// um lado é tratada como 0 no outro. Nunca lança.
+function diferencaPorForma(contadoPorForma, esperadoPorForma) {
+  const contado = contadoPorForma || {};
+  const esperado = esperadoPorForma || {};
+  const out = {};
+  for (const f in contado) out[f] = (Number(contado[f]) || 0) - (Number(esperado[f]) || 0);
+  for (const f in esperado) if (!(f in out)) out[f] = 0 - (Number(esperado[f]) || 0);
+  return out;
+}
+
 // Esperado em cartão/pix = recebido eletrônico menos o cancelado eletrônico.
 function esperadoEletronico(resumo) {
   const r = resumo || {};
@@ -87,4 +111,4 @@ function esperadoPorForma(resumo, formas) {
   return out;
 }
 
-module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, esperadoEletronico, totalEmCaixa, esperadoPorForma };
+module.exports = { resumoCaixa, calcularDiferenca, ehDinheiro, totalContagem, contagemPorForma, diferencaPorForma, esperadoEletronico, totalEmCaixa, esperadoPorForma };

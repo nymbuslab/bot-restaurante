@@ -260,6 +260,18 @@ async function buscarPorSlug(slug) {
   return r.rows[0] || null;
 }
 
+// Tenant dono de um código de vinculação do Telegram. O código é aleatório de
+// uso único, guardado em config.telegram.codigoVinculacao (D-08) — nunca o slug,
+// que é público. Devolve o slug ou null; nunca lança quando não encontra.
+async function buscarPorCodigoVinculacaoTelegram(codigo) {
+  if (!codigo) return null;
+  const r = await db.query(
+    `SELECT slug FROM empresas WHERE config->'telegram'->>'codigoVinculacao' = $1`,
+    [String(codigo)]
+  );
+  return (r.rows && r.rows[0] && r.rows[0].slug) || null;
+}
+
 // Resolve o tenant a partir do Stripe Customer ID (usado pelos webhooks).
 async function buscarPorStripeCustomer(stripeCustomerId) {
   if (!stripeCustomerId) return null;
@@ -354,6 +366,14 @@ function temPdv(emp) {
 // nos planos: um dia uma pode mudar sem a outra, e reusar o porteiro do vizinho
 // esconde essa decisão.
 function temImpressao(emp) {
+  return acessoLiberado(emp) && planoDe(emp) === "completo";
+}
+
+// Porteiro dos relatórios via Telegram (feature do Plano Completo). Mesma regra
+// dos outros gates. Caixa e estoque, as fontes dos dados, já são exclusivos do
+// Completo — a função é elegibilidade por plano já cobrado, não cobrança nova
+// (D-05). Existe própria porque sempre pode mudar sem afetar o vizinho.
+function temRelatoriosTelegram(emp) {
   return acessoLiberado(emp) && planoDe(emp) === "completo";
 }
 
@@ -485,8 +505,8 @@ async function excluir(slug) {
 }
 
 module.exports = {
-  cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, listar,
+  cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, buscarPorCodigoVinculacaoTelegram, listar,
   tenantDir, setAtivo, excluir, slugBase,
-  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv, temImpressao,
+  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv, temImpressao, temRelatoriosTelegram,
   revogarTodasSessoes, trocarSenha, trocarEmail, conferirSenha,
 };

@@ -38,6 +38,21 @@
     } catch (_) { return ""; }
   }
 
+  // Estado do caixa no fechamento (D-08): a MESMA fórmula de CONFERIDO/SOBROU/
+  // FALTOU usada pelo cupom impresso, exportada para o Telegram não divergir do
+  // papel em nenhum caso de borda. Devolve { estado, diferenca }, onde
+  // `diferenca` é operador − conferência (positiva = sobrou, negativa = faltou).
+  function estadoCaixa(totalOperador, totalConferencia) {
+    const op = Number(totalOperador) || 0;
+    const conf = Number(totalConferencia) || 0;
+    const diferenca = Math.round((op - conf) * 100) / 100;
+    const bateu = Math.abs(diferenca) < 0.005;
+    return {
+      estado: bateu ? "CONFERIDO" : (diferenca > 0 ? "SOBROU" : "FALTOU"),
+      diferenca,
+    };
+  }
+
   function montarRelatorioFechamento(d) {
     d = d || {};
     const recebido = d.recebidoPorForma || {};
@@ -108,19 +123,19 @@
     });
     L.push(sep("-"));
     const totalOperador = (Number(d.contadoDinheiro) || 0) + totalElet;
-    // Arredonda a centavos + tolerância: sem isso, ruído de float (0,1+0,2) faria um
-    // caixa que bateu certinho imprimir "SOBROU"/"FALTOU" com Diferença R$ 0,00.
-    const dif = Math.round((totalOperador - totalConferencia) * 100) / 100;
-    const bateu = Math.abs(dif) < 0.005;
+    // Estado reutilizado do helper (D-08): o Telegram mostra o MESMO veredito
+    // que o cupom físico. A tolerância de arredondamento segue aqui (float
+    // 0,1+0,2 não pode virar "R$ -0,00").
+    const st = estadoCaixa(totalOperador, totalConferencia);
     L.push(linhaValor("Total", "R$ " + fmtBR(totalOperador)));
-    const estado = bateu ? "CONFERIDO" : (dif > 0 ? "SOBROU" : "FALTOU");
-    L.push(centro(estado));
-    const sinal = bateu ? "R$ " : (dif > 0 ? "+ R$ " : "- R$ ");
-    L.push(linhaValor("Diferença", sinal + fmtBR(bateu ? 0 : Math.abs(dif))));
+    L.push(centro(st.estado));
+    const bateu = Math.abs(st.diferenca) < 0.005;
+    const sinal = bateu ? "R$ " : (st.diferenca > 0 ? "+ R$ " : "- R$ ");
+    L.push(linhaValor("Diferença", sinal + fmtBR(bateu ? 0 : Math.abs(st.diferenca))));
     L.push(sep("="));
 
     return L.join("\n");
   }
 
-  return { montarRelatorioFechamento, fmtBR };
+  return { montarRelatorioFechamento, fmtBR, estadoCaixa };
 });

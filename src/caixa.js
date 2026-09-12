@@ -10,6 +10,9 @@ const store = require("./store");
 const pdv = require("./pdv"); // normalizarPagamentos (troco só no dinheiro; não confia no cliente)
 const formasPag = require("../public/pagamentos"); // normalizarFormasPagamento (descarta legado "A Prazo")
 const relatorioCaixa = require("../public/relatorio-caixa"); // dual-mode Node/browser
+const estoque = require("../public/estoque"); // linhasDeEstoque p/ alerta de estoque (dual-mode)
+const empresas = require("./empresas"); // gate temRelatoriosTelegram (Plano Completo)
+const telegram = require("./telegram"); // envio fire-and-forget dos relatórios
 
 const slugDe = (dir) => path.basename(dir);
 const idCache = {};
@@ -309,18 +312,28 @@ async function estornarRecebimento(dir, pedidoId) {
     if (!net.rows.length) {
       throw new Error("O recebimento deste pedido não está no caixa aberto (talvez de um caixa já fechado).");
     }
+    const estornos = [];
     for (const r of net.rows) {
+      const valorEstorno = Number(r.net) || 0;
       await client.query(
         `INSERT INTO caixa_movimentos (caixa_id, empresa_id, tipo, forma_pagamento, valor, pedido_id, descricao)
          VALUES ($1, $2, 'estorno', $3, $4, $5, $6)`,
-        [caixa.id, empId, r.forma, Number(r.net) || 0, pedidoId, "Estorno recebimento #" + numero]
+        [caixa.id, empId, r.forma, valorEstorno, pedidoId, "Estorno recebimento #" + numero]
       );
+      estornos.push({ valor: valorEstorno, forma: r.forma });
     }
     await client.query(
       "UPDATE pedidos SET recebido_em = NULL WHERE empresa_id = $1 AND id = $2",
       [empId, pedidoId]
     );
     await client.query("COMMIT");
+    // Alerta de estorno (D-06/D-07): mesmo porteiro e margem de T-03.01, por
+    // movimento. Falha aqui não desfaz o estorno nem segura a resposta.
+    _avisarCancelamentoTelegram(dir, {
+      pedidoNumero: numero,
+      movimentos: estornos,
+      tipo: "estorno",
+    }).catch((e) => console.error("telegram cancelamento:", e.message));
     return { ok: true };
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
@@ -402,6 +415,14 @@ async function cancelarRecebido(dir, pedidoId, { devolver = true } = {}) {
     );
     await client.query("COMMIT");
     if (cardapioNovo) store.sincronizarCardapio(dir, cardapioNovo);
+    // Alerta de cancelamento (D-05/D-06): após persistir, dispara fire-and-forget
+    // ao chat vinculado (só Plano Completo + toggle + margem por movimento).
+    // Falha aqui não desfaz o cancelamento nem segura a resposta.
+    _avisarCancelamentoTelegram(dir, {
+      pedidoNumero: numero,
+      movimentos: cancelamentos.map((c) => ({ valor: c.valor, forma: c.forma })),
+      tipo: "cancelamento",
+    }).catch((e) => console.error("telegram cancelamento:", e.message));
     return { ok: true, cancelado: true, cancelamentos };
   } catch (e) {
     // ROLLBACK guardado: mesmo padrão de pedidos.js — se a conexão já caiu, a
@@ -586,6 +607,119 @@ function _formasEletronicas(pagamentos, recebidoPorForma, contadoPorForma) {
   return formas;
 }
 
+// Relatórios Telegram (D-05, D-12, D-07): o fechamento de caixa e o alerta de
+// estoque baixo chegam ao dono em DUAS mensagens separadas, pelo chat vinculado.
+// Só quando o tenant tem Plano Completo (temRelatoriosTelegram) e chatId presente;
+// sem isso, no-op. Cada tipo respeita seu PRÓPRIO toggle (T-03.03): fechamento e
+// estoque são checados independentemente via tiposAtivos. `rico` traz os dados
+// ricos do fechamento (operador, contadoPorForma, esperadoPorForma) montados em
+// fecharCaixa. O resultado real de cada envio é persistido em
+// config.telegram.ultimoEnvio COMO OBJETO POR TIPO (D-09), mesclando no objeto
+// existente — gravar um tipo nunca apaga o valor já gravado de outro. Nada fora
+// da chave telegram muda. Chama-se DEPOIS de persistir o fechamento,
+// fire-and-forget: este helper nunca lança (falha não desfaz nada).
+async function _avisarRelatoriosTelegram(dir, resumo, cfg, rico) {
+  let resultadoPorTipo = {};
+  try {
+    const emp = await empresas.buscarPorSlug(slugDe(dir));
+    if (!emp || !empresas.temRelatoriosTelegram(emp)) return;
+    const tg = cfg && cfg.telegram;
+    if (!tg || !tg.chatId) return;
+    const tips = telegram.tiposAtivos(cfg);
+    const jobs = [];
+    if (tips.fechamentoCaixa) {
+      jobs.push({
+        tipo: "fechamentoCaixa",
+        texto: telegram.formatarMensagemFechamentoCaixa({
+          ...resumo,
+          ...(rico || {}),
+          restaurante: (cfg.restaurante && cfg.restaurante.nome) || "",
+        }),
+      });
+    }
+    if (tips.estoque) {
+      jobs.push({ tipo: "estoque", texto: telegram.formatarMensagemEstoqueBaixo(estoque.linhasDeEstoque(store.getCardapio(dir))) });
+    }
+    if (!jobs.length) return;
+    const resultados = await Promise.all(
+      jobs.map((j) => telegram.enviar(tg.chatId, j.texto)
+        .catch((e) => {
+          console.error("telegram enviar:", e.message);
+          return { ok: false, motivo: e.message };
+        })
+        .then((r) => ({ tipo: j.tipo, resultado: r })))
+    );
+    for (const { tipo, resultado } of resultados) {
+      const info = { em: new Date().toISOString() };
+      if (!resultado || resultado.ok !== true) {
+        info.status = "falha";
+        info.erro = (resultado && resultado.motivo) || "envio falhou";
+      } else {
+        info.status = "sucesso";
+      }
+      resultadoPorTipo[tipo] = info;
+    }
+  } catch (e) {
+    console.error("telegram relatorios:", e.message);
+    // Sem pré-config, registra a falha nos tipos que o dono teria ativado.
+    const tips = telegram.tiposAtivos(cfg);
+    for (const tipo of ["fechamentoCaixa", "estoque"]) {
+      if ((tipo === "fechamentoCaixa" && tips.fechamentoCaixa) || (tipo === "estoque" && tips.estoque)) {
+        resultadoPorTipo[tipo] = { status: "falha", em: new Date().toISOString(), erro: e.message };
+      }
+    }
+  }
+  // Persiste o resultado (D-09) mesclando no objeto por tipo já gravado:
+  // fechamento/Caixa, estoque e cancelamento ficam todos intocados entre si.
+  if (Object.keys(resultadoPorTipo).length) {
+    const novoCfg = { ...cfg, telegram: { ...(cfg.telegram || {}), ultimoEnvio: { ...((cfg.telegram || {}).ultimoEnvio || {}), ...resultadoPorTipo } } };
+    try { await store.setConfig(dir, novoCfg); } catch (e) { console.error("telegram guardar ultimoEnvio:", e.message); }
+  }
+}
+
+// Alerta de cancelamento/estorno (D-05/D-06/D-07): dispara fire-and-forget o
+// aviso ao chat vinculado APÓS o COMMIT de cancelarRecebido/estornarRecebimento.
+// Mesmo porteiro do fechamento: Plano Completo (temRelatoriosTelegram) + chatId;
+// sem isso, no-op. A margem é comparada POR MOVIMENTO — um pedido pago em duas
+// formas pode alertar só para a que passa do mínimo (D-07). Persiste
+// ultimoEnvio.cancelamento MESCLANDO no objeto por tipo já existente (D-09):
+// fechamentoCaixa/estoque nunca são substituídos. Nunca lança nem segura a
+// resposta da rota.
+async function _avisarCancelamentoTelegram(dir, { pedidoNumero, movimentos, tipo }) {
+  try {
+    const emp = await empresas.buscarPorSlug(slugDe(dir));
+    if (!emp || !empresas.temRelatoriosTelegram(emp)) return;
+    await store.ensure(dir);
+    const cfg = store.getConfig(dir) || {};
+    const tg = cfg.telegram || {};
+    if (!tg.chatId) return;
+    const tips = telegram.tiposAtivos(cfg);
+    if (!tips.cancelamentoAtivo) return;
+    const acima = (movimentos || []).filter((m) => (Number(m && m.valor) || 0) >= tips.margemMinima);
+    if (!acima.length) return;
+    const resultados = await Promise.all(
+      acima.map((m) => telegram.enviar(tg.chatId, telegram.formatarMensagemCancelamento({
+        pedidoNumero, valor: Number(m.valor) || 0, forma: m.forma, tipo,
+      })).catch((e) => {
+        console.error("telegram cancelamento enviar:", e.message);
+        return { ok: false, motivo: e.message };
+      }))
+    );
+    const falhas = resultados.filter((r) => !r || r.ok !== true);
+    const cancelamento = { em: new Date().toISOString(), pedido: pedidoNumero, tipo };
+    if (falhas.length) {
+      cancelamento.status = "falha";
+      cancelamento.erro = falhas[0].motivo || "envio falhou";
+    } else {
+      cancelamento.status = "sucesso";
+    }
+    const novoCfg = { ...cfg, telegram: { ...tg, ultimoEnvio: { ...(tg.ultimoEnvio || {}), cancelamento } } };
+    try { await store.setConfig(dir, novoCfg); } catch (e) { console.error("telegram guardar ultimoEnvio:", e.message); }
+  } catch (e) {
+    console.error("telegram cancelamento:", e.message);
+  }
+}
+
 // contado: { [forma]: valorReais } — o que o operador contou por forma (conferência
 // simplificada). Fallback legado: { contagem (cédulas), eletronico [{forma,valor}] }.
 // O relatório é montado AQUI (servidor), nunca recebido do cliente — fonte única
@@ -704,6 +838,18 @@ async function fecharCaixa(dir, { contado, contagem, eletronico }) {
     );
     if (!upd.rowCount) throw new Error("O caixa já foi fechado.");
     await client.query("COMMIT");
+    // Relatórios Telegram (D-05, D-12): após persistir o fechamento, dispara
+    // fire-and-forget o fechamento e o alerta de estoque ao chat vinculado (só
+    // Plano Completo, cada tipo no seu toggle). Falha aqui não desfaz o
+    // fechamento nem segura a resposta.
+    _avisarRelatoriosTelegram(dir, resumo, cfg, {
+      operador: caixa.operador || "",
+      abertoEm: new Date(caixa.aberto_em).toISOString(),
+      fechadoEm: new Date().toISOString(),
+      contadoPorForma,
+      esperadoPorForma: espPorForma,
+      contagemPorForma: calc.contagemPorForma(movimentos),
+    }).catch((e) => console.error("telegram relatorios:", e.message));
     return { diferenca, totalEmCaixa: totalCaixa, contadoDinheiro, contadoEletronico, relatorio };
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});

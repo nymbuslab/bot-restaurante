@@ -14,6 +14,7 @@ const { ipKeyGenerator } = require("express-rate-limit"); // normaliza IPv6 em /
 const QRCode  = require("qrcode");
 
 const empresas = require("./empresas");
+const telegram = require("./telegram"); // relatórios via Telegram (relatorios-telegram)
 const plataforma = require("./plataforma");
 const store = require("./store");
 const pedidos = require("./pedidos");
@@ -1673,6 +1674,111 @@ app.patch("/api/admin/tenants/:slug/assinatura/cancelar", exigeSuperAdmin, async
   } catch (e) {
     console.error("admin cancelar assinatura:", e.message);
     res.status(500).json({ erro: "Não foi possível cancelar a assinatura." });
+  }
+});
+
+// ---- Super-admin: relatórios Telegram por tenant (Plano Completo) ----
+
+// Status da configuração Telegram de um tenant: vinculado, temPlano e o link de
+// vinculação (aguardando o dono mandar /start <código> no bot). Resolve o tenant
+// via buscarPorSlug porque exigeSuperAdmin não popula req.tenantDir.
+app.get("/api/admin/tenants/:slug/telegram", exigeSuperAdmin, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    const cfg = store.getConfig(dir);
+    const telegramCfg = cfg.telegram || {};
+    const vinculado = !!telegramCfg.chatId;
+    const temPlano = empresas.temRelatoriosTelegram(emp);
+    const link = vinculado ? null : (telegramCfg.codigoVinculacao ? telegram.linkVinculacao(telegramCfg.codigoVinculacao) : null);
+    const tipos = telegram.tiposAtivos(cfg);
+    // ultimoEnvio é por tipo. Configurações antigas gravavam um objeto "plano"
+    // ({ em, status }) — sem chave por tipo, ambos os casos viram null (D-11),
+    // nunca um throw. A resposta SEMPRE tem o objeto com as 3 chaves.
+    const ue = telegramCfg.ultimoEnvio;
+    const ultimoEnvio = {
+      fechamentoCaixa: ue && "fechamentoCaixa" in ue ? ue.fechamentoCaixa : null,
+      estoque: ue && "estoque" in ue ? ue.estoque : null,
+      cancelamento: ue && "cancelamento" in ue ? ue.cancelamento : null,
+    };
+    res.json({ vinculado, temPlano, link, tipos, ultimoEnvio });
+  } catch (e) {
+    console.error("admin telegram status:", e.message);
+    res.status(500).json({ erro: "Falha ao carregar o status do Telegram." });
+  }
+});
+
+// Gera (ou regenera) o código de vinculação do Telegram. Lê o config INTEIRO
+// (store.ensure antes, porque getConfig lança com cache frio e exigeSuperAdmin
+// não aquece o cache), mescla SÓ a chave telegram e grava de volta — store.setConfig
+// faz replace total do jsonb, então sem a leitura as demais chaves seriam apagadas.
+app.post("/api/admin/tenants/:slug/telegram/gerar-codigo", exigeSuperAdmin, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    const cfg = store.getConfig(dir);
+    const codigo = telegram.gerarCodigoVinculacao();
+    const novoCfg = { ...cfg, telegram: { codigoVinculacao: codigo } };
+    await store.setConfig(dir, novoCfg);
+    const link = telegram.linkVinculacao(codigo);
+    res.json({ ok: true, codigo, link });
+  } catch (e) {
+    console.error("admin telegram gerar-codigo:", e.message);
+    res.status(500).json({ erro: "Falha ao gerar o código de vinculação." });
+  }
+});
+
+// Grava quais tipos de relatório o dono quer receber e a margem mínima de
+// cancelamento (em R$). Mesmo método do gerar-codigo: lê o config INTEIRO
+// (cache frio → store.ensure antes), mescla SÓ telegram.tipos e grava de volta,
+// para não apagar chatId, codigoVinculacao, ultimoEnvio nem outras chaves.
+app.post("/api/admin/tenants/:slug/telegram/tipos", exigeSuperAdmin, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    const margem = Number(req.body.margemMinima);
+    if (Number.isFinite(margem) && margem < 0) {
+      return res.status(400).json({ erro: "A margem mínima não pode ser negativa." });
+    }
+    const tipos = {
+      fechamentoCaixa: req.body.fechamentoCaixa !== false,
+      estoque: req.body.estoque !== false,
+      cancelamentoAtivo: Boolean(req.body.cancelamentoAtivo),
+      margemMinima: Number(req.body.margemMinima) > 0 ? Number(req.body.margemMinima) : 0,
+    };
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    const cfg = store.getConfig(dir);
+    const novoCfg = { ...cfg, telegram: { ...(cfg.telegram || {}), tipos } };
+    await store.setConfig(dir, novoCfg);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("admin telegram tipos:", e.message);
+    res.status(500).json({ erro: "Falha ao salvar os tipos de relatório." });
+  }
+});
+
+// Envia uma mensagem de teste ao chat vinculado do tenant. Sem vinculo,
+// responde 400 sem tocar o Telegram.
+app.post("/api/admin/tenants/:slug/telegram/teste", exigeSuperAdmin, async (req, res) => {
+  try {
+    const emp = await empresas.buscarPorSlug(req.params.slug);
+    if (!emp) return res.status(404).json({ erro: "Tenant não encontrado." });
+    const dir = empresas.tenantDir(emp.slug);
+    await store.ensure(dir);
+    const cfg = store.getConfig(dir);
+    const chatId = cfg.telegram && cfg.telegram.chatId;
+    if (!chatId) return res.status(400).json({ erro: "Este restaurante não tem um chat vinculado." });
+    const resultado = await telegram.enviar(chatId, "Mensagem de teste do Nymbus Pedidos. Se você recebeu, a configuração está funcionando.");
+    if (!resultado.ok) return res.status(502).json({ erro: "Falha ao enviar a mensagem via Telegram." });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("admin telegram teste:", e.message);
+    res.status(500).json({ erro: "Falha ao enviar a mensagem de teste." });
   }
 });
 

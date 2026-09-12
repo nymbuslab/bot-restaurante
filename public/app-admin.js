@@ -691,6 +691,24 @@ function renderFaturas(d) {
     </table>`;
 }
 
+// Aba ativa do modal Gerenciar. Lembrada entre re-renders (uma ação recarrega o
+// corpo), para o dono não ser jogado de volta à aba Assinatura toda hora.
+let amAbaTenant = "assinatura";
+
+function trocarAbaTenant(aba) {
+  const painelAss = $("am-t-painel-assinatura");
+  const painelTg = $("am-t-painel-telegram");
+  if (!painelAss || !painelTg) return;
+  amAbaTenant = aba === "telegram" ? "telegram" : "assinatura";
+  painelAss.hidden = amAbaTenant !== "assinatura";
+  painelTg.hidden = amAbaTenant !== "telegram";
+  document.querySelectorAll(".am-t-aba").forEach((t) => {
+    const on = t.dataset.aba === amAbaTenant;
+    t.classList.toggle("on", on);
+    t.setAttribute("aria-selected", on ? "true" : "false");
+  });
+}
+
 function renderTenantModal(d) {
   $("am-t-nome").textContent = d.nome || "—";
   $("am-t-slug").textContent = d.slug || "";
@@ -785,10 +803,28 @@ function renderTenantModal(d) {
       ${renderFaturas(d)}
     </div>`;
 
-  $("am-tenant-corpo").innerHTML = resumo + acoes + faturas;
+  const abas = `
+    <div class="am-t-abas" role="tablist" aria-label="Detalhes do restaurante">
+      <button type="button" class="am-t-aba on" role="tab" aria-selected="true" data-aba="assinatura">Assinatura</button>
+      <button type="button" class="am-t-aba" role="tab" aria-selected="false" data-aba="telegram">Relatórios Telegram</button>
+    </div>
+    <div class="am-t-painel" id="am-t-painel-assinatura" role="tabpanel">${resumo}${acoes}${faturas}</div>
+    <div class="am-t-painel" id="am-t-painel-telegram" role="tabpanel" hidden>
+      <div class="am-t-secao">
+        <h4 class="am-t-secao-titulo">Relatórios Telegram</h4>
+        <div id="am-t-telegram"><p class="sub">Carregando…</p></div>
+      </div>
+    </div>`;
+
+  $("am-tenant-corpo").innerHTML = abas;
+  trocarAbaTenant(amAbaTenant);
+  carregarTelegram(d.slug);
 
   $("am-tenant-corpo").querySelectorAll("button[data-acao]").forEach((b) => {
     b.addEventListener("click", () => acaoGerenciar(b.dataset.acao));
+  });
+  $("am-tenant-corpo").querySelectorAll(".am-t-aba").forEach((ab) => {
+    ab.addEventListener("click", () => trocarAbaTenant(ab.dataset.aba));
   });
 }
 
@@ -809,6 +845,266 @@ async function acaoGerenciar(acao) {
 async function aposAcaoTenant() {
   await recarregarGerenciar();
   carregarTenants();
+}
+
+// ============================================================
+// RELATÓRIOS TELEGRAM (Plano Completo) — bloco no modal do tenant
+// ============================================================
+
+// Carrega o status do Telegram do tenant (GET /api/admin/tenants/:slug/telegram)
+// e pinta o bloco conforme o estado.
+async function carregarTelegram(slug) {
+  const alvo = $("am-t-telegram");
+  if (!alvo) return;
+  try {
+    const r = await apiAdmin("GET", `/api/admin/tenants/${encodeURIComponent(slug)}/telegram`);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      alvo.innerHTML = `<p class="sub">${escapar(d.erro || "Não foi possível carregar o Telegram.")}</p>`;
+      return;
+    }
+    renderBlocoTelegram(await r.json(), slug);
+  } catch (e) {
+    if (e.message !== "Sessão expirada")
+      alvo.innerHTML = `<p class="sub">Não foi possível carregar o Telegram.</p>`;
+  }
+}
+
+// Pinta os estados do protótipo aprovado: Plano Essencial (sem ações),
+// não vinculado, aguardando vínculo (link gerado) e vinculado.
+function renderBlocoTelegram(st, slug) {
+  const alvo = $("am-t-telegram");
+  if (!alvo) return;
+  let html = "";
+  if (!st.temPlano) {
+    html = `
+    <div class="am-config-card am-tg-card">
+      <p class="am-tg-desc">Os relatórios do restaurante chegam pelo Telegram quando o plano for o <b>Completo</b>.</p>
+      <div class="am-tg-aviso am-tg-alerta">Requer Plano Completo. Nenhuma ação disponível.</div>
+    </div>`;
+  } else if (st.vinculado) {
+    const tips = st.tipos || { fechamentoCaixa: true, estoque: true, cancelamentoAtivo: false, margemMinima: 0 };
+    const envios = st.ultimoEnvio || { fechamentoCaixa: null, estoque: null, cancelamento: null };
+    const margemVal = tips.margemMinima > 0 ? fmtTgMargem(tips.margemMinima) : "";
+    html = `
+    <div class="am-config-card am-tg-card">
+      <div class="am-tg-topo">
+        <span class="am-tg-selo"><span class="bolinha on"></span> Vinculado</span>
+      </div>
+      <p class="am-tg-desc">O fechamento de caixa e os avisos de estoque baixo são enviados automaticamente para o Telegram do dono.</p>
+      <div class="am-tg-acoes">
+        <button class="mini" data-tg="testar">Enviar mensagem de teste</button>
+        <button class="secundario mini" data-tg="trocar">Trocar vínculo</button>
+      </div>
+      <div class="am-tg-tipos" aria-label="Tipos de relatório">
+        ${tipoTelegramTipo("fechamentoCaixa", "Fechamento de caixa", "Resumo completo por forma de pagamento, com conferência.", tips.fechamentoCaixa, envios.fechamentoCaixa)}
+        ${tipoTelegramTipo("estoque", "Estoque baixo", "Itens esgotados e abaixo do mínimo, em duas listas.", tips.estoque, envios.estoque)}
+        ${tipoTelegramTipo("cancelamento", "Alerta de cancelamento", "Avisa o dono quando um pedido recebido é cancelado ou estornado.", tips.cancelamentoAtivo, envios.cancelamento)}
+      </div>
+      <div class="am-tg-margem${tips.cancelamentoAtivo ? "" : " off"}">
+        <label for="am-tg-margem">Avisar cancelamentos a partir de</label>
+        <span class="am-tg-margem-input"><span class="am-tg-prefixo">R$</span><input type="text" id="am-tg-margem" inputmode="numeric" value="${escapar(tips.cancelamentoAtivo ? (margemVal || "0,00") : "")}" ${tips.cancelamentoAtivo ? "" : "disabled"} /></span>
+        <span class="am-tg-margem-dica">${tips.cancelamentoAtivo ? "em qualquer forma de pagamento" : "marque o alerta para editar"}</span>
+      </div>
+      <p class="am-tg-salvo" id="am-tg-salvo" hidden>Alterações salvas automaticamente.</p>
+    </div>`;
+  } else if (st.link) {
+    html = `
+    <div class="am-config-card am-tg-card">
+      <p class="am-tg-desc">Envie este link para o dono do restaurante. Ele abre o Telegram e manda <b>/start</b> para conectar o chat ao bot.</p>
+      <div class="auth-campo">
+        <label for="am-tg-link">Link de vinculação</label>
+        <div class="am-tg-link-linha">
+          <input type="text" id="am-tg-link" readonly value="${escapar(st.link)}" />
+          <button class="mini" data-tg="copiar">Copiar</button>
+        </div>
+      </div>
+      <div class="am-tg-acoes">
+        <button class="secundario mini" data-tg="trocar">Gerar novo link</button>
+      </div>
+    </div>`;
+  } else {
+    html = `
+    <div class="am-config-card am-tg-card">
+      <p class="am-tg-desc">O restaurante recebe o fechamento de caixa e os avisos de estoque baixo direto no seu Telegram.</p>
+      <div class="am-tg-aviso am-tg-neutro">Não vinculado. O dono ainda não conectou o Telegram do restaurante.</div>
+      <div class="am-tg-acoes">
+        <button class="mini" data-tg="gerar">Gerar link de vinculação</button>
+      </div>
+    </div>`;
+  }
+  alvo.innerHTML = html;
+  alvo.querySelectorAll("button[data-tg]").forEach((b) => {
+    b.addEventListener("click", () => acaoTelegram(b.dataset.tg, slug));
+  });
+  const margem = alvo.querySelector("#am-tg-margem");
+  alvo.querySelectorAll("input[data-tg-check]").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const tips = lerTiposTelegram();
+      // Habilita/desabilita a margem conforme o alerta, sem esperar o servidor.
+      const grupoMargem = alvo.querySelector(".am-tg-margem");
+      if (grupoMargem) grupoMargem.classList.toggle("off", !tips.cancelamentoAtivo);
+      if (margem) margem.disabled = !tips.cancelamentoAtivo;
+      salvarTiposTelegram(slug, tips);
+    });
+  });
+  if (margem) {
+    margem.addEventListener("input", () => {
+      const d = margem.value.replace(/\D/g, "").slice(0, 7);
+      margem.value = d ? fmtTgMargem(parseInt(d, 10) / 100) : "";
+    });
+    margem.addEventListener("change", () => {
+      salvarTiposTelegram(slug, lerTiposTelegram());
+    });
+  }
+}
+
+// Linha de checkbox de um tipo de relatório, com o status do último envio.
+function tipoTelegramTipo(tipo, nome, sub, ligado, ultimoEnvio) {
+  const envio = ultimoEnvio ? `Enviado em ${formatarData(ultimoEnvio)}` : "Nunca enviou";
+  return `
+    <div class="am-tg-tipo" data-tg-tipo="${tipo}">
+      <label class="am-tg-check">
+        <input type="checkbox" data-tg-check="${tipo}" ${ligado ? "checked" : ""} />
+        <span class="am-tg-check-box" aria-hidden="true"></span>
+      </label>
+      <div class="am-tg-tipo-txt">
+        <div class="am-tg-tipo-nome">${nome}</div>
+        <div class="am-tg-tipo-sub">${sub}</div>
+      </div>
+      <span class="am-tg-envio" data-tg-envio="${tipo}">${envio}</span>
+    </div>`;
+}
+
+// Formata centavos como "10,00" (a máscara da margem guarda só dígitos).
+function fmtTgMargem(v) {
+  return (v || 0).toFixed(2).replace(".", ",");
+}
+
+// Lê o estado atual dos controles de tipo da aba Relatórios Telegram.
+function lerTiposTelegram() {
+  const get = (tipo) => {
+    const cb = document.querySelector(`input[data-tg-check="${tipo}"]`);
+    return cb ? cb.checked : false;
+  };
+  const margem = $("am-tg-margem");
+  const margemNum = margem ? (parseInt(margem.value.replace(/\D/g, ""), 10) || 0) / 100 : 0;
+  return {
+    fechamentoCaixa: get("fechamentoCaixa"),
+    estoque: get("estoque"),
+    cancelamentoAtivo: get("cancelamento"),
+    margemMinima: margemNum,
+  };
+}
+
+// Persiste os tipos de relatório (POST .../telegram/tipos) com feedback local.
+async function salvarTiposTelegram(slug, tips) {
+  const url = `/api/admin/tenants/${encodeURIComponent(slug)}/telegram/tipos`;
+  try {
+    const r = await apiAdmin("POST", url, tips);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Não foi possível salvar os tipos de relatório.", "erro");
+      carregarTelegram(slug);
+      return;
+    }
+    const aviso = $("am-tg-salvo");
+    if (aviso) {
+      aviso.hidden = false;
+      clearTimeout(aviso._timer);
+      aviso._timer = setTimeout(() => { aviso.hidden = true; }, 2200);
+    }
+  } catch (e) {
+    if (e.message !== "Sessão expirada") toast("Não foi possível salvar os tipos de relatório.", "erro");
+    carregarTelegram(slug);
+  }
+}
+
+// Estado de falha: o último envio de teste não chegou ao Telegram.
+function renderFalhaTelegram(slug) {
+  const alvo = $("am-t-telegram");
+  if (!alvo) return;
+  alvo.innerHTML = `
+    <div class="am-config-card am-tg-card">
+      <div class="am-tg-topo">
+        <span class="am-tg-selo"><span class="bolinha on"></span> Vinculado</span>
+      </div>
+      <div class="am-tg-aviso am-tg-erro">A mensagem de teste não chegou. Confirme se o dono iniciou o bot no Telegram e tente de novo.</div>
+      <div class="am-tg-acoes">
+        <button class="mini" data-tg="testar">Tentar de novo</button>
+        <button class="secundario mini" data-tg="trocar">Trocar vínculo</button>
+      </div>
+    </div>`;
+  alvo.querySelectorAll("button[data-tg]").forEach((b) => {
+    b.addEventListener("click", () => acaoTelegram(b.dataset.tg, slug));
+  });
+}
+
+// Despacha as ações do bloco: gerar/trocar, copiar e teste.
+async function acaoTelegram(acao, slug) {
+  if (acao === "copiar") return copiarLinkTelegram();
+  if (acao === "gerar" || acao === "trocar") return gerarLinkTelegram(slug);
+  if (acao === "testar") return testarTelegram(slug);
+}
+
+// Gera (ou regenera, apagando o vínculo atual) o link de vinculação.
+async function gerarLinkTelegram(slug) {
+  const url = `/api/admin/tenants/${encodeURIComponent(slug)}/telegram/gerar-codigo`;
+  try {
+    const r = await apiAdmin("POST", url);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Erro ao gerar o link de vinculação.", "erro");
+      return;
+    }
+    const corpo = await r.json();
+    renderBlocoTelegram({ vinculado: false, temPlano: true, link: corpo.link }, slug);
+    toast("Novo link de vinculação gerado.");
+  } catch (e) {
+    if (e.message !== "Sessão expirada") toast("Erro ao gerar o link de vinculação.", "erro");
+  }
+}
+
+// Copia o link de vinculação para a área de transferência.
+async function copiarLinkTelegram() {
+  const link = $("am-tg-link");
+  if (!link) return;
+  const texto = link.value;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(texto);
+    } else {
+      link.select();
+      document.execCommand("copy");
+      link.setSelectionRange(0, 0);
+    }
+    toast("Link copiado para a área de transferência.");
+  } catch (e) {
+    link.select();
+    document.execCommand("copy");
+    link.setSelectionRange(0, 0);
+    toast("Link copiado para a área de transferência.");
+  }
+}
+
+// Envia uma mensagem de teste ao Telegram do tenant.
+async function testarTelegram(slug) {
+  const url = `/api/admin/tenants/${encodeURIComponent(slug)}/telegram/teste`;
+  try {
+    const r = await apiAdmin("POST", url);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.erro || "Falha ao enviar a mensagem de teste.", "erro");
+      renderFalhaTelegram(slug);
+      return;
+    }
+    toast("Mensagem de teste enviada ao Telegram.");
+  } catch (e) {
+    if (e.message !== "Sessão expirada") {
+      toast("Falha ao enviar a mensagem de teste.", "erro");
+      renderFalhaTelegram(slug);
+    }
+  }
 }
 
 async function liberarCortesia(slug) {

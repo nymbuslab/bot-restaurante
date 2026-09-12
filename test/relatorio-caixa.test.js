@@ -1,5 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("fs");
+const path = require("path");
 const Relatorio = require("../public/relatorio-caixa");
 
 function dadosBase() {
@@ -109,4 +111,33 @@ test("relatório: estorno aparece junto das deduções do fechamento", () => {
   assert.match(txt, /Pix\s+R\$ 0,00/);
   assert.match(txt, /CANCELAMENTOS\/ESTORNOS/);
   assert.match(txt, /Estorno recebimento #12 \(Pix\)\s+- R\$ 30,00/);
+});
+
+// ---------------------------------------------------------------------------
+// T-01.01 — estadoCaixa extraído (D-08): mesma fórmula de CONFERIDO/SOBROU/FALTOU
+// do cupom impresso, exportada p/ reuso no Telegram. O cupom CONTINUA usando a
+// função (não recalcula inline), garantindo que Telegram e papel divergem nunca.
+// ---------------------------------------------------------------------------
+
+test("T-01.01 estadoCaixa: CONFERIDO com diferença zero quando total bate", () => {
+  assert.deepEqual(Relatorio.estadoCaixa(100, 100), { estado: "CONFERIDO", diferenca: 0 });
+});
+
+test("T-01.01 estadoCaixa: SOBROU com diferença positiva quando operador conta a mais", () => {
+  assert.deepEqual(Relatorio.estadoCaixa(105, 100), { estado: "SOBROU", diferenca: 5 });
+});
+
+test("T-01.01 estadoCaixa: FALTOU com diferença negativa quando operador conta a menos", () => {
+  assert.deepEqual(Relatorio.estadoCaixa(95, 100), { estado: "FALTOU", diferenca: -5 });
+});
+
+test("T-01.01 estadoCaixa é exportado e montarRelatorioFechamento o usa (não recalcula)", () => {
+  assert.equal(typeof Relatorio.estadoCaixa, "function", "estadoCaixa deve ser exportado");
+  const src = fs.readFileSync(path.join(__dirname, "..", "public", "relatorio-caixa.js"), "utf8");
+  assert.match(src, /estadoCaixa\(/, "montarRelatorioFechamento deve chamar estadoCaixa");
+  const i = src.indexOf("function montarRelatorioFechamento(");
+  assert.ok(i > -1, "montarRelatorioFechamento não encontrado");
+  const funcao = src.slice(i, src.indexOf("return L.join", i));
+  assert.doesNotMatch(funcao, /(CONFERIDO|SOBROU|FALTOU)/,
+    "a fórmula de estado deve viver só dentro de estadoCaixa, não inline no relatório");
 });

@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Relatórios Telegram — aba no modal do tenant (admin-master)</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: #0F1117; color: #F0F2FA; font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: #A589EA; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    /* Tokens espelhando public/style.css (design system real do projeto). */
+    :root {
+      --bg-overlay: #2A2E3F;
+      --bg-surface: #1A1D27;
+      --bg-elevated: #222533;
+      --border: #2E3247;
+      --border-subtle: #242738;
+      --text-primary: #F0F2FA;
+      --text-secondary: #8B92B3;
+      --text-disabled: #4A5068;
+      --accent: #6344BC;
+      --accent-hover: #7150D0;
+      --accent-fg: #A589EA;
+      --accent-subtle: rgba(99,68,188,0.16);
+      --success: #22C55E;
+      --success-subtle: rgba(34,197,94,0.12);
+      --error: #EF4444;
+      --error-subtle: rgba(239,68,68,0.12);
+      --error-fg: #F87171;
+      --warning: #EAB308;
+      --warning-subtle: rgba(234,179,8,0.12);
+      --radius: 10px;
+      --fonte-mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace;
+    }
+  </style>
+</helmet>
+
+<div style="padding: 28px; background: #0F1117; max-width: 720px; margin: 0 auto;">
+
+  <!-- Rótulo da prancha -->
+  <div style="margin-bottom: 24px;">
+    <h1 style="margin: 0 0 4px; font-size: 18px; font-weight: 700;">Relatórios Telegram</h1>
+    <p style="margin: 0; font-size: 13px; color: #8B92B3;">Bloco dentro do modal "Gerenciar" de um tenant no admin-master. Cinco estados: não vinculado, aguardando vínculo, vinculado, falha no último envio e o corte por plano (Essencial).</p>
+  </div>
+
+  <!-- ================= ESTADO 1 — NÃO VINCULADO (sem código) ================= -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">1 · Não vinculado</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div class="am-t-secao-titulo" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin:0 0 6px;">Relatórios Telegram</div>
+      <p style="margin:0 0 14px; font-size:13px; color:#8B92B3;">O restaurante recebe o fechamento de caixa e os avisos de estoque baixo direto no seu Telegram.</p>
+      <div style="background:rgba(99,68,188,0.16); border:1px solid rgba(99,68,188,.35); border-radius:10px; padding:11px 14px; font-size:13px; color:#A589EA; margin-bottom:14px;">
+        Não vinculado. O dono ainda não conectou o Telegram do restaurante.
+      </div>
+      <button style="font-family:inherit; font-size:13px; font-weight:600; padding:9px 16px; cursor:pointer; background:#6344BC; color:#fff; border:none; border-radius:6px;">Gerar link de vinculação</button>
+    </div>
+  </div>
+
+  <!-- ============ ESTADO 2 — AGUARDANDO VÍNCULO (código gerado) ============ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">2 · Aguardando vínculo</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin:0 0 6px;">Relatórios Telegram</div>
+      <p style="margin:0 0 12px; font-size:13px; color:#8B92B3;">Envie este link para o dono do restaurante. Ele abre o Telegram e manda <b style="color:#F0F2FA;">/start</b> para conectar o chat ao bot.</p>
+      <div class="auth-campo" style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
+        <label style="font-size:11px; font-weight:700; color:#8B92B3; text-transform:uppercase; letter-spacing:.5px;">Link de vinculação</label>
+        <div style="display:flex; gap:8px;">
+          <input readonly value="t.me/nymbus_pedidos_bot?start=a1b2c3d4e5f6" style="flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:1px solid #2E3247; background:#222533; color:#A589EA; font-family:ui-monospace,monospace; font-size:13px;" aria-label="Link de vinculação" />
+          <button style="font-family:inherit; font-size:13px; font-weight:600; padding:10px 14px; cursor:pointer; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Copiar</button>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button style="font-family:inherit; font-size:12px; font-weight:600; padding:8px 12px; cursor:pointer; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Gerar novo link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================ ESTADO 3 — VINCULADO ================ -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">3 · Vinculado</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3;">Relatórios Telegram</div>
+        <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#22C55E; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,.4); padding:4px 10px; border-radius:999px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22C55E; box-shadow:0 0 0 3px rgba(34,197,94,0.12);"></span> Vinculado</span>
+      </div>
+      <p style="margin:0 0 14px; font-size:13px; color:#8B92B3;">O fechamento de caixa e os avisos de estoque baixo são enviados automaticamente para o Telegram do dono.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button style="font-family:inherit; font-size:13px; font-weight:600; padding:9px 16px; cursor:pointer; background:#6344BC; color:#fff; border:none; border-radius:6px;">Enviar mensagem de teste</button>
+        <button style="font-family:inherit; font-size:12px; font-weight:600; padding:8px 12px; cursor:pointer; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Trocar vínculo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ESTADO 4 — FALHA NO ÚLTIMO ENVIO ================= -->
+  <div style="margin-bottom: 20px;">
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">4 · Falha no último envio</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3;">Relatórios Telegram</div>
+        <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#22C55E; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,.4); padding:4px 10px; border-radius:999px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22C55E; box-shadow:0 0 0 3px rgba(34,197,94,0.12);"></span> Vinculado</span>
+      </div>
+      <div style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,.4); border-radius:10px; padding:11px 14px; font-size:13px; color:#F87171; margin-bottom:12px;">
+        A última mensagem de teste não chegou. Confirme se o bot foi iniciado no Telegram pelo dono e tente novamente.
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button style="font-family:inherit; font-size:13px; font-weight:600; padding:9px 16px; cursor:pointer; background:#6344BC; color:#fff; border:none; border-radius:6px;">Tentar de novo</button>
+        <button style="font-family:inherit; font-size:12px; font-weight:600; padding:8px 12px; cursor:pointer; background:transparent; color:#F0F2FA; border:1px solid #2E3247; border-radius:6px;">Trocar vínculo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CORTE POR PLANO — ESSENCIAL ================= -->
+  <div>
+    <span style="display:inline-block; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#8B92B3; margin-bottom:8px;">5 · Plano Essencial (sem acesso)</span>
+    <div style="border:1px solid #2E3247; border-radius:14px; background:#1A1D27; padding:16px 18px;">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#8B92B3; margin:0 0 6px;">Relatórios Telegram</div>
+      <p style="margin:0; font-size:13px; color:#8B92B3;">Disponível no <b style="color:#F0F2FA;">Plano Completo</b>. Os relatórios de caixa e estoque chegam pelo Telegram depois que o restaurante evoluir de plano.</p>
+      <div style="margin-top:14px; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,.35); border-radius:10px; padding:11px 14px; font-size:13px; color:#EAB308;">
+        Requer Plano Completo. Nenhuma ação disponível.
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
