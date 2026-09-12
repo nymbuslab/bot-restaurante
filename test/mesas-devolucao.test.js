@@ -1,5 +1,13 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+
+// Env dummy (preâmbulo padrão do projeto): src/supabase.js LANÇA no require sem
+// credencial, e este arquivo carrega src/mesas-db → src/empresas → src/supabase.
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://example.supabase.co";
+process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "anon-dummy";
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "service-dummy";
+process.env.DATABASE_URL = process.env.DATABASE_URL || "postgres://u:p@localhost:5432/db";
+
 const dbMod = require("../src/db");
 const mesasDb = require("../src/mesas-db");
 
