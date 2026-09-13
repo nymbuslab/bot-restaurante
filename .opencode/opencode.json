@@ -3,7 +3,7 @@
   "mcp": {
     "stitch": {
       "type": "local",
-      "command": ["npx", "-y", "@_davideast/stitch-mcp"],
+      "command": ["npx", "-y", "@_davideast/stitch-mcp", "proxy"],
       "enabled": true,
       "env": {
         "STITCH_API_KEY": "{env:STITCH_API_KEY}",

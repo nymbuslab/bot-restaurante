@@ -103,18 +103,9 @@ ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
 ## Arquitetura
 
-```
-index.js              -> sobe o servidor (NÃO inicia o bot) + jobs (higiene de sessões, retenção)
-src/                  -> backend: Express/API multi-tenant, Postgres, bot (Baileys), caixa,
-                          PDV, mesas, estoque, e-mail, Stripe, impressão
-public/               -> painéis (admin/master), cardápio web público (/c/:slug), e utils
-                          PURAS dual-mode (Node/browser) que servidor e front compartilham
-supabase/migrations/  -> schema versionado (npx supabase db push)
-scripts/              -> scripts administrativos (setup-storage, migrações de dado pontuais)
-agente-impressora/    -> app desktop Electron (Plano B), imprime automaticamente na térmica
-```
-
-Papel de cada arquivo dentro de `src/` e `public/`, módulo a módulo, está em
+`index.js` sobe o servidor (**NÃO** inicia o bot) + jobs (higiene de sessões, retenção).
+Estrutura de pastas de alto nível (`src/`, `public/`, `supabase/migrations/`, `scripts/`,
+`agente-impressora/`) e o papel de cada arquivo, módulo a módulo, estão em
 [docs/arquitetura.md](docs/arquitetura.md) — leia sob demanda ao mexer numa área específica.
 
 **Fluxo de dados:** painel edita config/cardápio via API → `store.setConfig/setCardapio` grava
