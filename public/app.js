@@ -344,7 +344,7 @@ function renderCategorias() {
   cont.querySelectorAll(".cat-del").forEach((b) => b.addEventListener("click", async () => {
     const idx = +b.dataset.i, cat = cardapioAtual.categorias[idx], n = (cat.itens || []).length;
     if (n > 0) { await confirmar("Não é possível excluir", "Esta categoria tem " + n + (n === 1 ? " item vinculado" : " itens vinculados") + ". Remova ou mova os itens antes de excluir.", "Entendi"); return; }
-    const ok = await confirmar("Excluir categoria?", "Esta categoria será removida.", "Excluir");
+    const ok = await confirmar("Excluir categoria \"" + (cat.nome || "sem nome") + "\"?", "Esta categoria será removida.", "Excluir");
     if (!ok) return;
     const removida = cardapioAtual.categorias.splice(idx, 1)[0];
     renderCategorias();
@@ -475,12 +475,13 @@ function renderComplementos() {
 
 // Excluir só solta grupo sem vínculo — senão o produto ficaria sem as opções dele.
 async function grpExcluir(id, emUso) {
+  const grupo = (cardapioAtual.grupos || []).find((g) => g && String(g.id) === String(id));
   if (emUso > 0) {
     await confirmar("Não é possível excluir",
       "Este grupo está ligado a " + emUso + (emUso === 1 ? " produto" : " produtos") + ". Desvincule nos produtos antes de excluir.", "Entendi");
     return;
   }
-  const ok = await confirmar("Excluir grupo?", "O grupo sai da biblioteca. Os pedidos já feitos não mudam.", "Excluir");
+  const ok = await confirmar("Excluir grupo \"" + (grupo && grupo.nome ? grupo.nome : "sem nome") + "\"?", "O grupo sai da biblioteca. Os pedidos já feitos não mudam.", "Excluir");
   if (!ok) return;
   const antes = Array.isArray(cardapioAtual.grupos) ? cardapioAtual.grupos.slice() : [];
   cardapioAtual.grupos = antes.filter((g) => g && String(g.id) !== String(id));
@@ -2258,7 +2259,7 @@ async function fluxoExcluirItem(ci, ii) {
     else vendas = -1; // falha → trata como "com vendas" (mais seguro)
   }
   if (vendas === 0) {
-    const ok = await confirmar("Excluir item?", "Esta ação não pode ser desfeita.", "Excluir");
+    const ok = await confirmar("Excluir item \"" + (item.nome || "sem nome") + "\"?", "Esta ação não pode ser desfeita.", "Excluir");
     if (ok) await excluirItem(ci, ii);
     return;
   }
@@ -8125,7 +8126,8 @@ function renderMesasConfigLista() {
   el.querySelectorAll(".mesa-tag-rm[data-id]").forEach(function (b) {
     b.addEventListener("click", async function () {
       var id = Number(b.dataset.id);
-      if (!(await confirmar("Remover esta mesa?", "A mesa sai da configuração. Você pode criar de novo depois.", "Remover", "Voltar"))) return;
+      var mesa = mesaState.lista.find(function (m) { return m.id === id; });
+      if (!(await confirmar("Remover mesa \"" + (mesa && mesa.nome ? mesa.nome : "sem nome") + "\"?", "A mesa sai da configuração. Você pode criar de novo depois.", "Remover", "Voltar"))) return;
       var ok = await api("DELETE", "/api/mesas/" + id);
       if (!ok.ok) { var e2 = await ok.json().catch(function () { return {}; }); toast(e2.erro || "Não foi possível remover a mesa. Ela pode estar ocupada. Feche ou esvazie antes de remover.", "erro"); return; }
       mesaState.lista = mesaState.lista.filter(function (m) { return m.id !== id; });
