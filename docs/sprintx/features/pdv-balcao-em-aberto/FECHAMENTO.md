@@ -68,6 +68,9 @@ As duas pendências registradas em `PROGRESSO.md` foram fechadas em 12/09/2026:
    `test/pdv-comanda-tile.test.js` reescrito para o novo fluxo (T-03.01).
 2. UI validada visualmente pelo dono nas capturas renderizadas do protótipo aprovado; o
    build passou (`npm test` 717/717, `check` 157).
+3. A identificação opcional adicionada depois foi validada no fluxo real do painel em
+   13/09/2026, com tenant descartável: apareceu no campo Cliente da aba Pedidos e no banner
+   "Acrescentando à Comanda #NN · <identificação>" ao reabrir por "Acrescentar item".
 
 ## Divergências não esperadas
 

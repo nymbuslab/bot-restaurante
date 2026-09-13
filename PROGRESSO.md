@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-09-12
+atualizado: 2026-09-13
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -14,16 +14,28 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-<!-- vazio -->
+**Checkpoint salvo em 2026-09-13 00:15**
+
+### Feito nesta sessão
+- `/doctor`: corrigido YAML quebrado em `prodx`/`stackx` (SKILL.md carregavam sem descrição nenhuma), cortada árvore de diretório redundante do `CLAUDE.md` (Arquitetura), desativados 4 plugins sem uso ou duplicados (`claude-code-setup`, `vulnerability-scanning`, `skill-creator`, e o `context7@claude-plugins-official` duplicado da conexão MCP manual), fixado `permissions.defaultMode: auto`, e Claude Code CLI atualizado de 2.1.233 para 2.1.270.
+- `/revisar-contexto`: CLAUDE.md/PROGRESSO.md/ROADMAP.md/CHANGELOG.md conferidos coerentes entre si; nenhum achado crítico ou importante, nenhum item novo aberto.
+- Duas memórias corrigidas (idioma de resposta sempre pt-BR; autorização para editar settings do Claude Code direto).
+
+### Próximo passo
+- Iniciar pelo `sprintx` a **Fase 3 de Insumos**, relendo o desenho aprovado e consolidando a base da feature antes do cadastro de insumos e da ficha técnica na tela.
+
+### Decisões pendentes
+- `runx` e `memox` (skills pessoais) nunca foram usadas — sinalizado no `/doctor`, sem decisão de manter ou remover.
+- O `task-observer` foi ativado nesta sessão e criou `cross-cutting-principles.md` e `skill-observations/`; decidir em revisão própria se esses artefatos devem ser versionados ou ignorados.
+
+### Documentação possivelmente afetada
+- A Fase 3 de Insumos deve reutilizar `docs/superpowers/specs/2026-08-16-insumos-design.md` e registrar o planejamento executável no diretório da feature criado pelo `sprintx`.
 
 ## 📋 Próximos Passos
 
 ### Em aberto
 
-- [ ] **(P1) Confirmação de exclusão sem o nome do item** — excluir item, categoria, grupo ou mesa mostra só "Excluir item?"/"Excluir categoria?" etc., sem dizer qual — clicar na linha errada apaga "às cegas". O próprio código já faz certo em outro lugar (`public/app.js:1198`, parar de controlar estoque, interpola o nome) — replicar esse padrão nos 4 fluxos de exclusão (`app.js:2258`, `:344`, `:480`, `:7976`). Achado (Bloqueio) da mesma auditoria de design system.
-- [ ] **(P2) Validar no navegador o campo "Identificação" da Comanda do PDV** — o campo (modal "Finalizar venda" → tipo Comanda), o espelho no campo Cliente da aba Pedidos e o banner "Acrescentando à Comanda #NN · <identificação>" ao reabrir pelo "Acrescentar item" estão cobertos pela suíte via harness (HTML real renderizado em vm, 720/720), mas o fluxo completo não foi visto rodando no navegador nesta sessão. Roteiro: abrir Comanda preenchendo a identificação → conferir o campo Cliente no pedido em Pedidos → reabrir pelo "Acrescentar item" → conferir o banner com a identificação. Mesma ressalva do item "Carregar mais" do extrato de estoque.
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
-- [ ] **(P2) Executar o roteiro manual da paginação de Pedidos** — `docs/legado/manual/paginacao-pedidos.md`, 6 casos (3 bloqueantes). A entrega foi direto para `main` sem passar por PR/revisão, então não houve checkpoint natural para isso. Raio foi MÉDIO (não ALTO), então não é exigência formal do método — mas fica registrado para não se perder.
 - [ ] **(P2) Conferir visualmente as 2 abas do modal Gerenciar (admin-master) e o Telegram real** — a personalização dos relatórios (abaixo, em Concluído) foi validada pela suíte automatizada (702/702) e por um script de integração direto contra `src/caixa.js` no tenant `nymbus-teste` (fechamentos, cancelamentos e estornos reais, todos com `status: sucesso` no Telegram). O que isso não cobre: um humano clicando de fato nas abas Assinatura/Relatórios Telegram no admin-master, e conferindo no próprio celular se as mensagens (fechamento detalhado, estoque em 2 seções, alerta de cancelamento) ficaram legíveis e bem formatadas. Baixo risco (lógica já provada), mas vale a checagem visual na próxima vez que alguém abrir a ficha desse tenant.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
 - [ ] **(P2) Sem teto de linhas no filtro de período customizado de Pedidos** — `GET /api/pedidos?desde=...&ate=...` (`src/servidor.js:2226`, `src/pedidos.js:101`) valida só o formato das datas, não o tamanho do intervalo, e a query não tem `LIMIT`. Hoje não é um problema observado, mas um intervalo muito largo poderia devolver um volume grande de uma vez. Levantado na descoberta (F2) da feature "paginação de Pedidos" (`docs/sprintx/features/paginacao-pedidos/00-DECISOES.md`, PENDENTE-01) e deixado de fora de propósito por ser assunto de back-end, sem relação com a tela ficar "pela metade".
@@ -712,3 +724,7 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 - [x] **CI de integração ativado no GitHub Actions** — `npm run test:integracao` entrou no workflow `test.yml`, rodando na `main` e por disparo manual (`workflow_dispatch`) com secrets `INTEGRACAO_*`; o script de integração agora aceita credenciais via ambiente no CI sem depender de `.env.test`. Primeira execução remota conferida no GitHub: run `33250802820` passou, incluindo `npm run check`, `npm test` e `Testes de integração`. — 2026-08-29
 
 - [x] **`npm run check` passou a validar a pasta `test/`** — `scripts/check-syntax.js` agora inclui a suíte rápida, helpers e testes de integração na varredura de sintaxe com `node --check`, sem executar testes nem tocar banco. O comando subiu de 63 para 114 arquivos verificados. Validação: `npm run check` (114 arquivos), `npm test` (504/504) e `npm run test:integracao` (39/39). — 2026-08-29
+
+- [x] **(P1) Confirmações de exclusão passaram a mostrar o nome do registro** — os modais de item, categoria, grupo e mesa agora identificam pelo nome o registro que será removido antes da ação destrutiva. Um teste de regressão cobre os quatro fluxos. Validação: `npm test` 721/721, `npm run test:ci` 721/721, `npm run test:integracao` 67/67, `npm run check` 158 arquivos e conferência visual do modal em 390 px, sem corte ou transbordamento. Nenhum desdobramento aberto. — 2026-09-13
+
+- [x] **(P2) Comanda e paginação de Pedidos validadas no navegador** — em tenant descartável, a identificação da Comanda apareceu no campo Cliente de Pedidos e no banner ao reabrir por "Acrescentar item". Os seis casos da paginação passaram em desktop e mobile: 30 itens iniciais, incrementos de 20, botão oculto no fim, reset por filtros, lista "A receber" e cards sem recarga ou overflow. A checagem encontrou o botão "Carregar mais" com 38 px; o alvo de toque foi corrigido para 44 px e reconferido em 1366, 390 e 360 px. Validação: testes focados 18/18, `npm test` 721/721, `npm run test:integracao` 67/67 e `npm run check` 158 arquivos. Nenhum desdobramento aberto. — 2026-09-13

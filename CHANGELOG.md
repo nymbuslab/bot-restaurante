@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-09-12
+atualizado: 2026-09-13
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1119,3 +1119,13 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   referência); ela preenche o campo Cliente do pedido na aba Pedidos.
 - Ao acrescentar itens a uma comanda, o aviso no topo do PDV mostra a identificação junto do número
   ("Acrescentando à Comanda #42 · Maria"), confirmando que é a comanda certa antes de lançar.
+
+## [1.2.10] — Exclusões identificam o registro antes de apagar
+
+- As confirmações de exclusão de item, categoria, grupo e mesa agora mostram o nome do registro
+  escolhido, para o usuário conferir antes de apagar.
+
+## [1.2.11] — Botão de paginação mais fácil de tocar no celular
+
+- O botão "Carregar mais" da lista de Pedidos agora respeita o alvo mínimo de toque de 44 px no
+  celular, mantendo o mesmo comportamento no computador.
