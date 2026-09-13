@@ -169,11 +169,11 @@ Nenhum dado novo necessário.
 
 | Caso | Executado por | Data | Resultado | Observação |
 |---|---|---|---|---|
-| 1 | | | | |
-| 2 | | | | |
-| 3 | | | | |
-| 4 | | | | |
-| 5 | | | | |
-| 6 | | | | |
+| 1 | Codex, Playwright em navegador real | 2026-09-13 | Aprovado | 30 de 75 pedidos, um único botão e nenhuma paginação numerada. |
+| 2 | Codex, Playwright em navegador real | 2026-09-13 | Aprovado | 30 → 50 → 70 → 75, sem recarga da página nem nova chamada à API. |
+| 3 | Codex, Playwright em navegador real | 2026-09-13 | Aprovado | O botão sumiu ao exibir todos os pedidos e não apareceu com apenas um resultado. |
+| 4 | Codex, Playwright em navegador real | 2026-09-13 | Aprovado | Busca e mudança de tipo reiniciaram a lista em 30. |
+| 5 | Codex, Playwright em navegador real | 2026-09-13 | Aprovado | O filtro "A receber" iniciou com 30 itens e manteve o botão quando havia mais resultados. |
+| 6 | Codex, Playwright em navegador real | 2026-09-13 | Aprovado | 30 → 50 cards, sem overflow horizontal; alvo de toque corrigido de 38 para 44 px e reconferido em 390 e 360 px. |
 
-Veredito: pendente de QA humano. Os 3 casos bloqueantes (1, 2 e 3) precisam ser aprovados antes de considerar a entrega fechada; os demais são verificação posterior.
+Veredito: aprovado. Os seis casos passaram em navegador real com dados descartáveis; os dados de QA foram removidos ao final.

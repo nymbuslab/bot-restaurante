@@ -2290,6 +2290,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent-fg); }
 /* Botão "Carregar mais" (lista de Pedidos — mesmo container para tabela e cards) */
 .ped-mais {
   width: 100%;
+  min-height: 44px;
   padding: 10px 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
