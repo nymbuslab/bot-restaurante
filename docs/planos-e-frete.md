@@ -432,5 +432,7 @@ Tabela `estoque_movimentos` (migration `20260813120000`), retenção de 12 meses
 - **Insumos e ficha técnica** (etapa 4/4 do split de Produtos).
 - **Extrato geral do restaurante** (todos os movimentos numa lista): hoje o extrato é por produto.
 - **Modo contagem em lote** para inventário de fim de mês.
-- **Compra e fornecedor:** entrada aqui é um número com observação, não um documento de compra.
+- **Compra e fornecedor:** entrada aqui ainda é um número com observação, não um documento de
+  compra. A evolução aprovada está em [`estoque-e-custos/`](estoque-e-custos/README.md): Compras
+  será construída antes de Insumos operacionais e alimentará saldo e custo de produtos/insumos.
 - **Alerta ativo** (e-mail/WhatsApp avisando que acabou): a tela mostra, ninguém é notificado.

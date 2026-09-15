@@ -276,3 +276,18 @@ Regras consolidadas na padronização visual da plataforma. Seguir em toda UI no
 - **Escala de espaçamento** `--space-1`(4) `--space-2`(8) `--space-3`(12) `--space-4`(16) `--space-5`(20) `--space-6`(24) `--space-8`(32) — usar no lugar de valores soltos (padding de card 16–24px = `--space-4`..`--space-6`, gap de grid 16px = `--space-4`).
 
 > **Tokens FANTASMA já removidos** (eram usados sem existir no `:root`, quebrando estados): `--danger`→`--error`, `--bg-hover`→`--bg-elevated`, `--surface`→`--bg-surface`. Não reintroduzir.
+
+## Equipe e Atividades — Sprint 03 (homologação)
+
+- Reusar cores sólidas, tipografia, espaçamento e foco dos tokens de `public/style.css`.
+  Referência atual de protótipo: Stitch, projeto `7236747227852373120`, design
+  system `6506830711685967852`; aprovações em `estoque-e-custos/prototipos/`.
+- Equipe combina busca/filtros, lista, gaveta de edição e modal de PIN. Atividades
+  tem filtros de evento/operador/datas, paginação por cursor e detalhe somente
+  leitura em `dialog` nativo, com Escape e retorno de foco.
+- Garantir carregamento, vazio, erro/retry e sucesso; controles com alvo mínimo
+  de 44 px. Em mobile, filtros empilhados e linhas reorganizadas sem overflow.
+- A sessão revogada mantém a tela de bloqueio e orienta autorização pelo dono;
+  não renovar como dono nem liberar o painel por fechar o modal.
+- Desktop/mobile e ciclo real foram validados. Capturas e comandos em
+  [equipe.md](equipe.md). Nenhuma liberação em produção decorre dessa validação.

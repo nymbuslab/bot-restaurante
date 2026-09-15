@@ -2,6 +2,13 @@
 
 O terminal do VS Code serve só para teste. Para uso real, use uma das opções abaixo.
 
+> Equipe e Atividades estão em homologação. Não aplicar as migrations
+> `20260915090000_equipe_permissoes.sql` e `20260915100000_auditoria_operacional.sql`
+> nem ligar `equipe_habilitada` em produção antes do backup lógico criptografado,
+> cópia do Storage e restauração ensaiada (P0-B). Revisar retenção/expurgo e base
+> legal dos operadores antes do piloto. `npm start` usa `.env`, que pode apontar
+> para produção; somente o harness protegido de `.env.test` é descartável.
+
 **Conexão do WhatsApp:** o bot não conecta sozinho. Depois de subir, abra o painel,
 faça login, vá na aba **Conexão** e clique em **"Conectar ao WhatsApp"**. O QR só
 é lido uma vez; depois a sessão fica salva e reconecta sozinho.
@@ -147,7 +154,7 @@ fly secrets set DATABASE_URL="..." SUPABASE_URL="..." \
 ```
 
 > Stateless = pode rodar em **múltiplas instâncias / hosts efêmeros** sem perder sessão.
-> A proteção dos dados é do próprio Supabase (point-in-time recovery gerenciado).
+> Isso não significa backup. O estado real da proteção está na seção **Backup dos dados**.
 
 ### 4. Primeiro deploy
 
@@ -338,10 +345,21 @@ Passo a passo (feito em 2026-06-16 para `pedidos.nymbuslab.com.br`):
 
 ## 💾 Backup dos dados
 
-**App stateless — tudo está no Supabase.** O backup é **gerenciado pelo Supabase**:
-point-in-time recovery do Postgres (dashboard → **Database → Backups**, no plano Pro) ou um
-export pontual com `pg_dump` usando a `DATABASE_URL`. As imagens ficam no **Storage** e as
-sessões do WhatsApp na tabela `wa_auth` (também no Supabase).
+**App stateless — tudo está no Supabase, mas isso não é backup.** Auditoria pela API oficial em
+2026-09-13 encontrou, tanto em teste quanto em produção, **zero backups disponíveis** e
+**PITR desligado**. Até existir uma cópia restaurável, nenhuma migration de Compras/Insumos pode
+ser aplicada em produção.
+
+Planos Pro, Team e Enterprise oferecem backups automáticos diários; PITR é um adicional. No estado
+atual, a alternativa é gerar backup lógico com `supabase db dump`/`pg_dump`, criptografá-lo e
+guardá-lo fora do repositório e fora da máquina do app. Nunca gravar dump em repositório público.
+
+**Storage é separado:** o backup do Postgres inclui metadados, mas não restaura o conteúdo das
+imagens apagadas. A política precisa incluir cópia própria dos objetos do bucket `cardapio`.
+
+Antes de qualquer migration, seguir
+[`docs/estoque-e-custos/03-CHECKLIST-ROLLOUT-E-ROLLBACK.md`](docs/estoque-e-custos/03-CHECKLIST-ROLLOUT-E-ROLLBACK.md),
+incluindo ensaio de restauração em projeto descartável.
 
 Não há nada relevante em disco, então não há backup do lado do app. O antigo `npm run backup`
 (e a aba Backup do super-admin), da era SQLite, foi **removido na v0.18.0** por ter ficado

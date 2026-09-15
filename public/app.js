@@ -5,7 +5,7 @@
 // Sessão segura: o refresh token vive num cookie httpOnly (o JS não lê → imune a
 // XSS). O access token (JWT, ~1h) fica SÓ aqui na memória, nunca persistido.
 let token = null;
-let painelSlug = "", painelNome = "";
+let painelSlug = "", painelNome = "", painelAtor = null;
 
 const cabecalhos = {
   "Content-Type": "application/json",
@@ -31,6 +31,40 @@ try {
 // navegador → cai direto no painel. Sem cookie válido → volta pro login.
 async function iniciarSessao() {
   try {
+    const operadorSlug = new URLSearchParams(location.search).get("operador");
+    if (operadorSlug && !sessionStorage.getItem("equipeSessao")) {
+      painelSlug = operadorSlug;
+      painelAtor = { tipo: "funcionario", permissoes: [] };
+      document.querySelectorAll(".aba").forEach((n) => n.classList.remove("ativa"));
+      aplicarPermissoesNavegacao(painelAtor);
+      await abrirOperador();
+      return false;
+    }
+    const sessaoEquipe = sessionStorage.getItem("equipeSessao");
+    if (sessaoEquipe) {
+      try {
+        const salva = JSON.parse(sessaoEquipe);
+        token = salva.token;
+        cabecalhos.Authorization = "Bearer " + token;
+        const principal = await fetch("/api/equipe/principal", { headers: cabecalhos });
+        if (principal.ok) {
+          const dados = await principal.json();
+          painelAtor = dados.ator;
+          painelSlug = dados.slug || salva.slug || "";
+          painelNome = painelAtor.nome || salva.nome || "";
+          CHAVE_PEDIDO_VISTO = "pedidoVisto:" + painelSlug;
+          pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0);
+          const h = document.getElementById("headerNome");
+          if (h) h.textContent = painelNome || "Operador";
+          if (typeof aplicarPermissoesNavegacao === "function") aplicarPermissoesNavegacao(painelAtor);
+          iniciarBloqueioInatividade(painelAtor.inatividadeMinutos || 15);
+          return true;
+        }
+      } catch (_) { /* operador inválido nunca assume a conta do dono */ }
+      sessionStorage.removeItem("equipeSessao");
+      location.href = "admin.html?operador=" + encodeURIComponent(painelSlug || JSON.parse(sessaoEquipe).slug || "");
+      return false;
+    }
     const r = await fetch("/api/refresh", { method: "POST" });
     if (!r.ok) { location.href = "login.html"; return false; }
     const d = await r.json();
@@ -38,6 +72,7 @@ async function iniciarSessao() {
     cabecalhos.Authorization = "Bearer " + token;
     painelSlug = d.slug || "";
     painelNome = d.nome || "";
+    painelAtor = { tipo: "dono", permissoes: ["*"] };
     CHAVE_PEDIDO_VISTO = "pedidoVisto:" + painelSlug;
     pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0);
     const h = document.getElementById("headerNome");
@@ -73,6 +108,11 @@ async function api(metodo, url, corpo) {
   };
   let r = await fazer();
   if (r.status === 401) {
+    if (painelAtor && painelAtor.tipo === "funcionario") {
+      sessionStorage.removeItem("equipeSessao");
+      location.href = "admin.html?operador=" + encodeURIComponent(painelSlug);
+      return;
+    }
     // Token expirado: tenta renovar uma vez e repete a requisição.
     if (await renovarSessao()) r = await fazer();
     if (r.status === 401) {
@@ -1388,6 +1428,8 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "categorias") carregarCategorias();
     if (btn.dataset.aba === "complementos") carregarComplementos();
     if (btn.dataset.aba === "estoque") carregarEstoque();
+    if (btn.dataset.aba === "equipe" && typeof carregarEquipe === "function") carregarEquipe();
+    if (btn.dataset.aba === "atividades" && typeof carregarAtividades === "function") carregarAtividades();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });
@@ -7242,9 +7284,11 @@ async function carregarVersaoAgente() {
 }
 
 async function inicial() {
-  setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
+  const dono = !painelAtor || painelAtor.tipo === "dono";
+  const pode = (permissao) => dono || (painelAtor.permissoes || []).includes(permissao);
+  if (pode("pedidos.ver")) setTimeout(checarPedidoNovo, 3000);   // base do poll de notificação (logo após o boot)
   carregarVersaoAgente();               // versão do agente publicada (aba Configurações → Impressora)
-  setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
+  if (pode("pedidos.ver")) setInterval(checarPedidoNovo, 6000);  // poll a cada 6s — pedido novo aparece em ~6s (era 15s)
 
   // Restaura a última aba visitada: a troca VISUAL já ocorreu no boot (evita piscar o
   // Dashboard); aqui, com a sessão pronta, disparamos o carregador da aba certa primeiro.
@@ -7252,18 +7296,29 @@ async function inicial() {
   try { ultimaAba = localStorage.getItem("ultimaAba"); } catch (_) {}
   if (ultimaAba && ultimaAba !== "dashboard") {
     const btnUltimaAba = document.querySelector("nav button[data-aba='" + ultimaAba + "']");
-    if (btnUltimaAba) btnUltimaAba.click();
+    if (btnUltimaAba && !btnUltimaAba.hidden) btnUltimaAba.click();
+  }
+  if (!dono) {
+    const atual = document.querySelector('nav button.ativo[data-aba]');
+    if (!atual || atual.hidden) {
+      const primeira = Array.from(document.querySelectorAll('nav button[data-aba]')).find((b) => !b.hidden);
+      if (primeira) primeira.click();
+    }
   }
 
-  carregarDashboard(); // carrega dados do dashboard em background (sempre)
-  carregarPedidos();   // pré-carrega pedidos em background
+  if (pode("relatorios.ver")) carregarDashboard();
+  if (pode("pedidos.ver")) carregarPedidos();
   atualizarStatus();   // mantém status/badge atualizados
-  const rc = await api("GET", "/api/cardapio");
-  if (rc) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); renderComplementos(); } // Categorias e Complementos tbm, senão somem no F5 (carregam após o boot)
-  carregarLinkCardapio();   // link público + QR (aba Cardápio)
+  if (dono || pode("cardapio.editar") || pode("pdv.operar") || pode("mesas.operar")) {
+    const rc = await api("GET", "/api/cardapio");
+    if (rc && rc.ok) { cardapioAtual = await rc.json(); renderCardapio(); renderCategorias(); renderComplementos(); }
+    carregarLinkCardapio();
+  }
   await carregarConfig();
-  await carregarConta();        // e-mail de acesso (aba Empresa)
-  await carregarAssinatura();   // aplica o gate de billing
+  if (dono) {
+    await carregarConta();        // e-mail de acesso (aba Empresa)
+    await carregarAssinatura();   // aplica o gate de billing
+  }
 
   // Volta do Stripe Checkout: avisa e, se o webhook ainda não chegou, re-tenta
   // algumas vezes até a assinatura virar ativa (evita gate piscando após pagar).

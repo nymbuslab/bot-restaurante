@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestão de equipe, mobile</title><script src="./support.js"></script></head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0F1117;--surface:#1A1D27;--elevated:#222533;--border:#2E3247;--line:#242738;--text:#F0F2FA;--muted:#8B92B3;--accent:#6344BC;--accent-fg:#A589EA;--accent-soft:rgba(99,68,188,.16);--success:#22C55E;--success-soft:rgba(34,197,94,.12);--warning:#EAB308;--warning-soft:rgba(234,179,8,.12);--radius:10px;--radius-lg:14px}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 'Plus Jakarta Sans',sans-serif}.board{display:flex;gap:24px;align-items:flex-start;padding:28px;min-width:820px}.phone{width:360px;min-height:720px;border:1px solid var(--border);border-radius:18px;background:var(--bg);overflow:hidden}.bar{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:var(--surface)}.bar b{font-size:15px}.content{padding:16px}.title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:16px}.title h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin:0}button,input{font:inherit;min-height:44px;border-radius:6px}button{border:1px solid transparent;padding:0 14px;background:var(--accent);color:white;font-weight:700}.secondary{background:transparent;border-color:var(--border);color:var(--text)}.square{width:44px;padding:0}.search{width:100%;border:1px solid var(--border);background:var(--elevated);color:var(--text);padding:0 12px;margin-bottom:12px}.card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);padding:14px;margin-bottom:10px}.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent-fg);font-weight:700}.person{display:flex;gap:10px}.person small{display:block;color:var(--muted);margin-top:2px}.pill{display:inline-flex;padding:4px 8px;border-radius:99px;font-size:10px;font-weight:700;color:var(--success);background:var(--success-soft)}.pill.warn{color:var(--warning);background:var(--warning-soft)}.card-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:12px;padding-top:12px;color:var(--muted);font-size:12px}.pin-wrap{padding:24px 20px;text-align:center}.lock{width:48px;height:48px;margin:22px auto 16px;display:grid;place-items:center;border-radius:14px;background:var(--accent-soft);color:var(--accent-fg)}.pin-wrap h1{font-size:20px;margin:0 0 6px}.operator{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:12px;margin:20px 0}.dots{display:flex;justify-content:center;gap:14px;margin:24px 0}.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent-fg)}.keypad{display:grid;grid-template-columns:repeat(3,64px);justify-content:center;gap:12px}.key{width:64px;height:56px;border:1px solid var(--border);background:var(--elevated);color:var(--text);font-size:18px}.wide{width:100%;margin-top:20px}.notice{text-align:left;border:1px solid rgba(234,179,8,.35);background:var(--warning-soft);color:var(--warning);border-radius:var(--radius);padding:12px;margin-top:16px;font-size:12px}.bottom{display:grid;grid-template-columns:repeat(4,1fr);min-height:64px;border-top:1px solid var(--line);background:var(--surface);margin-top:auto}.bottom span{display:grid;place-items:center;color:var(--muted);font-size:11px}.bottom .active{color:var(--accent-fg)}
+  </style>
+</helmet>
+<div class="board">
+  <section class="phone">
+    <header class="bar"><b>Equipe</b><button class="secondary square" aria-label="Abrir menu">Menu</button></header>
+    <main class="content">
+      <div class="title"><div><h1>Equipe</h1><p class="sub">Acessos deste restaurante</p></div><button class="square" aria-label="Adicionar funcionário">+</button></div>
+      <input class="search" placeholder="Buscar funcionário" aria-label="Buscar funcionário">
+      <article class="card"><div class="card-top"><div class="person"><span class="avatar">G</span><span><b>Gerência</b><small>Gerente</small></span></div><i class="pill">Ativo</i></div><div class="card-foot"><span>Último acesso hoje, 09:42</span><button class="secondary">Editar</button></div></article>
+      <article class="card"><div class="card-top"><div class="person"><span class="avatar">C</span><span><b>Operador do caixa</b><small>Caixa</small></span></div><i class="pill warn">PIN bloqueado</i></div><div class="card-foot"><span>5 tentativas incorretas</span><button class="secondary">Editar</button></div></article>
+      <article class="card"><div class="card-top"><div class="person"><span class="avatar">E</span><span><b>Responsável pelo estoque</b><small>Estoque/Compras</small></span></div><i class="pill">Ativo</i></div><div class="card-foot"><span>Nunca acessou</span><button class="secondary">Editar</button></div></article>
+    </main>
+    <nav class="bottom"><span>Início</span><span>Pedidos</span><span class="active">Equipe</span><span>Mais</span></nav>
+  </section>
+
+  <section class="phone">
+    <header class="bar"><b>Trocar operador</b><button class="secondary">Usar conta do dono</button></header>
+    <main class="pin-wrap">
+      <div class="lock">PIN</div><h1>Digite seu PIN</h1><p class="sub">Dispositivo autorizado para este restaurante</p>
+      <div class="operator"><span class="avatar">C</span><span><b>Operador do caixa</b><small class="sub">Perfil Caixa</small></span><button class="secondary" style="margin-left:auto">Trocar</button></div>
+      <div class="dots" aria-label="PIN de quatro dígitos"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="keypad"><button class="key">1</button><button class="key">2</button><button class="key">3</button><button class="key">4</button><button class="key">5</button><button class="key">6</button><button class="key">7</button><button class="key">8</button><button class="key">9</button><button class="key secondary">Limpar</button><button class="key">0</button><button class="key secondary">Apagar</button></div>
+      <button class="wide">Entrar</button>
+      <div class="notice"><b>Acesso bloqueado</b><br>Após cinco tentativas incorretas, o PIN fica bloqueado por 15 minutos. O dono pode liberar antes.</div>
+    </main>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>

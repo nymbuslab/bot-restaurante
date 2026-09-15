@@ -1,6 +1,12 @@
 # Insumos e ficha técnica (split de Produtos 4/4)
 
-> Data: 2026-08-16 · Status: desenho aprovado pelo dono, implementação não iniciada
+> Data: 2026-08-16 · Status desde 2026-09-13: **histórico, parcialmente superado**
+>
+> Este desenho foi aprovado para o escopo antigo, mas não está autorizado para implementação.
+> A decisão posterior colocou Compras antes de Insumos operacionais e acrescentou formação de
+> custo. O programa vigente, a auditoria P0/P1 e as decisões abertas estão em
+> [`docs/estoque-e-custos/`](../../estoque-e-custos/README.md).
+>
 > Última etapa do split de Produtos. Depende do `id` estável de opção entregue pela 2/4 e da
 > trilha de movimentação (`estoque_movimentos`) entregue pela 3/4.
 

@@ -14,6 +14,9 @@ const { ipKeyGenerator } = require("express-rate-limit"); // normaliza IPv6 em /
 const QRCode  = require("qrcode");
 
 const empresas = require("./empresas");
+const equipeDb = require("./equipe-db");
+const auditoriaOperacional = require("./auditoria-operacional");
+const Permissoes = require("./permissoes");
 const telegram = require("./telegram"); // relatórios via Telegram (relatorios-telegram)
 const plataforma = require("./plataforma");
 const store = require("./store");
@@ -220,14 +223,34 @@ app.use((req, res, next) => {
 // páginas .html são tratadas acima (fora do static, sempre frescas).
 app.use(express.static(PUBLIC_DIR, { maxAge: "1h" }));
 
-// ---- Autenticação de restaurante — Supabase Auth (JWT) ----
-// O token é o access_token (JWT) do Supabase. O middleware valida o JWT e
-// resolve o tenant; também checa `ativo` a cada request (suspensão imediata).
+// ---- Autenticação do restaurante: dono (JWT) ou funcionário (sessão opaca) ----
+// O principal sempre chega às rotas com tenant, tipo de ator e permissões.
+// Donos preservam o acesso legado; equipe depende de assinatura, plano e flag.
 async function exigeAuth(req, res, next) {
-  const token = (req.headers["authorization"] || "").replace("Bearer ", "");
-  let emp;
+  const cabecalho = String(req.headers["authorization"] || "");
+  const token = cabecalho.startsWith("Bearer ") ? cabecalho.slice(7).trim() : "";
+  let emp = null;
+  let ator = null;
   try {
-    emp = await empresas.resolverPorToken(token);
+    // Tokens Supabase são JWTs de três segmentos. A sessão de funcionário é
+    // base64url opaca, então a distinção não depende de conteúdo persistido.
+    if (token && token.split(".").length !== 3) {
+      const sessao = await equipeDb.resolverSessao(token);
+      if (sessao) {
+        emp = await empresas.buscarPorSlug(sessao.slug);
+        ator = Object.assign({ tipo: "funcionario" }, sessao.funcionario);
+
+        if (!empresas.acessoLiberado(emp)) {
+          return res.status(402).json({ erro: "Assinatura inativa. Ative seu plano para continuar." });
+        }
+        if (!empresas.temEquipe(emp)) {
+          return res.status(403).json({ erro: "Gestão de equipe não disponível para esta empresa." });
+        }
+      }
+    } else {
+      emp = await empresas.resolverPorToken(token);
+      if (emp) ator = { id: emp.userId, tipo: "dono", permissoes: ["*"] };
+    }
   } catch (e) {
     // Deixa rastro: o 500 aqui costuma ser soluço de conexão ao Postgres/Supabase
     // (resolverPorToken). Sem este log a causa some (visível no diagnóstico master).
@@ -236,8 +259,10 @@ async function exigeAuth(req, res, next) {
     incidentes.registrar("auth_500", e.message);
     return res.status(500).json({ erro: "Falha ao validar a sessão." });
   }
-  if (!emp || !emp.ativo) return res.status(401).json({ erro: "Não autorizado" });
+  if (!emp || !emp.ativo || !ator) return res.status(401).json({ erro: "Não autorizado" });
   req.slug = emp.slug;
+  req.empresaId = emp.id;
+  req.ator = ator;
   req.tenantDir = empresas.tenantDir(emp.slug);
   // Aquece o cache de config/cardápio ANTES de liberar a rota. `getConfig` e
   // `getCardapio` são síncronos e LANÇAM com o cache frio, e o cache é por
@@ -257,6 +282,165 @@ async function exigeAuth(req, res, next) {
   }
   next();
 }
+
+function exigePermissao(permissao) {
+  return async (req, res, next) => {
+    if (req.ator && req.ator.tipo === "dono") return next();
+    const efetivas = (req.ator && req.ator.permissoes) || [];
+    if (!efetivas.includes(permissao)) {
+      try {
+        await auditoriaOperacional.registrar(db, { empresaId: req.empresaId, ator: req.ator, evento: "permissao_negada", detalhe: { permissao, rota: req.route && req.route.path, metodo: req.method } });
+      } catch (e) { console.error("auditoria de permissao:", e.message); }
+      return res.status(403).json({ erro: "Você não tem permissão para esta ação." });
+    }
+    next();
+  };
+}
+
+function statusErroEquipe(codigo) {
+  if (codigo === "PIN_INCORRETO" || codigo === "DISPOSITIVO_NAO_AUTORIZADO") return 401;
+  if (codigo === "PIN_BLOQUEADO") return 429;
+  if (codigo === "PIN_EM_USO") return 409;
+  if (codigo === "FUNCIONARIO_INVALIDO" || codigo === "EMPRESA_NAO_ENCONTRADA") return 404;
+  if (codigo === "PERMISSAO_EXCLUSIVA" || codigo === "SEM_PERMISSAO") return 403;
+  return 400;
+}
+
+function responderErroEquipe(res, erro) {
+  const status = statusErroEquipe(erro && erro.codigo);
+  if (status === 400 && !(erro && erro.codigo)) {
+    console.error("equipe:", erro && erro.message);
+    return res.status(500).json({ erro: "Não foi possível concluir a ação de equipe." });
+  }
+  return res.status(status).json({ erro: erro.message });
+}
+
+function validarDelegacaoEquipe(ator, perfil, ajustes) {
+  if (!ator || ator.tipo === "dono") return;
+  const solicitadas = new Set(Permissoes.PADROES[perfil] || []);
+  for (const ajuste of ajustes || []) {
+    if (ajuste && ajuste.permitido === true) solicitadas.add(ajuste.permissao);
+    else if (ajuste && ajuste.permitido === false) solicitadas.delete(ajuste.permissao);
+  }
+  try {
+    Permissoes.validarDelegacao(new Set(ator.permissoes || []), solicitadas);
+  } catch (e) {
+    e.codigo = "SEM_PERMISSAO";
+    throw e;
+  }
+}
+
+app.get("/api/equipe/principal", exigeAuth, (req, res) => {
+  res.json({ empresaId: req.empresaId, slug: req.slug, ator: req.ator });
+});
+
+async function exigeEquipe(req, res, next) {
+  try {
+    const empresa = await empresas.buscarPorSlug(req.slug || (req.body || {}).slug);
+    if (!empresa || !empresa.ativo) return res.status(403).json({ erro: "Gestão de equipe não disponível." });
+    if (!empresas.acessoLiberado(empresa)) return res.status(402).json({ erro: "A assinatura precisa estar ativa para usar Equipe." });
+    if (!empresas.temEquipe(empresa)) return res.status(403).json({ erro: "Gestão de equipe não disponível para esta empresa." });
+    next();
+  } catch (e) { responderErroEquipe(res, e); }
+}
+
+app.get("/api/equipe/atividades", exigeAuth, exigeEquipe, exigePermissao("atividades.ver"), async (req, res) => {
+  try { res.json(await auditoriaOperacional.listar(req.empresaId, req.query)); }
+  catch (e) { responderErroEquipe(res, e); }
+});
+
+app.get("/api/equipe", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
+  try {
+    res.json({ funcionarios: await equipeDb.listarFuncionarios(req.slug), padroes: Permissoes.PADROES });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.post("/api/equipe", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
+  try {
+    const dados = req.body || {};
+    validarDelegacaoEquipe(req.ator, dados.perfil, dados.ajustes);
+    const funcionario = await equipeDb.criarFuncionario(req.slug, dados, req.ator);
+    res.status(201).json({ funcionario });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.put("/api/equipe/:id", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
+  try {
+    if (req.ator.tipo !== "dono" && req.ator.id === req.params.id) {
+      const erro = new Error("Você não pode alterar o próprio acesso.");
+      erro.codigo = "SEM_PERMISSAO";
+      throw erro;
+    }
+    const dados = req.body || {};
+    validarDelegacaoEquipe(req.ator, dados.perfil, dados.ajustes);
+    const funcionario = await equipeDb.atualizarFuncionario(req.slug, req.params.id, dados, req.ator);
+    res.json({ funcionario });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.post("/api/equipe/:id/desbloquear", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
+  try {
+    if (req.ator.tipo !== "dono" && req.ator.id === req.params.id) return res.status(403).json({ erro: "Você não pode alterar o próprio acesso." });
+    const desbloqueado = await equipeDb.desbloquearFuncionario(req.slug, req.params.id, req.ator);
+    if (!desbloqueado) return res.status(404).json({ erro: "Funcionário não encontrado." });
+    res.json({ ok: true });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.get("/api/equipe/dispositivos", exigeAuth, exigeEquipe, exigePermissao("dispositivos.autorizar"), async (req, res) => {
+  try {
+    res.json({ dispositivos: await equipeDb.listarDispositivos(req.slug) });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.post("/api/equipe/dispositivos/autorizar", exigeAuth, exigeEquipe, exigePermissao("dispositivos.autorizar"), async (req, res) => {
+  try {
+    const dispositivo = await equipeDb.autorizarDispositivo(req.slug, req.body || {}, req.ator);
+    res.status(201).json({ dispositivo });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.delete("/api/equipe/dispositivos/:id", exigeAuth, exigeEquipe, exigePermissao("dispositivos.autorizar"), async (req, res) => {
+  try {
+    const revogado = await equipeDb.revogarDispositivo(req.slug, req.params.id, req.ator);
+    if (!revogado) return res.status(404).json({ erro: "Dispositivo não encontrado." });
+    res.status(204).end();
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.post("/api/equipe/dispositivos/funcionarios", loginLimiter, exigeEquipe, async (req, res) => {
+  try {
+    const dados = req.body || {};
+    const funcionarios = await equipeDb.listarFuncionariosDoDispositivo(dados.slug, dados.dispositivoToken);
+    res.json({ funcionarios });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
+
+app.post("/api/equipe/sessoes/pin", loginLimiter, exigeEquipe, async (req, res) => {
+  try {
+    const dados = req.body || {};
+    const sessao = await equipeDb.iniciarSessao(dados.slug, dados);
+    res.status(201).json({ sessao });
+  } catch (e) {
+    responderErroEquipe(res, e);
+  }
+});
 
 // Gate de assinatura: exige trial/assinatura em dia (além do exigeAuth).
 // Protege a ação que de fato presta o serviço (ligar o bot). Responde 402
@@ -444,7 +628,7 @@ app.get("/api/agente/pendentes", exigeAuth, async (req, res) => {
 });
 
 // O agente confirma que imprimiu (idempotente): não reimprime em reinício/2 agentes.
-app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, async (req, res) => {
+app.post("/api/agente/pedidos/:numero/impresso", exigeAuth, exigePermissao("pedidos.ver"), async (req, res) => {
   try {
     const marcado = await pedidos.marcarImpresso(req.tenantDir, req.params.numero);
     res.json({ ok: true, marcado });
@@ -463,7 +647,7 @@ app.get("/api/agente/fila", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/agente/fila/:id/impresso", exigeAuth, async (req, res) => {
+app.post("/api/agente/fila/:id/impresso", exigeAuth, exigePermissao("pedidos.ver"), async (req, res) => {
   try {
     const marcado = await impressaoFila.marcarImpresso(req.tenantDir, req.params.id);
     res.json({ ok: true, marcado });
@@ -554,7 +738,7 @@ function baseUrlDe(req) {
 }
 
 // Inicia o trial de 7 dias: abre a Checkout Session (coleta cartão) e devolve a URL.
-app.post("/api/assinatura/checkout", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.post("/api/assinatura/checkout", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -571,7 +755,7 @@ app.post("/api/assinatura/checkout", exigeAuth, assinaturaLimiter, async (req, r
 
 // Abre o Customer Portal (trocar cartão / cancelar / ver faturas).
 // Troca de plano (upgrade/downgrade) de uma assinatura viva, com proration.
-app.post("/api/assinatura/plano", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.post("/api/assinatura/plano", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   const plano = req.body && req.body.plano;
   if (plano !== "essencial" && plano !== "completo") return res.status(400).json({ erro: "Plano inválido." });
@@ -587,7 +771,7 @@ app.post("/api/assinatura/plano", exigeAuth, assinaturaLimiter, async (req, res)
   }
 });
 
-app.post("/api/assinatura/portal", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.post("/api/assinatura/portal", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -601,7 +785,7 @@ app.post("/api/assinatura/portal", exigeAuth, assinaturaLimiter, async (req, res
 });
 
 // Checkout PRÓPRIO (Stripe Elements) — passo 1: cria o SetupIntent (coleta o cartão).
-app.post("/api/assinatura/setup-intent", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.post("/api/assinatura/setup-intent", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -616,7 +800,7 @@ app.post("/api/assinatura/setup-intent", exigeAuth, assinaturaLimiter, async (re
 });
 
 // Checkout PRÓPRIO — passo 2: confirma o cartão e cria a assinatura (trial 7d).
-app.post("/api/assinatura/confirmar", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.post("/api/assinatura/confirmar", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   const { setupIntentId, plano } = req.body || {};
   if (!setupIntentId) return res.status(400).json({ erro: "setupIntentId é obrigatório." });
@@ -640,7 +824,7 @@ app.post("/api/assinatura/confirmar", exigeAuth, assinaturaLimiter, async (req, 
 });
 
 // Estado atual da assinatura do tenant (consumido pelo painel) + faturas reais.
-app.get("/api/assinatura", exigeAuth, async (req, res) => {
+app.get("/api/assinatura", exigeAuth, exigePermissao("assinatura.gerenciar"), async (req, res) => {
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
     let faturas = [];
@@ -667,7 +851,7 @@ app.get("/api/assinatura", exigeAuth, async (req, res) => {
 // Informações da plataforma (Nymbus) para o painel do cliente.
 // Fonte: tabela plataforma_config (editável no painel master); cai pra env
 // SUPORTE_WHATSAPP se ainda não houver valor salvo.
-app.get("/api/plataforma", exigeAuth, async (req, res) => {
+app.get("/api/plataforma", exigeAuth, exigePermissao("assinatura.gerenciar"), async (req, res) => {
   try {
     const cfg = await plataforma.obter();
     res.json({ suporteWhatsapp: cfg.suporteWhatsapp || SUPORTE_WHATSAPP || null });
@@ -1104,7 +1288,7 @@ app.post("/api/c/:slug/pedido", publicoLimiter, async (req, res) => {
 });
 
 // ---- Gestão de cartões no painel (Stripe) ----
-app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
+app.get("/api/assinatura/cartoes", exigeAuth, exigePermissao("assinatura.gerenciar"), async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -1118,7 +1302,7 @@ app.get("/api/assinatura/cartoes", exigeAuth, async (req, res) => {
 });
 
 // Passo 1 de adicionar cartão: SetupIntent para o Payment Element do painel.
-app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -1133,7 +1317,7 @@ app.post("/api/assinatura/cartoes/setup-intent", exigeAuth, assinaturaLimiter, a
   }
 });
 
-app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -1149,7 +1333,7 @@ app.patch("/api/assinatura/cartoes/:id/padrao", exigeAuth, assinaturaLimiter, as
   }
 });
 
-app.delete("/api/assinatura/cartoes/:id", exigeAuth, assinaturaLimiter, async (req, res) => {
+app.delete("/api/assinatura/cartoes/:id", exigeAuth, exigePermissao("assinatura.gerenciar"), assinaturaLimiter, async (req, res) => {
   if (!stripeBilling.CONFIGURADO) return res.status(503).json({ erro: "Pagamento não configurado no servidor." });
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
@@ -1788,17 +1972,17 @@ app.get("/api/status", exigeAuth, (req, res) => {
 
 // ---- Bot ----
 
-app.post("/api/bot/conectar", botLimiter, exigeAuth, exigeAssinatura, (req, res) => {
+app.post("/api/bot/conectar", botLimiter, exigeAuth, exigePermissao("configuracoes.editar"), exigeAssinatura, (req, res) => {
   multiBot.iniciar(req.slug, req.tenantDir);
   res.json({ ok: true });
 });
 
-app.post("/api/bot/desconectar", exigeAuth, async (req, res) => {
+app.post("/api/bot/desconectar", exigeAuth, exigePermissao("configuracoes.editar"), async (req, res) => {
   await multiBot.desconectar(req.slug);
   res.json({ ok: true });
 });
 
-app.post("/api/bot/resetar", botLimiter, exigeAuth, async (req, res) => {
+app.post("/api/bot/resetar", botLimiter, exigeAuth, exigePermissao("configuracoes.editar"), async (req, res) => {
   try {
     await multiBot.resetarSessao(req.slug, req.tenantDir);
     res.json({ ok: true });
@@ -1874,7 +2058,7 @@ function normalizarConfigServidor(body) {
   }
 }
 
-app.put("/api/config", exigeAuth, async (req, res) => {
+app.put("/api/config", exigeAuth, exigePermissao("configuracoes.editar"), async (req, res) => {
   const invalido = validarConfig(req.body);
   if (invalido) return res.status(400).json({ erro: invalido });
   try {
@@ -1916,7 +2100,7 @@ app.put("/api/config", exigeAuth, async (req, res) => {
 
 // ---- Conta de acesso (e-mail/senha de login) ----
 // E-mail/senha vivem no Supabase Auth, não no `config`. Rotas separadas.
-app.get("/api/conta", exigeAuth, async (req, res) => {
+app.get("/api/conta", exigeAuth, exigePermissao("conta.credenciais"), async (req, res) => {
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
     if (!emp) return res.status(404).json({ erro: "Conta não encontrada." });
@@ -1926,7 +2110,7 @@ app.get("/api/conta", exigeAuth, async (req, res) => {
   }
 });
 
-app.patch("/api/conta/senha", contaLimiter, exigeAuth, async (req, res) => {
+app.patch("/api/conta/senha", contaLimiter, exigeAuth, exigePermissao("conta.credenciais"), async (req, res) => {
   try {
     const { senhaAtual, novaSenha } = req.body || {};
     // Passa o JWT atual p/ revogar as OUTRAS sessões após a troca (um refresh token
@@ -1941,7 +2125,7 @@ app.patch("/api/conta/senha", contaLimiter, exigeAuth, async (req, res) => {
   }
 });
 
-app.patch("/api/conta/email", contaLimiter, exigeAuth, async (req, res) => {
+app.patch("/api/conta/email", contaLimiter, exigeAuth, exigePermissao("conta.credenciais"), async (req, res) => {
   try {
     const { senhaAtual, novoEmail } = req.body || {};
     const jwt = (req.headers["authorization"] || "").replace("Bearer ", "");
@@ -1955,7 +2139,7 @@ app.patch("/api/conta/email", contaLimiter, exigeAuth, async (req, res) => {
 
 // LGPD — Exportar meus dados: devolve TODO o conteúdo do tenant (acesso +
 // portabilidade). O cliente baixa como arquivo JSON.
-app.get("/api/conta/exportar", exigeAuth, async (req, res) => {
+app.get("/api/conta/exportar", exigeAuth, exigePermissao("conta.credenciais"), async (req, res) => {
   try {
     const emp = await empresas.buscarPorSlug(req.slug);
     if (!emp) return res.status(404).json({ erro: "Conta não encontrada." });
@@ -1988,7 +2172,7 @@ app.get("/api/conta/exportar", exigeAuth, async (req, res) => {
 // LGPD — Excluir minha conta (autoatendimento, DESTRUTIVO). Exige a senha
 // atual + confirmação textual. Apaga tudo (empresa, pedidos em cascata,
 // sessão do WhatsApp, usuário do Auth e imagens). Desconecta o bot antes.
-app.delete("/api/conta", contaLimiter, exigeAuth, async (req, res) => {
+app.delete("/api/conta", contaLimiter, exigeAuth, exigePermissao("conta.excluir"), async (req, res) => {
   try {
     const { senhaAtual, confirmacao } = req.body || {};
     if (confirmacao !== "EXCLUIR") {
@@ -2078,7 +2262,7 @@ function normalizarConteudoCardapio(cardapio) {
   return saida;
 }
 
-app.put("/api/cardapio", exigeAuth, async (req, res) => {
+app.put("/api/cardapio", exigeAuth, exigePermissao("cardapio.editar"), async (req, res) => {
   const invalido = validarCardapio(req.body);
   if (invalido) return res.status(400).json({ erro: invalido });
   try {
@@ -2123,7 +2307,7 @@ app.get("/api/cardapio/item/:id/vendas", exigeAuth, async (req, res) => {
 // A lista sai do CACHE do cardápio (sem ida ao banco); só o extrato consulta.
 // ============================================================
 
-app.get("/api/estoque", exigeAuth, async (req, res) => {
+app.get("/api/estoque", exigeAuth, exigePermissao("estoque.ver"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     await store.ensure(req.tenantDir);
@@ -2143,7 +2327,7 @@ app.get("/api/estoque", exigeAuth, async (req, res) => {
   }
 });
 
-app.get("/api/estoque/movimentos", exigeAuth, async (req, res) => {
+app.get("/api/estoque/movimentos", exigeAuth, exigePermissao("estoque.ver"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   const itemId = String(req.query.itemId || "");
   if (!itemId) return res.status(400).json({ erro: "Informe o produto." });
@@ -2163,7 +2347,7 @@ app.get("/api/estoque/movimentos", exigeAuth, async (req, res) => {
 // Lança um movimento manual (entrada, perda ou contagem) na tela de Controle
 // de estoque. Saldo e movimento são gravados juntos, na mesma transação, sob
 // o lock do tenant (ajustarEstoqueTx) — o cache só sincroniza após o COMMIT.
-app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
+app.post("/api/estoque/movimentos", exigeAuth, exigePermissao("estoque.movimentar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   const b = req.body || {};
   const tipo = String(b.tipo || "");
@@ -2219,7 +2403,7 @@ app.post("/api/estoque/movimentos", exigeAuth, async (req, res) => {
 });
 
 // Mínimo não mexe em saldo, então NÃO é movimento: grava direto no cardápio.
-app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
+app.post("/api/estoque/minimo", exigeAuth, exigePermissao("estoque.movimentar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   const b = req.body || {};
   const itemId = String(b.itemId || "");
@@ -2258,7 +2442,7 @@ app.post("/api/estoque/minimo", exigeAuth, async (req, res) => {
 // só sabia ligar — e item controlado com saldo zero SOME da venda como esgotado.
 // Rota própria em vez de mandar o cardápio inteiro do painel: o PUT /api/cardapio
 // carrega a cópia que o navegador tem, e uma venda que caísse no meio seria desfeita.
-app.post("/api/estoque/controle", exigeAuth, async (req, res) => {
+app.post("/api/estoque/controle", exigeAuth, exigePermissao("estoque.movimentar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   const b = req.body || {};
   const itemId = String(b.itemId || "");
@@ -2299,7 +2483,7 @@ const upload = multer({
 
 // Upload da imagem direto para o Storage; o item guarda a URL pública retornada.
 // (Não há mais rota /imagens nem arquivos em disco — o Storage serve a URL.)
-app.post("/api/imagem", exigeAuth, (req, res) => {
+app.post("/api/imagem", exigeAuth, exigePermissao("cardapio.editar"), (req, res) => {
   upload.single("imagem")(req, res, async (err) => {
     if (err && err.code === "LIMIT_FILE_SIZE")
       return res.status(400).json({ erro: "Arquivo muito grande. Máximo: 2 MB." });
@@ -2329,7 +2513,7 @@ app.post("/api/imagem", exigeAuth, (req, res) => {
   });
 });
 
-app.get("/api/pedidos", exigeAuth, async (req, res) => {
+app.get("/api/pedidos", exigeAuth, exigePermissao("pedidos.ver"), async (req, res) => {
   try {
     const q = req.query || {};
     const filtro = {};
@@ -2347,7 +2531,7 @@ app.get("/api/pedidos", exigeAuth, async (req, res) => {
 // Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
 // `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
 // final + mapeia item → grupo pelo cardápio do tenant.
-app.get("/api/dashboard", exigeAuth, async (req, res) => {
+app.get("/api/dashboard", exigeAuth, exigePermissao("relatorios.ver"), async (req, res) => {
   try {
     const raw = await pedidos.dashboardRaw(req.tenantDir);
     const cardapio = store.getCardapio(req.tenantDir);
@@ -2360,7 +2544,7 @@ app.get("/api/dashboard", exigeAuth, async (req, res) => {
 
 // Último pedido (nº + cliente) — consulta leve p/ o polling de notificação do
 // painel detectar pedido novo sem baixar a lista inteira.
-app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
+app.get("/api/pedidos/ultimo", exigeAuth, exigePermissao("pedidos.ver"), async (req, res) => {
   try {
     // `?full=1` traz o detalhe (cliente/itens/total) p/ o modal de pedido novo; o poll
     // de 6s chama sem `full` (só o número) — não puxa o jsonb à toa.
@@ -2371,7 +2555,7 @@ app.get("/api/pedidos/ultimo", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
+app.post("/api/pedidos/:id/cancelar", exigeAuth, exigePermissao("pedidos.cancelar"), async (req, res) => {
   try {
     const id = Number(req.params.id);
     // `devolver` volta ao estoque os itens do pedido cancelado; padrão true.
@@ -2395,7 +2579,7 @@ app.post("/api/pedidos/:id/cancelar", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
+app.post("/api/pedidos/:id/cancelar-item", exigeAuth, exigePermissao("pedidos.cancelar"), async (req, res) => {
   try {
     const b = req.body || {};
     if (b.itemIdx == null) return res.status(400).json({ erro: "itemIdx é obrigatório." });
@@ -2415,7 +2599,7 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, async (req, res) => {
 // estoque ANTES (409), baixa estoque atomicamente, faz UPDATE incremental na
 // MESMA linha (append itens + soma total) e enfileira SÓ os itens da rodada nova
 // para a cozinha. A via é a mesma de PDV avulso ("pdv"), rótulo livre na fila.
-app.post("/api/pedidos/:id/itens", exigeAuth, async (req, res) => {
+app.post("/api/pedidos/:id/itens", exigeAuth, exigePermissao("pedidos.editar"), async (req, res) => {
   try {
     const b = req.body || {};
     if (!Array.isArray(b.itens) || !b.itens.length) return res.status(400).json({ erro: "A lista de itens está vazia." });
@@ -2483,7 +2667,7 @@ app.post("/api/pedidos/:id/itens", exigeAuth, async (req, res) => {
 
 // Reimpressão manual: re-enfileira a comanda (cozinha + cupom) do pedido para o
 // agente. Substitui o antigo "Imprimir comanda" do navegador.
-app.post("/api/pedidos/:id/reimprimir", exigeAuth, async (req, res) => {
+app.post("/api/pedidos/:id/reimprimir", exigeAuth, exigePermissao("pedidos.ver"), async (req, res) => {
   if (!(await exigeImpressao(req, res))) return;
   try {
     const pedido = await pedidos.lerPorId(req.tenantDir, Number(req.params.id));
@@ -2521,7 +2705,7 @@ async function exigeCaixa(req, res) {
   }
 }
 
-app.get("/api/caixa", exigeAuth, async (req, res) => {
+app.get("/api/caixa", exigeAuth, exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try {
     const data = await caixa.resumo(req.tenantDir);
@@ -2535,13 +2719,13 @@ app.get("/api/caixa", exigeAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ erro: "Falha ao ler o caixa." }); }
 });
 
-app.post("/api/caixa/abrir", exigeAuth, async (req, res) => {
+app.post("/api/caixa/abrir", exigeAuth, exigePermissao("caixa.abrir"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try { res.json(await caixa.abrirCaixa(req.tenantDir, { fundoTroco: req.body.fundoTroco, operador: req.body.operador, obsAbertura: req.body.obsAbertura })); }
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
-app.post("/api/caixa/receber/:pedidoId", exigeAuth, async (req, res) => {
+app.post("/api/caixa/receber/:pedidoId", exigeAuth, exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try {
     // Confere a forma contra a lista do tenant, como o PDV já faz. Sem isto,
@@ -2558,7 +2742,7 @@ app.post("/api/caixa/receber/:pedidoId", exigeAuth, async (req, res) => {
   } catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
-app.post("/api/caixa/estornar/:pedidoId", exigeAuth, async (req, res) => {
+app.post("/api/caixa/estornar/:pedidoId", exigeAuth, exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try { res.json(await caixa.estornarRecebimento(req.tenantDir, Number(req.params.pedidoId))); }
   catch (e) { res.status(400).json({ erro: e.message }); }
@@ -2619,7 +2803,7 @@ async function enfileirarComprovanteCaixa(req, tipo, movimentos, extras) {
   }
 }
 
-app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
+app.post("/api/caixa/movimento", exigeAuth, exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try {
     const mov = await caixa.registrarMovimento(req.tenantDir, { tipo: req.body.tipo, valor: req.body.valor, descricao: req.body.descricao });
@@ -2629,7 +2813,7 @@ app.post("/api/caixa/movimento", exigeAuth, async (req, res) => {
   catch (e) { res.status(400).json({ erro: e.message }); }
 });
 
-app.post("/api/caixa/movimento/:id/reimprimir", exigeAuth, async (req, res) => {
+app.post("/api/caixa/movimento/:id/reimprimir", exigeAuth, exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   if (!(await exigeImpressao(req, res))) return;
   try {
@@ -2661,7 +2845,7 @@ app.post("/api/caixa/movimento/:id/reimprimir", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
+app.post("/api/caixa/fechar", exigeAuth, exigePermissao("caixa.fechar"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try {
     const resultado = await caixa.fecharCaixa(req.tenantDir, { contado: req.body.contado, contagem: req.body.contagem, eletronico: req.body.eletronico });
@@ -2674,13 +2858,13 @@ app.post("/api/caixa/fechar", exigeAuth, async (req, res) => {
 });
 
 // "historico" ANTES de ":id" (senão cairia no parâmetro).
-app.get("/api/caixa/historico", exigeAuth, async (req, res) => {
+app.get("/api/caixa/historico", exigeAuth, exigePermissao("relatorios.ver"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try { res.json(await caixa.listarCaixas(req.tenantDir)); }
   catch (e) { res.status(500).json({ erro: "Falha ao listar caixas." }); }
 });
 
-app.get("/api/caixa/:id", exigeAuth, async (req, res) => {
+app.get("/api/caixa/:id", exigeAuth, exigePermissao("relatorios.ver"), async (req, res) => {
   if (!(await exigeCaixa(req, res))) return;
   try {
     const d = await caixa.detalheCaixa(req.tenantDir, Number(req.params.id));
@@ -2744,7 +2928,7 @@ async function bloqueiaMesaSeVencido(req, res, acao) {
 
 // Cálculo de frete no PDV (autenticada). Front usa para o modo raio (CEP+número);
 // no fixo retorna a taxa direto. Não expõe a chave/coords da empresa.
-app.post("/api/pdv/frete", exigeAuth, async (req, res) => {
+app.post("/api/pdv/frete", exigeAuth, exigePermissao("pdv.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     await store.ensure(req.tenantDir);
@@ -2772,7 +2956,7 @@ function itensDeCozinha(cardapio, itens) {
   return (itens || []).filter((i) => ids.has(i.id));
 }
 
-app.post("/api/pdv/vender", exigeAuth, async (req, res) => {
+app.post("/api/pdv/vender", exigeAuth, exigePermissao("pdv.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const b = req.body || {};
@@ -2928,7 +3112,7 @@ async function detalheMesa(dir, mesaId) {
   return { ...mesa, pedidos: peds, resumo, recebido, falta, porPessoa };
 }
 
-app.get("/api/mesas", exigeAuth, async (req, res) => {
+app.get("/api/mesas", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     res.json({
@@ -2941,7 +3125,7 @@ app.get("/api/mesas", exigeAuth, async (req, res) => {
   }
 });
 
-app.get("/api/mesas/:id", exigeAuth, async (req, res) => {
+app.get("/api/mesas/:id", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const d = await detalheMesa(req.tenantDir, Number(req.params.id));
@@ -2953,7 +3137,7 @@ app.get("/api/mesas/:id", exigeAuth, async (req, res) => {
 });
 
 // Criar mesas em lote (body.nomes) e/ou salvar a taxa de serviço padrão.
-app.post("/api/mesas/config", exigeAuth, async (req, res) => {
+app.post("/api/mesas/config", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const b = req.body || {};
@@ -2974,7 +3158,7 @@ app.post("/api/mesas/config", exigeAuth, async (req, res) => {
   }
 });
 
-app.delete("/api/mesas/:id", exigeAuth, async (req, res) => {
+app.delete("/api/mesas/:id", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const ok = await mesasDb.remover(req.tenantDir, Number(req.params.id));
@@ -2985,7 +3169,7 @@ app.delete("/api/mesas/:id", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/mesas/:id/abrir", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/abrir", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   if (await bloqueiaMesaSeVencido(req, res, "abrir novas mesas")) return;
   try {
@@ -3000,7 +3184,7 @@ app.post("/api/mesas/:id/abrir", exigeAuth, async (req, res) => {
 });
 
 // Edita o nº de pessoas de uma mesa aberta.
-app.post("/api/mesas/:id/pessoas", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/pessoas", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const b = req.body || {};
@@ -3014,7 +3198,7 @@ app.post("/api/mesas/:id/pessoas", exigeAuth, async (req, res) => {
 
 // Lança uma rodada: recalcula no servidor, baixa estoque atômico e salva o pedido
 // vinculado à mesa (não recebido). A impressão da cozinha é disparada pelo painel.
-app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/pedido", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   if (await bloqueiaMesaSeVencido(req, res, "lançar itens")) return;
   try {
@@ -3075,7 +3259,7 @@ app.post("/api/mesas/:id/pedido", exigeAuth, async (req, res) => {
 });
 
 // Cliente pediu a conta (bloqueia novos lançamentos; reabrível).
-app.post("/api/mesas/:id/solicitar-conta", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/solicitar-conta", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesa = await mesasDb.atualizarStatus(req.tenantDir, Number(req.params.id), "pediu_conta", "ocupada");
@@ -3088,7 +3272,7 @@ app.post("/api/mesas/:id/solicitar-conta", exigeAuth, async (req, res) => {
 
 // Operador inicia o fechamento (→ fechando, bloqueia lançamentos). Devolve o
 // detalhe com resumo/recebido/falta para a tela de pagamento.
-app.post("/api/mesas/:id/fechar-conta", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/fechar-conta", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesaId = Number(req.params.id);
@@ -3102,7 +3286,7 @@ app.post("/api/mesas/:id/fechar-conta", exigeAuth, async (req, res) => {
 });
 
 // Envia a PRÉ-CONTA (espelho, não-fiscal) da mesa para a fila de impressão do agente.
-app.post("/api/mesas/:id/imprimir-conta", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/imprimir-conta", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const d = await detalheMesa(req.tenantDir, Number(req.params.id));
@@ -3131,7 +3315,7 @@ app.post("/api/mesas/:id/imprimir-conta", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/mesas/:id/reabrir", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/reabrir", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesa = await mesasDb.reabrir(req.tenantDir, Number(req.params.id));
@@ -3143,7 +3327,7 @@ app.post("/api/mesas/:id/reabrir", exigeAuth, async (req, res) => {
 });
 
 // Recebimento PARCIAL: lança um pagamento e devolve recebido/falta atualizados.
-app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/receber-parcial", exigeAuth, exigePermissao("mesas.operar"), exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesaId = Number(req.params.id);
@@ -3192,7 +3376,7 @@ app.post("/api/mesas/:id/receber-parcial", exigeAuth, async (req, res) => {
 });
 
 // Fechamento FINAL: valida que recebido + pagamentos cobrem o total e libera a mesa.
-app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/pagar", exigeAuth, exigePermissao("mesas.operar"), exigePermissao("caixa.movimentar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesaId = Number(req.params.id);
@@ -3247,7 +3431,7 @@ app.post("/api/mesas/:id/pagar", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/cancelar", exigeAuth, exigePermissao("mesas.operar"), exigePermissao("pedidos.cancelar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesaId = Number(req.params.id);
@@ -3272,7 +3456,7 @@ app.post("/api/mesas/:id/cancelar", exigeAuth, async (req, res) => {
 });
 
 // Cancela um item individual de um pedido da mesa.
-app.post("/api/mesas/:id/cancelar-item", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/cancelar-item", exigeAuth, exigePermissao("mesas.operar"), exigePermissao("pedidos.cancelar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const mesaId = Number(req.params.id);
@@ -3291,7 +3475,7 @@ app.post("/api/mesas/:id/cancelar-item", exigeAuth, async (req, res) => {
 });
 
 // Transfere/junta: move pedidos (body.pedidoIds vazio = todos) p/ a mesa destino.
-app.post("/api/mesas/:id/transferir/:destinoId", exigeAuth, async (req, res) => {
+app.post("/api/mesas/:id/transferir/:destinoId", exigeAuth, exigePermissao("mesas.operar"), async (req, res) => {
   if (!(await exigePdv(req, res))) return;
   try {
     const b = req.body || {};
@@ -3319,7 +3503,7 @@ const MSG_PRONTO_PADRAO = {
   retirada: "Olá, {cliente}! Seu pedido #{numero} está pronto para retirada. Pode vir buscar quando quiser!",
 };
 
-app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
+app.post("/api/pedido/avisar", exigeAuth, exigePermissao("pedidos.editar"), async (req, res) => {
   try {
     const { pedidoId } = req.body || {};
     if (!pedidoId) return res.status(400).json({ erro: "pedidoId obrigatório." });
@@ -3360,7 +3544,7 @@ app.post("/api/pedido/avisar", exigeAuth, async (req, res) => {
 
 // ---- Simulador (Prévia do atendimento) ----
 
-app.post("/api/simulador/mensagem", exigeAuth, async (req, res) => {
+app.post("/api/simulador/mensagem", exigeAuth, exigePermissao("configuracoes.editar"), async (req, res) => {
   try {
     const { mensagem } = req.body || {};
     if (!mensagem && mensagem !== "0") return res.status(400).json({ erro: "mensagem ausente" });
@@ -3378,7 +3562,7 @@ app.post("/api/simulador/mensagem", exigeAuth, async (req, res) => {
   }
 });
 
-app.post("/api/simulador/reset", exigeAuth, (req, res) => {
+app.post("/api/simulador/reset", exigeAuth, exigePermissao("configuracoes.editar"), (req, res) => {
   resetSessao(`sim:${req.slug}`);
   res.json({ ok: true });
 });

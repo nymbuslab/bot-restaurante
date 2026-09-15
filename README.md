@@ -15,6 +15,12 @@ super-admin (`/admin-master`).
 > Documentos do projeto: **PRD.md** (requisitos), **CLAUDE.md** (guia técnico),
 > **DEPLOY.md** (produção) e **ROADMAP.md** (direção).
 
+Equipe e Atividades estão em homologação, atrás de flag por empresa. O ciclo
+real de cadastro, PIN, revogação e auditoria é validado com
+`node test/visual/equipe-real.js`, exclusivamente no banco descartável de
+`.env.test`. Setup, gates e limitações em [docs/equipe.md](docs/equipe.md).
+Não aplicar as migrations em produção antes do portão de backup em `DEPLOY.md`.
+
 ## ✨ O que ele faz
 
 **Atendimento (bot):**

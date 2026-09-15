@@ -205,7 +205,10 @@ async function resolverPorToken(token) {
   }
   if (!userId) return null;
   const r = await db.query(
-    "SELECT slug, ativo, assinatura_status AS \"assinaturaStatus\", trial_ate AS \"trialAte\" FROM empresas WHERE user_id = $1",
+    `SELECT id, user_id AS "userId", slug, ativo, plano,
+            COALESCE((to_jsonb(empresas)->>'equipe_habilitada')::boolean, false) AS "equipeHabilitada",
+            assinatura_status AS "assinaturaStatus", trial_ate AS "trialAte"
+       FROM empresas WHERE user_id = $1`,
     [userId]
   );
   return r.rows[0] || null;
@@ -249,6 +252,7 @@ async function acharAuthUserPorEmail(email) {
 async function buscarPorSlug(slug) {
   const r = await db.query(
     `SELECT id, user_id, slug, nome, email, ativo, criado_em, plano,
+            COALESCE((to_jsonb(empresas)->>'equipe_habilitada')::boolean, false) AS "equipeHabilitada",
             assinatura_status        AS "assinaturaStatus",
             trial_ate                AS "trialAte",
             proxima_cobranca         AS "proximaCobranca",
@@ -375,6 +379,12 @@ function temImpressao(emp) {
 // (D-05). Existe própria porque sempre pode mudar sem afetar o vizinho.
 function temRelatoriosTelegram(emp) {
   return acessoLiberado(emp) && planoDe(emp) === "completo";
+}
+
+// Gestão de equipe exige elegibilidade do Plano Completo e gate separado por
+// tenant. A migration deixa o gate desligado para não alterar clientes atuais.
+function temEquipe(emp) {
+  return acessoLiberado(emp) && planoDe(emp) === "completo" && emp.equipeHabilitada === true;
 }
 
 // ---- Conta de acesso (e-mail/senha no Supabase Auth) ----
@@ -507,6 +517,6 @@ async function excluir(slug) {
 module.exports = {
   cadastrar, autenticar, renovarSessao, resolverPorToken, emailDoToken, acharAuthUserPorEmail, buscarPorSlug, buscarPorStripeCustomer, buscarPorCodigoVinculacaoTelegram, listar,
   tenantDir, setAtivo, excluir, slugBase,
-  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv, temImpressao, temRelatoriosTelegram,
+  atualizarAssinatura, podeLogar, acessoLiberado, planoDe, temFreteRaio, temCaixa, temPdv, temImpressao, temRelatoriosTelegram, temEquipe,
   revogarTodasSessoes, trocarSenha, trocarEmail, conferirSenha,
 };

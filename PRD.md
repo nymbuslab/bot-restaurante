@@ -153,7 +153,9 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 - **App stateless**: nada é gravado em disco. O Postgres (Supabase) guarda empresas, pedidos, config
   e cardápio; o Auth guarda as contas; o Storage guarda as imagens; a sessão do WhatsApp vive no
   banco.
-- Backup e recuperação são do Supabase (point-in-time recovery).
+- Os dados vivem no Supabase, mas backup é uma responsabilidade operacional separada. A auditoria
+  de 2026-09-13 encontrou backup automático e PITR indisponíveis; migrations novas ficam bloqueadas
+  até haver cópia restaurável e ensaio fora de produção.
 - Deploy no Fly.io, com HTTPS gerenciado e domínio próprio.
 
 ## 6. Fora de escopo (o que o produto não faz)
@@ -185,8 +187,8 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 ## 8. Decisões e premissas
 
 - Multi-tenant por linha (`empresa_id`) no Postgres. O isolamento é garantido no backend.
-- Postgres gerenciado (Supabase): backup, HA, Auth e Storage prontos. Em troca, custo fixo e
-  dependência do fornecedor.
+- Postgres gerenciado (Supabase): banco, Auth e Storage gerenciados. Backup automático depende do
+  plano contratado e Storage exige cópia própria; não presumir proteção sem consultar a API.
 - WhatsApp por biblioteca não-oficial (Baileys, WebSocket, sem Chromium): leve e barato. O caminho
   de produção séria é a Cloud API oficial (ver `ROADMAP.md`).
 - O pedido é montado no **cardápio web**, não na conversa. Dá menos fricção e menos erro que digitar
@@ -198,10 +200,27 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 
 A direção e as prioridades ficam no `ROADMAP.md`. O que está em curso fica no `PROGRESSO.md`.
 
+A próxima expansão estrutural é o **Programa Compras e Custos**. A entrega começa por Gestão de
+equipe, PIN, dispositivos e permissões no sistema inteiro. Depois entram fornecedores, Compras,
+estoque, custo médio e o financeiro de fornecedores. Insumos e ficha técnica vêm na entrega
+seguinte, reutilizando a mesma arquitetura. Compras será o caminho normal de entrada de produtos e
+insumos e a origem do custo de aquisição. A ficha técnica calculará primeiro o **custo atual dos
+insumos**, sem chamar esse valor de custo total do prato enquanto mão de obra, perdas e despesas
+indiretas não fizerem parte do modelo. Por atender clientes reais, essa expansão seguirá mudanças
+aditivas, código inicialmente desligado, validação e ativação gradual. O programa está em
+[`docs/estoque-e-custos/`](docs/estoque-e-custos/README.md).
+
+Equipe, operadores por PIN e Atividades estão implementados em homologação,
+com autorização por ação, flag separada e auditoria somente leitura. Isso não
+representa liberação comercial em produção; backup restaurado e piloto continuam
+obrigatórios. Regras implementadas em [docs/equipe.md](docs/equipe.md).
+
 Marcos do roadmap antigo já entregues:
 
 - [x] Super-admin com métricas e suspensão de restaurante.
-- [x] Backup (resolvido pelo Supabase).
+- [ ] Backup restaurável de produção: o Supabase atual não possui backup automático nem PITR
+  disponível. Migrations novas e ativação do Programa Compras e Custos permanecem bloqueadas até
+  existir cópia criptografada e restauração ensaiada fora de produção.
 - [x] HTTPS em produção (Fly).
 - [x] Opcionais com regra, que viraram composição com obrigatório, mínimo e máximo.
 - [x] Notificação de pedido novo: alerta no painel e impressão automática no Completo.

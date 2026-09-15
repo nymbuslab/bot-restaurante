@@ -172,6 +172,21 @@ detalhe (jsonb), criado_em (timestamptz)`. Registra eventos sensíveis (`conta_c
 `dados_exportados`, `conta_excluida`); o `slug` é **texto sem FK** → o registro **sobrevive à
 exclusão** da conta. Sem PII no `detalhe`. Escrita best-effort em `src/auditoria.js`.
 
+**Equipe (em homologação):** `equipe_perfis`, `equipe_perfil_permissoes`,
+`equipe_funcionarios`, `equipe_funcionario_permissoes`, `equipe_dispositivos` e
+`equipe_sessoes`. Todas possuem `empresa_id`, FKs compostas para impedir relações
+cruzadas e RLS sem acesso direto de anon/authenticated. PIN bcrypt e tokens SHA-256
+nunca são expostos nas listagens. A migration aditiva é
+`20260915090000_equipe_permissoes.sql`; flags de equipe, compras, confirmação,
+ficha e baixa de insumos começam desligadas. Fluxo e rotas em [equipe.md](equipe.md).
+
+**Auditoria operacional (homologação):** `auditoria_operacional`, criada por
+`20260915100000_auditoria_operacional.sql`, guarda tenant, tipo/ID do ator,
+evento, detalhe operacional filtrado e timestamp UTC. ID bigint com paginação
+por cursor; índices por tenant/ID, evento e ator; RLS deny-all. Eventos e mutações
+de equipe compartilham transação. Separada da auditoria LGPD de 24 meses; retenção
+mínima de cinco anos enquanto a empresa existir, sem expurgo automático ainda.
+
 **Frete (em `config.frete` jsonb):** `modo` (`fixo|raio`), `taxaFixa` (R$), e — no modo raio —
 `raio: { coordEmpresa{lat,lon}, enderecoBase, faixas:[{ini,fim,valor}], foraDaArea }`. Compat: se
 só houver `config.atendimento.taxaEntrega`, vale como frete fixo (normalizado por `frete.freteDeConfig`).
@@ -192,6 +207,11 @@ no servidor por `public/grupos.js` (`avaliarEscolhas`). A comanda da cozinha lis
 agrupadas por grupo.
 
 ## Controle de estoque — saldo no jsonb, trilha em tabela (Plano Completo)
+
+> Este bloco descreve o modelo **em produção hoje**. Compras, fornecedor, custo médio e ficha
+> técnica operacional ainda não fazem parte do schema. A evolução foi separada em
+> [`estoque-e-custos/`](estoque-e-custos/README.md) e só seguirá para arquitetura depois da
+> estabilização P0/P1.
 
 **O saldo não mudou de lugar.** Continua em `empresas.cardapio` (jsonb): `item.estoque` /
 `item.estoqueMinimo`, e o mesmo par dentro de cada `item.variacoes[]`. Campo ausente, `null` ou

@@ -9,7 +9,7 @@ Registro interno dos serviços externos que tratam dados pessoais em nome da Nym
 
 | Serviço | Papel | Dados pessoais que recebe | País/Região | Transferência internacional | Onde no código |
 |---|---|---|---|---|---|
-| **Supabase** (Auth + Postgres + Storage) | Banco de dados, autenticação e imagens | E-mail e senha (hash) do dono; nome do restaurante; pedidos (nome/telefone/endereço/chat_id do cliente); cadastro de clientes e endereços; sessões do WhatsApp; imagens do cardápio | **EUA (`us-east-1`)** | **Sim** | `src/supabase.js`, `src/db.js` |
+| **Supabase** (Auth + Postgres + Storage) | Banco de dados, autenticação e imagens | E-mail e senha (hash) do dono; nome do restaurante; pedidos (nome/telefone/endereço/chat_id do cliente); cadastro de clientes e endereços; sessões do WhatsApp; imagens do cardápio; em homologação, nomes/perfis/permissões de operadores, hashes de PIN/tokens e eventos de auditoria operacional | **EUA (`us-east-1`)** | **Sim** | `src/supabase.js`, `src/db.js`, `src/equipe-db.js`, `src/auditoria-operacional.js` |
 | **Stripe** | Pagamento da assinatura | E-mail e nome do dono; `customer_id`/`subscription_id`; cartão **tokenizado** (nunca trafega/armazena no app) | EUA | Sim | `src/stripe.js` |
 | **Resend** | E-mail transacional | E-mail e nome do destinatário (boas-vindas, recuperação de senha, avisos de assinatura) | **EUA** (dados da conta; envio configurável: `us-east-1`, `eu-west-1`, `sa-east-1`, `ap-northeast-1`) | Sim (SCCs) | `src/email.js` |
 | **Geoapify** | Geocodificação p/ frete por raio | Endereço de entrega informado no cardápio (logradouro/bairro/cidade/UF) | **UE** (Alemanha, servidores Hetzner) | Não | `src/frete.js` |
@@ -27,6 +27,12 @@ Registro interno dos serviços externos que tratam dados pessoais em nome da Nym
 | **Geoapify** | Sob demanda via `contact@geoapify.com` | ⚠️ Solicitar |
 
 ## Pendências / ações
+
+- **Equipe/Atividades antes do piloto:** atualizar a comunicação de privacidade
+  aplicável aos operadores, validar base legal com o controlador e revisar
+  retenção/expurgo. Dados dessa funcionalidade estão apenas em homologação;
+  não publicar uma promessa legal nova como se a liberação já tivesse ocorrido.
+  Pendência operacional em `../../PROGRESSO.md`; inventário em `ropa.md`.
 
 - **(decisão) Região do Supabase = EUA (`us-east-1`).** Permitido pela LGPD como transferência
   internacional com salvaguardas (já divulgado na Política). Se a preferência for manter os dados

@@ -151,6 +151,14 @@
           </div>
         </div>
 
+        <button data-aba="equipe">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Equipe</span>
+        </button>
+        <button data-aba="atividades">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>Atividades</span>
+        </button>
         <button data-aba="config">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Configurações</span>
@@ -166,6 +174,7 @@
       </nav>
 
       <div class="sidebar-rodape">
+        <button type="button" class="secundario equipe-operador-mobile" id="btnTrocarOperadorMobile">Trocar operador</button>
         <button type="button" class="ajuda-btn abre-ajuda" id="btnAjuda">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span>Ajuda</span>
@@ -185,6 +194,7 @@
           <span id="headerData" class="header-data"></span>
         </div>
         <div class="header-direita">
+          <button type="button" class="secundario mini equipe-operador-btn" id="btnTrocarOperador">Trocar operador</button>
           <button type="button" class="btn-som" id="btnSomPedido" title="Som de novo pedido" aria-pressed="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
           <button type="button" class="header-trial" id="headerTrial" style="display:none" title="Ver assinatura"></button>
           <button type="button" class="btn-som abre-ajuda" id="btnAjudaTopo" title="Ajuda" aria-label="Ajuda"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
@@ -294,6 +304,67 @@
         <button id="btnSalvarCardapio">Salvar cardápio</button>
         <span class="aviso" id="avisoCardapio"></span>
       </div>
+    </section>
+
+    <!-- GESTÃO DE EQUIPE -->
+    <section class="aba" id="aba-equipe">
+      <div class="equipe-topo">
+        <div class="tela-topo">
+          <h2>Equipe</h2>
+          <p class="sub">Defina quem acessa cada parte do restaurante.</p>
+        </div>
+        <button type="button" id="equipeAdicionar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Adicionar funcionário
+        </button>
+      </div>
+
+      <div class="equipe-metricas" aria-live="polite">
+        <div class="card"><span>Funcionários ativos</span><strong id="equipeTotalAtivos">0</strong></div>
+        <div class="card"><span>Dispositivos autorizados</span><strong id="equipeTotalDispositivos">0</strong></div>
+        <div class="card"><span>Acessos bloqueados</span><strong id="equipeTotalBloqueados">0</strong></div>
+      </div>
+
+      <div class="equipe-ferramentas">
+        <label class="equipe-busca"><span class="sr-only">Buscar funcionário</span><input id="equipeBusca" type="search" placeholder="Buscar por nome ou perfil" autocomplete="off"></label>
+        <div class="equipe-filtros" role="group" aria-label="Filtrar funcionários">
+          <button type="button" class="secundario ativo" data-equipe-filtro="ativos" aria-pressed="true">Ativos</button>
+          <button type="button" class="secundario" data-equipe-filtro="bloqueados" aria-pressed="false">Bloqueados</button>
+          <button type="button" class="secundario" data-equipe-filtro="arquivados" aria-pressed="false">Arquivados</button>
+        </div>
+      </div>
+
+      <div id="equipeCarregando" class="equipe-estado card" aria-live="polite"><span class="spinner" aria-hidden="true"></span><strong>Carregando equipe</strong></div>
+      <div id="equipeVazio" class="equipe-estado card" hidden><strong>Nenhum funcionário cadastrado</strong><p>Crie o primeiro acesso para delegar a operação.</p><button type="button" data-equipe-adicionar>Adicionar funcionário</button></div>
+      <div id="equipeErro" class="equipe-estado card" role="alert" hidden><strong>Não foi possível carregar a equipe</strong><p id="equipeErroTexto">Confira a conexão e tente novamente.</p><button type="button" class="secundario" id="equipeTentarNovamente">Tentar novamente</button></div>
+      <div id="equipeLista" class="equipe-lista" aria-live="polite" hidden></div>
+
+      <section class="card equipe-dispositivos">
+        <div><h3>Dispositivos autorizados</h3><p class="sub">Um dispositivo autorizado pode abrir a tela de PIN dos operadores.</p></div>
+        <div class="equipe-dispositivo-form">
+          <label for="equipeDispositivoNome">Nome do dispositivo</label>
+          <div><input id="equipeDispositivoNome" maxlength="80" placeholder="Ex.: PDV do balcão"><button type="button" id="equipeAutorizarDispositivo">Autorizar dispositivo</button></div>
+        </div>
+        <div id="equipeDispositivosLista" class="equipe-dispositivos-lista"></div>
+      </section>
+      <button type="button" class="secundario" data-abrir-atividades>Ver atividades</button>
+    </section>
+
+    <section class="aba" id="aba-atividades">
+      <div class="tela-topo"><h2>Atividades</h2><p class="sub">Consulte acessos e alterações feitos pela equipe.</p></div>
+      <form id="atividadesFiltros" class="atividades-filtros">
+        <div class="campo"><label for="atividadesEvento">Atividade</label><select id="atividadesEvento"><option value="">Todas as atividades</option></select></div>
+        <div class="campo"><label for="atividadesAtor">Operador</label><select id="atividadesAtor"><option value="">Todos os operadores</option></select></div>
+        <div class="campo"><label for="atividadesDesde">De</label><input id="atividadesDesde" type="date"></div>
+        <div class="campo"><label for="atividadesAte">Até</label><input id="atividadesAte" type="date"></div>
+        <button type="submit">Filtrar atividades</button><button type="button" class="secundario" id="atividadesLimpar">Limpar filtros</button>
+      </form>
+      <p class="sub">Histórico somente leitura. PINs e tokens não aparecem aqui.</p>
+      <div id="atividadesCarregando" class="equipe-estado" role="status" hidden>Carregando atividades...</div>
+      <div id="atividadesVazio" class="equipe-estado" hidden><strong>Nenhuma atividade neste filtro</strong><p>Limpe os filtros para consultar o histórico disponível.</p></div>
+      <div id="atividadesErro" class="equipe-estado" role="alert" hidden><p id="atividadesErroTexto"></p><button type="button" class="secundario" id="atividadesTentar">Tentar novamente</button></div>
+      <div id="atividadesLista" class="equipe-lista" aria-live="polite" hidden></div>
+      <button type="button" class="secundario" id="atividadesMais" hidden>Carregar mais atividades</button>
     </section>
 
     <!-- CONFIGURAÇÕES -->
@@ -1901,6 +1972,41 @@
   </div>
 
   <!-- Backdrop da gaveta (mobile) -->
+  <div id="equipeGaveta" class="modal-overlay equipe-overlay" hidden>
+    <div class="equipe-gaveta" role="dialog" aria-modal="true" aria-labelledby="equipeGavetaTitulo">
+      <div class="equipe-gaveta-topo"><div><h2 id="equipeGavetaTitulo">Adicionar funcionário</h2><p class="sub" id="equipeGavetaSub">Defina o perfil inicial e ajuste o acesso.</p></div><button type="button" class="secundario equipe-icone-btn" id="equipeGavetaFechar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <form id="equipeForm" novalidate>
+        <div class="equipe-gaveta-corpo">
+          <div class="campo"><label for="equipeNome">Nome de exibição</label><input id="equipeNome" maxlength="100" required></div>
+          <div class="linha"><div class="campo"><label for="equipePerfil">Perfil inicial</label><select id="equipePerfil" required></select></div><div class="campo"><label for="equipeInatividade">Bloquear após</label><select id="equipeInatividade"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">60 minutos</option></select></div></div>
+          <div class="campo"><label for="equipeFuncionarioPin">Novo PIN de 4 dígitos</label><input id="equipeFuncionarioPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password"><p class="campo-nota">Na edição, deixe vazio para manter o PIN atual.</p></div>
+          <div class="equipe-permissoes"><h3>Permissões</h3><div id="equipePermissoes"></div></div>
+          <label class="equipe-ativo"><input id="equipeAtivo" type="checkbox" checked><span>Funcionário ativo</span></label>
+          <button type="button" class="secundario" id="equipeDesbloquear" hidden>Desbloquear PIN</button>
+          <p id="equipeFormErro" class="erro" role="alert"></p>
+        </div>
+        <div class="equipe-gaveta-rodape"><button type="button" class="secundario" id="equipeDescartar">Descartar</button><button type="submit" id="equipeSalvar">Salvar funcionário</button></div>
+      </form>
+    </div>
+  </div>
+
+  <dialog id="atividadesDetalhe" class="atividades-detalhe" aria-labelledby="atividadesDetalheTitulo">
+    <div class="equipe-gaveta-topo"><h2 id="atividadesDetalheTitulo">Detalhe da atividade</h2><button type="button" class="secundario" id="atividadesDetalheFechar">Fechar</button></div>
+    <div class="equipe-gaveta-corpo"><p id="atividadesDetalheResumo"></p><pre id="atividadesDetalheDados"></pre></div>
+  </dialog>
+  <div id="equipeOperadorModal" class="modal-overlay equipe-overlay" hidden>
+    <div class="modal-caixa equipe-pin-caixa" role="dialog" aria-modal="true" aria-labelledby="equipeOperadorTitulo">
+      <div class="equipe-gaveta-topo"><div><h2 id="equipeOperadorTitulo">Trocar operador</h2><p class="sub">Use um dispositivo autorizado e o PIN do funcionário.</p></div><button type="button" class="secundario equipe-icone-btn" id="equipeOperadorFechar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <form id="equipeOperadorForm">
+        <div class="campo"><label for="equipeOperadorSelect">Funcionário</label><select id="equipeOperadorSelect" required></select></div>
+        <div class="campo"><label for="equipePin">PIN</label><input id="equipePin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" required></div>
+        <p id="equipeOperadorErro" class="erro" role="alert"></p>
+        <button type="submit" class="equipe-entrar">Entrar como operador</button>
+      </form>
+      <a href="login.html" id="equipeEntrarDono">Entrar como dono</a>
+    </div>
+  </div>
+
   <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
 
   <!-- Barra de navegação inferior (mobile): atalhos rápidos + Menu -->
@@ -1942,6 +2048,7 @@
   <script src="grupos.js"></script>
   <script src="a11y.js"></script>
   <script src="paginacao-pedidos.js"></script>
+  <script src="equipe.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

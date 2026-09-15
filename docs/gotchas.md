@@ -68,11 +68,11 @@
   coerente; várias instâncias exigiriam invalidação/pub-sub.
 - **Pooler do Supabase**: para app sempre-ligado, prefira o **Session pooler (5432)** ao
   Transaction pooler (6543) — `db.js` avisa no boot se detectar 6543.
-- **Backup**: **gerenciado 100% pelo Supabase** (point-in-time recovery). Com o app stateless,
-  TUDO mora no Supabase — dados em Postgres (`empresas`/`pedidos`/`config`/`cardapio`), sessões
-  do WhatsApp em `wa_auth` e imagens no Storage. Não há mais backup do lado do app: o antigo
-  `npm run backup`/`scripts/backup.js` (empacotava a `data/` em `.tar.gz`) foi **removido na
-  v0.18.0** por ficar obsoleto — não havia mais nada em disco para empacotar.
+- **Backup não é consequência de ser stateless**: dados e sessões estão no Postgres e imagens no
+  Storage, mas a auditoria de 2026-09-13 encontrou zero backups disponíveis e PITR desligado. O
+  backup local da era SQLite continua corretamente removido; o que falta é proteção própria do
+  Supabase/fora do app. Backup do banco não recompõe arquivo apagado do Storage. Ver o estado e o
+  checklist em [`estoque-e-custos/`](estoque-e-custos/README.md).
 - **Monitoramento (2 camadas, complementares)**: (1) **Externo** — monitor de uptime
   (UptimeRobot, grátis) batendo em `GET /health` (rota leve em `servidor.js`, devolve
   `{ok:true,uptime}` — só **vivacidade**, NÃO testa o Supabase), a cada 5 min, com alerta por

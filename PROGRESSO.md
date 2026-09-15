@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-09-13
+atualizado: 2026-09-15
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -14,27 +14,30 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-**Checkpoint salvo em 2026-09-13 00:15**
-
-### Feito nesta sessão
-- `/doctor`: corrigido YAML quebrado em `prodx`/`stackx` (SKILL.md carregavam sem descrição nenhuma), cortada árvore de diretório redundante do `CLAUDE.md` (Arquitetura), desativados 4 plugins sem uso ou duplicados (`claude-code-setup`, `vulnerability-scanning`, `skill-creator`, e o `context7@claude-plugins-official` duplicado da conexão MCP manual), fixado `permissions.defaultMode: auto`, e Claude Code CLI atualizado de 2.1.233 para 2.1.270.
-- `/revisar-contexto`: CLAUDE.md/PROGRESSO.md/ROADMAP.md/CHANGELOG.md conferidos coerentes entre si; nenhum achado crítico ou importante, nenhum item novo aberto.
-- Duas memórias corrigidas (idioma de resposta sempre pt-BR; autorização para editar settings do Claude Code direto).
-
-### Próximo passo
-- Iniciar pelo `sprintx` a **Fase 3 de Insumos**, relendo o desenho aprovado e consolidando a base da feature antes do cadastro de insumos e da ficha técnica na tela.
-
-### Decisões pendentes
-- `runx` e `memox` (skills pessoais) nunca foram usadas — sinalizado no `/doctor`, sem decisão de manter ou remover.
-- O `task-observer` foi ativado nesta sessão e criou `cross-cutting-principles.md` e `skill-observations/`; decidir em revisão própria se esses artefatos devem ser versionados ou ignorados.
-
-### Documentação possivelmente afetada
-- A Fase 3 de Insumos deve reutilizar `docs/superpowers/specs/2026-08-16-insumos-design.md` e registrar o planejamento executável no diretório da feature criado pelo `sprintx`.
+_(nada no momento; Sprint 03 encerrada em homologação em 2026-09-15.
+Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 
 ## 📋 Próximos Passos
 
 ### Em aberto
 
+- [ ] **(P1) Sprint 04: Cadastros e financeiro-base** — implementar registro-ponte
+  do catálogo, fornecedores/identificadores e contas/razão no banco descartável.
+  Não iniciada: usuário decidiu pausar após a Sprint 03 em 2026-09-15.
+  Dependência Sprint 03 satisfeita. Antes de criar T-04.01, renumerar a migration
+  planejada `20260915100000_catalogo_alvos.sql`: esse prefixo foi usado por
+  `20260915100000_auditoria_operacional.sql`. Revalidar todos os nomes planejados
+  contra os existentes. Seguir `docs/estoque-e-custos/sprint-04/`; produção bloqueada pelo P0-B.
+- [ ] **(P1, antes de produção) Política e piloto de Equipe/Atividades** — revisar
+  retenção mínima de cinco anos e expurgo da auditoria operacional (não há job
+  específico ainda), base legal dos dados de operadores e roteiro de rollout
+  desligável. Homologação passou, mas não autoriza liberação comercial; depende também do P0-B.
+  Inclui revisar a comunicação de privacidade aos operadores antes do piloto;
+  a política pública atual não foi alterada neste fechamento documental.
+- [ ] **(P2) Versionamento dos artefatos de processo** — decidir se
+  `cross-cutting-principles.md` e `skill-observations/` serão versionados.
+  Há alterações e arquivos não commitados de etapas anteriores; preservar e
+  separar por tarefa antes de qualquer commit, que exige autorização própria.
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P2) Conferir visualmente as 2 abas do modal Gerenciar (admin-master) e o Telegram real** — a personalização dos relatórios (abaixo, em Concluído) foi validada pela suíte automatizada (702/702) e por um script de integração direto contra `src/caixa.js` no tenant `nymbus-teste` (fechamentos, cancelamentos e estornos reais, todos com `status: sucesso` no Telegram). O que isso não cobre: um humano clicando de fato nas abas Assinatura/Relatórios Telegram no admin-master, e conferindo no próprio celular se as mensagens (fechamento detalhado, estoque em 2 seções, alerta de cancelamento) ficaram legíveis e bem formatadas. Baixo risco (lógica já provada), mas vale a checagem visual na próxima vez que alguém abrir a ficha desse tenant.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
@@ -43,7 +46,8 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
 - [ ] **(P2) Extrato geral do restaurante** — hoje o histórico é sempre por produto, dentro da gaveta. Um extrato único, com todos os movimentos do restaurante e filtro por tipo e período, responderia "o que mudou no estoque hoje" sem abrir produto por produto. Ficou de fora da 3/4 de propósito: a gaveta responde a pergunta comum, e o geral só vale a pena se fizer falta.
-- [ ] **(P2) Split de Produtos — 4/4: Insumos (em curso, 3 de 6 fases entregues)** — cadastro de insumos e ficha técnica, para a venda baixar ingrediente em vez de produto pronto. **Desenho fechado** em `docs/superpowers/specs/2026-08-16-insumos-design.md` (oito decisões do dono, seis fases). **Fase 0** (`1b5f129`): `public/insumos.js` com 21 testes e a tabela `insumos` verificada em produção. **Fase 1** (`2f1150b`): `avaliarEscolhas` (`public/grupos.js`) passou a devolver `opcionais[].id` e `composicao[].ids`, que é o que permite devolver ingrediente no cancelamento. **Fase 2** (`a10388e`): os três caminhos de venda passaram a baixar pelos itens recalculados, e não mais pelo payload cru. As três são inertes: **nada baixa ingrediente ainda**. **Próxima é a Fase 3**, o cadastro de insumos e a ficha técnica na tela, ainda sem baixa nenhuma — se a receita estiver errada, ninguém se machuca. Começa por desenho no **Claude Design** (skill `design`, em `design/canvas/`), que precisa da aprovação do dono antes de qualquer código.
+- [ ] **(P0, antes da primeira migration) Definir backup sem Supabase Pro** — escolher destino e chave para dump lógico criptografado, incluir cópia dos objetos do Storage e ensaiar restauração no projeto de testes. A arquitetura pode avançar, mas produção permanece bloqueada até essa evidência existir.
+- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03 homologadas. Faltam cadastros, Compras, estoque/custos e financeiro das Sprints 04 a 08; Insumos/ficha virão em entrega própria. Execução pausada pelo usuário após Sprint 03; produção bloqueada pelo P0-B. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
 - [ ] **(P2) Ver o "Carregar mais" do extrato de estoque** — único ponto da 3/4 que segue sem ser visto rodando. O botão só aparece a partir de 21 movimentos no mesmo produto, então depende de um item acumular histórico no uso normal. Conferir quando acontecer.
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
@@ -728,3 +732,34 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 - [x] **(P1) Confirmações de exclusão passaram a mostrar o nome do registro** — os modais de item, categoria, grupo e mesa agora identificam pelo nome o registro que será removido antes da ação destrutiva. Um teste de regressão cobre os quatro fluxos. Validação: `npm test` 721/721, `npm run test:ci` 721/721, `npm run test:integracao` 67/67, `npm run check` 158 arquivos e conferência visual do modal em 390 px, sem corte ou transbordamento. Nenhum desdobramento aberto. — 2026-09-13
 
 - [x] **(P2) Comanda e paginação de Pedidos validadas no navegador** — em tenant descartável, a identificação da Comanda apareceu no campo Cliente de Pedidos e no banner ao reabrir por "Acrescentar item". Os seis casos da paginação passaram em desktop e mobile: 30 itens iniciais, incrementos de 20, botão oculto no fim, reset por filtros, lista "A receber" e cards sem recarga ou overflow. A checagem encontrou o botão "Carregar mais" com 38 px; o alvo de toque foi corrigido para 44 px e reconferido em 1366, 390 e 360 px. Validação: testes focados 18/18, `npm test` 721/721, `npm run test:integracao` 67/67 e `npm run check` 158 arquivos. Nenhum desdobramento aberto. — 2026-09-13
+
+- [x] **(P0-A) Dependências vulneráveis atualizadas sem migração major** — `multer` 2.3.0 e `express-rate-limit` 8.7.0, com transitivas corrigidas de Baileys/Express; Express permaneceu 4 e Baileys 6. `qs` 6.16.0 foi aplicado por override restrito porque o Express 4 ainda fixa a faixa vulnerável. `npm audit --omit=dev` passou de 8 alertas para 0. Testes novos exercitam upload de 2 MB e baldes por `Fly-Client-IP`. Validação: instalação limpa, Node 22.23.2, 159 arquivos, 723/723 testes rápidos, 67/67 integrações e smoke de Baileys/Sharp. Sem commit ou deploy. Próximo item explícito: P0-B de rollout e recuperação. — 2026-09-13
+
+- [x] **(P1) Invariantes funcionais de Compras, Insumos, Estoque e Ficha técnica fechadas** — 18 decisões aprovadas com exemplos e casos de aceite: entrada por embalagem, custo médio e precisão; implantação; composição/rateio; estados e idempotência; estorno/devolução; natureza e documento; XML posterior; códigos/GTIN/vínculos; baixa exclusiva; saldo negativo assistido; cancelamento com devolução ou perda; CMV e preço sugerido; ficha por unidade ou lote; fornecedor e datas; gates/rebaixamento; retenção de cinco anos; e compras por variação sem ficha por variação. Nenhum código, migration ou saldo foi alterado. Próxima etapa explícita: arquitetura e modularização, convertendo as decisões em schema, constraints, contratos e testes; produção continua bloqueada pelo backup do P0-B. — 2026-09-14
+
+- [x] **T-03.02: Gestão de equipe e troca de operador** — cadastro/edição,
+  perfis e ajustes, dispositivos autorizados, PIN e bloqueio por inatividade
+  implementados sobre o protótipo aprovado. Playwright validou desktop/mobile,
+  foco/Escape e fluxo com rotas reais no banco descartável. Corrigida a regressão
+  do login do dono no schema sem `equipe_habilitada`; teste reproduziu o erro e
+  verificou coluna ausente, flag falsa e verdadeira. CI 753/753, integração 86/86,
+  sintaxe 180 arquivos; usuário confirmou abertura do painel dev após reinício.
+  Sem commit, deploy, migration ou ativação em produção. Continuação registrada em
+  Próximos Passos: T-03.03. — 2026-09-15
+
+- [x] **Sprint 03 concluída: T-03.03 Atividades e homologação de Equipe** —
+  3/3 tasks da sprint concluídas. Auditoria por tenant/ator sem PIN/token,
+  mutações de equipe transacionais, filtros e cursor somente leitura, gates em
+  todas as entradas e permissões compostas de pagamento/cancelamento de Mesas.
+  Playwright validou ciclos reais de cadastro/PIN/revogação em desktop/mobile,
+  bloqueio do operador, evento visível ao dono, mais de 35 eventos paginados,
+  detalhes/Escape, vazio e erro/retry. CI 754/754; integração 92/92; sintaxe 183
+  arquivos. Documentação sincronizada; sem commit, deploy ou alteração em produção.
+  O programa segue com 8 sprints/28 tasks e protótipos aprovados de Equipe e Compras
+  (T-03.01/T-06.01); artefatos em `docs/estoque-e-custos/`.
+  Abertos explicitamente em Próximos Passos: Sprint 04 com renumeração da migration,
+  retenção/base legal/piloto e decisão de versionamento dos logs. — 2026-09-15
+  Fechamento documental confirmado pelo usuário com `concluir-tarefa` e revisão
+  de contexto: índice/orquestrador, arquitetura, testes, design e subprocessadores
+  sincronizados; marco de homologação no CHANGELOG. Sprint 04 não iniciada e
+  retomada dependente de novo pedido explícito. Documentos históricos preservados.

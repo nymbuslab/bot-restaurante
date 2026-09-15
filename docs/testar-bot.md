@@ -21,6 +21,25 @@
 >   `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY` e os cinco `INTEGRACAO_STRIPE_*`.
 > - **Integração/fluxo do bot:** o **simulador** abaixo (`testar-bot.js` ou a aba Simulador).
 
+## Equipe e Atividades (homologação)
+
+`npm run test:integracao` também cobre schema/equipe, PIN, autorização e revogação,
+gates, isolamento de tenant, filtros/cursor e rollback da edição quando a auditoria
+falha. Os testes de compatibilidade verificam a flag ausente, falsa e verdadeira
+sem depender de migration em produção.
+
+`node test/visual/equipe-real.js` usa o harness protegido de `.env.test`, cria e
+remove tenants descartáveis e executa cadastro/PIN/revogação com API e banco reais
+em desktop/mobile. O refresh do dono é uma fixture. Valida também Atividades,
+paginação com mais de 35 eventos, detalhe/Escape, vazio e erro/retry. Requer Python
+com Playwright e Chromium instalados. Capturas em `test/visual/resultados/`.
+O teste visual grava no banco descartável; não apontar para dados reais.
+
+Último fechamento da Sprint 03 (2026-09-15): CI 754/754, integração 92/92,
+sintaxe 183 arquivos e fluxo visual aprovado. Não há script de build neste stack.
+
+## Simulador do bot
+
 O arquivo `testar-bot.js` na raiz simula uma conversa completa no terminal,
 sem precisar de WhatsApp, QR ou celular. Usa os dados do primeiro tenant.
 

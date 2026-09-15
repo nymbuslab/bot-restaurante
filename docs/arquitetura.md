@@ -11,6 +11,9 @@ módulo a módulo.
 index.js              -> sobe o servidor (NÃO inicia o bot) + jobs (higiene de sessões, retenção)
 src/
   db.js               -> pool Postgres (pg), lê DATABASE_URL do .env
+  permissoes.js       -> contratos puros de perfis, permissões efetivas e delegação sem autoelevação
+  equipe-db.js        -> funcionários, perfis/ajustes, dispositivos e sessões opacas por PIN; trava/transação por tenant; eventos de mutação na mesma transação
+  auditoria-operacional.js -> registro sem segredos e consulta por tenant/ator/evento/datas, com cursor bigint; separado da auditoria LGPD de 24 meses
   supabase.js         -> clients do Supabase (Auth admin/anon + Storage)
   stripe.js           -> assinatura (Stripe): SetupIntent/checkout próprio, webhook, portal, faturas, trocaPlano (upgrade/downgrade)
   plataforma.js       -> dados globais da plataforma (singleton plataforma_config) + creds master
@@ -36,6 +39,7 @@ src/
   pdv.js              -> PURO: PDV (vendas no local, Completo) — recalcular venda (kg+opcionais), aplicar desconto (R$/%), validar split, troco, resumo de pagamento — testado em test/pdv.test.js
   estoque-db.js       -> ÚNICO ponto que fala com a tabela `estoque_movimentos` (trilha do estoque, Completo): grava DENTRO da transação de quem chamou (venda, devolução, ajuste), lista o extrato paginado por cursor de data, soma o resumo do período e aplica a retenção de 12 meses. O SALDO continua no jsonb do cardápio; esta tabela é histórico, não fonte de verdade
 public/
+  equipe.js           -> gestão de equipe, dispositivos, troca por PIN, bloqueio por inatividade, navegação por permissão e Atividades somente leitura; homologação em docs/equipe.md
   index.html          -> landing (apresentação + preço + CTAs) · footer institucional (footer.js)
   login.html          -> login (e-mail + senha; roteia restaurante x master)
   cadastro.html       -> wizard de onboarding (4 etapas): cria empresa + configura

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gestão de equipe, desktop</title>
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0F1117;--surface:#1A1D27;--elevated:#222533;--overlay:#2A2E3F;--border:#2E3247;--line:#242738;--text:#F0F2FA;--muted:#8B92B3;--disabled:#4A5068;--accent:#6344BC;--accent-fg:#A589EA;--accent-soft:rgba(99,68,188,.16);--success:#22C55E;--success-soft:rgba(34,197,94,.12);--warning:#EAB308;--warning-soft:rgba(234,179,8,.12);--error:#EF4444;--error-fg:#F87171;--error-soft:rgba(239,68,68,.12);--radius:10px;--radius-lg:14px;--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;--s8:32px}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 'Plus Jakarta Sans',sans-serif}button,input{font:inherit}button{min-height:44px;border:1px solid transparent;border-radius:6px;padding:0 16px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}.secondary{background:transparent;border-color:var(--border);color:var(--text)}.danger{background:transparent;border-color:var(--border);color:var(--error-fg)}.icon{width:18px;height:18px;vertical-align:-4px;margin-right:8px}.board{padding:28px;min-width:1180px}.caption{max-width:1120px;margin:0 auto 20px}.caption h1{font-size:20px;margin:0 0 4px}.caption p,.sub{color:var(--muted);margin:0}.app{display:grid;grid-template-columns:220px 1fr;max-width:1120px;min-height:720px;margin:auto;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface)}.side{padding:20px 12px;border-right:1px solid var(--line);background:#14161F}.brand{font-size:16px;font-weight:700;padding:0 10px 20px}.side-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:16px 10px 6px}.nav{display:block;width:100%;text-align:left;background:transparent;color:var(--muted);border:0;padding:0 10px;margin:2px 0}.nav.active{background:var(--accent-soft);color:var(--accent-fg)}.main{padding:24px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}.top h2{font-size:20px;margin:0 0 4px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}.metric{border:1px solid var(--border);border-radius:var(--radius);padding:16px;background:var(--surface)}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{display:block;font-size:24px;margin-top:4px}.toolbar{display:flex;gap:8px;margin-bottom:12px}.search{flex:1;min-height:44px;border:1px solid var(--border);border-radius:8px;background:var(--elevated);color:var(--text);padding:0 12px}.chip{background:transparent;border-color:var(--border);color:var(--muted);padding:0 12px}.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-fg)}.table{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}.row{display:grid;grid-template-columns:1.5fr 1fr 1fr 132px;align-items:center;min-height:68px;padding:0 16px;border-top:1px solid var(--line)}.row:first-child{border:0}.head{min-height:40px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:var(--elevated)}.person{display:flex;align-items:center;gap:12px}.avatar{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent-fg);font-weight:700}.person small{display:block;color:var(--muted)}.pill{display:inline-flex;align-items:center;min-height:26px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:700}.on{color:var(--success);background:var(--success-soft)}.locked{color:var(--warning);background:var(--warning-soft)}.actions{text-align:right}.drawer{position:absolute;top:56px;right:44px;width:430px;max-height:650px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--overlay);box-shadow:0 12px 36px rgba(0,0,0,.5);overflow:hidden}.drawer-head,.drawer-foot{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}.drawer-head h3{font-size:16px;margin:0}.drawer-body{padding:20px;max-height:520px;overflow:auto}.field{margin-bottom:16px}.field label{display:block;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}.field input,.field select{width:100%;min-height:44px;background:var(--elevated);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 12px}.permission{border-top:1px solid var(--line);padding:14px 0}.permission:first-child{border:0}.permission-top{display:flex;justify-content:space-between;gap:12px}.permission p{color:var(--muted);font-size:12px;margin:3px 0 0}.switch{width:40px;height:22px;border-radius:99px;background:var(--accent);padding:3px;flex:none}.switch:after{content:"";display:block;width:16px;height:16px;border-radius:50%;background:white;margin-left:18px}.drawer-foot{justify-content:flex-end;gap:8px;border-top:1px solid var(--line);border-bottom:0}.state-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:1120px;margin:20px auto}.state{min-height:116px;padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}.state b{display:block;margin-bottom:6px}.state p{font-size:12px;color:var(--muted);margin:0}.error-state{border-color:rgba(239,68,68,.45)}.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent-fg);border-radius:50%;margin-bottom:10px}.frame{position:relative}
+  </style>
+</helmet>
+<div class="board">
+  <div class="caption"><h1>Gestão de equipe, desktop</h1><p>Direção: operação densa e legível, alinhada ao painel atual. Lista no contexto, edição em gaveta e segurança sem telas intermediárias.</p></div>
+  <div class="frame">
+    <div class="app">
+      <aside class="side">
+        <div class="brand">Nymbus Pedidos</div>
+        <div class="side-label">Operação</div><button class="nav">Pedidos</button><button class="nav">PDV</button><button class="nav">Mesas</button><button class="nav">Caixa</button>
+        <div class="side-label">Gestão</div><button class="nav">Produtos</button><button class="nav">Estoque</button><button class="nav active">Equipe</button><button class="nav">Atividades</button>
+        <div class="side-label">Conta</div><button class="nav">Configurações</button><button class="nav">Assinatura</button>
+      </aside>
+      <main class="main">
+        <header class="top"><div><h2>Equipe</h2><p class="sub">Defina quem pode acessar cada parte do restaurante.</p></div><button>Adicionar funcionário</button></header>
+        <section class="metrics"><div class="metric"><span>Funcionários ativos</span><strong>3</strong></div><div class="metric"><span>Dispositivos autorizados</span><strong>2</strong></div><div class="metric"><span>Acessos bloqueados</span><strong>1</strong></div></section>
+        <div class="toolbar"><input class="search" aria-label="Buscar funcionário" placeholder="Buscar por nome ou perfil"><button class="chip active">Ativos</button><button class="chip">Bloqueados</button><button class="chip">Arquivados</button></div>
+        <section class="table">
+          <div class="row head"><span>Funcionário</span><span>Perfil</span><span>Status</span><span></span></div>
+          <div class="row"><div class="person"><span class="avatar">G</span><span><b>Gerência</b><small>Último acesso hoje, 09:42</small></span></div><span>Gerente</span><span><i class="pill on">Ativo</i></span><span class="actions"><button class="secondary">Editar</button></span></div>
+          <div class="row"><div class="person"><span class="avatar">C</span><span><b>Operador do caixa</b><small>Último acesso hoje, 08:15</small></span></div><span>Caixa</span><span><i class="pill locked">PIN bloqueado</i></span><span class="actions"><button class="secondary">Editar</button></span></div>
+          <div class="row"><div class="person"><span class="avatar">E</span><span><b>Responsável pelo estoque</b><small>Nunca acessou</small></span></div><span>Estoque/Compras</span><span><i class="pill on">Ativo</i></span><span class="actions"><button class="secondary">Editar</button></span></div>
+        </section>
+      </main>
+    </div>
+    <aside class="drawer" aria-label="Editar funcionário">
+      <div class="drawer-head"><div><h3>Editar funcionário</h3><p class="sub">Operador do caixa</p></div><button class="secondary" aria-label="Fechar">Fechar</button></div>
+      <div class="drawer-body">
+        <div class="field"><label>Nome de exibição</label><input value="Operador do caixa"></div>
+        <div class="field"><label>Perfil inicial</label><select><option>Caixa</option></select><p class="sub">O perfil preenche as permissões. Você pode ajustar abaixo.</p></div>
+        <div class="permission"><div class="permission-top"><div><b>Pedidos e recebimentos</b><p>Consultar pedidos, receber pagamentos e reimprimir.</p></div><span class="switch"></span></div></div>
+        <div class="permission"><div class="permission-top"><div><b>Operar o caixa</b><p>Abrir, movimentar e fechar o caixa do dia.</p></div><span class="switch"></span></div></div>
+        <div class="permission"><div class="permission-top"><div><b>Cancelar vendas</b><p>Exige motivo e fica registrado em Atividades.</p></div><span class="switch"></span></div></div>
+        <div class="permission"><div class="permission-top"><div><b>Consultar custos</b><p>Mostra custos e margens de produtos.</p></div><span class="switch" style="background:var(--disabled)"></span></div></div>
+        <div class="permission"><div class="permission-top"><div><b>Gerenciar equipe</b><p>Não permite alterar o próprio acesso nem o do dono.</p></div><span class="switch" style="background:var(--disabled)"></span></div></div>
+        <button class="secondary" style="width:100%;margin-top:16px">Redefinir PIN</button>
+        <button class="danger" style="width:100%;margin-top:8px">Desbloquear acesso</button>
+      </div>
+      <div class="drawer-foot"><button class="secondary">Descartar</button><button>Salvar alterações</button></div>
+    </aside>
+  </div>
+  <section class="state-grid" aria-label="Estados obrigatórios">
+    <div class="state"><div class="spinner"></div><b>Carregando equipe</b><p>A estrutura permanece estável enquanto os dados chegam.</p></div>
+    <div class="state"><b>Nenhum funcionário</b><p>O dono continua com acesso total. A ação principal cria o primeiro operador.</p></div>
+    <div class="state error-state"><b>Não foi possível carregar</b><p>Mostra “Tentar novamente” sem apagar busca ou filtro.</p></div>
+    <div class="state"><b>Alterações salvas</b><p>Toast confirma o mesmo verbo do botão e a linha é atualizada.</p></div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>

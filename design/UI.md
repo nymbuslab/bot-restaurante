@@ -18,10 +18,24 @@ HTML, CSS, JS e rotas novas quando fizer sentido pro produto. A régua:
   dado/rota por trás: implementar a rota (modo feature) ou adaptar a tela — **nunca exibir
   dado falso/inventado**.
 
-Os protótipos são referência **visual**, não código. Desde 30/08/2026 eles são feitos no
-**Claude Design** (skill `design`) e ficam em `design/canvas/`, semeados com os tokens reais de
-`public/style.css`. Mesmo assim o `.dc.html` não vira arquivo do produto: o stack é HTML/CSS/JS
-puro, sem framework, e a implementação segue o design system, não o export.
+Os protótipos são referência **visual**, não código. A ferramenta atual é o
+**Google Stitch**, semeado com os tokens reais de `public/style.css`.
+Projeto `7236747227852373120`, design system `6506830711685967852` (Nymbus Pedidos).
+Exports antigos do Claude Design em `design/canvas/` são histórico; não viram
+código do produto. O stack continua HTML/CSS/JS puro, sem framework.
+As aprovações atuais de Equipe e Compras/Financeiro estão em
+`docs/estoque-e-custos/prototipos/`.
+
+### Equipe e Atividades — homologação da Sprint 03
+
+Equipe usa lista/busca/filtros, editor em gaveta, perfis/ajustes, dispositivos e
+seleção por PIN. Atividades é somente leitura: evento, operador e datas, lista
+por cursor e detalhe em `dialog` nativo. Preservar os estados carregando, vazio,
+erro com tentativa novamente e sucesso, os tokens existentes e alvos de 44 px.
+Revogação bloqueia o operador e orienta nova autorização pelo dono; nunca usa o
+refresh do dono como fallback. Detalhe permite Escape e devolve foco ao gatilho.
+Validação real em 1280/375 px; evidências e limites em [docs/equipe.md](../docs/equipe.md).
+Esta homologação não significa ativação em produção.
 
 ---
 

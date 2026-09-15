@@ -95,11 +95,12 @@ descartável.
 - [x] **HTTPS em produção** — ✅ **resolvido no Fly.io**: certificado TLS gerenciado pela
   plataforma no domínio `.fly.dev` + `force_https = true` no `fly.toml` (redirect http→https).
   Sem config manual. Ressalva: em **VPS/local** o HTTPS depende do operador (Nginx + TLS).
-- [x] **Backup dos dados** — ✅ **resolvido pelo Supabase** (point-in-time recovery gerenciado).
-  Com o app stateless (v0.17.0), tudo migrou para o Supabase — dados, sessões do WhatsApp
-  (`wa_auth`) e imagens (Storage) — e não há mais nada em disco. O backup manual do lado do app
-  (`npm run backup` + tela no `/admin-master`), feito na era SQLite, foi **removido na v0.18.0**
-  por ficar obsoleto. Ver `CHANGELOG.md` v0.10.0 (criação) e v0.18.0 (remoção).
+- [ ] **(P0) Backup restaurável de produção** — a mudança para app stateless tornou correto remover
+  o backup da antiga pasta local, mas não garantiu recuperação no Supabase. A auditoria de
+  2026-09-13 encontrou lista de backups vazia e PITR desligado. Antes de qualquer migration nova:
+  escolher backup automático pago ou cópia lógica criptografada fora do app, incluir os objetos do
+  Storage e ensaiar restauração em projeto descartável. Checklist em
+  [docs/estoque-e-custos/03-CHECKLIST-ROLLOUT-E-ROLLBACK.md](docs/estoque-e-custos/03-CHECKLIST-ROLLOUT-E-ROLLBACK.md).
 - [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
 - [x] **Saudação com carrinho aberto (bot)** — ✅ **concluído**: saudação com carrinho não-vazio pergunta *continuar* (mantém) ou *recomeçar* (zera), em vez de retomar o carrinho silenciosamente. Estado `CONFIRMA_REINICIO` em `fluxo.js`. Ver `CHANGELOG.md` v0.12.1.
 - [x] **Onboarding via wizard de cadastro** — ✅ **concluído**: cadastro em 4 etapas (Conta → Dados → Horário → Entrega → painel), reusando `POST /api/cadastro`+`/api/login` (etapa 1) e `PUT /api/config` (etapas 2–4, persistência incremental). Dados obrigatório; horário/entrega puláveis; abandono cai direto no painel no próximo login. Trajeto anterior: a barra-guia no painel (v0.14.0) foi revertida (v0.14.1) e o flag `config.onboardingConcluido`/rota `POST /api/onboarding/concluir` (código morto) foram removidos. Ver `CHANGELOG.md` v0.15.0.
@@ -204,13 +205,22 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   `estoque_movimentos` e cancelamento devolvendo ao estoque; desenho e plano em
   [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md)
   e [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md))
-  entregues; **4/4 Insumos** em curso — 3 de 6 fases entregues (módulo puro e tabela
-  `insumos`; os ids da escolha viajando no pedido; a baixa lendo os itens recalculados em vez
-  do payload cru). As três são inertes: **nada baixa ingrediente ainda**, e a próxima é o
-  cadastro com a ficha técnica na tela. Desenho em
-  [docs/superpowers/specs/2026-08-16-insumos-design.md](docs/superpowers/specs/2026-08-16-insumos-design.md).
-  O **`id` estável de opção**, criado na 2/4, é a âncora da tela restante, e a trilha de
-  movimentação da 3/4 é a base da baixa por ingrediente que a 4/4 vai precisar.
+  entregues; **4/4 Programa Compras e Custos** em preparação — 3 fundações inertes já entregues
+  (módulo puro e tabela `insumos`; ids das escolhas preservados no pedido; venda lendo itens
+  recalculados). **Nada baixa ingrediente ainda.** O programa entrega primeiro **Gestão de equipe**
+  com PIN e permissões no sistema inteiro; depois, fornecedores, Compras, estoque, custo médio e
+  financeiro de fornecedores; por último, Insumos e ficha técnica sobre a mesma fundação. O P0-A,
+  as decisões P1, a arquitetura SprintX e os protótipos desktop/mobile foram concluídos e aprovados.
+  Sprints 01, 02 e 03 foram concluídas em homologação; login dev confirmado
+  pelo usuário e ciclo de Equipe/Atividades validado em desktop/mobile. O próximo passo
+  é a Sprint 04: registro-ponte do catálogo, fornecedores e contas/razão financeira.
+  Execução pausada pelo usuário em 2026-09-15; Sprint 04 não iniciada e depende de novo pedido de retomada.
+  Antes de T-04.01, renumerar sua migration planejada: `20260915100000` foi usado pela auditoria. O
+  P0-B de backup continua bloqueando aplicação de migrations e ativação em produção. Auditoria, ordem, decisões
+  e registros de aprovação em
+  [docs/estoque-e-custos/](docs/estoque-e-custos/README.md). O desenho antigo em
+  [docs/superpowers/specs/2026-08-16-insumos-design.md](docs/superpowers/specs/2026-08-16-insumos-design.md)
+  permanece somente como histórico.
 - [ ] **(decisão pendente) Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca
   é atualizada; faltariam transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
   **Contradiz a decisão "fora de escopo" acima**, que tirou o ciclo do pedido do produto por premissa, e a

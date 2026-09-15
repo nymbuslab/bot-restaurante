@@ -52,40 +52,53 @@ function abortar(motivo) {
   process.exit(1);
 }
 
-// No CI as variáveis chegam pelo ambiente e não há arquivo; localmente o
-// .env.test manda. Ele sobrescreve o que veio antes de propósito: rodar um
-// arquivo solto com `node --test` tem que cair no mesmo banco do runner.
-const doArquivo = lerArquivoEnv(".env.test");
-if (doArquivo) Object.assign(process.env, doArquivo);
+function validarDestinoDescartavel({ bancoDeTeste, databaseUrl, databaseUrlProducao = "" }) {
+  if (bancoDeTeste !== "1") {
+    throw new Error(
+      "Falta a marca BANCO_DE_TESTE=1.\n\n" +
+        "Ela vive no .env.test e existe para que apontar um banco qualquer aqui\n" +
+        "não seja suficiente para a bateria rodar. Modelo: .env.test.example"
+    );
+  }
 
-if (process.env.BANCO_DE_TESTE !== "1") {
-  abortar(
-    "Falta a marca BANCO_DE_TESTE=1.\n\n" +
-      "Ela vive no .env.test e existe para que apontar um banco qualquer aqui\n" +
-      "não seja suficiente para a bateria rodar. Modelo: .env.test.example"
-  );
-}
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL vazia. Preencha o .env.test (modelo em .env.test.example).");
+  }
 
-if (!process.env.DATABASE_URL) {
-  abortar("DATABASE_URL vazia. Preencha o .env.test (modelo em .env.test.example).");
-}
-
-const refTeste = refDoProjeto(process.env.DATABASE_URL);
-const producao = lerArquivoEnv(".env");
-if (producao && producao.DATABASE_URL) {
-  const refProducao = refDoProjeto(producao.DATABASE_URL);
-  if (refProducao && refProducao === refTeste) {
-    abortar(
+  const refTesteValidada = refDoProjeto(databaseUrl);
+  const refProducao = refDoProjeto(databaseUrlProducao);
+  if (refProducao && refProducao === refTesteValidada) {
+    throw new Error(
       "O .env.test aponta para o MESMO projeto Supabase do .env.\n\n" +
         "Esta bateria cria e APAGA empresas. Contra o banco de produção isso é\n" +
         "perda de dado real, não erro de teste.\n\n" +
         "Crie um projeto Supabase separado e use a string dele no .env.test."
     );
   }
+
+  return refTesteValidada;
+}
+
+// No CI as variáveis chegam pelo ambiente e não há arquivo; localmente o
+// .env.test manda. Ele sobrescreve o que veio antes de propósito: rodar um
+// arquivo solto com `node --test` tem que cair no mesmo banco do runner.
+const doArquivo = lerArquivoEnv(".env.test");
+if (doArquivo) Object.assign(process.env, doArquivo);
+
+const producao = lerArquivoEnv(".env");
+let refTeste;
+try {
+  refTeste = validarDestinoDescartavel({
+    bancoDeTeste: process.env.BANCO_DE_TESTE,
+    databaseUrl: process.env.DATABASE_URL,
+    databaseUrlProducao: producao && producao.DATABASE_URL,
+  });
+} catch (erro) {
+  abortar(erro.message);
 }
 
 // A saída consciente prevista pelo src/db.js: fora daqui, o acesso ao banco
 // dentro do runner segue recusado.
 process.env.PERMITIR_BANCO_EM_TESTE = "1";
 
-module.exports = { RAIZ, refDoProjeto, refTeste };
+module.exports = { RAIZ, refDoProjeto, refTeste, validarDestinoDescartavel };
