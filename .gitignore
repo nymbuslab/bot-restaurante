@@ -29,3 +29,8 @@ agente-impressora/vendor/
 # partir da fonte, então fica de fora para não inchar o repositório a cada revisão.
 design/canvas/*.html
 !design/canvas/*.dc.html
+
+# Artefatos locais da toolchain de skills do Claude Code (task-observer/skill-creator):
+# são meta-observação sobre as próprias skills, não conteúdo do projeto.
+cross-cutting-principles.md
+skill-observations/

@@ -36,10 +36,6 @@ Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido 
   2026-09-16; este item agora depende só da revisão de retenção/base legal.
   Inclui revisar a comunicação de privacidade aos operadores antes do piloto;
   a política pública atual não foi alterada neste fechamento documental.
-- [ ] **(P2) Versionamento dos artefatos de processo** — decidir se
-  `cross-cutting-principles.md` e `skill-observations/` serão versionados.
-  Há alterações e arquivos não commitados de etapas anteriores; preservar e
-  separar por tarefa antes de qualquer commit, que exige autorização própria.
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P2) Conferir visualmente as 2 abas do modal Gerenciar (admin-master) e o Telegram real** — a personalização dos relatórios (abaixo, em Concluído) foi validada pela suíte automatizada (702/702) e por um script de integração direto contra `src/caixa.js` no tenant `nymbus-teste` (fechamentos, cancelamentos e estornos reais, todos com `status: sucesso` no Telegram). O que isso não cobre: um humano clicando de fato nas abas Assinatura/Relatórios Telegram no admin-master, e conferindo no próprio celular se as mensagens (fechamento detalhado, estoque em 2 seções, alerta de cancelamento) ficaram legíveis e bem formatadas. Baixo risco (lógica já provada), mas vale a checagem visual na próxima vez que alguém abrir a ficha desse tenant.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
@@ -775,3 +771,8 @@ Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido 
   Custos (`docs/estoque-e-custos/00-BLOQUEIOS.md`) — migrations novas e ativação de
   Compras/Insumos/Equipe em produção não dependem mais dele. Abertos em Próximos Passos: alerta de
   falha do workflow e retenção automática no R2. — 2026-09-16
+
+- [x] **(P2) Versionamento dos artefatos de processo decidido: não versionar** —
+  `cross-cutting-principles.md` e `skill-observations/` são meta-observação da toolchain
+  de skills do Claude Code (task-observer/skill-creator), não conteúdo do projeto.
+  Adicionados ao `.gitignore` em vez de commitados. — 2026-09-16
