@@ -2521,6 +2521,9 @@ app.get("/api/pedidos", exigeAuth, exigePermissao("pedidos.ver"), async (req, re
     const dataOk = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
     if (dataOk(q.desde)) filtro.desde = q.desde;
     if (dataOk(q.ate)) filtro.ate = q.ate;
+    if (!pedidos.intervaloDentroDoLimite(filtro.desde, filtro.ate)) {
+      return res.status(400).json({ erro: "O período entre desde e até não pode passar de 366 dias. Escolha um intervalo menor." });
+    }
     res.json((await pedidos.lerTodos(req.tenantDir, filtro)).reverse());
   } catch (e) {
     res.status(500).json({ erro: "Falha ao ler os pedidos." });

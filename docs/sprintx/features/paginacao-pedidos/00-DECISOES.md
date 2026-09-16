@@ -41,11 +41,11 @@ decisoes:
     motivo: e uma conta deterministica, sem tocar DOM; merece teste real de node:test, reaproveitando convencao ja validada no projeto
     status: fechada
     bloqueante: false
-  - id: PENDENTE-01
-    decisao: falta decidir se o servidor deve ganhar um teto de linhas para o filtro de periodo customizado (desde/ate) quando o intervalo for muito largo
-    alternativa_descartada: null
-    motivo: null
-    status: pendente
+  - id: D-08
+    decisao: "quando desde e ate sao os dois informados, o servidor recusa (400) intervalo maior que 366 dias, em vez de aceitar qualquer largura"
+    alternativa_descartada: capar por numero de linhas (LIMIT silencioso) ou adicionar paginacao offset/limit na propria rota
+    motivo: "um lado sozinho (so desde ou so ate) nao define largura a restringir, entao fica sem teto; capar por dias e mais simples que paginar a rota e avisa o usuario em vez de truncar dado silenciosamente. Fecha o PENDENTE-01, resolvido em 2026-09-16"
+    status: fechada
     bloqueante: false
   - id: D-07
     decisao: o mesmo mecanismo de carregar mais (30 iniciais, +20) vale tambem para os cards do celular, revisando D-02
@@ -67,15 +67,14 @@ D-04 | Botão "Carregar mais" no fim da lista, sem scroll infinito | Carregar so
 D-05 | Cada clique em "Carregar mais" soma 20 pedidos aos já visíveis; nunca renderiza tudo de uma vez mesmo com centenas de pedidos no período | Renderizar a lista inteira do período de uma vez, sem limite de exibição | Evita travar a tela quando um período largo (ex.: 7 dias) traz muitos pedidos
 D-06 | A conta de quantos pedidos mostrar (total visível atual + incremento, limitado ao total da lista) vira função pura num arquivo dual-mode testável, seguindo o padrão de `public/busca.js` | Deixar a conta solta dentro de `app.js`, testada só por checagem estática de texto (`contemTrecho`/`trechoEntre`) | É uma conta determinística, sem tocar DOM; merece teste real de `node:test`, reaproveitando convenção já validada no projeto
 D-07 | O mesmo mecanismo de "Carregar mais" (30 iniciais, +20) vale também para os cards do celular — **revisa D-02** | Separar em dois mecanismos independentes (um só para desktop, outro só para celular), para manter o celular com paginação numerada como hoje | Descoberto na F3, ao escrever as tasks: desktop (tabela) e celular (cards) hoje leem a mesma fatia de dado já cortada — só a aparência muda por CSS. Manter o celular com o mecanismo antigo exigiria duplicar a lógica, contrariando o próprio motivo de D-01 (evitar complexidade)
+D-08 | Quando `desde` e `até` são os dois informados, o servidor recusa (400) intervalo maior que 366 dias, em vez de aceitar qualquer largura | Capar por número de linhas (`LIMIT` silencioso) ou adicionar paginação offset/limit na própria rota | Um lado sozinho (só `desde` ou só `até`) não define largura a restringir, então fica sem teto; capar por dias é mais simples que paginar a rota e avisa o usuário em vez de truncar dado silenciosamente. Fecha o PENDENTE-01, resolvido em 2026-09-16
 ```
 
 > **D-07 revisa D-02.** A intenção de D-02 (o problema visual só existe em monitor grande) continua verdadeira e é a motivação original da correção — o que mudou é que "deixar o celular sem mudança" se mostrou tecnicamente mais complexo que unificar, porque os dois já compartilhavam o mesmo dado paginado. D-02 fica registrada como está (não se apaga decisão), e D-07 é o que vale na prática a partir daqui.
 
 ## Pendências
 
-```
-PENDENTE-01 (NÃO BLOQUEANTE) | Falta decidir se o servidor deve ganhar um teto de linhas para o filtro de período customizado (desde/ate) quando o intervalo for muito largo | trava: nada nesta feature — é assunto separado, de back-end, sem relação com a tela ficar "pela metade". Registrado a pedido do dono para não ser esquecido; será aberto como item próprio em `PROGRESSO.md` (📋 Próximos Passos), fora do escopo deste plano.
-```
+_(nenhuma — PENDENTE-01 fechada como D-08 em 2026-09-16, ver `src/pedidos.js:intervaloDentroDoLimite`.)_
 
 ## Eixos cobertos, sem decisão do usuário por não se aplicarem
 

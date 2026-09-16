@@ -39,7 +39,6 @@ Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido 
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P2) Conferir visualmente as 2 abas do modal Gerenciar (admin-master) e o Telegram real** — a personalização dos relatórios (abaixo, em Concluído) foi validada pela suíte automatizada (702/702) e por um script de integração direto contra `src/caixa.js` no tenant `nymbus-teste` (fechamentos, cancelamentos e estornos reais, todos com `status: sucesso` no Telegram). O que isso não cobre: um humano clicando de fato nas abas Assinatura/Relatórios Telegram no admin-master, e conferindo no próprio celular se as mensagens (fechamento detalhado, estoque em 2 seções, alerta de cancelamento) ficaram legíveis e bem formatadas. Baixo risco (lógica já provada), mas vale a checagem visual na próxima vez que alguém abrir a ficha desse tenant.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
-- [ ] **(P2) Sem teto de linhas no filtro de período customizado de Pedidos** — `GET /api/pedidos?desde=...&ate=...` (`src/servidor.js:2226`, `src/pedidos.js:101`) valida só o formato das datas, não o tamanho do intervalo, e a query não tem `LIMIT`. Hoje não é um problema observado, mas um intervalo muito largo poderia devolver um volume grande de uma vez. Levantado na descoberta (F2) da feature "paginação de Pedidos" (`docs/sprintx/features/paginacao-pedidos/00-DECISOES.md`, PENDENTE-01) e deixado de fora de propósito por ser assunto de back-end, sem relação com a tela ficar "pela metade".
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
@@ -779,3 +778,10 @@ Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido 
 - [x] **(P2, opcional) Retenção automática de backups antigos no R2** — lifecycle rule
   criada pelo usuário direto no painel Cloudflare no bucket `nymbus-pedidos-backup`
   (apaga objetos com mais de 60 dias). Nenhuma mudança de código; nada a manter aqui. — 2026-09-16
+
+- [x] **(P2) Teto de linhas no filtro de período customizado de Pedidos** — `GET /api/pedidos`
+  recusa (400) quando `desde` e `até` são os dois informados e o intervalo passa de 366 dias,
+  em vez de devolver o histórico inteiro de uma vez. Um lado sozinho continua sem restrição
+  (não define largura). Função pura `intervaloDentroDoLimite` em `src/pedidos.js`, com 7 testes
+  novos (761/761 no total). Fecha PENDENTE-01/D-08 em
+  `docs/sprintx/features/paginacao-pedidos/00-DECISOES.md`. — 2026-09-16

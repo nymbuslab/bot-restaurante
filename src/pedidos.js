@@ -95,6 +95,15 @@ async function salvarPedido(dir, pedido, client) {
   };
 }
 
+// Impede um período customizado (desde/até) absurdamente largo de trazer o
+// histórico inteiro numa resposta só. Só entra em ação quando os DOIS limites
+// são informados — um lado sozinho não define um "intervalo" a restringir.
+function intervaloDentroDoLimite(desde, ate, diasMax = 366) {
+  if (!desde || !ate) return true;
+  const dias = (new Date(`${ate}T00:00:00Z`) - new Date(`${desde}T00:00:00Z`)) / 86400000;
+  return dias <= diasMax;
+}
+
 // `filtro` (opcional) recorta por janela de data NO BANCO (fuso America/Sao_Paulo),
 // evitando trazer o histórico inteiro ao cliente. Sem filtro = tudo (usado pela
 // exportação LGPD). `periodo`: 'hoje' | '7dias'; ou `desde`/`ate` ('YYYY-MM-DD').
@@ -497,4 +506,4 @@ async function dashboardRaw(dir) {
   };
 }
 
-module.exports = { salvarPedido, lerTodos, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, acrescentarItens, dashboardRaw };
+module.exports = { salvarPedido, lerTodos, intervaloDentroDoLimite, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, acrescentarItens, dashboardRaw };
