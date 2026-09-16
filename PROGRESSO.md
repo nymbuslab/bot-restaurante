@@ -14,12 +14,14 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-- **(P0) Backup restaurável sem Supabase Pro** — workflow `.github/workflows/backup.yml` +
-  `scripts/backup.js` (dump + Storage → age → Cloudflare R2) e `scripts/restaurar-backup.js`
-  (ensaio contra o projeto de testes) já escritos. Falta: usuário gerar o token de API do
-  bucket R2 (`nymbus-pedidos-backup`, account `17c4cca27f90ce6176d517cdc2242215`) e o par de
-  chaves `age`, cadastrar os secrets no GitHub e rodar o ensaio de restauração real antes de
-  marcar o P0 como resolvido no ROADMAP.md.
+- **(P0) Backup restaurável sem Supabase Pro** — workflow `.github/workflows/backup.yml` no ar,
+  rodando diariamente às 04:00 (BRT) e validado com sucesso via `workflow_dispatch` (dump do
+  Postgres 17 + Storage → `age` → Cloudflare R2, arquivo confirmado no bucket
+  `nymbus-pedidos-backup`). 8 secrets cadastrados no GitHub. Faltam duas coisas antes de marcar
+  o P0 como resolvido no ROADMAP.md: (1) o usuário ainda não confirmou ter guardado a chave
+  privada `age` (única forma de restaurar) em local seguro fora do scratchpad temporário desta
+  sessão; (2) rodar `scripts/restaurar-backup.js` de verdade contra o projeto Supabase de testes
+  para provar que a restauração funciona, não só que o backup existe.
 
 _(Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15. Execução pausada a
 pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
