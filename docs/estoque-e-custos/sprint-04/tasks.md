@@ -53,7 +53,7 @@ tasks:
   - id: T-04.04
     titulo: Transferencias e conciliacao manual
     fase: F-04.2
-    status: pendente
+    status: concluida
     objetivo: Implementar transferencia vinculada, estorno e marcacao manual de conciliacao.
     arquivos:
       cria: [test/integracao/financeiro.test.js]
@@ -63,8 +63,8 @@ tasks:
     criterio_aceite: Transferencia, estorno e conciliacao registram ator e nao permitem edicao do movimento.
     depende_de: [T-04.03]
     paralelizavel: false
-    concluida_em: null
-    suite: nao_executada
+    concluida_em: 2026-09-16
+    suite: verde
 ---
 
 # Tasks — Sprint 04
@@ -152,5 +152,12 @@ teste_funcional: Transferir 100 reduz a origem em 100, aumenta o destino em 100 
 criterio_aceite: Transferência, estorno e conciliação registram ator e não permitem edição do movimento.
 depende_de: [T-04.03]
 paralelizavel: false
-status: pendente
+status: concluida
+# 2026-09-16 · suite: 8 passed, 0 failed (test:integracao/financeiro.test.js) + npm run test:ci 784 passed
+# real: 2,5 h
+# Divergência: rotas HTTP de contas/movimentos (POST/GET /api/financeiro/contas,
+# .../movimentos) também foram criadas aqui, junto com transferência/estorno/
+# conciliação — T-04.03 não tinha altera:[src/servidor.js] no plano, então não
+# havia superfície HTTP nenhuma para contas antes desta task; sem isso não dava
+# para testar transferência/estorno por HTTP como o teste_integracao pede.
 ```

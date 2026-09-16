@@ -204,6 +204,102 @@ async function listarMovimentos(dir, contaId, { limite = 30, antesId = null } = 
   return r.rows.map(mapMovimento);
 }
 
+async function buscarMovimento(dir, movimentoId) {
+  const empId = await empresaId(dir);
+  const r = await db.query("SELECT * FROM financeiro_movimentos WHERE empresa_id = $1 AND id = $2", [empId, Number(movimentoId)]);
+  if (!r.rows[0]) throw erro("MOVIMENTO_NAO_ENCONTRADO", "Movimento não encontrado.");
+  return mapMovimento(r.rows[0]);
+}
+
+// Transferência vinculada (T-04.04): débito na origem + crédito no destino,
+// NA MESMA TRANSAÇÃO — se qualquer lado falhar (conta arquivada, conta de
+// outro tenant, etc.), o ROLLBACK desfaz os dois, nenhuma conta fica com
+// metade da operação aplicada. As duas linhas compartilham `vinculo_id`
+// (o id do movimento de débito), o que deixa explícito que pertencem à
+// MESMA transferência — útil para reconstruir o par depois.
+//
+// As contas são travadas em ORDEM DETERMINÍSTICA (id crescente) — mesmo
+// cuidado de deadlock já registrado como risco em
+// base/06-BANCO-TENANCY-E-TRANSACOES.md — para duas transferências
+// concorrentes (A→B e B→A) nunca travarem uma na outra.
+async function transferir(dir, { contaOrigemId, contaDestinoId, valor, descricao = "" } = {}, ator = {}) {
+  const origemId = Number(contaOrigemId);
+  const destinoId = Number(contaDestinoId);
+  if (!origemId || !destinoId) throw erro("CONTA_NAO_ENCONTRADA", "Informe a conta de origem e de destino.");
+  if (origemId === destinoId) throw erro("CONTAS_IGUAIS", "A conta de origem e de destino não podem ser a mesma.");
+  const valorNum = Number(valor);
+  if (!Number.isFinite(valorNum) || valorNum <= 0) throw erro("VALOR_INVALIDO", "Informe um valor de transferência maior que zero.");
+
+  const empId = await empresaId(dir);
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Trava as duas linhas em ordem crescente de id ANTES de mexer em
+    // qualquer uma — registrarMovimentoTx também trava, mas travar aqui
+    // primeiro fixa a ordem determinística mesmo que o menor id seja o
+    // destino (a transferência em si roda origem→destino sempre).
+    const [menor, maior] = [origemId, destinoId].sort((a, b) => a - b);
+    await client.query("SELECT id FROM contas_financeiras WHERE empresa_id = $1 AND id = $2 FOR UPDATE", [empId, menor]);
+    await client.query("SELECT id FROM contas_financeiras WHERE empresa_id = $1 AND id = $2 FOR UPDATE", [empId, maior]);
+
+    const debito = await registrarMovimentoTx(client, empId, origemId, {
+      tipo: "transferencia_debito", valor: -Math.abs(valorNum), descricao,
+    }, ator);
+    // O vínculo é o id do PRÓPRIO movimento de débito — grava nele mesmo
+    // (self-link) e repassa para o crédito, então as duas linhas do par
+    // compartilham exatamente o mesmo valor de vinculo_id.
+    await client.query("UPDATE financeiro_movimentos SET vinculo_id = $1 WHERE empresa_id = $2 AND id = $1", [debito.id, empId]);
+    const credito = await registrarMovimentoTx(client, empId, destinoId, {
+      tipo: "transferencia_credito", valor: Math.abs(valorNum), descricao, vinculoId: debito.id,
+    }, ator);
+    await client.query("COMMIT");
+    return { debito: Object.assign({}, debito, { vinculoId: debito.id }), credito };
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+// Estorno: NUNCA edita o movimento original (imutabilidade do razão, D-17) —
+// grava uma linha NOVA de sinal oposto, apontando `estorno_de` para o
+// original. Um movimento só pode ser estornado uma vez.
+async function estornar(dir, movimentoId, { motivo = "" } = {}, ator = {}) {
+  const empId = await empresaId(dir);
+  const original = await buscarMovimento(dir, movimentoId);
+  if (original.tipo === "estorno") throw erro("MOVIMENTO_JA_E_ESTORNO", "Não é possível estornar um estorno.");
+  const jaEstornado = await db.query(
+    "SELECT 1 FROM financeiro_movimentos WHERE empresa_id = $1 AND estorno_de = $2",
+    [empId, original.id]
+  );
+  if (jaEstornado.rows.length) throw erro("ESTORNO_DUPLICADO", "Este movimento já foi estornado.");
+
+  const descricao = motivo ? `Estorno: ${String(motivo).slice(0, 180)}` : `Estorno do movimento #${original.id}`;
+  return registrarMovimento(dir, original.contaId, {
+    tipo: "estorno", valor: -original.valor, descricao, estornoDe: original.id,
+  }, ator);
+}
+
+// Conciliação manual (D-18): metadata pura — nunca toca valor/saldo_depois.
+// Marcar/desmarcar não é "editar o movimento" no sentido que a task proíbe:
+// o FATO financeiro (quanto, quando, em qual conta) continua intacto.
+async function marcarConciliado(dir, movimentoId, conciliado = true, ator = {}) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `UPDATE financeiro_movimentos
+        SET conciliado = $1,
+            conciliado_em = CASE WHEN $1 THEN now() ELSE NULL END,
+            conciliado_por_tipo = CASE WHEN $1 THEN $2 ELSE NULL END,
+            conciliado_por_id = CASE WHEN $1 THEN $3 ELSE NULL END
+      WHERE empresa_id = $4 AND id = $5
+      RETURNING *`,
+    [!!conciliado, ator.tipo || "sistema", ator.id == null ? null : String(ator.id), empId, Number(movimentoId)]
+  );
+  if (!r.rows[0]) throw erro("MOVIMENTO_NAO_ENCONTRADO", "Movimento não encontrado.");
+  return mapMovimento(r.rows[0]);
+}
+
 // Limpa o empresa_id cacheado de um slug (ex.: ao excluir o tenant).
 function esquecer(slug) {
   delete idCache[slug];
@@ -211,6 +307,7 @@ function esquecer(slug) {
 
 module.exports = {
   empresaId, criarConta, listarContas, buscarConta, arquivarConta,
-  registrarMovimentoTx, registrarMovimento, listarMovimentos, esquecer,
+  registrarMovimentoTx, registrarMovimento, listarMovimentos, buscarMovimento,
+  transferir, estornar, marcarConciliado, esquecer,
   TIPOS_MOVIMENTO,
 };

@@ -40,6 +40,7 @@ const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const estoqueDb = require("./estoque-db"); // trilha de movimentação (estoque_movimentos)
 const fornecedoresDb = require("./fornecedores-db"); // cadastro de fornecedores + identificadores + vínculo com o catálogo
+const financeiroDb = require("./financeiro-db"); // contas financeiras + razão (transferência, estorno, conciliação)
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarBiblioteca/resolverGrupos (dual-mode)
@@ -2625,6 +2626,112 @@ app.get("/api/catalogo/identificadores", exigeAuth, exigePermissao("fornecedores
     });
     res.json({ identificador });
   } catch (e) { responderErroFornecedores(res, e); }
+});
+
+// ============================================================
+// FINANCEIRO DE FORNECEDORES (Plano Completo) — T-04.03/T-04.04.
+// Contas próprias, separadas do caixa operacional do PDV (D-16). Movimento
+// avulso, transferência vinculada, estorno e conciliação manual (D-18).
+// ============================================================
+
+function statusErroFinanceiro(codigo) {
+  if (codigo === "CONTA_NAO_ENCONTRADA" || codigo === "MOVIMENTO_NAO_ENCONTRADO") return 404;
+  if (codigo === "CONTA_ARQUIVADA" || codigo === "ESTORNO_DUPLICADO") return 409;
+  if (["NOME_OBRIGATORIO", "TIPO_INVALIDO", "VALOR_INVALIDO", "CONTAS_IGUAIS", "MOVIMENTO_JA_E_ESTORNO"].includes(codigo)) return 400;
+  return 500;
+}
+
+function responderErroFinanceiro(res, erro) {
+  const status = statusErroFinanceiro(erro && erro.codigo);
+  if (status === 500) {
+    console.error("financeiro:", erro && erro.message);
+    return res.status(500).json({ erro: "Não foi possível concluir a operação financeira." });
+  }
+  return res.status(status).json({ erro: erro.message });
+}
+
+app.get("/api/financeiro/contas", exigeAuth, exigePermissao("financeiro.ver"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const contas = await financeiroDb.listarContas(req.tenantDir, { incluirArquivadas: req.query.arquivadas === "1" });
+    res.json({ contas });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.post("/api/financeiro/contas", exigeAuth, exigePermissao("financeiro.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const conta = await financeiroDb.criarConta(req.tenantDir, req.body || {}, req.ator);
+    await auditoriaOperacional.registrar(db, { empresaId: req.empresaId, ator: req.ator, evento: "financeiro_conta_criada" }).catch(() => {});
+    res.status(201).json({ conta });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.get("/api/financeiro/contas/:id", exigeAuth, exigePermissao("financeiro.ver"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const conta = await financeiroDb.buscarConta(req.tenantDir, req.params.id);
+    res.json({ conta });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.post("/api/financeiro/contas/:id/arquivar", exigeAuth, exigePermissao("financeiro.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const conta = await financeiroDb.arquivarConta(req.tenantDir, req.params.id, req.body && req.body.arquivada !== false);
+    res.json({ conta });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.get("/api/financeiro/contas/:id/movimentos", exigeAuth, exigePermissao("financeiro.ver"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const movimentos = await financeiroDb.listarMovimentos(req.tenantDir, req.params.id, {
+      limite: req.query.limite, antesId: req.query.antesId || null,
+    });
+    res.json({ movimentos });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.post("/api/financeiro/contas/:id/movimentos", exigeAuth, exigePermissao("financeiro.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  try {
+    const movimento = await financeiroDb.registrarMovimento(req.tenantDir, req.params.id, {
+      tipo: b.tipo, valor: b.valor, descricao: b.descricao,
+    }, req.ator);
+    res.status(201).json({ movimento });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.post("/api/financeiro/transferencias", exigeAuth, exigePermissao("financeiro.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  try {
+    const resultado = await financeiroDb.transferir(req.tenantDir, {
+      contaOrigemId: b.contaOrigemId, contaDestinoId: b.contaDestinoId, valor: b.valor, descricao: b.descricao,
+    }, req.ator);
+    await auditoriaOperacional.registrar(db, { empresaId: req.empresaId, ator: req.ator, evento: "financeiro_transferencia" }).catch(() => {});
+    res.status(201).json(resultado);
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.post("/api/financeiro/movimentos/:id/estornar", exigeAuth, exigePermissao("financeiro.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const estorno = await financeiroDb.estornar(req.tenantDir, req.params.id, { motivo: (req.body || {}).motivo }, req.ator);
+    await auditoriaOperacional.registrar(db, { empresaId: req.empresaId, ator: req.ator, evento: "financeiro_estorno" }).catch(() => {});
+    res.status(201).json({ estorno });
+  } catch (e) { responderErroFinanceiro(res, e); }
+});
+
+app.post("/api/financeiro/movimentos/:id/conciliar", exigeAuth, exigePermissao("financeiro.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const conciliado = (req.body || {}).conciliado !== false;
+  try {
+    const movimento = await financeiroDb.marcarConciliado(req.tenantDir, req.params.id, conciliado, req.ator);
+    res.json({ movimento });
+  } catch (e) { responderErroFinanceiro(res, e); }
 });
 
 // ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----
