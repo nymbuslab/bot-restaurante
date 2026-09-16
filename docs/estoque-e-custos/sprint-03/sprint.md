@@ -24,7 +24,7 @@ com rotas e banco reais em desktop/mobile, além de Atividades, detalhes/Escape,
 paginação, vazio e erro/retry. Integração comprovou flag desligada, tenant separado,
 autoria sem segredos e rollback da edição quando a auditoria falha.
 CI 754/754, integração 92/92, sintaxe 183 arquivos. Produção não foi alterada;
-backup P0-B, revisão de retenção/base legal e piloto permanecem pré-requisitos.
+backup P0-B (resolvido em 2026-09-16), revisão de retenção/base legal e piloto permanecem pré-requisitos.
 
 ## Riscos conhecidos
 

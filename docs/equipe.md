@@ -95,6 +95,6 @@ As capturas são gravadas em `test/visual/resultados/`.
 
 ## Próxima etapa
 
-Sprint 04: identidade operacional do catálogo e fornecedores. Produção continua
-bloqueada pelo P0-B; retenção/expurgo, base legal dos dados de operadores e rollout
-gradual precisam de revisão antes da liberação.
+Sprint 04: identidade operacional do catálogo e fornecedores. P0-B resolvido em
+2026-09-16 (não bloqueia mais produção); retenção/expurgo, base legal dos dados de
+operadores e rollout gradual ainda precisam de revisão antes da liberação.

@@ -14,17 +14,8 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-- **(P0) Backup restaurável sem Supabase Pro** — workflow `.github/workflows/backup.yml` no ar,
-  rodando diariamente às 04:00 (BRT) e validado com sucesso via `workflow_dispatch` (dump do
-  Postgres 17 + Storage → `age` → Cloudflare R2, arquivo confirmado no bucket
-  `nymbus-pedidos-backup`). 8 secrets cadastrados no GitHub. Faltam duas coisas antes de marcar
-  o P0 como resolvido no ROADMAP.md: (1) o usuário ainda não confirmou ter guardado a chave
-  privada `age` (única forma de restaurar) em local seguro fora do scratchpad temporário desta
-  sessão; (2) rodar `scripts/restaurar-backup.js` de verdade contra o projeto Supabase de testes
-  para provar que a restauração funciona, não só que o backup existe.
-
-_(Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15. Execução pausada a
-pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
+_(nada no momento; Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15.
+Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 
 ## 📋 Próximos Passos
 
@@ -36,11 +27,13 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
   Dependência Sprint 03 satisfeita. Antes de criar T-04.01, renumerar a migration
   planejada `20260915100000_catalogo_alvos.sql`: esse prefixo foi usado por
   `20260915100000_auditoria_operacional.sql`. Revalidar todos os nomes planejados
-  contra os existentes. Seguir `docs/estoque-e-custos/sprint-04/`; produção bloqueada pelo P0-B.
+  contra os existentes. Seguir `docs/estoque-e-custos/sprint-04/`; P0-B resolvido em 2026-09-16,
+  não bloqueia mais produção.
 - [ ] **(P1, antes de produção) Política e piloto de Equipe/Atividades** — revisar
   retenção mínima de cinco anos e expurgo da auditoria operacional (não há job
   específico ainda), base legal dos dados de operadores e roteiro de rollout
-  desligável. Homologação passou, mas não autoriza liberação comercial; depende também do P0-B.
+  desligável. Homologação passou, mas não autoriza liberação comercial. P0-B (backup) resolvido em
+  2026-09-16; este item agora depende só da revisão de retenção/base legal.
   Inclui revisar a comunicação de privacidade aos operadores antes do piloto;
   a política pública atual não foi alterada neste fechamento documental.
 - [ ] **(P2) Versionamento dos artefatos de processo** — decidir se
@@ -55,8 +48,9 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
 - [ ] **(P2) Extrato geral do restaurante** — hoje o histórico é sempre por produto, dentro da gaveta. Um extrato único, com todos os movimentos do restaurante e filtro por tipo e período, responderia "o que mudou no estoque hoje" sem abrir produto por produto. Ficou de fora da 3/4 de propósito: a gaveta responde a pergunta comum, e o geral só vale a pena se fizer falta.
-- [ ] **(P0, antes da primeira migration) Definir backup sem Supabase Pro** — escolher destino e chave para dump lógico criptografado, incluir cópia dos objetos do Storage e ensaiar restauração no projeto de testes. A arquitetura pode avançar, mas produção permanece bloqueada até essa evidência existir.
-- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03 homologadas. Faltam cadastros, Compras, estoque/custos e financeiro das Sprints 04 a 08; Insumos/ficha virão em entrega própria. Execução pausada pelo usuário após Sprint 03; produção bloqueada pelo P0-B. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
+- [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
+- [ ] **(P2, opcional) Retenção automática de backups antigos no R2** — hoje os arquivos criptografados se acumulam no bucket `nymbus-pedidos-backup` sem expirar. Configurar uma lifecycle rule direto no painel Cloudflare (ex.: apagar após 30-60 dias) resolve sem precisar de código.
+- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03 homologadas. Faltam cadastros, Compras, estoque/custos e financeiro das Sprints 04 a 08; Insumos/ficha virão em entrega própria. Execução pausada pelo usuário após Sprint 03; P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
 - [ ] **(P2) Ver o "Carregar mais" do extrato de estoque** — único ponto da 3/4 que segue sem ser visto rodando. O botão só aparece a partir de 21 movimentos no mesmo produto, então depende de um item acumular histórico no uso normal. Conferir quando acontecer.
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
@@ -772,3 +766,12 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
   de contexto: índice/orquestrador, arquitetura, testes, design e subprocessadores
   sincronizados; marco de homologação no CHANGELOG. Sprint 04 não iniciada e
   retomada dependente de novo pedido explícito. Documentos históricos preservados.
+
+- [x] **(P0) Backup restaurável sem Supabase Pro** — workflow diário (04:00 BRT) faz `pg_dump`
+  (schema `public`, `--no-privileges`) + todo o bucket `cardapio` do Storage, criptografados com
+  `age` e enviados ao Cloudflare R2 (`scripts/backup.js`). Restauração ensaiada de ponta a ponta
+  contra o projeto Supabase de testes (`scripts/restaurar-backup.js`): 18 tabelas, `empresas` e
+  `pedidos` com contagem batendo. RPO ~24h, RTO ~1h. Desbloqueia o P0-B do programa Estoque e
+  Custos (`docs/estoque-e-custos/00-BLOQUEIOS.md`) — migrations novas e ativação de
+  Compras/Insumos/Equipe em produção não dependem mais dele. Abertos em Próximos Passos: alerta de
+  falha do workflow e retenção automática no R2. — 2026-09-16

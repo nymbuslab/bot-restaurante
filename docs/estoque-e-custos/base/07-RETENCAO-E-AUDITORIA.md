@@ -25,8 +25,8 @@
 
 - Jobs de retenção são best-effort: registram erro e não derrubam o processo. Fonte:
   `../../../index.js:45-130`.
-- Backup do banco não restaura objetos do Storage; cópia separada é requisito do P0-B. Fonte:
-  `../00-AUDITORIA-BASELINE.md:84-91`.
+- Backup do banco não restaura objetos do Storage; a cópia separada exigida pelo P0-B (resolvido em
+  2026-09-16) existe em `scripts/backup.js`. Fonte: `../00-AUDITORIA-BASELINE.md:84-91`.
 
 ## Riscos
 

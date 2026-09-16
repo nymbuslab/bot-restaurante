@@ -33,7 +33,7 @@ O Stitch foi semeado com os tokens reais de `public/style.css`. Os arquivos `.dc
 - sem folha de pagamento, escala ou ponto;
 - sem recuperação ou exposição do PIN;
 - sem edição ou exclusão de eventos de auditoria;
-- sem migrations ou ativação em produção antes do backup restaurável do P0-B.
+- ~~sem migrations ou ativação em produção antes do backup restaurável do P0-B~~ — resolvido em 2026-09-16.
 
 ## Registro da decisão
 

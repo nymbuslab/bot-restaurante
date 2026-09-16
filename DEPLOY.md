@@ -2,11 +2,11 @@
 
 O terminal do VS Code serve só para teste. Para uso real, use uma das opções abaixo.
 
-> Equipe e Atividades estão em homologação. Não aplicar as migrations
-> `20260915090000_equipe_permissoes.sql` e `20260915100000_auditoria_operacional.sql`
-> nem ligar `equipe_habilitada` em produção antes do backup lógico criptografado,
-> cópia do Storage e restauração ensaiada (P0-B). Revisar retenção/expurgo e base
-> legal dos operadores antes do piloto. `npm start` usa `.env`, que pode apontar
+> Equipe e Atividades estão em homologação. Backup lógico criptografado + cópia do Storage +
+> restauração ensaiada (P0-B) resolvido em 2026-09-16 — ver `docs/gotchas.md`. Falta ainda revisar
+> retenção/expurgo e base legal dos operadores antes do piloto, antes de aplicar as migrations
+> `20260915090000_equipe_permissoes.sql` e `20260915100000_auditoria_operacional.sql` ou ligar
+> `equipe_habilitada` em produção. `npm start` usa `.env`, que pode apontar
 > para produção; somente o harness protegido de `.env.test` é descartável.
 
 **Conexão do WhatsApp:** o bot não conecta sozinho. Depois de subir, abra o painel,

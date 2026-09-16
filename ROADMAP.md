@@ -95,12 +95,13 @@ descartável.
 - [x] **HTTPS em produção** — ✅ **resolvido no Fly.io**: certificado TLS gerenciado pela
   plataforma no domínio `.fly.dev` + `force_https = true` no `fly.toml` (redirect http→https).
   Sem config manual. Ressalva: em **VPS/local** o HTTPS depende do operador (Nginx + TLS).
-- [ ] **(P0) Backup restaurável de produção** — a mudança para app stateless tornou correto remover
-  o backup da antiga pasta local, mas não garantiu recuperação no Supabase. A auditoria de
-  2026-09-13 encontrou lista de backups vazia e PITR desligado. Antes de qualquer migration nova:
-  escolher backup automático pago ou cópia lógica criptografada fora do app, incluir os objetos do
-  Storage e ensaiar restauração em projeto descartável. Checklist em
-  [docs/estoque-e-custos/03-CHECKLIST-ROLLOUT-E-ROLLBACK.md](docs/estoque-e-custos/03-CHECKLIST-ROLLOUT-E-ROLLBACK.md).
+- [x] **(P0) Backup restaurável de produção** — ✅ **resolvido em 2026-09-16**: sem Supabase Pro,
+  proteção própria via `.github/workflows/backup.yml` (diário, 04:00 BRT) — `pg_dump` (schema
+  `public`, `--no-privileges`) + todo o bucket `cardapio` do Storage, empacotados, criptografados
+  com `age` e enviados ao Cloudflare R2 (`scripts/backup.js`). Restauração ensaiada de ponta a
+  ponta contra o projeto Supabase de testes (`scripts/restaurar-backup.js`): dados reais
+  conferidos (tabelas, `empresas` e `pedidos` com contagem batendo). Detalhe em
+  [docs/gotchas.md](docs/gotchas.md).
 - [x] **Exibição de preço com opcional (bot)** — ✅ **concluído**: no resumo/confirmação, item com opcionais mostra preço base + opcionais + `subtotal` (itálico); sem opcional fica em 1 linha. Só texto (`fluxo.js`, helper `linhasItemPedido`); cálculo e total finais inalterados. Ver `CHANGELOG.md` v0.11.3.
 - [x] **Saudação com carrinho aberto (bot)** — ✅ **concluído**: saudação com carrinho não-vazio pergunta *continuar* (mantém) ou *recomeçar* (zera), em vez de retomar o carrinho silenciosamente. Estado `CONFIRMA_REINICIO` em `fluxo.js`. Ver `CHANGELOG.md` v0.12.1.
 - [x] **Onboarding via wizard de cadastro** — ✅ **concluído**: cadastro em 4 etapas (Conta → Dados → Horário → Entrega → painel), reusando `POST /api/cadastro`+`/api/login` (etapa 1) e `PUT /api/config` (etapas 2–4, persistência incremental). Dados obrigatório; horário/entrega puláveis; abandono cai direto no painel no próximo login. Trajeto anterior: a barra-guia no painel (v0.14.0) foi revertida (v0.14.1) e o flag `config.onboardingConcluido`/rota `POST /api/onboarding/concluir` (código morto) foram removidos. Ver `CHANGELOG.md` v0.15.0.
@@ -216,7 +217,8 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   é a Sprint 04: registro-ponte do catálogo, fornecedores e contas/razão financeira.
   Execução pausada pelo usuário em 2026-09-15; Sprint 04 não iniciada e depende de novo pedido de retomada.
   Antes de T-04.01, renumerar sua migration planejada: `20260915100000` foi usado pela auditoria. O
-  P0-B de backup continua bloqueando aplicação de migrations e ativação em produção. Auditoria, ordem, decisões
+  P0-B de backup foi resolvido em 2026-09-16 e não bloqueia mais migrations nem ativação em
+  produção. Auditoria, ordem, decisões
   e registros de aprovação em
   [docs/estoque-e-custos/](docs/estoque-e-custos/README.md). O desenho antigo em
   [docs/superpowers/specs/2026-08-16-insumos-design.md](docs/superpowers/specs/2026-08-16-insumos-design.md)

@@ -19,4 +19,4 @@ O ciclo completo passa no tenant de teste, backup é restaurado e um piloto é a
 
 ## Riscos conhecidos
 
-- P0-B bloqueia migration e ativação (`00-BLOQUEIOS.md`).
+- ~~P0-B bloqueia migration e ativação~~ resolvido em 2026-09-16 (`00-BLOQUEIOS.md`).

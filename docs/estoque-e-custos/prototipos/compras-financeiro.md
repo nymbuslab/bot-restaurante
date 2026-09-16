@@ -53,7 +53,7 @@ visual aprovada para T-06.02, T-06.03 e T-06.04.
 - sem importação funcional de XML ou promessa de escrituração fiscal;
 - sem alteração silenciosa do preço de venda;
 - sem Contas a Receber, OFX, Open Finance, receitas ou despesas avulsas;
-- sem migrations ou ativação em produção antes do backup restaurável do P0-B.
+- ~~sem migrations ou ativação em produção antes do backup restaurável do P0-B~~ — resolvido em 2026-09-16.
 
 ## Registro da decisão
 

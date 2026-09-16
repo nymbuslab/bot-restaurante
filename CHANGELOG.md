@@ -1139,3 +1139,8 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   com detalhes somente leitura, sem revelar PINs ou tokens.
 - Ciclos validados no computador e no celular em ambiente de teste. Ainda sem
   liberação em produção; execução pausada após a Sprint 3.
+
+## [1.2.12] — Backup diário automático — 2026-09-16
+
+- O banco de dados e as imagens do cardápio passam por uma cópia de segurança automática todo
+  dia, criptografada e guardada fora do sistema. Restauração testada e comprovada.

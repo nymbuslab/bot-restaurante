@@ -24,7 +24,8 @@ T-06.01 possui protótipo aprovado, mas isso não conclui nem libera a Sprint 06
 Antes de T-04.01, renumerar `20260915100000_catalogo_alvos.sql` no plano, porque
 essa versão foi usada pela migration de auditoria operacional. Conferir versões
 tanto nos arquivos existentes quanto nas migrations previstas em todas as tasks.
-Backup P0-B continua bloqueando migrations e ativação em produção.
+Backup P0-B resolvido em 2026-09-16 (não bloqueia mais migrations nem ativação em produção;
+ver `00-BLOQUEIOS.md`). Retomada da Sprint 04 ainda depende de novo pedido explícito do usuário.
 
 - Sprint 01: F-01.1 → F-01.2.
 - Sprint 02: F-02.1 → F-02.2.
@@ -62,7 +63,7 @@ Backup P0-B continua bloqueando migrations e ativação em produção.
 4. Dúvida ou pré-requisito ausente vira `B-NN | task | bloqueio | o que destravaria` em `00-BLOQUEIOS.md`; a task fica bloqueada e a próxima independente segue.
 5. Paralelismo somente quando declarado.
 6. Atualizar o status em cada `tasks.md`, com data e suíte ao concluir.
-7. Não aplicar migration nem ativar produção até resolver P0-B.
+7. ~~Não aplicar migration nem ativar produção até resolver P0-B.~~ Resolvido em 2026-09-16.
 8. Protótipo precisa de aprovação do usuário antes do código visual; sem aprovação, bloquear a task de implementação correspondente.
 
 ## 7. Definição de pronto global

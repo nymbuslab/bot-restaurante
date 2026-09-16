@@ -29,7 +29,7 @@ Cada pacote deve ser pequeno, revisável e reversível.
 - Instalação limpa e smoke de Baileys/Sharp aprovados no Node 22.23.2.
 - Alterações ainda locais, sem commit ou deploy.
 
-## Etapa B — P0 de rollout e recuperação ⚠️ bloqueada por backup
+## Etapa B — P0 de rollout e recuperação ✅ concluída em 2026-09-16
 
 ### Trabalho
 
@@ -63,6 +63,21 @@ Alternativa aceita para uma implantação futura: gerar imediatamente antes da m
 lógico, criptografá-lo e armazená-lo fora do repositório; copiar separadamente os objetos do
 Storage; restaurar ambos no projeto descartável e conferir os totais. O procedimento só pode ser
 automatizado depois que o dono definir o destino seguro e a forma de guardar a chave.
+
+### Resultado (2026-09-16)
+
+- Estratégia implantada: `pg_dump --schema=public --no-privileges` (schemas internos do Supabase
+  não são nossos e já vêm prontos em qualquer projeto) + cópia separada dos objetos do bucket
+  `cardapio` do Storage, empacotados e criptografados com `age` (chave assimétrica), enviados ao
+  Cloudflare R2 via GitHub Actions diário (`.github/workflows/backup.yml`, 04:00 BRT).
+- Restauração ensaiada de ponta a ponta contra o projeto Supabase de testes
+  (`scripts/restaurar-backup.js`): schema `public` recriado do zero, 18 tabelas restauradas,
+  `empresas` e `pedidos` com contagem batendo, Storage reenviado.
+- RPO ~24h (intervalo do cron diário). RTO ~1h — majoritariamente coordenação humana (localizar o
+  arquivo mais recente no R2 e recuperar a chave privada, guardada pelo dono fora do repositório);
+  a restauração técnica em si, no volume atual de dados, levou poucos minutos no ensaio.
+- P0-B encerrado — ver evidência em [00-BLOQUEIOS.md](00-BLOQUEIOS.md) e detalhe operacional em
+  [../gotchas.md](../gotchas.md).
 
 ## Etapa C — P1 de invariantes financeiras e de estoque ✅ concluída em 2026-09-14
 
@@ -108,8 +123,8 @@ monólitos atuais:
 
 ## Etapa E — Arquitetura e experiência novas
 
-Começa após A e C. O P0-B não impede descoberta, arquitetura ou protótipo, mas bloqueia a etapa 6 e
-qualquer ativação em produção. A sequência interna será:
+Começa após A e C. O P0-B (resolvido em 2026-09-16) não bloqueia mais a etapa 6 nem ativação em
+produção. A sequência interna será:
 
 1. descoberta de Compras;
 2. arquitetura de dados e transações;

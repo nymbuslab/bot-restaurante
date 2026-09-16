@@ -21,8 +21,8 @@ estabilização e implementação em um sistema que já atende clientes reais.
 - Execução pausada por decisão do usuário em 2026-09-15. A Sprint 04 permanece
   planejada, não iniciada; só retomar após novo pedido explícito. Antes de criar
   T-04.01, renumerar sua migration planejada, pois `20260915100000` foi usado pela auditoria.
-- O P0-B de backup/restauração continua aberto e bloqueia migrations e ativação em produção, não o
-  desenho da arquitetura e dos testes.
+- O P0-B de backup/restauração foi resolvido em 2026-09-16 (`00-BLOQUEIOS.md`); migrations novas e
+  ativação em produção não dependem mais dele.
 
 ## Ordem obrigatória
 

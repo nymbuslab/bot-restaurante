@@ -32,7 +32,7 @@ D-24 | Rebaixar o plano bloqueia PINs e novas mutações premium sem apagar hist
 D-25 | Auditoria financeira e operacional é transacional e retida por cinco anos | auditoria best-effort de 24 meses | ações de valor precisam sobreviver com o documento
 D-26 | O registro-ponte representa produto, variação e futuramente insumo por alvo tipado | prefixar IDs em coluna textual | permite integridade e evolução sem colisão
 D-27 | Contas a Receber, OFX, Open Finance, receitas, despesas avulsas e recorrências ficam fora | módulo financeiro geral | limita a entrega ao ciclo de fornecedores
-D-28 | Nenhuma migration ou ativação de produção ocorre antes do P0-B | avançar sem recuperação ensaiada | produção possui clientes reais e hoje não há backup restaurável comprovado
+D-28 | Nenhuma migration ou ativação de produção ocorre antes do P0-B (resolvido em 2026-09-16) | avançar sem recuperação ensaiada | produção possui clientes reais; backup restaurável agora comprovado (`00-BLOQUEIOS.md`)
 D-29 | A primeira versão não exige segredo, credencial ou serviço externo novo | adicionar integração externa | PIN usa primitivas locais e alertas reutilizam Telegram
 D-30 | O plano financeiro desta descoberta substitui o adiamento de Contas a Pagar em D-P1-15 | manter financeiro para depois | o dono ampliou explicitamente o primeiro lançamento
 D-31 | A gestão multiusuário desta descoberta substitui a conta operacional única provisória de D-P1-16 | manter somente dono | o dono decidiu criar equipe antes de Compras

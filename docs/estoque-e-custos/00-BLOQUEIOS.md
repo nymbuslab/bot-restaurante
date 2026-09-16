@@ -2,10 +2,18 @@
 
 ## Ativos
 
-- **P0-B — recuperação antes de migration ou ativação em produção.** Não aplicar migrations novas
-  nem ativar Compras, Insumos ou baixa por ficha em produção até existir dump lógico criptografado,
-  cópia separada do Storage e restauração ensaiada fora de produção. A arquitetura, os contratos,
-  os testes e o protótipo podem avançar. Fonte: `01-PLANO-DE-ESTABILIZACAO.md:32-65`.
+_(nenhum bloqueio ativo no momento)_
+
+## Resolvidos
+
+- **P0-B — recuperação antes de migration ou ativação em produção.** ✅ Resolvido em 2026-09-16.
+  Os três critérios foram atendidos: dump lógico criptografado (`pg_dump --schema=public
+  --no-privileges` + `age`), cópia separada dos objetos do Storage, e restauração ensaiada fora de
+  produção (contra o projeto Supabase de testes, com dados reais conferidos — 18 tabelas,
+  `empresas` e `pedidos` com contagem batendo). Backup diário automatizado via
+  `.github/workflows/backup.yml`, enviado ao Cloudflare R2. RPO ~24h, RTO ~1h. Detalhe em
+  `01-PLANO-DE-ESTABILIZACAO.md` (Etapa B) e [../gotchas.md](../gotchas.md). Migrations novas e
+  ativação de Compras/Insumos/baixa por ficha em produção não dependem mais deste bloqueio.
 
 ## Regras desta etapa
 

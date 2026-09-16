@@ -5,8 +5,9 @@ implicitamente durante a implementação. Cada decisão mantém seus exemplos e 
 
 > **Estado em 2026-09-14:** as 18 decisões funcionais do P1 foram aprovadas, a arquitetura SprintX
 > foi concluída e os protótipos foram aprovados. A próxima etapa é a Sprint 01 de capacidade de
-> testes. A única trava externa ainda aberta é o backup/restauração do P0-B, obrigatório antes de
-> aplicar migration ou ativar funcionalidades em produção.
+> testes. A única trava externa então aberta era o backup/restauração do P0-B, obrigatório antes de
+> aplicar migration ou ativar funcionalidades em produção — **resolvido em 2026-09-16**
+> (`00-BLOQUEIOS.md`).
 
 ## Decisões aprovadas
 
@@ -71,7 +72,8 @@ Referências de mercado consultadas:
   de custo, quando ela for relevante.
 - A tabela inerte `insumos` hoje possui `saldo numeric(14,3)` e `custo numeric(12,4)`. A quantidade
   já atende à regra; antes de ativar Compras, o custo deverá receber migration aditiva para seis
-  casas. Essa migration continua submetida ao gate de backup e restauração do P0-B.
+  casas. O gate de backup e restauração do P0-B que a condicionava foi resolvido em 2026-09-16;
+  a migration segue aguardando apenas sua vez na ordem de sprints.
 
 Casos de aceite obrigatórios:
 
