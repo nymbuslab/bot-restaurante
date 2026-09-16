@@ -69,10 +69,14 @@
 - **Pooler do Supabase**: para app sempre-ligado, prefira o **Session pooler (5432)** ao
   Transaction pooler (6543) — `db.js` avisa no boot se detectar 6543.
 - **Backup não é consequência de ser stateless**: dados e sessões estão no Postgres e imagens no
-  Storage, mas a auditoria de 2026-09-13 encontrou zero backups disponíveis e PITR desligado. O
-  backup local da era SQLite continua corretamente removido; o que falta é proteção própria do
-  Supabase/fora do app. Backup do banco não recompõe arquivo apagado do Storage. Ver o estado e o
-  checklist em [`estoque-e-custos/`](estoque-e-custos/README.md).
+  Storage. Sem Supabase Pro não há PITR nem backup automático do projeto, então a proteção é
+  própria: `.github/workflows/backup.yml` roda todo dia, faz `pg_dump` (custom format) +
+  download de todo o bucket `cardapio` do Storage, empacota, criptografa com `age` (chave
+  assimétrica) e envia pro Cloudflare R2 (`scripts/backup.js`). Restauração/ensaio é
+  `scripts/restaurar-backup.js`, que só roda contra o projeto Supabase de testes (mesmo do
+  `test:integracao`) — nunca contra produção. Retenção de objetos antigos é uma lifecycle rule
+  configurada direto no bucket R2 (painel Cloudflare), não código. Ver o programa maior de
+  estoque/custos em [`estoque-e-custos/`](estoque-e-custos/README.md).
 - **Monitoramento (2 camadas, complementares)**: (1) **Externo** — monitor de uptime
   (UptimeRobot, grátis) batendo em `GET /health` (rota leve em `servidor.js`, devolve
   `{ok:true,uptime}` — só **vivacidade**, NÃO testa o Supabase), a cada 5 min, com alerta por
