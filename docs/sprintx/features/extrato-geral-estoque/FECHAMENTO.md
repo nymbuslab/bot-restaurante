@@ -11,7 +11,7 @@ arquivos_alterados: [src/estoque-db.js, src/servidor.js, public/admin.html, publ
 palavras_chave: [estoque, extrato, relatorios, movimentos, filtro-tipo, periodo, paginacao-cursor, plano-completo]
 resumo: O dono agora vê todos os movimentos de estoque do restaurante numa tela só (aba Relatórios > Estoque), com filtro por tipo e por período, sem abrir produto por produto.
 decisao_principal: "D-10 — o extrato entra como item real 'Estoque' dentro do acordeão 'Relatórios' já existente em admin.html, em vez de criar uma aba nova de nível principal (achado durante a geração do protótipo, corrigiu a premissa de D-02)"
-risco_residual: "Botão 'Carregar mais' (paginação por cursor além da primeira página) não foi visto rodando em uso real — só validado por teste; e o índice existente foi confirmado suficiente até 5.000 linhas sintéticas por EXPLAIN, não sob o volume real de produção."
+risco_residual: "O índice existente (estoque_mov_data_idx) foi confirmado suficiente por EXPLAIN até 5.000 linhas sintéticas, não sob o volume real de produção — reavaliar se o volume por tenant crescer muitas ordens de grandeza. (A paginação por cursor em si já foi validada ao vivo com volume real de 26 movimentos, ver atualização de 2026-09-16 abaixo.)"
 testes_adicionados: 27
 ---
 
@@ -34,12 +34,15 @@ pelo dono junto com o visual do protótipo.
 
 ## Risco residual
 
-O "Carregar mais" (paginação por cursor além da primeira página de 20) tem cobertura de
-teste, mas não foi visto rodando com volume real de uso — a checagem visual usou só 4-5
-movimentos de exemplo. O índice existente (`estoque_mov_data_idx`) foi confirmado suficiente
-por `EXPLAIN ANALYZE` contra 5.000 linhas sintéticas (T-02.01), não contra o volume real que
-um restaurante em produção vai acumular — reavaliar se o volume por tenant crescer muitas
-ordens de grandeza.
+O índice existente (`estoque_mov_data_idx`) foi confirmado suficiente por `EXPLAIN ANALYZE`
+contra 5.000 linhas sintéticas (T-02.01), não contra o volume real que um restaurante em
+produção vai acumular — reavaliar se o volume por tenant crescer muitas ordens de grandeza.
+
+**Atualização (2026-09-16, mesmo dia):** o "Carregar mais" (paginação por cursor além da
+primeira página) foi validado ao vivo com volume real — tenant descartável no projeto de
+testes, 26 movimentos de um produto — tanto no extrato geral (`Relatórios → Estoque`) quanto
+na gaveta por produto (`Controle de estoque`, tela pré-existente): a segunda página carrega
+sem repetir nem pular linha, e o botão some corretamente ao fim.
 
 ## Onde isto mexeu
 
