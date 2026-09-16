@@ -14,8 +14,15 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-_(nada no momento; Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15.
-Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
+- **(P2) Extrato geral do restaurante — planejamento sprintx concluído e auditado (VEREDITO:
+  SIM)** — `docs/sprintx/features/extrato-geral-estoque/`: 3 sprints, 7 tasks, sem migration
+  nova (reusa `estoque_movimentos`). Nada de código escrito ainda. A Sprint 01 é um portão de
+  design (protótipo Stitch da aba "Relatórios" nova + aprovação do dono) que precisa acontecer
+  antes de qualquer task de UI (Sprint 03); Sprint 02 (backend) pode rodar em paralelo.
+  Aguardando decisão do usuário pra iniciar a F6 (execução).
+
+_(Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15. Execução pausada a
+pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 
 ## 📋 Próximos Passos
 
