@@ -39,6 +39,7 @@ const { processarMensagem, estaAberto } = require("./fluxo");
 const cardapioWeb = require("./cardapio-web");
 const estoque = require("../public/estoque"); // dual-mode Node/browser
 const estoqueDb = require("./estoque-db"); // trilha de movimentação (estoque_movimentos)
+const fornecedoresDb = require("./fornecedores-db"); // cadastro de fornecedores + identificadores + vínculo com o catálogo
 const texto = require("../public/texto");     // dual-mode Node/browser (padroniza nomes)
 const variacoesMod = require("../public/variacoes"); // normalizarVariacoes (dual-mode)
 const gruposMod = require("../public/grupos");       // normalizarBiblioteca/resolverGrupos (dual-mode)
@@ -2496,6 +2497,134 @@ app.post("/api/estoque/controle", exigeAuth, exigePermissao("estoque.movimentar"
   } finally {
     client.release();
   }
+});
+
+// ============================================================
+// FORNECEDORES + IDENTIFICADORES DO CATÁLOGO (Plano Completo) — T-04.02.
+// Cadastro de fornecedores, código interno/GTIN por alvo (produto/variação)
+// e o vínculo fornecedor-alvo que sugere o fornecedor já conhecido de um
+// produto numa próxima compra. Compras em si ficam para sprint futura.
+// ============================================================
+
+function statusErroFornecedores(codigo) {
+  if (codigo === "FORNECEDOR_NAO_ENCONTRADO" || codigo === "ALVO_NAO_ENCONTRADO") return 404;
+  if (codigo === "DOCUMENTO_DUPLICADO" || codigo === "CODIGO_DUPLICADO" || codigo === "GTIN_DUPLICADO") return 409;
+  if (codigo === "NOME_OBRIGATORIO") return 400;
+  return 500;
+}
+
+function responderErroFornecedores(res, erro) {
+  const status = statusErroFornecedores(erro && erro.codigo);
+  if (status === 500) {
+    console.error("fornecedores:", erro && erro.message);
+    return res.status(500).json({ erro: "Não foi possível concluir a operação de fornecedores." });
+  }
+  return res.status(status).json({ erro: erro.message });
+}
+
+app.get("/api/fornecedores", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const fornecedores = await fornecedoresDb.listar(req.tenantDir, { incluirArquivados: req.query.arquivados === "1" });
+    res.json({ fornecedores });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.post("/api/fornecedores", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const fornecedor = await fornecedoresDb.criar(req.tenantDir, req.body || {}, req.ator);
+    await auditoriaOperacional.registrar(db, { empresaId: req.empresaId, ator: req.ator, evento: "fornecedor_criado", detalhe: { fornecedorId: fornecedor.id } }).catch(() => {});
+    res.status(201).json({ fornecedor });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.get("/api/fornecedores/sugestoes", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const q = req.query || {};
+  if (!q.tipo || !q.produtoId) return res.status(400).json({ erro: "Informe tipo e produtoId." });
+  try {
+    const fornecedores = await fornecedoresDb.sugestoesParaAlvo(req.tenantDir, {
+      tipo: String(q.tipo), produtoId: String(q.produtoId), variacaoId: q.variacaoId ? String(q.variacaoId) : null,
+    });
+    res.json({ fornecedores });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.get("/api/fornecedores/:id", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const fornecedor = await fornecedoresDb.buscar(req.tenantDir, req.params.id);
+    res.json({ fornecedor });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.put("/api/fornecedores/:id", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const fornecedor = await fornecedoresDb.atualizar(req.tenantDir, req.params.id, req.body || {});
+    res.json({ fornecedor });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.post("/api/fornecedores/:id/arquivar", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const fornecedor = await fornecedoresDb.arquivar(req.tenantDir, req.params.id, req.body && req.body.arquivado !== false);
+    res.json({ fornecedor });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.post("/api/fornecedores/:id/vincular", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  if (!b.tipo || !b.produtoId) return res.status(400).json({ erro: "Informe tipo e produtoId." });
+  try {
+    const vinculo = await fornecedoresDb.vincularAlvo(req.tenantDir, {
+      fornecedorId: req.params.id, tipo: String(b.tipo), produtoId: String(b.produtoId),
+      variacaoId: b.variacaoId ? String(b.variacaoId) : null,
+      codigoFornecedor: b.codigoFornecedor || null,
+    });
+    res.status(201).json({ vinculo });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.delete("/api/fornecedores/:id/vincular", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const q = req.query || {};
+  if (!q.tipo || !q.produtoId) return res.status(400).json({ erro: "Informe tipo e produtoId." });
+  try {
+    await fornecedoresDb.desvincularAlvo(req.tenantDir, {
+      fornecedorId: req.params.id, tipo: String(q.tipo), produtoId: String(q.produtoId),
+      variacaoId: q.variacaoId ? String(q.variacaoId) : null,
+    });
+    res.json({ ok: true });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.put("/api/catalogo/identificadores", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const b = req.body || {};
+  if (!b.tipo || !b.produtoId) return res.status(400).json({ erro: "Informe tipo e produtoId." });
+  try {
+    const identificador = await fornecedoresDb.definirIdentificadores(req.tenantDir, {
+      tipo: String(b.tipo), produtoId: String(b.produtoId), variacaoId: b.variacaoId ? String(b.variacaoId) : null,
+      codigoInterno: b.codigoInterno || null, gtin: b.gtin || null,
+    });
+    res.json({ identificador });
+  } catch (e) { responderErroFornecedores(res, e); }
+});
+
+app.get("/api/catalogo/identificadores", exigeAuth, exigePermissao("fornecedores.gerenciar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const q = req.query || {};
+  if (!q.tipo || !q.produtoId) return res.status(400).json({ erro: "Informe tipo e produtoId." });
+  try {
+    const identificador = await fornecedoresDb.buscarIdentificadores(req.tenantDir, {
+      tipo: String(q.tipo), produtoId: String(q.produtoId), variacaoId: q.variacaoId ? String(q.variacaoId) : null,
+    });
+    res.json({ identificador });
+  } catch (e) { responderErroFornecedores(res, e); }
 });
 
 // ---- Imagens de item (Supabase Storage, bucket público "cardapio") ----

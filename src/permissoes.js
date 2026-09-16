@@ -28,6 +28,9 @@ const PADROES = {
     "custos.ver",
     "compras.criar",
     "compras.confirmar",
+    "fornecedores.gerenciar",
+    "financeiro.ver",
+    "financeiro.gerenciar",
   ],
   gerente: [
     "equipe.gerenciar",
@@ -48,11 +51,14 @@ const PADROES = {
     "custos.ver",
     "compras.criar",
     "compras.confirmar",
+    "fornecedores.gerenciar",
+    "financeiro.ver",
+    "financeiro.gerenciar",
   ],
   caixa: ["pedidos.ver", "pdv.operar", "mesas.operar", "caixa.abrir", "caixa.movimentar", "caixa.fechar"],
   atendimento: ["pedidos.ver", "pedidos.editar", "clientes.ver", "mesas.operar"],
   cozinha: ["pedidos.ver"],
-  estoque_compras: ["estoque.ver", "estoque.movimentar", "custos.ver", "compras.criar"],
+  estoque_compras: ["estoque.ver", "estoque.movimentar", "custos.ver", "compras.criar", "fornecedores.gerenciar"],
 };
 
 function resolverEfetivas({ perfil, permissoesPerfil = [], ajustes = [] }) {

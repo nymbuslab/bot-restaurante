@@ -23,18 +23,18 @@ tasks:
   - id: T-04.02
     titulo: Fornecedores e identificadores
     fase: F-04.1
-    status: pendente
+    status: concluida
     objetivo: Implementar fornecedores, codigo interno, GTIN e vinculo fornecedor-alvo.
     arquivos:
-      cria: [supabase/migrations/20260915110000_fornecedores.sql, src/fornecedores-db.js, test/integracao/fornecedores.test.js]
-      altera: [src/servidor.js]
+      cria: [supabase/migrations/20260916110000_fornecedores.sql, src/fornecedores-db.js, test/integracao/fornecedores.test.js]
+      altera: [src/servidor.js, src/permissoes.js]
     teste_integracao: CNPJ, codigo interno e GTIN sao unicos por tenant e FKs compostas recusam cruzamento.
     teste_funcional: Criar fornecedor inline preserva o rascunho recebido e vinculo conhecido e sugerido depois.
     criterio_aceite: CRUD, arquivamento e vinculos respondem com os codigos HTTP documentados.
     depende_de: [T-04.01]
     paralelizavel: false
-    concluida_em: null
-    suite: nao_executada
+    concluida_em: 2026-09-16
+    suite: verde
   - id: T-04.03
     titulo: Contas financeiras e razao
     fase: F-04.2
@@ -95,14 +95,22 @@ id: T-04.02
 titulo: Fornecedores e identificadores
 objetivo: Implementar fornecedores, código interno, GTIN e vínculo fornecedor-alvo.
 arquivos:
-  cria: [supabase/migrations/20260915110000_fornecedores.sql, src/fornecedores-db.js, test/integracao/fornecedores.test.js]
-  altera: [src/servidor.js]
+  cria: [supabase/migrations/20260916110000_fornecedores.sql, src/fornecedores-db.js, test/integracao/fornecedores.test.js]
+  altera: [src/servidor.js, src/permissoes.js]
 teste_integracao: CNPJ, código interno e GTIN são únicos por tenant e FKs compostas recusam cruzamento.
 teste_funcional: Criar fornecedor inline preserva o rascunho recebido e vínculo conhecido é sugerido depois.
 criterio_aceite: CRUD, arquivamento e vínculos respondem com os códigos HTTP documentados.
 depende_de: [T-04.01]
 paralelizavel: false
-status: pendente
+status: concluida
+# 2026-09-16 · suite: 11 passed, 0 failed (test:integracao/fornecedores.test.js) + npm run test:ci 784 passed
+# real: 2,5 h
+# Divergência: migration renomeada de 20260915110000 para 20260916110000 (mesmo
+# motivo de T-04.01). Adicionadas as permissões "fornecedores.gerenciar",
+# "financeiro.ver" e "financeiro.gerenciar" em src/permissoes.js (não estavam no
+# catálogo de perfis; decisão de implementação para poder usar exigePermissao nas
+# rotas novas, atribuídas a administrador/gerente/estoque_compras, seguindo o
+# padrão já usado por compras.criar/custos.ver).
 ```
 
 ```yaml
