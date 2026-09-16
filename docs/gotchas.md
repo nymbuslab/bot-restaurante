@@ -75,7 +75,8 @@
   assimétrica) e envia pro Cloudflare R2 (`scripts/backup.js`). Restauração/ensaio é
   `scripts/restaurar-backup.js`, que só roda contra o projeto Supabase de testes (mesmo do
   `test:integracao`) — nunca contra produção. Retenção de objetos antigos é uma lifecycle rule
-  configurada direto no bucket R2 (painel Cloudflare), não código. Ver o programa maior de
+  configurada direto no bucket R2 (painel Cloudflare, não código) — apaga com mais de 60 dias.
+  Ver o programa maior de
   estoque/custos em [`estoque-e-custos/`](estoque-e-custos/README.md).
 - **Monitoramento (2 camadas, complementares)**: (1) **Externo** — monitor de uptime
   (UptimeRobot, grátis) batendo em `GET /health` (rota leve em `servidor.js`, devolve

@@ -45,7 +45,6 @@ Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido 
 
 - [ ] **(P2) Extrato geral do restaurante** — hoje o histórico é sempre por produto, dentro da gaveta. Um extrato único, com todos os movimentos do restaurante e filtro por tipo e período, responderia "o que mudou no estoque hoje" sem abrir produto por produto. Ficou de fora da 3/4 de propósito: a gaveta responde a pergunta comum, e o geral só vale a pena se fizer falta.
 - [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
-- [ ] **(P2, opcional) Retenção automática de backups antigos no R2** — hoje os arquivos criptografados se acumulam no bucket `nymbus-pedidos-backup` sem expirar. Configurar uma lifecycle rule direto no painel Cloudflare (ex.: apagar após 30-60 dias) resolve sem precisar de código.
 - [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03 homologadas. Faltam cadastros, Compras, estoque/custos e financeiro das Sprints 04 a 08; Insumos/ficha virão em entrega própria. Execução pausada pelo usuário após Sprint 03; P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
 - [ ] **(P2) Ver o "Carregar mais" do extrato de estoque** — único ponto da 3/4 que segue sem ser visto rodando. O botão só aparece a partir de 21 movimentos no mesmo produto, então depende de um item acumular histórico no uso normal. Conferir quando acontecer.
@@ -776,3 +775,7 @@ Execução pausada a pedido do usuário; não iniciar Sprint 04 sem novo pedido 
   `cross-cutting-principles.md` e `skill-observations/` são meta-observação da toolchain
   de skills do Claude Code (task-observer/skill-creator), não conteúdo do projeto.
   Adicionados ao `.gitignore` em vez de commitados. — 2026-09-16
+
+- [x] **(P2, opcional) Retenção automática de backups antigos no R2** — lifecycle rule
+  criada pelo usuário direto no painel Cloudflare no bucket `nymbus-pedidos-backup`
+  (apaga objetos com mais de 60 dias). Nenhuma mudança de código; nada a manter aqui. — 2026-09-16
