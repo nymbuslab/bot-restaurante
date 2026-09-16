@@ -83,17 +83,61 @@ entradas:
     real: 0.6
     desvio: null
     registrado_em: 2026-09-16
+  - trabalho_id: estoque-e-custos
+    task_id: T-04.01
+    tipo_task: persistencia
+    area: src/catalogo-alvos-db.js — registro-ponte do catálogo + store.setCardapio
+    sinais: []
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 1.5
+    desvio: null
+    registrado_em: 2026-09-16
+  - trabalho_id: estoque-e-custos
+    task_id: T-04.02
+    tipo_task: api
+    area: src/fornecedores-db.js + rotas /api/fornecedores* e /api/catalogo/identificadores*
+    sinais: []
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 2.5
+    desvio: null
+    registrado_em: 2026-09-16
+  - trabalho_id: estoque-e-custos
+    task_id: T-04.03
+    tipo_task: persistencia
+    area: src/financeiro-db.js — contas financeiras e razão imutável
+    sinais: [descoberta_durante_execucao]
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 2.0
+    desvio: null
+    registrado_em: 2026-09-16
+  - trabalho_id: estoque-e-custos
+    task_id: T-04.04
+    tipo_task: api
+    area: src/financeiro-db.js + rotas /api/financeiro/* — transferência, estorno, conciliação
+    sinais: []
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 2.5
+    desvio: null
+    registrado_em: 2026-09-16
 calibracao:
   - tipo_task: ui
     entradas: 4
     desvio_medio: null
     fator_ativo: true
   - tipo_task: persistencia
-    entradas: 1
+    entradas: 3
     desvio_medio: null
     fator_ativo: false
   - tipo_task: api
-    entradas: 1
+    entradas: 3
     desvio_medio: null
     fator_ativo: false
   - tipo_task: dominio
@@ -125,18 +169,23 @@ revisão, deploy nem ida e volta com o cliente.
 | extrato-geral-estoque | T-03.02 | dominio | public/extrato-estoque.js — query string | — | — | — | 0,4 h | — |
 | extrato-geral-estoque | T-03.03 | ui | public/app.js — carregamento e render | — | — | — | 0,75 h | — |
 | extrato-geral-estoque | T-03.04 | ui | public/app.js — chips de filtro | — | — | — | 0,6 h | — |
+| estoque-e-custos | T-04.01 | persistencia | src/catalogo-alvos-db.js — registro-ponte do catálogo | — | — | — | 1,5 h | — |
+| estoque-e-custos | T-04.02 | api | src/fornecedores-db.js + rotas /api/fornecedores* | — | — | — | 2,5 h | — |
+| estoque-e-custos | T-04.03 | persistencia | src/financeiro-db.js — contas e razão | descoberta_durante_execucao | — | — | 2,0 h | — |
+| estoque-e-custos | T-04.04 | api | src/financeiro-db.js + rotas /api/financeiro/* | — | — | — | 2,5 h | — |
 
-Trabalho rodou sem a F3.5 (sem `00-ESTIMATIVA.md`): `estimado_min`, `estimado_max`,
-`estimado_media` e `desvio` ficam `null` nas 7 entradas acima. O real ainda alimenta a
-comparabilidade por tipo e área nas estimativas futuras.
+Trabalho `extrato-geral-estoque` rodou sem a F3.5 (sem `00-ESTIMATIVA.md`); `estoque-e-custos`
+também não tem `00-ESTIMATIVA.md` na Sprint 04. `estimado_min`, `estimado_max`, `estimado_media`
+e `desvio` ficam `null` nas 12 entradas acima. O real ainda alimenta a comparabilidade por tipo e
+área nas estimativas futuras.
 
 ## Calibração por tipo de task
 
 | Tipo de task | Entradas | Desvio médio | Fator ativo? |
 |---|---|---|---|
 | ui | 4 | — (sem estimativa para comparar) | não — sem `00-ESTIMATIVA.md` nesta feature, desvio não calculável |
-| persistencia | 1 | — | não — menos de 3 entradas |
-| api | 1 | — | não — menos de 3 entradas |
+| persistencia | 3 | — | não — atingiu 3 entradas, mas sem estimativa não há desvio para calcular |
+| api | 3 | — | não — atingiu 3 entradas, mas sem estimativa não há desvio para calcular |
 | dominio | 1 | — | não — menos de 3 entradas |
 
 **Regra do fator.** O desvio de um tipo só vira fator de correção nas estimativas seguintes a

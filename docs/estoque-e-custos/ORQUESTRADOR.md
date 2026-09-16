@@ -1,3 +1,64 @@
+---
+expx_schema: 1
+expx_tool: sprintx
+kind: orquestrador
+trabalho_id: estoque-e-custos
+titulo: Estoque e custos (Compras, Insumos, Estoque, ficha tecnica e financeiro de fornecedores)
+tipo_trabalho: feature
+tipo_ocorrencia: null
+estagio: execucao
+status: em_andamento
+criado_em: 2026-09-15
+atualizado_em: 2026-09-16
+concluido_em: null
+sprints:
+  - { id: sprint-01, status: concluida }
+  - { id: sprint-02, status: concluida }
+  - { id: sprint-03, status: concluida }
+  - { id: sprint-04, status: concluida }
+  - { id: sprint-05, status: pendente }
+  - { id: sprint-06, status: em_andamento }
+  - { id: sprint-07, status: pendente }
+  - { id: sprint-08, status: pendente }
+caminho_critico: "T-01.01 -> T-01.02 -> T-01.03 -> T-02.01 -> T-02.02 -> T-02.03 -> T-02.04 -> T-03.01 -> T-03.02 -> T-03.03 -> T-04.01 -> T-04.02 -> T-05.01 -> T-05.02 -> T-05.03 -> T-05.04 -> T-06.01 -> T-06.02 -> T-06.03 -> T-06.04 -> T-07.01 -> T-07.02 -> T-07.03 -> T-07.04 -> T-08.01"
+modulo_afetado: [equipe, catalogo, fornecedores, financeiro, estoque]
+arquivos_alterados:
+  - test/integracao/ajuda/estoque-custos.js
+  - test/integracao/ajuda/ambiente.js
+  - test/fixtures/estoque-custos.js
+  - test/equipe-contratos.test.js
+  - test/compras-calculos.test.js
+  - test/financeiro-calculos.test.js
+  - supabase/migrations/20260915090000_equipe_permissoes.sql
+  - src/equipe-db.js
+  - src/permissoes.js
+  - src/empresas.js
+  - src/servidor.js
+  - test/permissoes-rotas.test.js
+  - design/canvas/equipe-desktop.dc.html
+  - design/canvas/equipe-mobile.dc.html
+  - public/equipe.js
+  - public/admin.html
+  - public/app.js
+  - public/style.css
+  - src/auditoria-operacional.js
+  - test/integracao/equipe.test.js
+  - design/canvas/compras-custos-desktop.dc.html
+  - design/canvas/compras-custos-mobile.dc.html
+  - supabase/migrations/20260916100000_catalogo_alvos.sql
+  - src/catalogo-alvos-db.js
+  - src/store.js
+  - test/integracao/catalogo-alvos.test.js
+  - supabase/migrations/20260916110000_fornecedores.sql
+  - src/fornecedores-db.js
+  - test/integracao/fornecedores.test.js
+  - supabase/migrations/20260916120000_financeiro.sql
+  - src/financeiro-db.js
+  - test/integracao/financeiro-contas.test.js
+  - test/integracao/financeiro.test.js
+palavras_chave: [compras, insumos, estoque, financeiro, fornecedores, equipe, custo-medio, catalogo-alvos, contas-financeiras]
+---
+
 # Orquestrador — estoque-e-custos
 
 ## 1. Objetivo
@@ -15,17 +76,21 @@ Entregar Gestão de equipe antes de Compras, seguida por fornecedores, estoque, 
 
 ## 3. Rota de execução
 
-### Estado de retomada — 2026-09-15
+### Estado de retomada — 2026-09-16
 
-Sprints 01/02/03 concluídas em homologação. O usuário decidiu não executar a
-Sprint 04 agora: execução pausada, sem task ativa. As regras de autonomia abaixo
-não autorizam atravessar essa pausa; aguardar novo pedido explícito de retomada.
-T-06.01 possui protótipo aprovado, mas isso não conclui nem libera a Sprint 06.
-Antes de T-04.01, renumerar `20260915100000_catalogo_alvos.sql` no plano, porque
-essa versão foi usada pela migration de auditoria operacional. Conferir versões
-tanto nos arquivos existentes quanto nas migrations previstas em todas as tasks.
-Backup P0-B resolvido em 2026-09-16 (não bloqueia mais migrations nem ativação em produção;
-ver `00-BLOQUEIOS.md`). Retomada da Sprint 04 ainda depende de novo pedido explícito do usuário.
+Sprints 01/02/03 concluídas em homologação. Sprint 04 (T-04.01 a T-04.04)
+EXECUTADA e CONCLUÍDA em 2026-09-16, mediante pedido explícito de retomada do
+usuário — ver `sprint-04/tasks.md` para o detalhe de cada task (suíte, data,
+divergências). Todas as 3 migrations planejadas da Sprint 04 foram renumeradas
+de `202609150000` para `20260916(1|2)0000` na hora de implementar cada task
+(colisão com `20260915100000_auditoria_operacional.sql`, já sinalizada em
+`00-AUDITORIA.md`) e aplicadas tanto no banco de teste quanto em produção
+(`npx supabase db push`). T-06.01 possui protótipo aprovado, mas isso não
+conclui nem libera a Sprint 06 — Sprint 05 (Compras: documento, confirmação,
+estoque/custo/financeiro atômicos) é a próxima elegível pelo caminho crítico e
+ainda depende de novo pedido explícito do usuário para ser executada (mesma
+regra de autonomia desta seção). Backup P0-B resolvido em 2026-09-16 (não
+bloqueia mais migrations nem ativação em produção; ver `00-BLOQUEIOS.md`).
 
 - Sprint 01: F-01.1 → F-01.2.
 - Sprint 02: F-02.1 → F-02.2.

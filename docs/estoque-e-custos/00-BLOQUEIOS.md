@@ -1,3 +1,17 @@
+---
+expx_schema: 1
+expx_tool: sprintx
+kind: bloqueios
+trabalho_id: estoque-e-custos
+atualizado_em: 2026-09-16
+bloqueios:
+  - id: P0-B
+    task: null
+    aberto_em: null
+    resolvido_em: 2026-09-16
+    descricao: Recuperacao (backup criptografado + restauracao ensaiada) antes de migration ou ativacao em producao. Resolvido; ver secao "Resolvidos" abaixo.
+---
+
 # Bloqueios do programa Estoque e Custos
 
 ## Ativos
