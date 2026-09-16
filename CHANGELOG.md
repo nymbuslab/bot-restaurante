@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-09-15
+atualizado: 2026-09-16
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1144,3 +1144,12 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 
 - O banco de dados e as imagens do cardápio passam por uma cópia de segurança automática todo
   dia, criptografada e guardada fora do sistema. Restauração testada e comprovada.
+
+## [1.2.13] — Extrato geral de estoque — 2026-09-16
+
+- Nova tela em Relatórios → Estoque: todos os movimentos de estoque do restaurante (entrada,
+  perda, contagem, ajuste, venda, devolução) numa lista só, sem precisar abrir produto por
+  produto.
+- Filtro por tipo de movimento (vários ao mesmo tempo) e por período (Hoje, 7 dias ou um
+  intervalo escolhido).
+- Recurso do Plano Completo, mesmo aviso de upgrade já usado em Controle de estoque.

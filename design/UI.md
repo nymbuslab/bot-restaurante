@@ -58,8 +58,10 @@ Regras que valem em TODAS as telas:
 O painel cresceu além do redesign inicial. Hoje a navegação desktop é por sidebar com itens reais do
 produto: **Dashboard**, **Pedidos**, **PDV**, **Mesas**, **Caixa**, **Cadastros/Produtos**
 (Categorias, Complementos, Controle de estoque e Insumos em construção), **Configurações**,
-**Prévia** e **Assinatura**. Itens planejados como Clientes, Fornecedores, Financeiro e Relatórios
-podem aparecer bloqueados/desabilitados até existirem de verdade.
+**Prévia**, **Assinatura** e o acordeão **Relatórios** (com o item real **Estoque** — extrato
+geral, ver tela 12 — ao lado de Vendas Geral/Vendas por Item/Compras/DRE, ainda "Em breve").
+Itens planejados como Clientes, Fornecedores e Financeiro podem aparecer bloqueados/
+desabilitados até existirem de verdade.
 
 - Desktop: sidebar fixa à esquerda; item ativo em roxo (`--accent-fg` + indicador).
 - Mobile: bottom-nav de atalhos para o uso diário (**Dashboard**, **Pedidos**, **PDV**, **Caixa**)
@@ -168,10 +170,11 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
   ("Voce tem 4. Vai ficar com 14."), e o botao do lancamento aberto fica preenchido.
 - **Dados/rotas:** `GET/POST /api/estoque*` no gate `exigePdv`; saldo no jsonb do cardapio e
   trilha em `estoque_movimentos`. Detalhe em `docs/modelo-dados.md`.
-- **Limites (nao construir aqui):** extrato **geral** do restaurante (o extrato e por produto),
-  contagem em lote para inventario, compra/fornecedor (entrada e um numero com observacao, nao um
-  documento), alerta ativo por e-mail/WhatsApp, e estoque por opcao de complemento (fica com
-  Insumos, etapa 4/4). Quantidade **nao e dinheiro**: sem mascara monetaria, `Estoque.formatarQtd`.
+- **Limites (nao construir aqui):** contagem em lote para inventario, compra/fornecedor (entrada e
+  um numero com observacao, nao um documento), alerta ativo por e-mail/WhatsApp, e estoque por
+  opcao de complemento (fica com Insumos, etapa 4/4). Quantidade **nao e dinheiro**: sem mascara
+  monetaria, `Estoque.formatarQtd`. O extrato **geral** do restaurante (todos os produtos juntos)
+  deixou de ser limite — ver tela 12.
 - **No celular:** as tres acoes saem da linha e ficam na gaveta, que ocupa a tela inteira.
 
 ### 11. Comanda no PDV — CONCLUIDO (Plano Completo)
@@ -199,6 +202,23 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
   pede confirmacao extra. Prototipo da revisao em `design/canvas/pdv-comanda.dc.html`.
 - **No celular:** os mesmos componentes do PDV; o banner e o botao seguem o modal em tela cheia.
 
+### 12. Relatórios → Estoque (extrato geral) — CONCLUIDO (Plano Completo)
+- **Feito:** acordeão **Relatórios** no sidebar (ao lado de Financeiro), com o item real
+  **Estoque** ao lado dos placeholders "Em breve" (Vendas Geral, Vendas por Item, Compras, DRE).
+  A tela mostra TODOS os movimentos de estoque do restaurante juntos (nao um produto so): chips
+  de tipo em multi-selecao (Entrada/Perda/Contagem/Ajuste marcados por padrao; Venda/Devolucao
+  fora por padrao — ja tem visao propria em Pedidos) e chips de periodo (Hoje/7 dias/
+  Personalizado, revela De/Ate). Lista reaproveita o layout de linha da gaveta de Controle de
+  estoque (tipo + nome do produto, delta colorido, saldo depois, observacao) com "Carregar mais"
+  por cursor.
+- **Dados/rotas:** `GET /api/estoque/geral` no gate `exigePdv` + `exigePermissao("estoque.ver")`;
+  le `estoque_movimentos` sem filtro de produto (`listarGeral` em `src/estoque-db.js`). Detalhe em
+  `docs/sprintx/features/extrato-geral-estoque/`.
+- **Limites (nao construir aqui):** sem busca por nome de produto (quem quer um produto so usa a
+  gaveta de Controle de estoque); sem teto de dias no periodo customizado (so cursor).
+- **No celular:** chips quebram linha, campos De/Ate empilham, lista e "Carregar mais" iguais ao
+  desktop.
+
 ---
 
 ## Status e ordem
@@ -206,7 +226,7 @@ podem aparecer bloqueados/desabilitados até existirem de verdade.
 **Redesign base concluido; referência viva para telas novas:** shell, Login, Cadastro, Pedidos,
 Detalhe do pedido, Cardapio, Editor de item, Configuracoes, Conexao e Simulador nasceram do ciclo
 v0.4.0/v0.7.0/v0.8.0. Depois disso o produto ganhou Dashboard, PDV, Mesas, Caixa, Assinatura,
-Master e Estoque; para telas novas, combine esta referência visual com
+Master, Estoque e Relatórios → Estoque (extrato geral); para telas novas, combine esta referência visual com
 [docs/design-system.md](../docs/design-system.md) e com o estado real em `CLAUDE.md`/`PROGRESSO.md`.
 
 Cada tela seguiu o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
