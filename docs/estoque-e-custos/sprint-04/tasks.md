@@ -160,4 +160,9 @@ status: concluida
 # conciliação — T-04.03 não tinha altera:[src/servidor.js] no plano, então não
 # havia superfície HTTP nenhuma para contas antes desta task; sem isso não dava
 # para testar transferência/estorno por HTTP como o teste_integracao pede.
+# Divergência: rodar a suíte de integração INTEIRA (23 arquivos) revelou
+# contenção de conexão no Session pooler do projeto de teste (--test-concurrency=3
+# não aguentava mais o volume dos 4 arquivos novos desta sprint) — registrado e
+# resolvido como B-01 em 00-BLOQUEIOS.md (baixado para --test-concurrency=2 em
+# scripts/test-integracao.js; suíte completa: 124 passed, 0 failed).
 ```

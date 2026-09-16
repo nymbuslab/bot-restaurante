@@ -97,10 +97,17 @@ console.log("Rodando " + arquivos.length + " arquivo(s) de integração contra o
 // Os arquivos de integração tocam um Postgres real e o Session pooler do
 // Supabase limita a ~15 conexões simultâneas (pool_size). Rodar os 10+ arquivos
 // em paralelo por padrão estourava o balde (`EMAXCONNSESSION`) e derrubava casos
-// legítimos de OUTROS arquivos, não só o novo. `--test-concurrency=3` mantém o
+// legítimos de OUTROS arquivos, não só o novo. `--test-concurrency=3` mantinha o
 // paralelismo (cada arquivo ainda roda os seus casos em sequência) sem formar
-// fila de conexão no servidor.
-const r = spawnSync(process.execPath, ["--test", "--test-concurrency=3", ...arquivos], {
+// fila de conexão no servidor — até a Sprint 04 (docs/estoque-e-custos/) somar 4
+// arquivos novos e mais pesados (fornecedores/financeiro, cada um com vários
+// `db.pool.connect()` transacionais + criação de tenant via Supabase Auth): com
+// 3 arquivos rodando ao mesmo tempo, a fila voltou a se formar e apareceu como
+// `error: canceling statement due to statement timeout` (57014) em testes de
+// OUTROS arquivos (ex.: principal-autenticado.test.js) — não um bug nos módulos
+// novos, e sim o mesmo teto de conexão sendo estourado de novo, agora com um
+// gatilho menor. Baixado para 2 e reproduzido limpo depois disso.
+const r = spawnSync(process.execPath, ["--test", "--test-concurrency=2", ...arquivos], {
   cwd: limpo,
   stdio: "inherit",
   env: ambiente,
