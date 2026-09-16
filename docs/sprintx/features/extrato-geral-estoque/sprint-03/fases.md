@@ -8,14 +8,14 @@ atualizado_em: 2026-09-16
 fases:
   - id: F-03.1
     titulo: Scaffold da aba e navegacao
-    status: nao_iniciado
+    status: concluida
     criterio_saida: Item de menu Relatorios existe, com bloqueio de plano identico ao de Controle de estoque
     paralelizavel: false
     paralela_com: []
     tasks: [T-03.01, T-03.02]
   - id: F-03.2
     titulo: Extrato geral - lista, filtros, paginacao
-    status: nao_iniciado
+    status: concluida
     criterio_saida: Lista carrega, filtra por tipo e periodo, e pagina por cursor sem repetir nem pular linha
     paralelizavel: false
     paralela_com: []
@@ -44,10 +44,10 @@ flowchart LR
   classDef pendente  fill:#eceff1,stroke:#78909c,color:#263238
   classDef critico   stroke-width:3px
 
-  class T_03_01 pendente
-  class T_03_02 pendente
-  class T_03_03 pendente
-  class T_03_04 pendente
+  class T_03_01 concluida
+  class T_03_02 concluida
+  class T_03_03 concluida
+  class T_03_04 concluida
   class T_03_01,T_03_03,T_03_04 critico
 ```
 

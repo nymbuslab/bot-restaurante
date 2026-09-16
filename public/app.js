@@ -1195,6 +1195,98 @@ function estRenderExtrato() {
   }));
 }
 
+// ---- Relatórios → Estoque: extrato GERAL, todos os produtos juntos --------
+// Mesmo padrão de paginação por cursor de estCarregarExtrato (D-07: sem teto de
+// dias, só cursor). tiposPadrao() é o default D-01 (4 tipos operacionais);
+// T-03.04 liga os chips que alteram relTipos/relPeriodo/relDesde/relAte e chama
+// carregarExtratoGeral(true) de novo a cada mudança de filtro.
+let relMovs = [];
+let relFim = false;
+let relTipos = ExtratoEstoque.tiposPadrao();
+let relPeriodo = "hoje";
+let relDesde = "";
+let relAte = "";
+
+async function carregarExtratoGeral(reset) {
+  $("relatoriosLock").hidden = true;
+  $("relatoriosConteudo").hidden = false;
+  const cont = $("relatorios-lista");
+  if (reset) {
+    relMovs = [];
+    relFim = false;
+    if (cont) cont.innerHTML = '<p class="dash-vazio">Carregando…</p>';
+  }
+  const ultimo = relMovs[relMovs.length - 1];
+  const qs = ExtratoEstoque.montarQueryString({
+    tipos: relTipos, periodo: relPeriodo, desde: relDesde, ate: relAte, limite: 20,
+    antes: ultimo ? ultimo.criadoEm : null, antesId: ultimo ? ultimo.id : null,
+  });
+  const r = await api("GET", "/api/estoque/geral" + (qs ? "?" + qs : ""));
+  if (!r) return;                                             // 401 já redirecionou
+  if (r.status === 403) {                                     // sem Plano Completo
+    $("relatoriosConteudo").hidden = true;
+    $("relatoriosLock").hidden = false;
+    return;
+  }
+  if (!r.ok) {
+    if (cont) cont.innerHTML =
+      '<div class="estado-vazio est-erro">' +
+        '<h3>Não deu para carregar o extrato</h3>' +
+        '<p class="sub">A conexão falhou no meio do caminho. Verifique a internet e tente de novo.</p>' +
+        '<button type="button" class="secundario" id="btnRelTentarDeNovo">Tentar de novo</button>' +
+      '</div>';
+    const btn = $("btnRelTentarDeNovo");
+    if (btn) btn.addEventListener("click", () => carregarExtratoGeral(true));
+    return;
+  }
+  const dados = await r.json();
+  const novos = Array.isArray(dados.movimentos) ? dados.movimentos : [];
+  if (novos.length < 20) relFim = true;
+  relMovs = relMovs.concat(novos);
+  renderExtratoGeral();
+}
+
+function renderExtratoGeral() {
+  const cont = $("relatorios-lista");
+  if (!cont) return;
+  if (!relMovs.length) {
+    cont.innerHTML =
+      '<div class="estado-vazio">' +
+        '<h3>Nada por aqui ainda</h3>' +
+        '<p class="sub">Entrada, perda, contagem e ajuste de estoque aparecem aqui assim que acontecerem.</p>' +
+      '</div>';
+    $("btnRelMais").hidden = true;
+    return;
+  }
+  cont.innerHTML = relMovs.map((m) => {
+    const q = Number(m.quantidade) || 0;
+    const sinal = q > 0 ? "mais" : "menos";
+    const pedido = m.numero
+      ? '<button type="button" class="est-g-pedido" data-est-pedido="' + escapar(String(m.numero)) + '">Pedido ' + escapar(String(m.numero)) + '</button>'
+      : "";
+    const obs = m.obs ? " · " + escapar(m.obs) : "";
+    return (
+      '<div class="est-g-mov">' +
+        '<div>' +
+          '<div class="est-g-mov-tipo">' + escapar(EST_TIPO_ROTULO[m.tipo] || m.tipo) + ' · ' + escapar(m.descricao || "Produto") + pedido + '</div>' +
+          '<div class="est-g-mov-quando">' + escapar(estQuando(m.criadoEm)) + obs + '</div>' +
+        '</div>' +
+        '<div class="est-g-mov-num">' +
+          '<div class="est-g-mov-delta ' + sinal + '">' + (q > 0 ? "+" : "-") + escapar(Estoque.formatarQtd(Math.abs(q), m.unidade || "un")) + '</div>' +
+          '<div class="est-g-mov-ficou">ficou ' + escapar(Estoque.formatarQtd(m.saldoDepois, m.unidade || "un")) + '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join("");
+  $("btnRelMais").hidden = relFim;
+  cont.querySelectorAll("[data-est-pedido]").forEach((b) => b.addEventListener("click", () => {
+    const busca = $("buscaPedido");
+    if (busca) { busca.value = b.dataset.estPedido; busca.dispatchEvent(new Event("input")); }
+    const nav = document.querySelector("nav button[data-aba='pedidos']");
+    if (nav) nav.click();
+  }));
+}
+
 // Depois de gravar, o saldo novo volta do servidor: atualiza a linha da lista,
 // os contadores e a gaveta sem fechar nada nem recarregar a tela inteira.
 function estAplicarSaldoNovo(quantidade) {
@@ -1403,6 +1495,50 @@ if ($("btnVerPlanosEstoque")) $("btnVerPlanosEstoque").addEventListener("click",
   if (b) b.click();
 });
 
+if ($("btnVerPlanosRelatorios")) $("btnVerPlanosRelatorios").addEventListener("click", () => {
+  const b = document.querySelector("nav button[data-aba='assinatura']");
+  if (b) b.click();
+});
+if ($("btnRelMais")) $("btnRelMais").addEventListener("click", () => carregarExtratoGeral(false));
+
+// Chips de tipo: multi-seleção, cada clique alterna dentro/fora de relTipos
+// (ExtratoEstoque.alternarTipo) e recarrega do zero — sem misturar páginas de
+// filtros diferentes (o reset limpa o cursor antes de pedir de novo).
+if ($("relTipoFiltros")) $("relTipoFiltros").addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-rel-tipo]");
+  if (!chip) return;
+  relTipos = ExtratoEstoque.alternarTipo(relTipos, chip.dataset.relTipo);
+  document.querySelectorAll("#relTipoFiltros [data-rel-tipo]").forEach((c) => {
+    const ativo = relTipos.includes(c.dataset.relTipo);
+    c.classList.toggle("ativo", ativo);
+    c.setAttribute("aria-pressed", ativo ? "true" : "false");
+  });
+  carregarExtratoGeral(true);
+});
+
+// Chips de período: seleção única (preset substitui preset). "Personalizado"
+// só recarrega quando desde/até forem preenchidos (evita pedir sem filtro).
+function relAplicarPeriodo(periodo) {
+  relPeriodo = periodo;
+  document.querySelectorAll("#relPeriodoFiltros [data-rel-periodo]").forEach((c) => {
+    c.classList.toggle("ativo", c.dataset.relPeriodo === periodo);
+  });
+  $("relPeriodoCustom").hidden = periodo !== "customizado";
+  if (periodo !== "customizado") carregarExtratoGeral(true);
+}
+if ($("relPeriodoFiltros")) $("relPeriodoFiltros").addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-rel-periodo]");
+  if (chip) relAplicarPeriodo(chip.dataset.relPeriodo);
+});
+if ($("relDesde")) $("relDesde").addEventListener("change", () => {
+  relDesde = $("relDesde").value;
+  if (relPeriodo === "customizado" && relDesde && relAte) carregarExtratoGeral(true);
+});
+if ($("relAte")) $("relAte").addEventListener("change", () => {
+  relAte = $("relAte").value;
+  if (relPeriodo === "customizado" && relDesde && relAte) carregarExtratoGeral(true);
+});
+
 // Só os botões de aba (com data-aba) trocam de tela; os de grupo têm handler próprio.
 document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -1428,6 +1564,7 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "categorias") carregarCategorias();
     if (btn.dataset.aba === "complementos") carregarComplementos();
     if (btn.dataset.aba === "estoque") carregarEstoque();
+    if (btn.dataset.aba === "relatorios") carregarExtratoGeral(true);
     if (btn.dataset.aba === "equipe" && typeof carregarEquipe === "function") carregarEquipe();
     if (btn.dataset.aba === "atividades" && typeof carregarAtividades === "function") carregarAtividades();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}

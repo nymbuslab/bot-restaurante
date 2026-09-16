@@ -59,6 +59,12 @@ decisoes:
     motivo: "mesmo padrao visual ja validado, funciona como vitrine do recurso"
     status: fechada
     bloqueante: false
+  - id: D-10
+    decisao: "o extrato geral entra como item real 'Estoque' dentro do acordeao 'Relatorios' JA EXISTENTE em admin.html (navsub-relatorios, ao lado dos placeholders 'Em breve' Vendas Geral/Vendas por Item/Compras), em vez de criar uma aba nova de nivel principal como D-02 havia descrito"
+    alternativa_descartada: "manter D-02 ao pe da letra e criar uma aba Relatorios nova separada, duplicando o grupo ja existente"
+    motivo: "a F1/F2 nao tinha visto que public/admin.html ja tem o grupo acordeao Relatorios (docs/design-system.md ja documenta esse padrao); duas entradas 'Relatorios' na sidebar seria inconsistente e confuso. Achado na F6, durante a geracao do prototipo Stitch (T-01.01); aprovado pelo dono junto com o visual do prototipo"
+    status: fechada
+    bloqueante: false
 ---
 
 # Decisões — extrato-geral-estoque
@@ -77,6 +83,7 @@ D-06 | Filtro de período usa presets (Hoje / 7 dias) + customizado (desde/até)
 D-07 | Paginação só por cursor (`antes`/`antesId`, como a gaveta já faz), sem teto de dias | Cursor + teto de 366 dias (como em `GET /api/pedidos`) | Cursor sozinho já evita payload grande de uma vez
 D-08 | Extrato geral não tem busca por nome de produto | Adicionar campo de busca por produto | Manter a tela simples; a gaveta já resolve o caso de produto específico
 D-09 | Aba "Relatórios" aparece no menu para todos os tenants, com a mesma tela de bloqueio (Plano Completo) que Controle de estoque já usa | Esconder o item de menu inteiramente sem o plano | Mesmo padrão visual já validado, funciona como vitrine do recurso
+D-10 | O extrato geral entra como item real "Estoque" dentro do acordeão "Relatórios" JÁ EXISTENTE em `admin.html` (`navsub-relatorios`), não numa aba nova de nível principal como D-02 descrevia | Manter D-02 ao pé da letra e criar aba nova separada, duplicando o grupo já existente | A F1/F2 não tinha visto que `admin.html` já tem esse acordeão (`docs/design-system.md` já documenta o padrão); achado na F6 ao gerar o protótipo Stitch (T-01.01), aprovado pelo dono junto com o visual
 ```
 
 ## Pendências

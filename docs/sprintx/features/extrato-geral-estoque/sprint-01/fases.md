@@ -8,7 +8,7 @@ atualizado_em: 2026-09-16
 fases:
   - id: F-01.1
     titulo: Prototipo e aprovacao
-    status: nao_iniciado
+    status: concluida
     criterio_saida: Aprovacao explicita do dono registrada, protótipo semeado com os tokens de style.css
     paralelizavel: true
     paralela_com: [F-02.1]
@@ -28,7 +28,7 @@ flowchart LR
   classDef pendente  fill:#eceff1,stroke:#78909c,color:#263238
   classDef critico   stroke-width:3px
 
-  class T_01_01 pendente
+  class T_01_01 concluida
   class T_01_01 critico
 ```
 

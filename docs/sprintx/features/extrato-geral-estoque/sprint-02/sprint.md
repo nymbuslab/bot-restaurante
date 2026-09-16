@@ -5,7 +5,7 @@ kind: sprint
 trabalho_id: extrato-geral-estoque
 sprint_id: sprint-02
 titulo: Backend — consulta geral e rota
-status: nao_iniciado
+status: concluido
 criterio_saida: GET /api/estoque/geral devolve movimentos de todos os produtos, paginados por cursor, filtraveis por tipo e periodo
 fases: [F-02.1]
 riscos: [Volume por linha pode ser maior que na gaveta de 1 produto — toda venda gera N linhas]

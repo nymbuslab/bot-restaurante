@@ -5,7 +5,7 @@ kind: sprint
 trabalho_id: extrato-geral-estoque
 sprint_id: sprint-03
 titulo: Frontend — aba Relatorios com extrato geral
-status: nao_iniciado
+status: concluido
 criterio_saida: Dono ve todos os movimentos do restaurante numa tela so, filtra por tipo e periodo, sem abrir produto por produto
 fases: [F-03.1, F-03.2]
 riscos: []

@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-09-15
+atualizado: 2026-09-16
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -14,12 +14,7 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 ## 🔄 Em Andamento
 
-- **(P2) Extrato geral do restaurante — planejamento sprintx concluído e auditado (VEREDITO:
-  SIM)** — `docs/sprintx/features/extrato-geral-estoque/`: 3 sprints, 7 tasks, sem migration
-  nova (reusa `estoque_movimentos`). Nada de código escrito ainda. A Sprint 01 é um portão de
-  design (protótipo Stitch da aba "Relatórios" nova + aprovação do dono) que precisa acontecer
-  antes de qualquer task de UI (Sprint 03); Sprint 02 (backend) pode rodar em paralelo.
-  Aguardando decisão do usuário pra iniciar a F6 (execução).
+_(nada no momento)_
 
 _(Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15. Execução pausada a
 pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
@@ -48,11 +43,10 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
-- [ ] **(P2) Extrato geral do restaurante** — hoje o histórico é sempre por produto, dentro da gaveta. Um extrato único, com todos os movimentos do restaurante e filtro por tipo e período, responderia "o que mudou no estoque hoje" sem abrir produto por produto. Ficou de fora da 3/4 de propósito: a gaveta responde a pergunta comum, e o geral só vale a pena se fizer falta.
 - [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
 - [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03 homologadas. Faltam cadastros, Compras, estoque/custos e financeiro das Sprints 04 a 08; Insumos/ficha virão em entrega própria. Execução pausada pelo usuário após Sprint 03; P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
-- [ ] **(P2) Ver o "Carregar mais" do extrato de estoque** — único ponto da 3/4 que segue sem ser visto rodando. O botão só aparece a partir de 21 movimentos no mesmo produto, então depende de um item acumular histórico no uso normal. Conferir quando acontecer.
+- [ ] **(P2) Ver o "Carregar mais" rodando com volume real (Controle de estoque e Relatórios → Estoque)** — dois pontos sem ser vistos rodando com dado de uso de verdade, só com teste: o extrato por produto (Controle de estoque, a partir de 21 movimentos do mesmo item) e o extrato geral novo (Relatórios → Estoque, a partir de 21 movimentos no tenant inteiro, qualquer produto — entregue em 2026-09-16). Conferir os dois quando o histórico acumular naturalmente. O extrato geral também teve o índice (`estoque_mov_data_idx`) confirmado suficiente só até 5.000 linhas sintéticas por `EXPLAIN`, não contra volume real de produção — reavaliar junto se o volume por tenant crescer muitas ordens de grandeza.
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
 > **Tela de Mesas — melhorias concluídas** (revisão tela a tela vs. Saipos/Goomer/Consumer/Colibri/Linx): split + reforço do cancelar, transferir/juntar, resumo de ocupação, alerta de mesa parada e nº de pessoas — todos em ✅ Concluído.
@@ -80,6 +74,27 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 - **(git — won't-fix, aceito) Commit `33387ef` com mensagem genérica** — "Implement feature X to enhance user experience and optimize performance" (só adicionou `assets/Screenshot_4.png`). Já pushado na `main`; corrigir exigiria reescrever histórico remoto (force-push destrutivo) — desproporcional para um commit inócuo. Fica só como registro histórico.
 
 ## ✅ Concluído
+
+- [x] **(P2) Extrato geral do restaurante — todos os movimentos de estoque numa tela só** — o dono
+  agora abre **Relatórios → Estoque** e vê todos os movimentos de estoque do restaurante (entrada,
+  perda, contagem, ajuste, venda, devolução) numa lista só, com filtro por tipo (multi-seleção, os
+  4 tipos operacionais marcados por padrão — D-01) e por período (Hoje/7 dias/Personalizado — D-06),
+  paginada por cursor sem teto de dias (D-07), sem precisar abrir produto por produto. **A geração
+  do protótipo Stitch (T-01.01) achou que `admin.html` já tinha um acordeão "Relatórios" com
+  placeholders "Em breve"** — a F1/F2 não tinha visto; o item entrou como "Estoque" dentro desse
+  acordeão já existente (D-10), corrigindo a premissa original de D-02 (aba nova de nível
+  principal). Aprovado pelo dono ("Aprovo os dois": visual do protótipo + correção de encaixe).
+  Backend (`listarGeral` em `src/estoque-db.js`, rota `GET /api/estoque/geral` com os mesmos gates
+  `exigeAuth`+`exigePermissao("estoque.ver")`+`exigePdv` da rota de produto único) rodou em
+  paralelo com o portão de design, sem esperar aprovação (D-03: reusa a permissão `estoque.ver`
+  existente). Índice existente (`estoque_mov_data_idx`) confirmado suficiente por `EXPLAIN` contra
+  5.000 linhas sintéticas. Execução via sprintx (`docs/sprintx/features/extrato-geral-estoque/`),
+  F1 a F6 completas, 7 tasks TDD, 27 testes novos. Validação visual ao vivo via Playwright (tenant
+  descartável, Plano Completo, no projeto de testes — nunca produção): estado com dados, filtro de
+  tipo alternando, período "Personalizado" revelando os campos De/Até, desktop e mobile (390px).
+  Estado bloqueado (sem Plano Completo) não fotografado de novo — mesma estrutura de `#estoqueLock`
+  já validada visualmente em Controle de estoque, coberta pelo teste de integração 403. Validação:
+  `npm test` 784/784, `npm run check` 191 arquivos, `npm run test:integracao` 96/96. — 2026-09-16
 
 - [x] **(P2) Comanda no PDV — identificação opcional para distinguir comandas abertas** — com duas comandas em aberto, ambas apareciam como "#NN a receber", indistinguíveis (a mesa tem nome; a comanda, nada). Sugestão do próprio dono, aprovada em plano antes do código: o modal "Finalizar venda" da Comanda ganhou o campo opcional **"Identificação"** (`#pdvComandaId`, placeholder "Nome, mesa ou referência"), gravado em `pedidos.cliente` — coluna que já existia e a Entrega já usava, então **zero mudança de back-end** (a rota `/api/pdv/vender` já faz trim + teto de 120). É o que preenche o campo Cliente da aba Pedidos. O valor fica em memória (`pdvComandaId`) entre Voltar/Cobrar e é limpo ao concluir a venda. Ao reabrir pelo "Acrescentar item", o wiring passou a levar o `cliente` do pedido e o banner mostra **"Acrescentando à Comanda #NN · <identificação>"** quando existe (helper puro `pedidoModoBannerSpan`, com escape). Prancha atualizada (`design/canvas/pdv-comanda.dc.html`). 3 testes novos (campo só na Comanda; banner com/sem identificação; escape da identificação). Validação: `npm test` 720/720, `npm run check` 157, `npm run test:ci` 720/720, `npm run test:integracao` 67/67. — 2026-09-12
 

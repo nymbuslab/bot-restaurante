@@ -6,15 +6,25 @@ trabalho_id: extrato-geral-estoque
 titulo: Extrato geral do restaurante (estoque)
 tipo_trabalho: feature
 tipo_ocorrencia: null
-estagio: f4
-status: nao_iniciado
+estagio: f6
+status: concluido
 criado_em: 2026-09-16
 atualizado_em: 2026-09-16
-concluido_em: null
+concluido_em: 2026-09-16
 sprints: [sprint-01, sprint-02, sprint-03]
 caminho_critico: [T-02.01, T-02.02, T-03.03, T-03.04]
-modulo_afetado: [raiz, test, public]
-arquivos_alterados: []
+modulo_afetado: [src, public, test]
+arquivos_alterados:
+  - src/estoque-db.js
+  - src/servidor.js
+  - public/admin.html
+  - public/app.js
+  - public/extrato-estoque.js
+  - test/estoque-db-geral.test.js
+  - test/integracao/estoque-extrato-geral.test.js
+  - test/relatorios-aba-scaffold.test.js
+  - test/extrato-estoque.test.js
+  - test/design-system-carregando.test.js
 palavras_chave: [estoque, extrato, relatorios, movimentos, filtro-tipo, periodo, paginacao-cursor, plano-completo]
 ---
 
@@ -106,3 +116,11 @@ de design não é o gargalo do trabalho, o backend é).
 3. Leia `00-BLOQUEIOS.md`.
 4. Se `T-01.01` ainda não está `concluida`, essa é a próxima task — e continua sendo um portão de aprovação, não código.
 5. Continue da primeira task `pendente` ou `em_andamento` cujas dependências (`depende_de`) estão todas `concluida`. Ignore as `bloqueada` até que o bloqueio registrado seja resolvido.
+
+## 9. F6 concluída (2026-09-16)
+
+As 7 tasks das 3 sprints estão `concluida`, `npm test` está 784/784 verde e
+`npm run test:integracao` está 96/96 verde (incluindo os 4 novos casos de
+`estoque-extrato-geral.test.js`). Nenhum bloqueio aberto em `00-BLOQUEIOS.md`. Ver
+`FECHAMENTO.md` para o resumo indexável e `00-DECISOES.md` (D-10) para a correção de
+navegação achada durante a T-01.01.

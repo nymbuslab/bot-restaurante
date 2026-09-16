@@ -8,7 +8,7 @@ atualizado_em: 2026-09-16
 fases:
   - id: F-02.1
     titulo: Consulta e rota
-    status: nao_iniciado
+    status: concluida
     criterio_saida: Rota GET /api/estoque/geral devolve movimentos paginados, com suite verde
     paralelizavel: true
     paralela_com: [F-01.1]
@@ -31,8 +31,8 @@ flowchart LR
   classDef pendente  fill:#eceff1,stroke:#78909c,color:#263238
   classDef critico   stroke-width:3px
 
-  class T_02_01 pendente
-  class T_02_02 pendente
+  class T_02_01 concluida
+  class T_02_02 concluida
   class T_02_01,T_02_02 critico
 ```
 

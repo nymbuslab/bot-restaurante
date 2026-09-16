@@ -96,6 +96,44 @@ async function listar(dir, { itemId, variacaoId = null, limite = 30, antes = nul
   return r.rows.map(mapRow);
 }
 
+// Extrato GERAL (todos os produtos do tenant), mesmo padrão de paginação por
+// cursor de `listar`. Sem filtro nenhum = todos os 6 TIPOS, sem teto de dias
+// (D-07 de docs/sprintx/features/extrato-geral-estoque/00-DECISOES.md — cursor
+// sozinho já evita payload grande). `periodo` ('hoje'|'7dias') segue o mesmo
+// recorte por fuso BR de `pedidos.lerTodos`; `desde`/`ate` é o período
+// customizado, mutuamente exclusivo com `periodo` (preset vence quando os dois
+// vierem, mesma prioridade de pedidos.lerTodos).
+async function listarGeral(dir, { tipos = null, periodo = null, desde = null, ate = null, limite = 30, antes = null, antesId = null } = {}) {
+  const empId = await empresaId(dir);
+  const lim = Math.min(Math.max(parseInt(limite, 10) || 30, 1), 100);
+  const TZ = "'America/Sao_Paulo'";
+  const params = [empId];
+  let sql = `SELECT * FROM estoque_movimentos WHERE empresa_id = $1`;
+  if (Array.isArray(tipos) && tipos.length) {
+    params.push(tipos);
+    sql += ` AND tipo = ANY($${params.length})`;
+  }
+  if (periodo === "hoje") {
+    sql += ` AND criado_em >= ((now() AT TIME ZONE ${TZ})::date)::timestamp AT TIME ZONE ${TZ}`;
+  } else if (periodo === "7dias") {
+    sql += ` AND criado_em >= (((now() AT TIME ZONE ${TZ})::date - 6))::timestamp AT TIME ZONE ${TZ}`;
+  } else {
+    if (desde) { params.push(desde); sql += ` AND criado_em >= ($${params.length}::date)::timestamp AT TIME ZONE ${TZ}`; }
+    if (ate)   { params.push(ate);   sql += ` AND criado_em < ($${params.length}::date + 1)::timestamp AT TIME ZONE ${TZ}`; }
+  }
+  if (antes && antesId != null) {
+    params.push(antes, parseInt(antesId, 10));
+    sql += ` AND (criado_em, id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+  } else if (antes) {
+    params.push(antes);
+    sql += ` AND criado_em < $${params.length}`;
+  }
+  params.push(lim);
+  sql += ` ORDER BY criado_em DESC, id DESC LIMIT $${params.length}`;
+  const r = await db.query(sql, params);
+  return r.rows.map(mapRow);
+}
+
 // Soma por tipo nos últimos `dias` (cabeçalho da gaveta). Sempre devolve as seis
 // chaves, zeradas quando não houve movimento.
 async function resumo(dir, { itemId, variacaoId = null, dias = 30 } = {}) {
@@ -135,4 +173,4 @@ function esquecer(slug) {
   delete idCache[slug];
 }
 
-module.exports = { registrarTx, listar, resumo, limparAntigos, empresaId, esquecer, TIPOS };
+module.exports = { registrarTx, listar, listarGeral, resumo, limparAntigos, empresaId, esquecer, TIPOS };

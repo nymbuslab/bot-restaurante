@@ -35,3 +35,11 @@ test("carregarMesas atribui Carregando antes do await api(", () => {
 test("carregarCaixa atribui Carregando antes do await api(", () => {
   verificarCarregando("carregarCaixa", "async function carregarCaixa() {");
 });
+
+// T-03.03 (extrato-geral-estoque): recorte por função, não contemTrecho no
+// arquivo inteiro — `antes=`/`antesId=` já existem em estCarregarExtrato
+// (gaveta de 1 produto, mais acima no arquivo); sem isolar o corpo desta
+// função o teste acharia o trecho errado.
+test("carregarExtratoGeral atribui Carregando antes do await api(", () => {
+  verificarCarregando("carregarExtratoGeral", "async function carregarExtratoGeral(reset) {");
+});

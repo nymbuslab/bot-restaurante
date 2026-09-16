@@ -5,7 +5,7 @@ kind: sprint
 trabalho_id: extrato-geral-estoque
 sprint_id: sprint-01
 titulo: Protótipo aprovado
-status: nao_iniciado
+status: concluido
 criterio_saida: Protótipo Stitch da aba Relatórios existe e o dono aprovou explicitamente
 fases: [F-01.1]
 riscos: []

@@ -2344,6 +2344,33 @@ app.get("/api/estoque/movimentos", exigeAuth, exigePermissao("estoque.ver"), asy
   }
 });
 
+// Extrato GERAL: todos os produtos do tenant numa lista só (aba Relatórios),
+// mesmos gates da rota de produto único. `tipos` vem separado por vírgula;
+// `periodo` ('hoje'|'7dias') ou `desde`/`ate` customizado, mesma validação
+// `dataOk` já usada em GET /api/pedidos.
+app.get("/api/estoque/geral", exigeAuth, exigePermissao("estoque.ver"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  const q = req.query || {};
+  const tipos = q.tipos ? String(q.tipos).split(",").map((t) => t.trim()).filter(Boolean) : null;
+  const periodo = q.periodo === "hoje" || q.periodo === "7dias" ? q.periodo : null;
+  const dataOk = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  try {
+    const movimentos = await estoqueDb.listarGeral(req.tenantDir, {
+      tipos,
+      periodo,
+      desde: dataOk(q.desde) ? q.desde : null,
+      ate: dataOk(q.ate) ? q.ate : null,
+      limite: q.limite,
+      antes: q.antes || null,
+      antesId: q.antesId || null,
+    });
+    res.json({ movimentos });
+  } catch (e) {
+    console.error("GET /api/estoque/geral:", e.message);
+    res.status(500).json({ erro: "Não foi possível carregar o extrato." });
+  }
+});
+
 // Lança um movimento manual (entrada, perda ou contagem) na tela de Controle
 // de estoque. Saldo e movimento são gravados juntos, na mesma transação, sob
 // o lock do tenant (ajustarEstoqueTx) — o cache só sincroniza após o COMMIT.
