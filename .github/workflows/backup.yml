@@ -22,6 +22,14 @@ jobs:
           sudo install -d /usr/share/postgresql-common/pgdg
           curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          # Baixar a chave por HTTPS não basta: confere a fingerprint oficial
+          # antes de deixar o apt confiar nela pra instalar pacote nenhum.
+          FPR=$(gpg --show-keys --with-colons --with-fingerprint \
+            /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc | awk -F: '/^fpr:/ {print $10; exit}')
+          if [ "$FPR" != "B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8" ]; then
+            echo "Fingerprint da chave do PGDG não confere: $FPR" >&2
+            exit 1
+          fi
           sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
