@@ -3,8 +3,10 @@
 // enviado para o bucket R2 (Cloudflare, S3-compatible).
 //
 // Sem Supabase Pro não há PITR nem backup automático do projeto, então
-// esta é a proteção própria: `pg_dump` (custom format) + download de todo
-// o bucket `cardapio` do Storage, empacotados num .tar.gz, criptografados
+// esta é a proteção própria: `pg_dump` (custom format, só schema `public` —
+// os schemas internos do Supabase como auth/storage/realtime não são nossos
+// e qualquer projeto novo já nasce com eles prontos) + download de todo o
+// bucket `cardapio` do Storage, empacotados num .tar.gz, criptografados
 // com `age` (chave assimétrica — só quem tem a privada restaura) e
 // enviados ao R2 via AWS CLI (endpoint compatível com S3).
 //
@@ -21,6 +23,14 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
+
+// O tar do Git Bash (MSYS) confunde "\" seguido de certas letras (ex.: o "\n"
+// que aparece em "...\nymbu\..." de um path com usuário/pasta começando com
+// "n") com escape de controle e corrompe o argumento. Barra normal funciona
+// igual no Windows e evita a ambiguidade inteira; no Linux já é assim mesmo.
+function paraTar(caminho) {
+  return caminho.replace(/\\/g, "/");
+}
 
 function exigirEnv(nome) {
   const valor = process.env[nome];
@@ -80,8 +90,16 @@ async function main() {
   const storageDir = path.join(tmp, "storage");
   fs.mkdirSync(storageDir);
 
-  console.log("Gerando dump do Postgres...");
-  execFileSync("pg_dump", ["--format=custom", "--file", dumpPath, databaseUrl], { stdio: "inherit" });
+  console.log("Gerando dump do Postgres (schema public — o resto é infra do Supabase, já pronta em qualquer projeto)...");
+  execFileSync(
+    "pg_dump",
+    // --no-privileges: os GRANT/ALTER DEFAULT PRIVILEGES do dump citam roles
+    // (supabase_admin) e RLS do projeto ORIGEM — no destino isso já vem das
+    // migrations versionadas (supabase/migrations/), não precisa duplicar
+    // aqui e só gera erro de permissão ao restaurar em outro projeto.
+    ["--format=custom", "--schema=public", "--no-privileges", "--file", dumpPath, databaseUrl],
+    { stdio: "inherit" }
+  );
 
   console.log("Baixando objetos do Storage...");
   await baixarStorage(storageDir);
@@ -90,7 +108,9 @@ async function main() {
   const nomePacote = `backup-${dataHora}.tar.gz`;
   const pacotePath = path.join(tmp, nomePacote);
   console.log("Empacotando dump + storage...");
-  execFileSync("tar", ["-czf", pacotePath, "-C", tmp, "banco.dump", "storage"]);
+  // --force-local: sem isso, o tar do Git Bash lê "C:\..." como host remoto
+  // (sintaxe antiga host:caminho) ao rodar localmente no Windows. Inócuo no Linux.
+  execFileSync("tar", ["--force-local", "-czf", paraTar(pacotePath), "-C", paraTar(tmp), "banco.dump", "storage"]);
 
   const cifradoPath = `${pacotePath}.age`;
   console.log("Criptografando com age...");

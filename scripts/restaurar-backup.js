@@ -1,6 +1,12 @@
 // ============================================================
 // RESTAURAR-BACKUP — decripta um pacote gerado pelo scripts/backup.js e
-// restaura banco + Storage no projeto Supabase DE TESTES.
+// restaura banco (schema public) + Storage no projeto Supabase DE TESTES.
+//
+// Apaga e recria o schema public do projeto de testes antes de restaurar
+// (ele é descartável — os testes de integração recriam o que precisam na
+// próxima rodada). Evita ter que reconciliar "clean" contra estado antigo,
+// e nem tenta tocar nos schemas internos do Supabase (auth/storage/etc.):
+// esses não são nossos e já vêm prontos em qualquer projeto.
 //
 // Nunca roda contra produção: exige `.env.test` (o mesmo projeto descartável
 // do `test:integracao`) com `BANCO_DE_TESTE=1`, e recusa se o DATABASE_URL
@@ -16,6 +22,16 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { createClient } = require("@supabase/supabase-js");
+const { Client } = require("pg");
+const { tipoImagemPorAssinatura } = require("../src/validacao");
+
+// O tar do Git Bash (MSYS) confunde "\" seguido de certas letras (ex.: o "\n"
+// que aparece em "...\nymbu\..." de um path com usuário/pasta começando com
+// "n") com escape de controle e corrompe o argumento. Barra normal funciona
+// igual no Windows e evita a ambiguidade inteira; no Linux já é assim mesmo.
+function paraTar(caminho) {
+  return caminho.replace(/\\/g, "/");
+}
 
 const RAIZ = path.join(__dirname, "..");
 const ENV_TESTE = path.join(RAIZ, ".env.test");
@@ -73,9 +89,12 @@ async function subirStorage(supabase, pastaLocal, prefixo = "") {
       await subirStorage(supabase, caminhoLocal, caminhoRemoto);
     } else {
       const conteudo = fs.readFileSync(caminhoLocal);
+      // O bucket só aceita jpeg/png/webp (setup-storage.js); sem contentType
+      // explícito o SDK manda "text/plain" por padrão e o Storage rejeita.
+      const tipo = tipoImagemPorAssinatura(conteudo);
       const { error } = await supabase.storage
         .from(bucket)
-        .upload(caminhoRemoto, conteudo, { upsert: true });
+        .upload(caminhoRemoto, conteudo, { upsert: true, contentType: tipo ? tipo.mime : undefined });
       if (error) throw error;
     }
   }
@@ -91,15 +110,34 @@ async function main() {
   execFileSync("age", ["--decrypt", "-i", chavePrivada, "-o", pacotePath, arquivoCifrado]);
 
   console.log("Extraindo...");
-  execFileSync("tar", ["-xzf", pacotePath, "-C", tmp]);
+  // --force-local: sem isso, o tar do Git Bash lê "C:\..." como host remoto
+  // (sintaxe antiga host:caminho). Barra normal em vez de invertida: o tar
+  // do Git Bash (MSYS) confunde "\" seguido de certas letras (e.g. "\n" em
+  // "...\nymbu\...") com escape de controle e corrompe o argumento — barra
+  // normal funciona igual no Windows e é como o caminho já chega no Linux.
+  execFileSync("tar", ["--force-local", "-xzf", paraTar(pacotePath), "-C", paraTar(tmp)]);
 
   const dumpPath = path.join(tmp, "banco.dump");
   const storageDir = path.join(tmp, "storage");
 
-  console.log(`Restaurando banco em ${databaseUrlTeste}...`);
+  console.log("Apagando o schema public do projeto de testes...");
+  // Só apaga — o dump (--schema=public) já traz o próprio "CREATE SCHEMA
+  // public" dele; recriar aqui também só duplicaria e o pg_restore acusaria
+  // "already exists".
+  const cliente = new Client({ connectionString: databaseUrlTeste });
+  await cliente.connect();
+  try {
+    await cliente.query("DROP SCHEMA IF EXISTS public CASCADE;");
+  } finally {
+    await cliente.end();
+  }
+
+  console.log(`Restaurando banco (schema public) em ${databaseUrlTeste}...`);
   execFileSync(
     "pg_restore",
-    ["--clean", "--if-exists", "--no-owner", "--dbname", databaseUrlTeste, dumpPath],
+    // --no-privileges: mesmo motivo do backup.js — dumps antigos podem ainda
+    // carregar GRANT/ALTER DEFAULT PRIVILEGES do projeto de origem.
+    ["--no-owner", "--no-privileges", "--dbname", databaseUrlTeste, dumpPath],
     { stdio: "inherit" }
   );
 
