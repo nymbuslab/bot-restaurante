@@ -38,18 +38,18 @@ tasks:
   - id: T-04.03
     titulo: Contas financeiras e razao
     fase: F-04.2
-    status: pendente
+    status: concluida
     objetivo: Criar contas e movimentos imutaveis com saldo atualizado atomicamente.
     arquivos:
-      cria: [supabase/migrations/20260915120000_financeiro.sql, src/financeiro-db.js]
+      cria: [supabase/migrations/20260916120000_financeiro.sql, src/financeiro-db.js, test/integracao/financeiro-contas.test.js]
       altera: []
     teste_integracao: Implantacao e movimento atualizam saldo e razao no mesmo commit e isolam tenant.
     teste_funcional: Conta arquivada mantem extrato e recusa novo movimento.
     criterio_aceite: Saldo de cada conta equivale ao saldo inicial mais todos os movimentos confirmados.
     depende_de: [T-03.03]
     paralelizavel: true
-    concluida_em: null
-    suite: nao_executada
+    concluida_em: 2026-09-16
+    suite: verde
   - id: T-04.04
     titulo: Transferencias e conciliacao manual
     fase: F-04.2
@@ -118,14 +118,26 @@ id: T-04.03
 titulo: Contas financeiras e razão
 objetivo: Criar contas e movimentos imutáveis com saldo atualizado atomicamente.
 arquivos:
-  cria: [supabase/migrations/20260915120000_financeiro.sql, src/financeiro-db.js]
+  cria: [supabase/migrations/20260916120000_financeiro.sql, src/financeiro-db.js, test/integracao/financeiro-contas.test.js]
   altera: []
 teste_integracao: Implantação e movimento atualizam saldo e razão no mesmo commit e isolam tenant.
 teste_funcional: Conta arquivada mantém extrato e recusa novo movimento.
 criterio_aceite: Saldo de cada conta equivale ao saldo inicial mais todos os movimentos confirmados.
 depende_de: [T-03.03]
 paralelizavel: true
-status: pendente
+status: concluida
+# 2026-09-16 · suite: 5 passed, 0 failed (test:integracao/financeiro-contas.test.js) + npm run test:ci 784 passed
+# real: 2 h
+# Divergência: migration renomeada de 20260915120000 para 20260916120000 (mesmo
+# motivo de T-04.01/T-04.02). Teste de integração não estava listado no plano;
+# criado como test/integracao/financeiro-contas.test.js (nome distinto de
+# financeiro.test.js para não colidir com o arquivo que T-04.04 cria). A
+# migration já contempla as colunas de transferência/estorno/conciliação que
+# T-04.04 vai usar (vinculo_id, estorno_de, conciliado*), porque T-04.04 não
+# tem migration própria no plano. BUG financeiro pego pelo teste antes de
+# fechar a task: criarConta gravava saldoInicial na coluna E TAMBÉM lançava a
+# implantação em cima dele, duplicando o saldo — corrigido gravando a conta
+# com saldo zero e deixando o valor inicial entrar só pelo movimento.
 ```
 
 ```yaml
