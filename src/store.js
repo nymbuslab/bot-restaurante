@@ -17,6 +17,7 @@ const path = require("path");
 const db = require("./db");
 const Estoque = require("../public/estoque"); // puro (dual-mode): validar/aplicar baixa
 const estoqueDb = require("./estoque-db"); // grava a trilha de movimento na mesma transação
+const catalogoAlvosDb = require("./catalogo-alvos-db"); // sincroniza o registro-ponte relacional (D-02/D-26)
 
 const cache = {}; // slug -> { config, cardapio }
 const slugDe = (dir) => path.basename(dir);
@@ -74,6 +75,9 @@ async function setCardapio(dir, dados) {
     await client.query("UPDATE empresas SET cardapio = $1 WHERE slug = $2", [JSON.stringify(dados), slug]);
     const movimentos = Estoque.diffEstoque(doBanco, dados);
     await estoqueDb.registrarTx(client, r.rows[0].id, movimentos, { tipo: "ajuste", obs: "Editor do produto" });
+    // Registro-ponte relacional (T-04.01): sincroniza NA MESMA transação, só
+    // aditivo (nunca apaga alvo por exclusão/renomeação no jsonb).
+    await catalogoAlvosDb.sincronizarTx(client, r.rows[0].id, dados);
     await client.query("COMMIT");
   } catch (e) {
     // ROLLBACK guardado: se a conexão já caiu (às vezes o próprio motivo do
