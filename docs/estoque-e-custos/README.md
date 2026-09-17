@@ -18,11 +18,11 @@ estabilização e implementação em um sistema que já atende clientes reais.
 - Os protótipos desktop/mobile de Gestão de equipe e Compras/Financeiro foram aprovados pelo dono.
 - Sprints 01, 02 e 03 concluídas: harness/contratos, autorização e ciclo de equipe.
   Última validação: CI 754/754, integração 92/92, sintaxe 183 arquivos e navegador desktop/mobile.
-- Execução pausada por decisão do usuário em 2026-09-15. A Sprint 04 permanece
-  planejada, não iniciada; só retomar após novo pedido explícito. Antes de criar
-  T-04.01, renumerar sua migration planejada, pois `20260915100000` foi usado pela auditoria.
 - O P0-B de backup/restauração foi resolvido em 2026-09-16 (`00-BLOQUEIOS.md`); migrations novas e
   ativação em produção não dependem mais dele.
+- Sprint 04 (registro-ponte, fornecedores e financeiro-base) concluída em 2026-09-16: 4/4 tasks,
+  CI 784/784, integração 124/124. As migrations já foram aplicadas em produção (tabelas aditivas,
+  hardening RLS padrão, ainda vazias e sem UI) — fundação pronta para a Sprint 05 (Compras).
 
 ## Ordem obrigatória
 

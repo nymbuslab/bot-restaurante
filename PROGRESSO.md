@@ -23,14 +23,9 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 
 ### Em aberto
 
-- [ ] **(P1) Sprint 04: Cadastros e financeiro-base** — implementar registro-ponte
-  do catálogo, fornecedores/identificadores e contas/razão no banco descartável.
-  Não iniciada: usuário decidiu pausar após a Sprint 03 em 2026-09-15.
-  Dependência Sprint 03 satisfeita. Antes de criar T-04.01, renumerar a migration
-  planejada `20260915100000_catalogo_alvos.sql`: esse prefixo foi usado por
-  `20260915100000_auditoria_operacional.sql`. Revalidar todos os nomes planejados
-  contra os existentes. Seguir `docs/estoque-e-custos/sprint-04/`; P0-B resolvido em 2026-09-16,
-  não bloqueia mais produção.
+- [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
+  confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
+  Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
 - [ ] **(P1, antes de produção) Política e piloto de Equipe/Atividades** — revisar
   retenção mínima de cinco anos e expurgo da auditoria operacional (não há job
   específico ainda), base legal dos dados de operadores e roteiro de rollout
@@ -44,7 +39,7 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
 - [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
-- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03 homologadas. Faltam cadastros, Compras, estoque/custos e financeiro das Sprints 04 a 08; Insumos/ficha virão em entrega própria. Execução pausada pelo usuário após Sprint 03; P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
+- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03/04 homologadas (registro-ponte, fornecedores e financeiro-base já em produção, sem UI). Faltam Compras, estoque/custos e financeiro completo das Sprints 05 a 08; Insumos/ficha virão em entrega própria. P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
@@ -817,3 +812,11 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
   "Enviar mensagem de teste" e conferir a legibilidade da mensagem no Telegram do celular —
   baixo risco, a entrega em si já foi provada pelo script de integração anterior
   (todas com `status: sucesso`). — 2026-09-16
+
+- [x] **(P1) Sprint 04: Cadastros e financeiro-base** — registro-ponte do catálogo
+  (`catalogo_alvos`), fornecedores/identificadores (`fornecedores`, `catalogo_identificadores`,
+  `fornecedor_alvos`) e contas/razão financeira (`contas_financeiras`, `financeiro_movimentos`,
+  com transferência vinculada, estorno e conciliação manual). 4/4 tasks (T-04.01 a T-04.04),
+  CI 784/784, integração 124/124. Migrations já aplicadas em produção (aditivas, RLS hardening
+  padrão, tabelas vazias, decisão do dono em 2026-09-16 de manter como está). Ainda sem UI: é
+  fundação para Compras (Sprint 05). — 2026-09-16
