@@ -6540,6 +6540,11 @@ table + .secundario.mini,
 .est-metrica .metrica-ico { color: var(--accent-fg); display: inline-flex; }
 
 .est-card { padding: 0; overflow: hidden; }
+/* Extrato geral (Relatórios → Estoque) usa linhas .est-g-mov, que só têm padding
+   vertical (pensadas pra um container já com respiro lateral, como a gaveta do
+   produto) — diferente de .est-linha, que se auto-espaça. Sem isso o texto cola
+   nas bordas do card. */
+#aba-relatorios .est-card { padding: var(--space-3) var(--space-5); }
 
 .est-linha {
   display: grid;
