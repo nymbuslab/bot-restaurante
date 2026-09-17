@@ -2029,6 +2029,7 @@
           <div class="linha"><div class="campo"><label for="equipePerfil">Perfil inicial</label><select id="equipePerfil" required></select></div><div class="campo"><label for="equipeInatividade">Bloquear após</label><select id="equipeInatividade"><option value="5">5 minutos</option><option value="15" selected>15 minutos</option><option value="30">30 minutos</option><option value="60">60 minutos</option></select></div></div>
           <div class="campo"><label for="equipeFuncionarioPin">Novo PIN de 4 dígitos</label><input id="equipeFuncionarioPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password"><p class="campo-nota">Na edição, deixe vazio para manter o PIN atual.</p></div>
           <div class="equipe-permissoes"><h3>Permissões</h3><div id="equipePermissoes"></div></div>
+          <p class="campo-nota">Informe o funcionário: o acesso dele e as ações feitas no sistema ficam registrados para segurança e auditoria.</p>
           <label class="equipe-ativo"><input id="equipeAtivo" type="checkbox" checked><span>Funcionário ativo</span></label>
           <button type="button" class="secundario" id="equipeDesbloquear" hidden>Desbloquear PIN</button>
           <p id="equipeFormErro" class="erro" role="alert"></p>
@@ -2045,6 +2046,7 @@
   <div id="equipeOperadorModal" class="modal-overlay equipe-overlay" hidden>
     <div class="modal-caixa equipe-pin-caixa" role="dialog" aria-modal="true" aria-labelledby="equipeOperadorTitulo">
       <div class="equipe-gaveta-topo"><div><h2 id="equipeOperadorTitulo">Trocar operador</h2><p class="sub">Use um dispositivo autorizado e o PIN do funcionário.</p></div><button type="button" class="secundario equipe-icone-btn" id="equipeOperadorFechar" aria-label="Fechar"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <p class="campo-nota">Seu acesso é registrado para fins de segurança e auditoria. Fale com o dono do restaurante para saber mais sobre o uso dos seus dados.</p>
       <form id="equipeOperadorForm">
         <div class="campo"><label for="equipeOperadorSelect">Funcionário</label><select id="equipeOperadorSelect" required></select></div>
         <div class="campo"><label for="equipePin">PIN</label><input id="equipePin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" required></div>

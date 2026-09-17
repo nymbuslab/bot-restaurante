@@ -1,6 +1,6 @@
 # ROPA — Registro de Operações de Tratamento (LGPD Art. 37)
 
-**Última revisão:** 2026-06-24
+**Última revisão:** 2026-09-16
 
 > Documento interno que mapeia **o que o sistema faz com dados pessoais**. Serve para
 > prestar contas à ANPD ou aos titulares. **Manter atualizado** sempre que mudar a coleta,
@@ -27,8 +27,8 @@
 | 7 | E-mails transacionais | e-mail, nome | Dono do restaurante | Boas-vindas, recuperação de senha, avisos de assinatura | Execução de contrato | Pelo tempo do envio (no provedor) | `src/email.js` (Resend) |
 | 8 | Recuperação de senha | e-mail, token (hash) | Dono do restaurante | Redefinir o acesso com segurança | Execução de contrato / legítimo interesse | Token expira em 1 hora | `password_resets` |
 | 9 | Trilha de auditoria | evento, slug, data/hora (sem PII no detalhe) | — (metadado) | Prestação de contas (Art. 37) | Obrigação legal / legítimo interesse | A definir (sugerido: 24 meses) | `src/auditoria.js` |
-| 10 | Acesso da equipe (homologação) | nome de exibição, perfil, permissões, hash do PIN, hashes de tokens, horários de acesso/bloqueio | Funcionário do restaurante | Identificar operador e limitar acesso | A validar pelo controlador antes do rollout | Sem rotina de expurgo específica ainda; registros ligados à empresa e apagados em cascata na exclusão | `src/equipe-db.js`, `equipe_*`; ver [../equipe.md](../equipe.md) |
-| 11 | Auditoria operacional da equipe (homologação) | ID do ator, tipo, evento, horário e IDs operacionais; nome atual resolvido na consulta; sem PIN/token no detalhe | Dono e funcionário do restaurante | Rastrear acesso e alterações operacionais | A validar pelo controlador antes do rollout | Mínimo aprovado de cinco anos enquanto a empresa existir; sem expurgo automático; cascata na exclusão da empresa | `src/auditoria-operacional.js`, `auditoria_operacional`; ver [../equipe.md](../equipe.md) |
+| 10 | Acesso da equipe (homologação) | nome de exibição, perfil, permissões, hash do PIN, hashes de tokens, horários de acesso/bloqueio | Funcionário do restaurante | Identificar operador e limitar acesso | Legítimo interesse do controlador em administrar e proteger a operação (Art. 7, IX) | Sem teto de tempo, enquanto o funcionário estiver ativo ou a empresa existir; registros ligados à empresa e apagados em cascata na exclusão | `src/equipe-db.js`, `equipe_*`; ver [../equipe.md](../equipe.md) |
+| 11 | Auditoria operacional da equipe (homologação) | ID do ator, tipo, evento, horário e IDs operacionais; nome atual resolvido na consulta; sem PIN/token no detalhe | Dono e funcionário do restaurante | Rastrear acesso e alterações operacionais, prestação de contas | Legítimo interesse do controlador (Art. 7, IX) | Retido por no mínimo cinco anos (piso, não teto — decisão do controlador, 2026-09-16); sem expurgo automático por idade; apagado apenas na exclusão da empresa (cascata) | `src/auditoria-operacional.js`, `auditoria_operacional`; ver [../equipe.md](../equipe.md) |
 | — | Imagens do cardápio | fotos de **produtos** (não pessoais) | — | Exibir o cardápio | — | Enquanto a conta existir | Supabase Storage |
 | — | Trilha de estoque | produto, quantidade, saldo e o **número do pedido** que originou a baixa (sem nome, telefone ou endereço) | — | Explicar toda mudança de saldo do estoque | — | **Apagada após 12 meses** | `src/estoque-db.js` (`estoque_movimentos`) |
 
@@ -38,6 +38,10 @@
   conta (`DELETE /api/conta`). Ver [lgpd-e-conta.md](lgpd-e-conta.md).
 - **Cliente final:** exerce os direitos **junto ao restaurante** (controlador); o aviso no
   checkout e o rodapé do cardápio orientam isso. A retenção automática (12 meses) também limita o acúmulo.
+- **Funcionário do restaurante:** exerce os direitos **junto ao dono** (controlador da relação),
+  que edita (`PUT /api/equipe/:id`) ou desativa o cadastro pelo painel. Não há autoatendimento
+  direto do operador hoje; o aviso na tela de PIN (`public/admin.html`, modal "Trocar operador")
+  informa que o acesso é registrado e orienta a procurar o dono para saber mais.
 - **Canal/Encarregado (DPO):** `atendimento@nymbuslab.com.br` — resposta em até **15 dias**.
 
 ## Segurança (resumo)

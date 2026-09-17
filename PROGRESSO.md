@@ -26,13 +26,16 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
-- [ ] **(P1, antes de produção) Política e piloto de Equipe/Atividades** — revisar
-  retenção mínima de cinco anos e expurgo da auditoria operacional (não há job
-  específico ainda), base legal dos dados de operadores e roteiro de rollout
-  desligável. Homologação passou, mas não autoriza liberação comercial. P0-B (backup) resolvido em
-  2026-09-16; este item agora depende só da revisão de retenção/base legal.
-  Inclui revisar a comunicação de privacidade aos operadores antes do piloto;
-  a política pública atual não foi alterada neste fechamento documental.
+- [ ] **(P1, antes de produção) Roteiro de rollout desligável de Equipe/Atividades** — única
+  peça que falta do item anterior (LGPD já resolvida): definir como o piloto pode ser revertido
+  por tenant se algo der errado (gate `equipe_habilitada` nasce `false` — confirmar se dá pra
+  desligar de volta depois de ativado, sem perder dados/histórico). Última pendência antes de
+  autorizar liberação comercial.
+- [ ] **(P2) Limpeza de sessões/dispositivos revogados de Equipe** — `equipe_sessoes` e
+  `equipe_dispositivos` guardam linhas revogadas indefinidamente (sem valor depois de expirar,
+  diferente da auditoria de 5 anos que é intencional). Sugestão do relatório LGPD: job simples
+  apagando revogados há mais de ~90 dias, mesmo padrão dos outros jobs em `index.js`. Não é
+  lacuna legal, é limpeza técnica.
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
 
@@ -820,3 +823,11 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
   CI 784/784, integração 124/124. Migrations já aplicadas em produção (aditivas, RLS hardening
   padrão, tabelas vazias, decisão do dono em 2026-09-16 de manter como está). Ainda sem UI: é
   fundação para Compras (Sprint 05). — 2026-09-16
+
+- [x] **(P1) Conformidade LGPD de Equipe/Atividades — base legal, retenção e aviso ao operador** —
+  auditoria dedicada (skill `lgpd-checker`) fechou as lacunas de dados pessoais antes do piloto:
+  base legal do ROPA fechada como legítimo interesse (Art. 7, IX) para acesso e auditoria da
+  equipe (`docs/lgpd/ropa.md`, atividades 10/11); retenção de 5 anos esclarecida como PISO, não
+  teto — decisão do dono, sem job de expurgo por idade, só cascade na exclusão da empresa; aviso
+  de privacidade permanente na tela de troca de operador e no cadastro de funcionário
+  (`public/admin.html`). CI 784/784, sintaxe OK, validado visualmente. — 2026-09-16

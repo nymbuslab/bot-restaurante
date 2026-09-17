@@ -73,10 +73,18 @@ uma lista explícita de campos operacionais; PIN, hash, token e payload bruto n�
 
 A migration `20260915100000_auditoria_operacional.sql` habilita RLS deny-all e
 índices por tenant/cursor, evento e ator. A tabela é separada da auditoria LGPD,
-portanto o job legado de 24 meses não a apaga. Retenção mínima aprovada: cinco
-anos, enquanto a empresa existir; exclusão da empresa apaga em cascata. Ainda
-não há expurgo automático após cinco anos; revisar no portão de produção.
-Esta etapa não adiciona auditoria transacional às mutações financeiras legadas.
+portanto o job legado de 24 meses não a apaga. Retenção decidida em 2026-09-16
+(ver `docs/lgpd/ropa.md`, atividade 11): cinco anos é **piso, não teto** — não
+existe (nem deve existir) expurgo automático por idade; a tabela só é apagada
+na exclusão da empresa (cascata). Esta etapa não adiciona auditoria transacional
+às mutações financeiras legadas.
+
+**Comunicação ao operador (LGPD Art. 9):** a tela de troca de operador
+(`#equipeOperadorModal`, `public/admin.html`) mostra um aviso permanente de que
+o acesso é registrado para segurança/auditoria e orienta procurar o dono para
+saber mais; o formulário de cadastro (`#equipeGaveta`) lembra o dono de informar
+isso ao funcionário. Base legal fechada como legítimo interesse (Art. 7, IX) —
+ver `docs/lgpd/ropa.md`, atividades 10 e 11.
 
 ## Validação
 

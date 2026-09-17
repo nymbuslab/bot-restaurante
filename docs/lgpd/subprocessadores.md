@@ -28,11 +28,13 @@ Registro interno dos serviços externos que tratam dados pessoais em nome da Nym
 
 ## Pendências / ações
 
-- **Equipe/Atividades antes do piloto:** atualizar a comunicação de privacidade
+- ~~**Equipe/Atividades antes do piloto:** atualizar a comunicação de privacidade
   aplicável aos operadores, validar base legal com o controlador e revisar
-  retenção/expurgo. Dados dessa funcionalidade estão apenas em homologação;
-  não publicar uma promessa legal nova como se a liberação já tivesse ocorrido.
-  Pendência operacional em `../../PROGRESSO.md`; inventário em `ropa.md`.
+  retenção/expurgo.~~ Resolvido em 2026-09-16: base legal fechada (Art. 7, IX),
+  retenção esclarecida como piso sem teto, e aviso de privacidade adicionado à
+  tela de troca de operador. Dados dessa funcionalidade seguem apenas em
+  homologação (não liberados comercialmente); ver `ropa.md` (atividades 10/11)
+  e `../equipe.md`.
 
 - **(decisão) Região do Supabase = EUA (`us-east-1`).** Permitido pela LGPD como transferência
   internacional com salvaguardas (já divulgado na Política). Se a preferência for manter os dados
