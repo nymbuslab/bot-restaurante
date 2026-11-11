@@ -247,6 +247,18 @@ async function listarDispositivos(slug) {
   return r.rows;
 }
 
+async function perfilAtual(slug, funcionarioId) {
+  const empresa = await empresaPorSlug(db, slug);
+  const r = await db.query(
+    `select p.codigo as perfil
+       from equipe_funcionarios f
+       join equipe_perfis p on p.empresa_id = f.empresa_id and p.id = f.perfil_id
+      where f.empresa_id = $1 and f.id = $2`,
+    [empresa.id, funcionarioId]
+  );
+  return r.rows[0] ? r.rows[0].perfil : null;
+}
+
 async function listarFuncionariosDoDispositivo(slug, dispositivoToken) {
   const empresa = await empresaPorSlug(db, slug);
   const dispositivo = await db.query(
@@ -452,6 +464,7 @@ module.exports = {
   criarFuncionario,
   listarFuncionarios,
   atualizarFuncionario,
+  perfilAtual,
   autorizarDispositivo,
   listarDispositivos,
   listarFuncionariosDoDispositivo,
