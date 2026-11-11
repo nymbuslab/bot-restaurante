@@ -34,3 +34,5 @@ design/canvas/*.html
 # são meta-observação sobre as próprias skills, não conteúdo do projeto.
 cross-cutting-principles.md
 skill-observations/
+# indice derivado do memox: reconstruivel, nao versionado
+.expx/memoria/
