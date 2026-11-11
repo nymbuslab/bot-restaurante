@@ -162,6 +162,36 @@ async function atualizarFuncionario(slug, funcionarioId, dados = {}, ator = {}) 
       "select id from equipe_perfis where empresa_id = $1 and codigo = $2 and ativo = true",
       [empresa.id, perfil]
     );
+
+    // Delegação: valida contra o estado efetivo de verdade (perfil + regras do
+    // perfil na empresa + ajustes por funcionário já persistidos), não contra
+    // o PADROES estático isolado — e dentro do lock de linha acima, pra não
+    // abrir janela de corrida entre a leitura e a escrita.
+    if (ator.tipo !== "dono") {
+      const efetivasAtuais = await permissoesDoFuncionario(client, empresa.id, funcionarioId, atual.rows[0].perfil);
+      const regrasPerfilFinal = await client.query(
+        "select permissao, permitido from equipe_perfil_permissoes where empresa_id = $1 and perfil_id = $2",
+        [empresa.id, perfilDb.rows[0].id]
+      );
+      const ajustesFinais = Array.isArray(dados.ajustes)
+        ? dados.ajustes
+        : (await client.query(
+            "select permissao, permitido from equipe_funcionario_permissoes where empresa_id = $1 and funcionario_id = $2",
+            [empresa.id, funcionarioId]
+          )).rows;
+      const efetivasResultantes = Permissoes.resolverEfetivas({
+        perfil, permissoesPerfil: regrasPerfilFinal.rows, ajustes: ajustesFinais,
+      });
+      const permissoesAtor = new Set(ator.permissoes || []);
+      try {
+        Permissoes.validarDelegacao(permissoesAtor, efetivasAtuais);
+        Permissoes.validarDelegacao(permissoesAtor, efetivasResultantes);
+      } catch (e) {
+        e.codigo = "SEM_PERMISSAO";
+        throw e;
+      }
+    }
+
     let pinHash = atual.rows[0].pin_hash;
     if (dados.pin !== undefined && dados.pin !== "") {
       const pin = validarPin(dados.pin);
@@ -245,18 +275,6 @@ async function listarDispositivos(slug) {
     [empresa.id]
   );
   return r.rows;
-}
-
-async function perfilAtual(slug, funcionarioId) {
-  const empresa = await empresaPorSlug(db, slug);
-  const r = await db.query(
-    `select p.codigo as perfil
-       from equipe_funcionarios f
-       join equipe_perfis p on p.empresa_id = f.empresa_id and p.id = f.perfil_id
-      where f.empresa_id = $1 and f.id = $2`,
-    [empresa.id, funcionarioId]
-  );
-  return r.rows[0] ? r.rows[0].perfil : null;
 }
 
 async function listarFuncionariosDoDispositivo(slug, dispositivoToken) {
@@ -464,7 +482,6 @@ module.exports = {
   criarFuncionario,
   listarFuncionarios,
   atualizarFuncionario,
-  perfilAtual,
   autorizarDispositivo,
   listarDispositivos,
   listarFuncionariosDoDispositivo,

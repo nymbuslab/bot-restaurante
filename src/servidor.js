@@ -378,10 +378,10 @@ app.put("/api/equipe/:id", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenc
       throw erro;
     }
     const dados = req.body || {};
-    const perfilParaValidar = dados.perfil === undefined
-      ? await equipeDb.perfilAtual(req.slug, req.params.id)
-      : dados.perfil;
-    validarDelegacaoEquipe(req.ator, perfilParaValidar, dados.ajustes);
+    // Validação de delegação acontece dentro de atualizarFuncionario, sob o
+    // mesmo lock de linha (`for update`) do estado atual do funcionário —
+    // evita TOCTOU e enxerga as permissões realmente persistidas, não só o
+    // perfil padrão. Ver equipe-db.js.
     const funcionario = await equipeDb.atualizarFuncionario(req.slug, req.params.id, dados, req.ator);
     res.json({ funcionario });
   } catch (e) {
