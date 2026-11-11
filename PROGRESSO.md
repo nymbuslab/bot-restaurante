@@ -41,6 +41,11 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
+- [ ] **(P1) Decidir se `min_machines_running` vira 2 em definitivo no Fly** — o incidente de
+  2026-10-16 (host físico do Fly inacessível, ver ✅ Concluído) foi resolvido recriando a
+  máquina, e o redeploy subiu com 2 máquinas em vez da 1 configurada hoje em `fly.toml`. Ter
+  2 reduz o risco de ficar fora do ar por completo quando só um host cai, mas dobra o custo
+  mensal do Fly. Decisão de infra/custo do dono, não técnica.
 - [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
 - [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03/04 homologadas (registro-ponte, fornecedores e financeiro-base já em produção, sem UI). Faltam Compras, estoque/custos e financeiro completo das Sprints 05 a 08; Insumos/ficha virão em entrega própria. P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
@@ -831,3 +836,10 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
   teto — decisão do dono, sem job de expurgo por idade, só cascade na exclusão da empresa; aviso
   de privacidade permanente na tela de troca de operador e no cadastro de funcionário
   (`public/admin.html`). CI 784/784, sintaxe OK, validado visualmente. — 2026-09-16
+
+- [x] **Incidente: plataforma fora do ar por host morto no Fly** — queda total reportada pelo
+  cliente; diagnóstico isolou a causa no host físico do Fly (não app/código/Supabase, que
+  respondiam normalmente até o edge). A máquina ficava `started` mas inacessível (💀), e até
+  os comandos de controle (`stop`/`restart`) retornavam 408. Resolvido com
+  `flyctl machine destroy --force` + `flyctl deploy`; confirmado HTTP 200 no fim. Causa e
+  comandos de correção documentados em `docs/gotchas.md` e `DEPLOY.md`. — 2026-10-16

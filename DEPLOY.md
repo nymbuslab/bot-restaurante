@@ -291,6 +291,10 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
   estavam conectados, sem QR. Ou seja: trava de qualquer jeito → volta sozinho em ~30–60s.
   `GET /health` é só vivacidade (responde `200 {ok,uptime}`) e **não** consulta o Supabase de
   propósito — se o banco cair, reiniciar não resolveria e só geraria restart em loop.
+  **Essa auto-cura pressupõe que o host físico está vivo.** Se o próprio host do Fly cair
+  (infraestrutura do provedor, não o app), a máquina fica presa — nem o health check nem
+  `fly restart`/`stop` conseguem chegar até ela (erro 408). Nesse caso a recuperação é manual:
+  `flyctl machine destroy <id> --force` + `flyctl deploy`. Ver `docs/gotchas.md`.
 - O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento
   (~$5–7/mês para 1 GB RAM em São Paulo).
 - Cada tenant WhatsApp é uma conexão WebSocket (Baileys, sem Chromium) — RAM baixa.
