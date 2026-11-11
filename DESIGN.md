@@ -29,6 +29,10 @@ colors:
   warning-subtle: "rgba(234,179,8,0.12)"
   info: "#3B82F6"
   info-subtle: "rgba(59,130,246,0.12)"
+  white: "#FFFFFF"
+  black: "#000000"
+  whatsapp-green: "#25D366"
+  backdrop: "rgba(0,0,0,0.6)"
 typography:
   display:
     fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif"
@@ -60,11 +64,20 @@ typography:
     fontWeight: 700
     lineHeight: 1.4
     letterSpacing: "0.5px"
+  thermal-print:
+    fontFamily: "'Courier New', monospace"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.35
+    letterSpacing: "normal"
 rounded:
   sm: "6px"
   md: "10px"
   lg: "14px"
   xl: "18px"
+  pill: "999px"
+  badge: "20px"
+  tag: "4px"
 spacing:
   1: "4px"
   2: "8px"
@@ -147,6 +160,9 @@ Paleta deliberadamente contida: um acento de marca para ação, um secundário p
 - **Overlay** (`#2A2E3F`): modal, input do simulador — a camada mais alta, reservada a conteúdo flutuante.
 - **Border** (`#2E3247`) / **Border Subtle** (`#242738`): divisórias, nunca usadas para criar hierarquia de cor.
 - **Text Primary** (`#F0F2FA`), **Text Secondary** (`#8B92B3`), **Text Secondary (sobre overlay)** (`#9AA1BF`), **Text Disabled** (`#4A5068`): escala de ênfase do texto, do mais lido ao mais apagado.
+- **White** (`#FFFFFF`) / **Black** (`#000000`): únicas cores fora da paleta com uso sancionado — impressão térmica, QR code, preenchimento de marca e texto sobre preenchimento sólido (nunca decoração solta).
+- **Backdrop** (`rgba(0,0,0,0.6)`): escurecimento por trás de modal/overlay.
+- **WhatsApp Green** (`#25D366`): exceção única e deliberada — é a cor oficial do WhatsApp, usada só para identificar o canal, nunca como acento do produto.
 
 ### Named Rules
 **The Fill-vs-Ink Rule.** Toda cor de marca ou semântica tem duas formas: uma cheia (preenchimento, com texto branco por cima) e uma clara (`-fg`, para quando a MESMA cor precisa ser o texto sobre fundo escuro). Nunca usar a forma cheia como cor de texto pequeno — ela foi calibrada para contraste como fundo, não como tinta.
@@ -171,6 +187,10 @@ Fonte única em todo o produto — sem segunda família para títulos ou número
 ### Escala fechada
 A tipografia não usa uma progressão livre: existem exatamente 14 valores permitidos — 10/11/12/13/14/15/16px para interface (rótulo, botão, linha de tabela) e 18/20/24/32/40/48/56px para destaque (métrica, total, headline). Um tamanho novo em tela sai dessa lista; se o texto "precisa" de um valor fora dela, o problema é o layout, não a escala.
 
+**Limite conhecido deste arquivo:** o frontmatter acima só representa 6 papéis (os 5 canônicos do Stitch + a exceção de impressão), não os 14 valores. A fonte de verdade da escala completa é `docs/design-system.md`; ferramentas que comparam `font-size` literal contra este frontmatter vão sinalizar os outros 8 valores (12/13/15/18/24/32/40/56px) como "fora do token" mesmo sendo válidos. Não é bug do produto.
+
+**Thermal Print** (`'Courier New', monospace`, 12px): exceção proposital e única — `.cupom-print`/`.cupom-preview` espelham a métrica do papel térmico 80mm (48 colunas), nunca usar `--fonte-mono` nem Plus Jakarta Sans aqui.
+
 ### Named Rules
 **The Eleven-Pixel Floor Rule.** Nenhum texto funcional (rótulo, botão, badge, célula de tabela) fica abaixo de 11px. Texto menor que isso falha em tela de alta densidade e sob pressa — exatamente o cenário de uso do produto.
 
@@ -194,7 +214,9 @@ Sistema de três sombras neutras (`--shadow-sm/md/lg`), nunca coloridas. Sombra 
 
 ## Shapes
 
-Quatro raios em escala fechada (6/10/14/18px), do controle pequeno ao container maior — nunca um valor intermediário. Pills de status e selo usam raio total (`border-radius: 999px` / `20px` conforme a altura). Bordas são sempre 1px sólida na cor `--border`; nunca borda lateral grossa colorida como acento decorativo de card (esse padrão foi identificado e removido do produto).
+Quatro raios em escala fechada (6/10/14/18px), do controle pequeno ao container maior — nunca um valor intermediário. Pills de status e selo usam raio total (`border-radius: 999px` / `20px` conforme a altura). Tag pequena (etiqueta de item arquivado/destaque) usa `4px`, mais quadrada que a escala principal — aparece 3x com a mesma intenção, por isso é token, não exceção isolada. Bordas são sempre 1px sólida na cor `--border`; nunca borda lateral grossa colorida como acento decorativo de card (esse padrão foi identificado e removido do produto).
+
+**The Half-Height Pill Rule.** Qualquer elemento cujo raio seja igual à metade da própria altura/largura é um pill geométrico (toggle, badge, barra de progresso, input arredondado) — nesses casos o valor correto é sempre `999px`, nunca um número calculado à mão que trava se o elemento mudar de tamanho.
 
 ## Components
 
