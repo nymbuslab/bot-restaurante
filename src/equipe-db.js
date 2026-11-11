@@ -12,6 +12,22 @@ function erro(codigo, mensagem) {
   return e;
 }
 
+// Normaliza uma única vez, usado tanto pra validar a delegação quanto pra
+// gravar — evitar duas leituras independentes do mesmo array que podem
+// divergir sobre o que conta como ajuste válido.
+function normalizarAjustes(ajustesBrutos) {
+  if (!Array.isArray(ajustesBrutos)) return null;
+  const limpos = [];
+  for (const a of ajustesBrutos) {
+    if (!a || typeof a.permissao !== "string" || !a.permissao || typeof a.permitido !== "boolean") continue;
+    if (Permissoes.EXCLUSIVAS_DONO.has(a.permissao)) {
+      throw erro("PERMISSAO_EXCLUSIVA", "Esta permissão é exclusiva do dono.");
+    }
+    limpos.push({ permissao: a.permissao, permitido: a.permitido });
+  }
+  return limpos;
+}
+
 function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
@@ -162,6 +178,7 @@ async function atualizarFuncionario(slug, funcionarioId, dados = {}, ator = {}) 
       "select id from equipe_perfis where empresa_id = $1 and codigo = $2 and ativo = true",
       [empresa.id, perfil]
     );
+    const ajustesNormalizados = normalizarAjustes(dados.ajustes);
 
     // Delegação: valida contra o estado efetivo de verdade (perfil + regras do
     // perfil na empresa + ajustes por funcionário já persistidos), não contra
@@ -173,8 +190,8 @@ async function atualizarFuncionario(slug, funcionarioId, dados = {}, ator = {}) 
         "select permissao, permitido from equipe_perfil_permissoes where empresa_id = $1 and perfil_id = $2",
         [empresa.id, perfilDb.rows[0].id]
       );
-      const ajustesFinais = Array.isArray(dados.ajustes)
-        ? dados.ajustes
+      const ajustesFinais = ajustesNormalizados !== null
+        ? ajustesNormalizados
         : (await client.query(
             "select permissao, permitido from equipe_funcionario_permissoes where empresa_id = $1 and funcionario_id = $2",
             [empresa.id, funcionarioId]
@@ -213,16 +230,12 @@ async function atualizarFuncionario(slug, funcionarioId, dados = {}, ator = {}) 
       [nome, perfilDb.rows[0].id, ativo, inatividade, pinHash, empresa.id, funcionarioId]
     );
 
-    if (Array.isArray(dados.ajustes)) {
+    if (ajustesNormalizados !== null) {
       await client.query(
         "delete from equipe_funcionario_permissoes where empresa_id = $1 and funcionario_id = $2",
         [empresa.id, funcionarioId]
       );
-      for (const ajuste of dados.ajustes) {
-        if (!ajuste || !ajuste.permissao || typeof ajuste.permitido !== "boolean") continue;
-        if (Permissoes.EXCLUSIVAS_DONO.has(ajuste.permissao)) {
-          throw erro("PERMISSAO_EXCLUSIVA", "Esta permissão é exclusiva do dono.");
-        }
+      for (const ajuste of ajustesNormalizados) {
         await client.query(
           `insert into equipe_funcionario_permissoes (empresa_id, funcionario_id, permissao, permitido)
            values ($1, $2, $3, $4)`,

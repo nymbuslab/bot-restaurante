@@ -67,13 +67,13 @@ function resolverEfetivas({ perfil, permissoesPerfil = [], ajustes = [] }) {
 
   for (const regra of permissoesPerfil) {
     if (!regra || EXCLUSIVAS_DONO.has(regra.permissao)) continue;
-    if (regra.permitido) efetivas.add(regra.permissao);
-    else efetivas.delete(regra.permissao);
+    if (regra.permitido === true) efetivas.add(regra.permissao);
+    else if (regra.permitido === false) efetivas.delete(regra.permissao);
   }
   for (const ajuste of ajustes) {
     if (!ajuste || EXCLUSIVAS_DONO.has(ajuste.permissao)) continue;
-    if (ajuste.permitido) efetivas.add(ajuste.permissao);
-    else efetivas.delete(ajuste.permissao);
+    if (ajuste.permitido === true) efetivas.add(ajuste.permissao);
+    else if (ajuste.permitido === false) efetivas.delete(ajuste.permissao);
   }
   return efetivas;
 }
