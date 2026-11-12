@@ -197,9 +197,9 @@ desabilitados até existirem de verdade.
   pelo **Receber pagamento** de sempre.
 - **Dados/rotas:** `POST /api/pedidos/:id/itens` (`acrescentarItens` em `src/pedidos.js`, UPDATE com
   `FOR UPDATE`); tipo gravado em `tipo_entrega`; sem cupom na abertura (via so de cozinha).
-- **Limites:** a comanda abre e reabre pelo fluxo existente (modal do pedido), sem tela propria de
-  comandas em aberto; abrir uma de cada vez (como o modo mesa); cancelar item ja enviado a cozinha
-  pede confirmacao extra. Prototipo da revisao em `design/canvas/pdv-comanda.dc.html`.
+- **Limites:** a comanda abre e reabre pelo fluxo existente (modal do pedido) ou pela secao de
+  comandas abertas da aba Mesas (tela 13); abrir uma de cada vez (como o modo mesa); cancelar item
+  ja enviado a cozinha pede confirmacao extra. Prototipo da revisao em `design/canvas/pdv-comanda.dc.html`.
 - **No celular:** os mesmos componentes do PDV; o banner e o botao seguem o modal em tela cheia.
 
 ### 12. Relatórios → Estoque (extrato geral) — CONCLUIDO (Plano Completo)
@@ -219,6 +219,30 @@ desabilitados até existirem de verdade.
 - **No celular:** chips quebram linha, campos De/Ate empilham, lista e "Carregar mais" iguais ao
   desktop.
 
+### 13. Mesas / Comandas (comandas abertas) — IMPLEMENTADO, validacao visual pendente
+- **Feito:** secao **Comandas abertas** acima da grade de mesas fisicas, com contador no menu e na
+  secao. Cada card mostra numero, tempo aberto, quantidade de itens e total; ordem da mais antiga
+  para a mais nova, **sem filtro de data** (comanda esquecida nao some na virada do dia).
+- **Gates separados:** com `pdv.operar` e sem `mesas.operar` o operador ve so a secao de comandas e
+  nao a grade de mesas. Com caixa fechado ou vencido, as comandas seguem visiveis e so
+  "Adicionar produtos" e "Receber" ficam desabilitados, com aviso proprio; pre-conta e cancelar
+  continuam.
+- **Detalhe:** gaveta no desktop e sheet de tela cheia no celular (mesma estrutura do painel de
+  mesa, sem oferecer recurso exclusivo de mesa). Acoes por contrato: acrescentar usa
+  `POST /api/comandas/:id/itens` (permissao `pdv.operar` + caixa), receber usa
+  `/api/caixa/receber/:id` (`caixa.movimentar`), pre-conta usa
+  `POST /api/comandas/:id/imprimir-pre-conta` (`pdv.operar`, so a via da pre-conta) e cancelar usa
+  as rotas de Pedidos (`pedidos.cancelar`).
+- **Retorno do PDV:** ao fechar a venda de tipo Comanda, a tela Mesas e acionada, o card nasce
+  destacado e o detalhe abre quando a lista carrega. Se a abertura falhar, aparece "Tentar abrir"
+  com o numero, sem repetir o POST.
+- **Dados/rotas:** `pedidos` segue como fonte unica, sem migration e sem mesa artificial. Detalhe em
+  `docs/sprintx/features/comandas-abertas-mesas/`; a bateria de integracao das rotas esta escrita e
+  ainda nao rodou (falta `.env.test` descartavel).
+- **Limites:** sem taxa de servico, pessoas, pagamento parcial ou transferencia (isso e Mesa, nao
+  Comanda); recebida ou cancelada sai da secao e o historico fica em Pedidos.
+- **No celular:** breakpoint de 560px; o card ocupa a largura e a gaveta vira sheet de tela cheia.
+
 ---
 
 ## Status e ordem
@@ -226,7 +250,7 @@ desabilitados até existirem de verdade.
 **Redesign base concluido; referência viva para telas novas:** shell, Login, Cadastro, Pedidos,
 Detalhe do pedido, Cardapio, Editor de item, Configuracoes, Conexao e Simulador nasceram do ciclo
 v0.4.0/v0.7.0/v0.8.0. Depois disso o produto ganhou Dashboard, PDV, Mesas, Caixa, Assinatura,
-Master, Estoque e Relatórios → Estoque (extrato geral); para telas novas, combine esta referência visual com
+Master, Estoque, Relatórios → Estoque (extrato geral) e a lista de comandas abertas em Mesas; para telas novas, combine esta referência visual com
 [docs/design-system.md](../docs/design-system.md) e com o estado real em `CLAUDE.md`/`PROGRESSO.md`.
 
 Cada tela seguiu o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
