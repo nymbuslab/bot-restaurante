@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-11-11
+atualizado: 2026-11-12
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1160,3 +1160,17 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   misturado numa lista de vantagens.
 - Ajustes visuais gerais: ícones, títulos e contraste mais consistentes entre o painel e a
   página inicial.
+
+## [1.2.15] - Comandas abertas na tela de Mesas - 2026-11-12
+
+- As comandas criadas no PDV agora aparecem na tela Mesas / Comandas, numa seção própria acima
+  das mesas, com número, tempo aberto, quantidade de itens e total. Ficam todas visíveis, sem
+  filtro de data, com as mais antigas primeiro.
+- Tocar no card abre o detalhe da comanda, com acrescentar produtos, imprimir a pré-conta,
+  receber e cancelar. Cada ação depende da permissão de quem está operando.
+- Com o caixa fechado ou vencido a comanda continua visível; só o acréscimo de produtos e o
+  recebimento ficam bloqueados.
+- Ao fechar uma venda do tipo Comanda no PDV, o painel vai direto para a comanda criada, com o
+  card destacado e o detalhe aberto.
+- Entrega em validação: a bateria de integração das rotas de comanda ainda não rodou e a tela
+  ainda não foi conferida em navegador real.

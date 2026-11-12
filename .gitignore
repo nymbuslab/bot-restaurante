@@ -36,3 +36,4 @@ cross-cutting-principles.md
 skill-observations/
 # indice derivado do memox: reconstruivel, nao versionado
 .expx/memoria/
+.expx/estado.json
