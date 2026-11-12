@@ -6981,6 +6981,7 @@ function pdvPagarRecalc() {
 
 async function finalizarVendaPdv() {
   const ehBalcao = pdvTipoEntrega === "Balcão";
+  const ehComanda = pdvTipoEntrega === "Comanda";
   const total = pdvTotalCobrar();
   // Só Balcão registra pagamento agora. Entrega/Retirada vão "a receber" (sem pagamento).
   let registrados = [];
@@ -7019,7 +7020,10 @@ async function finalizarVendaPdv() {
   }
   // Sem supressão client-side: o servidor já escopa o alerta de "novo pedido" só ao
   // cardápio web (origem='web'), então venda de PDV (qualquer tipo) nunca abre o modal.
-  toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : "Pedido enviado. Fica a receber em Pedidos.");
+  toast(ehBalcao ? "Venda registrada. Já está em Pedidos." : ehComanda ? "Comanda aberta com os itens lançados." : "Pedido enviado. Fica a receber em Pedidos.");
+  // Comanda avulsa: o servidor devolve o pedido criado; leva o operador direto para
+  // o card em Mesas / Comandas (D-05). A criação NÃO é refeita se a abertura falhar.
+  const criada = ehComanda ? ((await r.json().catch(() => ({}))).pedido || null) : null;
   // Impressão (cupom/cozinha conforme o tipo) é enfileirada no servidor e sai pelo agente.
   pdvCart = []; pdvDesconto = null; pdvPagamentos = []; pdvTipoEntrega = "Balcão"; pdvEntrega = null; pdvComandaId = ""; pdvRenderTipo();
   fecharPdvPagar();
@@ -7027,16 +7031,19 @@ async function finalizarVendaPdv() {
   const rc = await api("GET", "/api/cardapio"); if (rc && rc.ok) cardapioAtual = await rc.json();
   renderPdvProdutos();
   renderPdvCarrinho();
+  if (criada && criada.id) abrirComandaNaTela(criada.id, criada.numero);
 }
 
 /* ---- Modo PDV acrescentando à comanda (pedido em aberto) ---- */
 var pedidoModoId = null; // id do pedido em aberto sendo acrescentado
 var pedidoModoNumero = ""; // número da comanda (rótulo do banner)
+var pedidoModoViaComanda = false; // aberto pelo detalhe da Comanda (aba Mesas)
 
 function pedidoModoAtivar(d) {
   if (!d || !d.id) return;
   pedidoModoId = d.id;
   pedidoModoNumero = d.numero;
+  pedidoModoViaComanda = !!d.viaComanda;
   // Banner no topo do PDV (mesma tarja visual do modo mesa).
   if (!$("pdvPedidoBanner")) {
     var abaPdv = $("aba-pdv");
@@ -7069,8 +7076,11 @@ function pedidoModoBannerSpan(numero, cliente) {
 
 function pedidoModoDesativar(voltarParaPedidos) {
   var idPedido = pedidoModoId;
+  var viaComanda = pedidoModoViaComanda;
+  var numero = pedidoModoNumero;
   pedidoModoId = null;
   pedidoModoNumero = "";
+  pedidoModoViaComanda = false;
   pdvCart = []; pdvDesconto = null;
   pdvLimparBusca(); // sai do modo: PDV volta com a grade limpa
   var banner = $("pdvPedidoBanner");
@@ -7081,6 +7091,9 @@ function pedidoModoDesativar(voltarParaPedidos) {
   pdvTituloModoPedido(false);
   renderPdvCarrinho();
   if (voltarParaPedidos !== false && idPedido) {
+    // Cancelar o acréscimo a uma Comanda volta para o detalhe dela (não para
+    // Pedidos), mesmo destino do caminho de sucesso em pedidoLancarDoPdv.
+    if (viaComanda) { abrirComandaNaTela(idPedido, numero); return; }
     var pedNavBtn = document.querySelector("nav button[data-aba='pedidos']");
     if (pedNavBtn) pedNavBtn.click();
     if (typeof carregarPedidos === "function") carregarPedidos();
@@ -7115,7 +7128,12 @@ async function pedidoLancarDoPdv() {
         observacao: l.observacao || ""
       };
     });
-    var r = await api("POST", "/api/pedidos/" + pedidoModoId + "/itens", { itens: itens });
+    // Duas origens, dois contratos: a Comanda usa pdv.operar (+ caixa) e a aba
+    // Pedidos usa pedidos.editar. O endpoint de Comanda já reusa o mesmo serviço.
+    var rota = pedidoModoViaComanda ? "/api/comandas/" : "/api/pedidos/";
+    var voltarComanda = pedidoModoViaComanda ? pedidoModoId : null;
+    var voltarNumero = pedidoModoNumero;
+    var r = await api("POST", rota + pedidoModoId + "/itens", { itens: itens });
     if (!r || !r.ok) {
       var e = (r && await r.json().catch(function () { return {}; })) || {};
       toast(e.erro || "Erro ao acrescentar à comanda. Confira os itens e tente de novo.", "erro");
@@ -7124,6 +7142,7 @@ async function pedidoLancarDoPdv() {
     toast("Itens acrescentados à comanda!");
     // A via da cozinha (só a rodada nova) é enfileirada no servidor e impressa pelo agente.
     pedidoModoDesativar(false);
+    if (voltarComanda) { abrirComandaNaTela(voltarComanda, voltarNumero); return; }
     var pedNavBtn = document.querySelector("nav button[data-aba='pedidos']");
     if (pedNavBtn) pedNavBtn.click();
     if (typeof carregarPedidos === "function") carregarPedidos();
@@ -7132,6 +7151,18 @@ async function pedidoLancarDoPdv() {
   } finally {
     if (btn) btn.disabled = false;
   }
+}
+
+// Volta para a aba Mesas / Comandas já com o card destacado e o detalhe aberto.
+// Se o detalhe não abrir, o card fica com a ação de tentar de novo (sem refazer
+// o POST que acabou de gravar).
+function abrirComandaNaTela(id, numero) {
+  comandaState.destaqueId = id;
+  comandaState.abrirAposCarregar = id;
+  // falhaAbertura só é setado se a abertura de fato falhar (ver carregarComandasAbertas);
+  // setá-lo aqui antes da tentativa pisca o aviso de "não abriu aqui" no caminho normal.
+  var btn = document.querySelector("nav button[data-aba='mesas']");
+  if (btn) btn.click();
 }
 
 // ---- Wiring do PDV ----
@@ -7493,6 +7524,261 @@ var mesasInitDone = false;
 var mesaPagarModo = "fechar";
 var mesaModoId = null;
 var mesaModoNome = "";
+var comandaState = {
+  lista: [],
+  operacao: { caixaAberto: false, caixaVencido: false, permissoes: {} },
+  selecionada: null,
+  destaqueId: null,
+  abrirAposCarregar: null,
+  falhaAbertura: null,
+  semPlano: false, // 403 do Plano Completo: a tela inteira vira o gate de plano
+};
+
+function painelPode(permissao) {
+  if (typeof painelAtor === "undefined" || !painelAtor || painelAtor.tipo === "dono") return true;
+  return (painelAtor.permissoes || []).includes(permissao);
+}
+
+function atualizarBadgeComandas(total) {
+  [$("badge-comandas"), $("badge-comandas-mob"), $("comandasContador")].forEach(function (badge) {
+    if (!badge) return;
+    badge.textContent = String(total || 0);
+    badge.hidden = !(total > 0);
+  });
+}
+
+async function carregarComandasAbertas(opts) {
+  opts = opts || {};
+  comandaState.semPlano = false;
+  if (!painelPode("pdv.operar")) {
+    comandaState.lista = [];
+    atualizarBadgeComandas(0);
+    if ($("comandasAbertas")) $("comandasAbertas").hidden = true;
+    return true;
+  }
+  if ($("comandasAbertas")) $("comandasAbertas").hidden = false;
+  if (!opts.somenteBadge && $("comandasGrade")) {
+    $("comandasGrade").innerHTML = '<p class="sub comandas-estado">Carregando comandas…</p>';
+  }
+  var r = await api("GET", "/api/comandas/abertas");
+  // 403 aqui é o gate do Plano Completo (a permissão já foi conferida acima), não
+  // falha de rede: esconde a seção e deixa a tela mostrar o gate de plano.
+  if (r && r.status === 403) {
+    comandaState.semPlano = true;
+    comandaState.lista = [];
+    atualizarBadgeComandas(0);
+    if ($("comandasAbertas")) $("comandasAbertas").hidden = true;
+    return false;
+  }
+  if (!r || !r.ok) {
+    if (!opts.somenteBadge && $("comandasGrade")) {
+      $("comandasGrade").innerHTML = '<div class="comandas-estado"><p>Não deu para carregar as comandas.</p><button type="button" class="secundario mini" id="comandasTentar">Tentar de novo</button></div>';
+      var tentar = $("comandasTentar");
+      if (tentar) tentar.addEventListener("click", function () { carregarComandasAbertas(); });
+    }
+    return false;
+  }
+  var dados = await r.json();
+  comandaState.lista = dados.comandas || [];
+  comandaState.operacao = dados.operacao || comandaState.operacao;
+  atualizarBadgeComandas(comandaState.lista.length);
+  if (!opts.somenteBadge) renderComandasAbertas();
+  if (comandaState.abrirAposCarregar) {
+    var abrirId = comandaState.abrirAposCarregar;
+    comandaState.abrirAposCarregar = null;
+    var abriu = await abrirComandaPainel(abrirId);
+    if (!abriu) {
+      var alvo = comandaState.lista.find(function (c) { return Number(c.id) === Number(abrirId); });
+      comandaState.falhaAbertura = { id: abrirId, numero: alvo ? alvo.numero : abrirId };
+      renderComandasAbertas();
+    }
+  }
+  return true;
+}
+
+// Contador de comandas no menu: poll leve (só o número) para a pendência aparecer
+// em qualquer tela. Na aba Mesas a própria lista se atualiza, então não duplica.
+setInterval(function () {
+  if (document.hidden) return;
+  if (!painelPode("pdv.operar")) return;
+  if ($("aba-mesas") && $("aba-mesas").classList.contains("ativa")) return;
+  carregarComandasAbertas({ somenteBadge: true }).catch(function () {});
+}, 30000);
+
+function comandaDuracao(iso) {
+  var mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return mins + " min";
+  var horas = Math.floor(mins / 60);
+  if (horas < 24) return horas + "h" + (mins % 60 ? " " + (mins % 60) + "min" : "");
+  var dias = Math.floor(horas / 24);
+  return dias + (dias === 1 ? " dia" : " dias") + (horas % 24 ? " e " + (horas % 24) + "h" : "");
+}
+
+function renderComandasAbertas() {
+  var grade = $("comandasGrade");
+  if (!grade) return;
+  grade.innerHTML = "";
+  if (comandaState.falhaAbertura) {
+    var aviso = document.createElement("div");
+    aviso.className = "comanda-retry";
+    aviso.innerHTML = '<span>A Comanda ' + pdvEsc(String(comandaState.falhaAbertura.numero)) + ' foi criada, mas não abriu aqui.</span><button type="button" class="secundario mini">Tentar abrir</button>';
+    aviso.querySelector("button").addEventListener("click", function () { abrirComandaPainel(comandaState.falhaAbertura.id); });
+    grade.appendChild(aviso);
+  }
+  if (!comandaState.lista.length) {
+    var vazio = document.createElement("p");
+    vazio.className = "sub comandas-estado";
+    vazio.textContent = "Nenhuma comanda aberta.";
+    grade.appendChild(vazio);
+    return;
+  }
+  comandaState.lista.forEach(function (c) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "comanda-card" + (Number(c.id) === Number(comandaState.destaqueId) ? " destaque" : "");
+    btn.dataset.comandaId = c.id;
+    var qtdItens = (c.itens || []).reduce(function (s, i) { return s + (Number(i.qtd) || 1); }, 0);
+    btn.innerHTML =
+      '<span class="comanda-card-topo"><strong>Comanda ' + pdvEsc(String(c.numero)) + '</strong><span class="comanda-aberta-badge">Aberta</span></span>' +
+      '<span class="comanda-identificacao">' + pdvEsc(c.cliente || "Sem identificação") + '</span>' +
+      '<span class="comanda-card-meta"><span>' + pdvEsc(comandaDuracao(c.criadoEm)) + '</span><span>' + qtdItens + (qtdItens === 1 ? " item" : " itens") + '</span><strong>' + pdvMoney(c.total || 0) + "</strong></span>";
+    btn.addEventListener("click", function () { abrirComandaPainel(c.id); });
+    grade.appendChild(btn);
+  });
+}
+
+async function abrirComandaPainel(id) {
+  var r = await api("GET", "/api/comandas/" + id);
+  if (!r || !r.ok) {
+    toast("A comanda continua salva, mas não foi possível abrir agora.", "erro");
+    return false;
+  }
+  var dados = await r.json();
+  comandaState.selecionada = dados.comanda;
+  comandaState.operacao = dados.operacao || comandaState.operacao;
+  comandaState.destaqueId = dados.comanda.id;
+  comandaState.falhaAbertura = null;
+  renderComandasAbertas();
+  renderComandaPainel();
+  $("comandaPainelOverlay").classList.add("visivel");
+  $("comandaPainel").classList.add("aberto");
+  $("comandaPainel").setAttribute("tabindex", "-1");
+  $("comandaPainel").focus();
+  document.addEventListener("keydown", comandaPainelEsc);
+  return true;
+}
+
+function fecharComandaPainel() {
+  document.removeEventListener("keydown", comandaPainelEsc);
+  $("comandaPainel").classList.remove("aberto");
+  $("comandaPainelOverlay").classList.remove("visivel");
+}
+
+function comandaPainelEsc(e) {
+  if (e.key === "Escape" && $("comandaPainel").classList.contains("aberto")) {
+    e.preventDefault();
+    fecharComandaPainel();
+  }
+}
+
+function renderComandaPainel() {
+  var c = comandaState.selecionada;
+  if (!c) return;
+  $("comandaPainelNome").textContent = "Comanda " + c.numero;
+  $("comandaPainelSub").textContent = "Aberta há " + comandaDuracao(c.criadoEm) + " · " + (c.cliente || "Sem identificação");
+  var itens = c.itens || [];
+  var qtd = itens.reduce(function (s, i) { return s + (Number(i.qtd) || 1); }, 0);
+  $("comandaItensQtd").textContent = qtd + (qtd === 1 ? " item" : " itens");
+  $("comandaTotal").textContent = pdvMoney(c.total || 0);
+  var lista = $("comandaItensLista");
+  lista.innerHTML = itens.length ? "" : '<p class="sub comandas-estado">Nenhum item lançado.</p>';
+  itens.forEach(function (item, idx) {
+    var linha = document.createElement("div");
+    linha.className = "comanda-item";
+    linha.innerHTML =
+      '<span class="comanda-item-qtd">' + (item.qtd || 1) + '×</span>' +
+      '<span class="comanda-item-nome">' + pdvEsc(item.nome || "Item") + '</span>' +
+      '<strong>' + pdvMoney(pdvPrecoLinha(item)) + '</strong>' +
+      (comandaState.operacao.permissoes.cancelar ? '<button type="button" class="comanda-item-cancelar" aria-label="Cancelar item" title="Cancelar item">' + ICO_LIXEIRA + "</button>" : "");
+    var cancelar = linha.querySelector(".comanda-item-cancelar");
+    if (cancelar) cancelar.addEventListener("click", function () { cancelarItemComanda(idx, item.nome); });
+    lista.appendChild(linha);
+  });
+  var op = comandaState.operacao || {};
+  var permissoes = op.permissoes || {};
+  var caixaOk = !!op.caixaAberto && !op.caixaVencido;
+  var avisoCaixa = $("comandaCaixaAviso");
+  if (avisoCaixa) {
+    avisoCaixa.hidden = caixaOk;
+    var avisoTxt = avisoCaixa.querySelector("span");
+    if (avisoTxt) {
+      avisoTxt.textContent = op.caixaVencido
+        ? "Há um caixa de outro dia aberto. Feche o caixa para adicionar produtos ou receber esta comanda."
+        : "Abra o caixa para adicionar produtos ou receber esta comanda.";
+    }
+  }
+  $("btnComandaAdicionar").hidden = !permissoes.acrescentar;
+  $("btnComandaAdicionar").disabled = !caixaOk;
+  $("btnComandaReceber").hidden = !permissoes.receber;
+  $("btnComandaReceber").disabled = !caixaOk;
+  $("btnComandaPreConta").hidden = !permissoes.imprimir;
+  $("btnComandaCancelar").hidden = !permissoes.cancelar;
+}
+
+function adicionarProdutosComanda() {
+  var c = comandaState.selecionada;
+  if (!c) return;
+  fecharComandaPainel();
+  // viaComanda: o acréscimo usa a rota de Comandas (pdv.operar + caixa), não a de
+  // Pedidos (pedidos.editar), e ao terminar volta para o detalhe desta comanda.
+  pedidoModoAtivar({ id: c.id, numero: c.numero, cliente: c.cliente, viaComanda: true });
+}
+
+async function imprimirPreContaComanda() {
+  var c = comandaState.selecionada;
+  if (!c) return;
+  var r = await api("POST", "/api/comandas/" + c.id + "/imprimir-pre-conta");
+  if (r && r.ok) toast("Pré-conta enviada para impressão.");
+  else { var e = r ? await r.json().catch(function () { return {}; }) : {}; toast(e.erro || "Não foi possível imprimir a pré-conta.", "erro"); }
+}
+
+function receberComanda() {
+  var c = comandaState.selecionada;
+  if (!c) return;
+  abrirPedReceber(c, async function () {
+    fecharComandaPainel();
+    await carregarComandasAbertas();
+  });
+}
+
+async function cancelarComandaAberta() {
+  var c = comandaState.selecionada;
+  if (!c) return;
+  var conf = await confirmarComOpcao("Cancelar comanda?", "A comanda sairá da lista de abertas e continuará no histórico de Pedidos.", "Devolver os itens ao estoque", "Cancelar comanda");
+  if (!conf) return;
+  var r = await api("POST", "/api/pedidos/" + c.id + "/cancelar", { devolver: conf.opcao });
+  if (!r || !r.ok) { var e = r ? await r.json().catch(function () { return {}; }) : {}; toast(e.erro || "Não foi possível cancelar a comanda.", "erro"); return; }
+  fecharComandaPainel();
+  toast("Comanda cancelada.");
+  await carregarComandasAbertas();
+}
+
+async function cancelarItemComanda(itemIdx, nome) {
+  var c = comandaState.selecionada;
+  if (!c) return;
+  var conf = await confirmarComOpcao("Cancelar item?", "Remover \"" + (nome || "item") + "\" desta comanda.", "Devolver o item ao estoque", "Cancelar item");
+  if (!conf) return;
+  var r = await api("POST", "/api/pedidos/" + c.id + "/cancelar-item", { itemIdx: itemIdx, devolver: conf.opcao });
+  if (!r || !r.ok) { var e = r ? await r.json().catch(function () { return {}; }) : {}; toast(e.erro || "Não foi possível cancelar o item.", "erro"); return; }
+  var abriu = await abrirComandaPainel(c.id);
+  if (!abriu) { fecharComandaPainel(); await carregarComandasAbertas(); }
+}
+
+function mostrarMesasFisicas(mostrar) {
+  [$("btnConfigurarMesas"), $("mesasSecaoTitulo"), $("mesasResumo"), $("mesasGrade")].forEach(function (el) { if (el) el.hidden = !mostrar; });
+  var controles = document.querySelector("#mesasConteudo .mesas-controles");
+  if (controles) controles.hidden = !mostrar;
+}
 
 async function carregarMesas() {
   mesasInitListeners();
@@ -7506,28 +7792,59 @@ async function carregarMesas() {
   mesaState.caixaVencido = false;
 
   try {
-    // Gate: Plano Completo via GET /api/caixa (retorna 403 se não Completo)
+    // Comandas e mesas têm gates separados (D-08): quem só tem pdv.operar vê as
+    // comandas abertas, sem ganhar a grade de mesas físicas.
+    var comandasOk = await carregarComandasAbertas();
+    if (comandaState.semPlano) { $("mesasConteudo").hidden = true; $("mesasLock").hidden = false; return; }
+    var podeMesas = painelPode("mesas.operar");
+    mostrarMesasFisicas(podeMesas);
+    if (!podeMesas) {
+      if (!comandasOk) { $("mesasConteudo").hidden = true; $("mesasErroRede").hidden = false; }
+      return;
+    }
+    // Gate das mesas físicas: caixa fechado ou vencido bloqueia a mesa, não a comanda.
     const rCaixa = await api("GET", "/api/caixa");
-    if (!rCaixa || rCaixa.status === 403) { $("mesasConteudo").hidden = true; $("mesasLock").hidden = false; return; }
-    const caixaData = rCaixa.ok ? await rCaixa.json() : {};
-    if (!caixaData.caixa) { $("mesasConteudo").hidden = true; $("mesasSemCaixa").hidden = false; return; }
+    if (!rCaixa) return; // 401 já redirecionou
+    if (rCaixa.status === 403) { $("mesasConteudo").hidden = true; $("mesasLock").hidden = false; return; }
+    if (!rCaixa.ok) {
+      mostrarMesasFisicas(false);
+      $("mesasErroRede").hidden = false;
+      $("mesasConteudo").hidden = !comandasOk;
+      return;
+    }
+    const caixaData = await rCaixa.json();
+    if (!caixaData.caixa) {
+      mostrarMesasFisicas(false);
+      $("mesasSemCaixa").hidden = false;
+      return;
+    }
     // Caixa do dia anterior aberto (vencido): modo "só fechar" — carrega as mesas para
     // fechar/receber as abertas (quebra o deadlock caixa↔mesa), mas bloqueia abrir/lançar.
     mesaState.caixaVencido = !!caixaData.caixa.vencido;
     if (mesaState.caixaVencido && $("mesasSoFecharAviso")) $("mesasSoFecharAviso").hidden = false;
 
     const rMesas = await api("GET", "/api/mesas");
-    if (!rMesas || rMesas.status === 403) { $("mesasConteudo").hidden = true; $("mesasLock").hidden = false; return; }
-    if (!rMesas.ok) { $("mesasConteudo").hidden = true; $("mesasErroRede").hidden = false; return; }
+    if (!rMesas || rMesas.status === 403) {
+      mostrarMesasFisicas(false);
+      $("mesasErroRede").hidden = false;
+      $("mesasConteudo").hidden = !comandasOk;
+      return;
+    }
+    if (!rMesas.ok) {
+      mostrarMesasFisicas(false);
+      $("mesasErroRede").hidden = false;
+      $("mesasConteudo").hidden = !comandasOk;
+      return;
+    }
     const mesasData = await rMesas.json();
     mesaState.lista = mesasData.mesas || [];
     if (mesasData.alertaParadaMin != null) mesaState.alertaParadaMin = mesasData.alertaParadaMin;
     $("mesasConteudo").hidden = false;
     renderMesasGrade();
   } catch (e) {
-    toast("Erro ao conectar. Tente recarregar a página.", "erro");
+    mostrarMesasFisicas(false);
     $("mesasConteudo").hidden = true;
-    $("mesasSemCaixa").hidden = false;
+    $("mesasErroRede").hidden = false;
   }
 }
 
@@ -8540,6 +8857,12 @@ function mesasInitListeners() {
     renderMesasGrade();
   });
   $("btnConfigurarMesas").addEventListener("click", abrirConfigurarMesas);
+  $("comandaPainelFechar").addEventListener("click", fecharComandaPainel);
+  $("comandaPainelOverlay").addEventListener("click", fecharComandaPainel);
+  $("btnComandaAdicionar").addEventListener("click", adicionarProdutosComanda);
+  $("btnComandaReceber").addEventListener("click", receberComanda);
+  $("btnComandaPreConta").addEventListener("click", imprimirPreContaComanda);
+  $("btnComandaCancelar").addEventListener("click", cancelarComandaAberta);
   $("mesasConfigBg").addEventListener("click", fecharConfigurarMesas);
   $("mesasConfigFechar").addEventListener("click", fecharConfigurarMesas);
   $("mesasConfigFechar2").addEventListener("click", fecharConfigurarMesas);

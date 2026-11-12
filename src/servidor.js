@@ -2796,6 +2796,53 @@ app.get("/api/pedidos", exigeAuth, exigePermissao("pedidos.ver"), async (req, re
   }
 });
 
+function atorPode(req, permissao) {
+  if (req.ator && req.ator.tipo === "dono") return true;
+  return !!(req.ator && Array.isArray(req.ator.permissoes) && req.ator.permissoes.includes(permissao));
+}
+
+async function estadoOperacionalComandas(req) {
+  const cx = await caixa.caixaAberto(req.tenantDir);
+  const caixaVencido = !!(cx && cx.vencido);
+  return {
+    caixaAberto: !!cx && !caixaVencido,
+    caixaVencido,
+    permissoes: {
+      ver: atorPode(req, "pdv.operar"),
+      acrescentar: atorPode(req, "pdv.operar"),
+      imprimir: atorPode(req, "pdv.operar"),
+      receber: atorPode(req, "caixa.movimentar"),
+      cancelar: atorPode(req, "pedidos.cancelar"),
+    },
+  };
+}
+
+// Lista operacional dedicada: nao herda o filtro de data da aba Pedidos.
+app.get("/api/comandas/abertas", exigeAuth, exigePermissao("pdv.operar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const [comandas, operacao] = await Promise.all([
+      pedidos.listarComandasAbertas(req.tenantDir),
+      estadoOperacionalComandas(req),
+    ]);
+    res.json({ comandas, operacao });
+  } catch (e) {
+    console.error("comandas abertas:", e.message);
+    res.status(500).json({ erro: "Falha ao carregar as comandas abertas." });
+  }
+});
+
+app.get("/api/comandas/:id", exigeAuth, exigePermissao("pdv.operar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const comanda = await pedidos.lerComandaAberta(req.tenantDir, Number(req.params.id));
+    if (!comanda) return res.status(404).json({ erro: "Comanda aberta nao encontrada." });
+    res.json({ comanda, operacao: await estadoOperacionalComandas(req) });
+  } catch (e) {
+    res.status(500).json({ erro: "Falha ao carregar a comanda." });
+  }
+});
+
 
 // Dashboard: agregados prontos (calculados no banco), sem baixar o histórico.
 // `dashboardRaw` soma no SQL (fuso BR); `montarDashboard` (puro) monta o formato
@@ -2868,7 +2915,7 @@ app.post("/api/pedidos/:id/cancelar-item", exigeAuth, exigePermissao("pedidos.ca
 // estoque ANTES (409), baixa estoque atomicamente, faz UPDATE incremental na
 // MESMA linha (append itens + soma total) e enfileira SÓ os itens da rodada nova
 // para a cozinha. A via é a mesma de PDV avulso ("pdv"), rótulo livre na fila.
-app.post("/api/pedidos/:id/itens", exigeAuth, exigePermissao("pedidos.editar"), async (req, res) => {
+async function acrescentarItensPedido(req, res) {
   try {
     const b = req.body || {};
     if (!Array.isArray(b.itens) || !b.itens.length) return res.status(400).json({ erro: "A lista de itens está vazia." });
@@ -2931,6 +2978,48 @@ app.post("/api/pedidos/:id/itens", exigeAuth, exigePermissao("pedidos.editar"), 
     res.json(atualizado);
   } catch (e) {
     res.status(400).json({ erro: e.message || "Falha ao acrescentar itens ao pedido." });
+  }
+}
+
+app.post("/api/pedidos/:id/itens", exigeAuth, exigePermissao("pedidos.editar"), acrescentarItensPedido);
+
+app.post("/api/comandas/:id/itens", exigeAuth, exigePermissao("pdv.operar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  try {
+    const cx = await caixa.caixaAberto(req.tenantDir);
+    if (!cx) return res.status(400).json({ erro: "Abra o caixa para adicionar produtos a comanda.", caixaFechado: true });
+    if (cx.vencido) return res.status(400).json({ erro: "Feche o caixa do dia anterior para adicionar produtos a comanda.", caixaVencido: true });
+    const comanda = await pedidos.lerComandaAberta(req.tenantDir, Number(req.params.id));
+    if (!comanda) return res.status(404).json({ erro: "Comanda aberta nao encontrada." });
+    return acrescentarItensPedido(req, res);
+  } catch (e) {
+    return res.status(500).json({ erro: "Falha ao verificar a comanda." });
+  }
+});
+
+app.post("/api/comandas/:id/imprimir-pre-conta", exigeAuth, exigePermissao("pdv.operar"), async (req, res) => {
+  if (!(await exigePdv(req, res))) return;
+  if (!(await exigeImpressao(req, res))) return;
+  try {
+    const comanda = await pedidos.lerComandaAberta(req.tenantDir, Number(req.params.id));
+    if (!comanda) return res.status(404).json({ erro: "Comanda aberta nao encontrada." });
+    const cfg = store.getConfig(req.tenantDir) || {};
+    const texto = Comanda.montarPreConta(
+      { nome: String(comanda.numero) },
+      [comanda],
+      {
+        rotulo: "Comanda",
+        subtotal: comanda.total || 0,
+        taxaServico: 0,
+        total: comanda.total || 0,
+        quando: new Date().toISOString(),
+      },
+      cfg
+    );
+    await impressaoFila.enfileirar(req.tenantDir, "comanda-pre-conta", [texto]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ erro: e.message || "Falha ao imprimir a pre-conta." });
   }
 });
 

@@ -6234,7 +6234,8 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
 .mesa-rodada-item-nome { color: var(--text-secondary); }
 .mesa-rodada-item-det { color: var(--text-disabled); font-size: 12px; }
 .mesa-rodada-item-preco { color: var(--text-primary); font-weight: 600; flex-shrink: 0; margin-left: 8px; }
-.mesa-item-del {
+.mesa-item-del,
+.comanda-item-cancelar {
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; margin-left: 8px;
   width: 26px; height: 26px; padding: 0;
@@ -6242,7 +6243,8 @@ input.mesas-slider[type="range"] { width: 120px; accent-color: var(--accent); cu
   color: var(--text-disabled); cursor: pointer;
   transition: color .15s, background .15s;
 }
-.mesa-item-del:hover { color: var(--error); background: rgba(239,68,68,.1); }
+.mesa-item-del:hover,
+.comanda-item-cancelar:hover { color: var(--error); background: rgba(239,68,68,.1); }
 .mesa-acoes-row {
   display: flex;
   gap: 8px;
@@ -6421,6 +6423,138 @@ table + .secundario.mini,
 .pdv-mesa-banner strong { font-weight: 700; }
 .pdv-mesa-banner .secundario { margin-left: auto; background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.3); color: #fff; white-space: nowrap; }
 .pdv-mesa-banner .secundario:hover { background: rgba(255,255,255,.25); }
+
+/* ---------- Comandas abertas (seção permanente dentro de Mesas) ----------
+   A Comanda é um pedido avulso do PDV: a seção mostra o trabalho pendente e o
+   drawer opera só o que existe em pedido aberto. Sem mesa artificial. */
+.comandas-abertas {
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.comandas-cabecalho { margin-bottom: 10px; }
+.comandas-titulo-linha { display: flex; align-items: center; gap: 8px; }
+.comandas-titulo-linha h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.comandas-titulo-linha .nav-badge { margin-left: 0; }
+.comandas-cabecalho .sub { margin: 4px 0 0; }
+.comandas-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+.comandas-estado { margin: 0; padding: 18px 0; text-align: center; }
+.comanda-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.comanda-card:hover { border-color: var(--accent-fg); }
+.comanda-card.destaque { border-color: var(--accent-fg); box-shadow: inset 0 0 0 1px var(--accent-fg); }
+.comanda-card:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
+.comanda-card-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.comanda-card-topo strong { font-size: 14px; font-weight: 700; }
+.comanda-aberta-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--success-subtle);
+  color: var(--success);
+}
+.comanda-identificacao {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comanda-card-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary); }
+.comanda-card-meta strong { margin-left: auto; font-size: 14px; color: var(--text-primary); }
+/* Venda criada que não abriu: o card avisa e oferece abrir de novo (sem refazer o POST). */
+.comanda-retry {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.comanda-retry button { margin-left: auto; }
+/* Drawer da Comanda */
+.comanda-caixa-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.comanda-caixa-aviso svg { flex-shrink: 0; margin-top: 1px; color: var(--warning); }
+.comanda-itens-cab {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+}
+.comanda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.comanda-item:last-child { border-bottom: none; }
+.comanda-item-qtd { flex-shrink: 0; font-size: 12px; color: var(--text-disabled); }
+.comanda-item-nome { flex: 1; min-width: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+.comanda-item strong { flex-shrink: 0; font-weight: 600; color: var(--text-primary); }
+.comanda-rodape { display: flex; flex-direction: column; gap: 10px; }
+.comanda-total { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; color: var(--text-secondary); }
+.comanda-total strong { font-size: 18px; color: var(--text-primary); }
+.comanda-acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.comanda-acoes #btnComandaAdicionar { grid-column: 1 / -1; }
+.comanda-acoes button:disabled { opacity: 0.5; cursor: not-allowed; }
+.comanda-cancelar {
+  grid-column: 1 / -1;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--error);
+}
+.comanda-cancelar:hover { text-decoration: underline; }
+@media (max-width: 560px) {
+  .comandas-grade { grid-template-columns: 1fr; }
+  .comanda-caixa-aviso { margin: 12px 16px 0; }
+}
 
 /* ============================================================
    MONITORAMENTO (painel master — saúde do sistema ao vivo)

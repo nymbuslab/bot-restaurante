@@ -45,7 +45,8 @@
         </button>
         <button data-aba="mesas">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="9" height="9" rx="1"/><rect x="13" y="3" width="9" height="9" rx="1"/><rect x="2" y="14" width="9" height="9" rx="1"/><rect x="13" y="14" width="9" height="9" rx="1"/></svg>
-          <span>Mesas</span>
+          <span>Mesas / Comandas</span>
+          <span class="nav-badge" id="badge-comandas" hidden>0</span>
         </button>
         <button data-aba="caixa">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
@@ -1148,11 +1149,24 @@
             Configurar
           </button>
         </div>
+        <section class="comandas-abertas" id="comandasAbertas" aria-labelledby="comandasTitulo">
+          <div class="comandas-cabecalho">
+            <div>
+              <div class="comandas-titulo-linha">
+                <h3 id="comandasTitulo">Comandas abertas</h3>
+                <span class="nav-badge comandas-contador" id="comandasContador" hidden>0</span>
+              </div>
+              <p class="sub">Da mais antiga para a mais recente</p>
+            </div>
+          </div>
+          <div class="comandas-grade" id="comandasGrade" aria-live="polite"></div>
+        </section>
         <div class="cx-aviso-vencido mesas-sofechar" id="mesasSoFecharAviso" hidden>
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span>Há um caixa de outro dia aberto. Você pode <strong>fechar e receber</strong> as mesas em aberto, mas só abre novas mesas e lança itens depois de fechar o caixa.</span>
           <button type="button" class="secundario mini" id="mesasIrCaixa">Ir para o Caixa</button>
         </div>
+        <div class="mesas-secao-titulo" id="mesasSecaoTitulo"><h3>Mesas</h3></div>
         <div class="mesas-resumo" id="mesasResumo" hidden></div>
         <div class="mesas-grade" id="mesasGrade"></div>
         <div class="mesas-controles">
@@ -1196,6 +1210,38 @@
           <button type="button" class="secundario" id="btnMesaImprimirConta" hidden>Imprimir Conta</button>
           <button type="button" class="secundario" id="btnMesaReceberParcial" hidden>Receber Parcial</button>
           <button type="button" class="primario" id="btnMesaFecharConta" hidden>Fechar Conta</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Comanda: detalhe operacional sem recursos exclusivos de mesa -->
+    <div class="mesa-painel-overlay" id="comandaPainelOverlay"></div>
+    <aside class="mesa-painel comanda-painel" id="comandaPainel" role="dialog" aria-modal="true" aria-label="Comanda aberta">
+      <div class="mesa-painel-topo">
+        <button type="button" class="mesa-painel-fechar" id="comandaPainelFechar" aria-label="Fechar painel da comanda">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="mesa-painel-titulo">
+          <h2 id="comandaPainelNome">Comanda</h2>
+          <p class="mesa-painel-sub" id="comandaPainelSub"></p>
+        </div>
+        <span class="mesa-status-badge s-ocupada">ABERTA</span>
+      </div>
+      <div class="comanda-caixa-aviso" id="comandaCaixaAviso" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Abra o caixa para adicionar produtos ou receber esta comanda.</span>
+      </div>
+      <div class="mesa-painel-conteudo comanda-painel-conteudo">
+        <div class="comanda-itens-cab"><span>Itens lançados</span><span id="comandaItensQtd">0 itens</span></div>
+        <div id="comandaItensLista"></div>
+      </div>
+      <div class="mesa-painel-rodape comanda-rodape">
+        <div class="comanda-total"><span>Total</span><strong id="comandaTotal">R$ 0,00</strong></div>
+        <div class="comanda-acoes">
+          <button type="button" class="primario" id="btnComandaAdicionar">Adicionar produtos</button>
+          <button type="button" class="secundario" id="btnComandaReceber">Receber</button>
+          <button type="button" class="secundario" id="btnComandaPreConta">Imprimir pré-conta</button>
+          <button type="button" class="comanda-cancelar" id="btnComandaCancelar">Cancelar comanda</button>
         </div>
       </div>
     </aside>
@@ -2073,6 +2119,11 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span>Pedidos</span>
       <span class="nav-badge" id="badge-pedidos-mob" hidden>0</span>
+    </button>
+    <button data-aba="mesas">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="9" height="9" rx="1"/><rect x="13" y="3" width="9" height="9" rx="1"/><rect x="2" y="14" width="9" height="9" rx="1"/><rect x="13" y="14" width="9" height="9" rx="1"/></svg>
+      <span>Mesas</span>
+      <span class="nav-badge" id="badge-comandas-mob" hidden>0</span>
     </button>
     <button data-aba="pdv">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="13" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M7 20h10"/><path d="M9 16v4"/><path d="M15 16v4"/></svg>

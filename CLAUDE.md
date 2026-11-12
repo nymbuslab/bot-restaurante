@@ -98,7 +98,8 @@ descartável (`.env.test`, modelo em `.env.test.example`) — é o consumidor le
 entra em subpasta), e **recusa rodar** se o `.env.test` apontar para o mesmo projeto do `.env`
 ou se faltar a marca `BANCO_DE_TESTE=1`. Cobre isolamento entre empresas, recálculo de
 preço do cardápio web, caixa (abrir/receber/estornar/fechar), PDV (venda, baixa de estoque,
-porteiro do plano) e mesas (abrir/lançar/pagar, e o caixa que não fecha com mesa aberta). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
+porteiro do plano), mesas (abrir/lançar/pagar, e o caixa que não fecha com mesa aberta) e comandas
+abertas (lista sem filtro de data, detalhe, acréscimo, pré-conta e recebimento). Para integração/fluxo do bot, use o **simulador** (`node testar-bot.js`
 ou a aba Simulador). Ver [docs/testar-bot.md](docs/testar-bot.md).
 
 ## Arquitetura
@@ -180,6 +181,7 @@ relevante ao mexer na área):
 - [docs/estoque-e-custos/](docs/estoque-e-custos/README.md) — programa de evolução de Compras, Insumos, Estoque, ficha técnica e custos; contém auditoria de baseline, ordem P0/P1, gates de rollout e decisões que precisam ser fechadas antes da arquitetura nova.
 - [docs/equipe.md](docs/equipe.md) — funcionários, permissões, dispositivos, PIN, Atividades e gates em homologação; produção depende de backup restaurado e rollout separado.
 - [docs/features.md](docs/features.md) — onboarding (wizard 4 etapas), utils de formulário (`endereco-cep.js`/`dinheiro.js`) e horário de funcionamento.
+- [docs/sprintx/features/comandas-abertas-mesas/ORQUESTRADOR.md](docs/sprintx/features/comandas-abertas-mesas/ORQUESTRADOR.md) — **comandas abertas do PDV em Mesas / Comandas**: seção sem filtro de data (mais antigas primeiro), contador, drawer com acrescentar/receber/cancelar/pré-conta, gates por permissão (`pdv.operar`, `caixa.movimentar`, `pedidos.cancelar`) e caixa fechado/vencido, e retorno do PDV para o card criado. Rotas `/api/comandas/*`; a bateria de integração das rotas está escrita e pendente de `.env.test`.
 - [docs/arquitetura.md](docs/arquitetura.md) — árvore completa de `src/` e `public/`, papel de cada arquivo, um por um.
 - [docs/gotchas.md](docs/gotchas.md) — pontos de atenção: anti-massa, conexão manual, sessão `wa_auth`, avisar cliente, segurança, backup, pooler.
 - [docs/testar-bot.md](docs/testar-bot.md) — simulador de conversa (terminal + painel).

@@ -156,6 +156,38 @@ async function lerPorId(dir, id) {
   return r.rows[0] ? mapRow(r.rows[0]) : null;
 }
 
+// Comandas avulsas abertas pelo PDV. A consulta e dedicada para nao herdar a
+// janela de data da tela Pedidos: uma comanda esquecida precisa continuar
+// visivel depois da virada do dia. `pedidos` segue como fonte unica.
+async function listarComandasAbertas(dir) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `SELECT * FROM pedidos
+      WHERE empresa_id = $1
+        AND origem = 'pdv'
+        AND tipo_entrega = 'Comanda'
+        AND recebido_em IS NULL
+        AND status <> 'cancelado'
+      ORDER BY criado_em ASC, id ASC`,
+    [empId]
+  );
+  return r.rows.map(mapRow);
+}
+
+async function lerComandaAberta(dir, id) {
+  const empId = await empresaId(dir);
+  const r = await db.query(
+    `SELECT * FROM pedidos
+      WHERE empresa_id = $1 AND id = $2
+        AND origem = 'pdv'
+        AND tipo_entrega = 'Comanda'
+        AND recebido_em IS NULL
+        AND status <> 'cancelado'`,
+    [empId, id]
+  );
+  return r.rows[0] ? mapRow(r.rows[0]) : null;
+}
+
 async function avisarPedido(dir, id) {
   const empId = await empresaId(dir);
   const r = await db.query(
@@ -506,4 +538,4 @@ async function dashboardRaw(dir) {
   };
 }
 
-module.exports = { salvarPedido, lerTodos, intervaloDentroDoLimite, ultimo, lerPorId, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, acrescentarItens, dashboardRaw };
+module.exports = { salvarPedido, lerTodos, intervaloDentroDoLimite, ultimo, lerPorId, listarComandasAbertas, lerComandaAberta, avisarPedido, pendentes, marcarImpresso, contarNoMes, anonimizarAntigos, fecharConexao, esquecer, contarVendasDoItem, cancelarPedido, cancelarItemPedido, acrescentarItens, dashboardRaw };

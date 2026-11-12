@@ -311,7 +311,7 @@
     var permissoes = new Set(ator.permissoes || []);
     document.querySelectorAll("[data-abrir-atividades]").forEach(function (botao) { botao.hidden = !permissoes.has("atividades.ver"); });
     var regras = {
-      dashboard: ["relatorios.ver"], pedidos: ["pedidos.ver"], pdv: ["pdv.operar"], mesas: ["mesas.operar"],
+      dashboard: ["relatorios.ver"], pedidos: ["pedidos.ver"], pdv: ["pdv.operar"], mesas: ["mesas.operar", "pdv.operar"],
       caixa: ["caixa.abrir", "caixa.movimentar", "caixa.fechar"], cardapio: ["cardapio.editar", "pdv.operar", "mesas.operar"],
       categorias: ["cardapio.editar"], complementos: ["cardapio.editar"], estoque: ["estoque.ver"],
       config: ["configuracoes.editar"], simulador: ["configuracoes.editar"], assinatura: [], equipe: ["equipe.gerenciar"], atividades: ["atividades.ver"],
