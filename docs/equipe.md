@@ -103,6 +103,9 @@ As capturas são gravadas em `test/visual/resultados/`.
 
 ## Próxima etapa
 
-Sprint 04: identidade operacional do catálogo e fornecedores. P0-B resolvido em
-2026-09-16 (não bloqueia mais produção); retenção/expurgo, base legal dos dados de
-operadores e rollout gradual ainda precisam de revisão antes da liberação.
+Sprint 04 (identidade operacional do catálogo e fornecedores) foi concluída em
+2026-09-16. Conformidade LGPD de Equipe/Atividades (base legal, retenção, aviso ao
+operador) também fechada nessa data. Falta, antes da liberação comercial: o roteiro
+de rollout desligável por tenant (ver `PROGRESSO.md`). Próxima etapa do Programa
+Compras e Custos é a Sprint 05 (`docs/estoque-e-custos/sprint-05/`), sem relação
+direta com Equipe.

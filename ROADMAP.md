@@ -212,11 +212,11 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   com PIN e permissões no sistema inteiro; depois, fornecedores, Compras, estoque, custo médio e
   financeiro de fornecedores; por último, Insumos e ficha técnica sobre a mesma fundação. O P0-A,
   as decisões P1, a arquitetura SprintX e os protótipos desktop/mobile foram concluídos e aprovados.
-  Sprints 01, 02 e 03 foram concluídas em homologação; login dev confirmado
-  pelo usuário e ciclo de Equipe/Atividades validado em desktop/mobile. O próximo passo
-  é a Sprint 04: registro-ponte do catálogo, fornecedores e contas/razão financeira.
-  Execução pausada pelo usuário em 2026-09-15; Sprint 04 não iniciada e depende de novo pedido de retomada.
-  Antes de T-04.01, renumerar sua migration planejada: `20260915100000` foi usado pela auditoria. O
+  Sprints 01, 02, 03 e 04 foram concluídas (Sprint 04 em homologação desde 2026-09-15; registro-ponte
+  do catálogo, fornecedores e contas/razão financeira concluídos e aplicados em produção em
+  2026-09-16, 4/4 tasks, CI 784/784, integração 124/124). O próximo passo é a Sprint 05: Compras e
+  confirmação atômica (rascunho, rateio, parcelas e confirmação que atualiza estoque, custo e
+  financeiro num único commit), em `docs/estoque-e-custos/sprint-05/`. O
   P0-B de backup foi resolvido em 2026-09-16 e não bloqueia mais migrations nem ativação em
   produção. Auditoria, ordem, decisões
   e registros de aprovação em
