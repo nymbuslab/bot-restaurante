@@ -4,7 +4,7 @@ titulo: Changelog
 proposito: Marcos entregues com efeito observável (mais recente por último).
 formato: '"## [versão] — título" + bullets em linguagem do usuário. Sem hashes/migrations/arquivos.'
 manutencao: Uma entrada por marco. Registro via skill concluir-tarefa.
-atualizado: 2026-09-16
+atualizado: 2026-11-11
 relacionados: [PROGRESSO.md, ROADMAP.md]
 ---
 
@@ -1153,3 +1153,10 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - Filtro por tipo de movimento (vários ao mesmo tempo) e por período (Hoje, 7 dias ou um
   intervalo escolhido).
 - Recurso do Plano Completo, mesmo aviso de upgrade já usado em Controle de estoque.
+
+## [1.2.14] — Landing: destaque pro preço fixo sem comissão — 2026-11-11
+
+- A página inicial agora destaca "0% de comissão por pedido" como ponto central, em vez de
+  misturado numa lista de vantagens.
+- Ajustes visuais gerais: ícones, títulos e contraste mais consistentes entre o painel e a
+  página inicial.
