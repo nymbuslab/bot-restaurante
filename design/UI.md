@@ -193,8 +193,9 @@ desabilitados até existirem de verdade.
   `pedidos.cliente` — e o que preenche o campo **Cliente** do pedido na aba Pedidos. O banner do modo
   acrescimo mostra "Acrescentando à Comanda #NN · <identificação>" quando ela existe.
 - **Fluxo:** reabrir pelo pedido na aba Pedidos (botao **Acrescentar item**, vale para qualquer pedido
-  a receber, nao so Comanda), montar a rodada e acrescentar; a cozinha recebe so a via nova. Fechamento
-  pelo **Receber pagamento** de sempre.
+  a receber, nao so Comanda) ou pela secao de comandas abertas da aba Mesas (tela 13), montar a
+  rodada e acrescentar; a cozinha recebe so a via nova. Fechamento pelo **Receber pagamento** de
+  sempre (caixa vencido bloqueia o recebimento so para Comanda).
 - **Dados/rotas:** `POST /api/pedidos/:id/itens` (`acrescentarItens` em `src/pedidos.js`, UPDATE com
   `FOR UPDATE`); tipo gravado em `tipo_entrega`; sem cupom na abertura (via so de cozinha).
 - **Limites:** a comanda abre e reabre pelo fluxo existente (modal do pedido) ou pela secao de
