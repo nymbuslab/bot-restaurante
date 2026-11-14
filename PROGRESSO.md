@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-11-12
+atualizado: 2026-11-14
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -23,6 +23,10 @@ Nenhum item em andamento.
 - [ ] **(P2) Validar visualmente as correções do admin.html** — commitadas e deployadas só com base em
   leitura de código e detector estático; nunca vistas renderizadas (a extensão do Chrome não alcança
   localhost neste ambiente de desenvolvimento).
+- [ ] **(P2) Validar visualmente "Comandas abertas" em Mesas e o retorno do PDV** — seção de comandas
+  abertas na aba Mesas, banner/drawer do PDV e o retorno ao card criado depois de acrescentar item: a
+  correção do code review (D-09, caixa vencido bloqueando recebimento) passou pela suíte, mas nunca foi
+  vista rodando em navegador real, desktop e mobile (sem ferramenta de validação visual neste ambiente).
 - [ ] **(P2) Decidir o gap de tipografia do `DESIGN.md`** — o frontmatter do Impeccable só representa 5
   papéis; a escala real do projeto tem 14 valores fechados (`docs/design-system.md`). Enquanto não
   decidir, toda auditoria futura do Impeccable mostra ~240 avisos de falso positivo em tipografia.
@@ -879,9 +883,8 @@ Nenhum item em andamento.
   com o caixa fechado ou vencido: nesse estado só o acréscimo e o recebimento ficam bloqueados. Ao
   finalizar uma venda de tipo Comanda, o painel vai para a tela, destaca o card e abre o detalhe do
   registro criado, sem repetir o POST se a navegação falhar. Suíte 806/806 e `npm run check` OK.
-  **Ressalvas:** as rotas `/api/comandas/*` têm 12 casos de integração escritos e nunca executados
-  (falta `.env.test` de um projeto Supabase descartável), então T-02.01/T-02.02/T-02.03 seguem
-  bloqueadas, e a interface não foi validada em navegador real desktop e mobile. — 2026-11-12
+  **Ressalva:** a interface não foi validada em navegador real desktop e mobile (ver Próximos
+  Passos). — 2026-11-12
 
 - [x] **Code review da entrega "Comandas abertas em Mesas / Comandas"** — revisão pós-entrega
   (convergência com D-01 a D-15 + revisão de bugs) achou 1 lacuna de risco financeiro e 3 bugs de
@@ -893,9 +896,21 @@ Nenhum item em andamento.
   Comandas não mostrava mais o painel de "não deu para carregar" (`mesasErroRede`), só um toast que
   passava. (4) `abrirComandaNaTela` antecipava o aviso de "não abriu aqui" antes de tentar abrir,
   piscando um banner de falha falsa no caminho normal. Suíte 808/808, `npm run check` OK em 205
-  arquivos. **Ressalva mantida:** os 12 casos de integração de `/api/comandas/*` continuam sem
-  rodar por falta de `.env.test` descartável (mesmo bloqueio já registrado na entrega original). —
-  2026-11-12
+  arquivos. **Ressalva à época:** os 12 casos de integração de `/api/comandas/*` ainda não tinham
+  rodado por falta de `.env.test` — resolvido em 2026-11-14 (ver entrada abaixo). — 2026-11-12
+
+- [x] **Bateria de integração de "Comandas abertas" rodada contra banco real (1ª vez)** — o
+  projeto Supabase descartável de `.env.test` estava pausado (não excluído, como a memória antiga
+  registrava); o dono reativou e a bateria `npm run test:integracao` rodou pela primeira vez contra
+  as rotas `/api/comandas/*`. Achou 3 problemas reais, todos corrigidos: (1) `src/servidor.js` — 3
+  respostas 404 de comanda ("Comanda aberta nao encontrada.") sem acento, inconsistentes com toda
+  outra mensagem equivalente do arquivo; (2) `test/integracao/comandas-abertas.test.js` — o teste de
+  histórico assumia `GET /api/pedidos` devolvendo `{ pedidos: [...] }`, mas a rota sempre devolveu
+  array direto (os outros testes de integração já tratam os dois formatos; esse não tratava); (3)
+  mesmo arquivo — a fixture do item "Bebida" nunca setou `estoque` inicial, então a baixa de estoque
+  não tinha nada pra decrementar e o teste comparava contra `NaN`. Depois das 3 correções: 136/137
+  (1 skip esperado, Stripe test-mode sem chave de teste configurada). Fecha de verdade a ressalva de
+  integração deixada em aberto nas duas entradas anteriores. — 2026-11-14
 
 - [x] **Correções de documentação achadas na revisão ampla do projeto** — `package.json` tinha
   `engines.node: >=20`, desatualizado desde que o Node 22 virou requisito real (WebSocket nativo
