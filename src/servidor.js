@@ -2836,7 +2836,7 @@ app.get("/api/comandas/:id", exigeAuth, exigePermissao("pdv.operar"), async (req
   if (!(await exigePdv(req, res))) return;
   try {
     const comanda = await pedidos.lerComandaAberta(req.tenantDir, Number(req.params.id));
-    if (!comanda) return res.status(404).json({ erro: "Comanda aberta nao encontrada." });
+    if (!comanda) return res.status(404).json({ erro: "Comanda aberta não encontrada." });
     res.json({ comanda, operacao: await estadoOperacionalComandas(req) });
   } catch (e) {
     res.status(500).json({ erro: "Falha ao carregar a comanda." });
@@ -2990,7 +2990,7 @@ app.post("/api/comandas/:id/itens", exigeAuth, exigePermissao("pdv.operar"), asy
     if (!cx) return res.status(400).json({ erro: "Abra o caixa para adicionar produtos a comanda.", caixaFechado: true });
     if (cx.vencido) return res.status(400).json({ erro: "Feche o caixa do dia anterior para adicionar produtos a comanda.", caixaVencido: true });
     const comanda = await pedidos.lerComandaAberta(req.tenantDir, Number(req.params.id));
-    if (!comanda) return res.status(404).json({ erro: "Comanda aberta nao encontrada." });
+    if (!comanda) return res.status(404).json({ erro: "Comanda aberta não encontrada." });
     return acrescentarItensPedido(req, res);
   } catch (e) {
     return res.status(500).json({ erro: "Falha ao verificar a comanda." });
@@ -3002,7 +3002,7 @@ app.post("/api/comandas/:id/imprimir-pre-conta", exigeAuth, exigePermissao("pdv.
   if (!(await exigeImpressao(req, res))) return;
   try {
     const comanda = await pedidos.lerComandaAberta(req.tenantDir, Number(req.params.id));
-    if (!comanda) return res.status(404).json({ erro: "Comanda aberta nao encontrada." });
+    if (!comanda) return res.status(404).json({ erro: "Comanda aberta não encontrada." });
     const cfg = store.getConfig(req.tenantDir) || {};
     const texto = Comanda.montarPreConta(
       { nome: String(comanda.numero) },
