@@ -63,7 +63,7 @@ before(async () => {
           ativo: true,
           itens: [
             { id: ID_COZINHA, nome: "Prato de Cozinha", preco: PRECO_COZINHA, disponivel: true, cozinha: true },
-            { id: ID_BEBIDA, nome: "Bebida", preco: PRECO_BEBIDA, disponivel: true },
+            { id: ID_BEBIDA, nome: "Bebida", preco: PRECO_BEBIDA, disponivel: true, estoque: 10 },
           ],
         },
       ],
@@ -147,7 +147,8 @@ test("T-02.01: comanda recebida sai da lista e do detalhe (histórico fica em Pe
 
   const pedidos = await app.pedir("/api/pedidos", { token: loja.token });
   assert.equal(pedidos.status, 200);
-  assert.ok((pedidos.corpo.pedidos || []).some((p) => p.id === comandaNova.id), "a comanda recebida continua no histórico");
+  const linhas = Array.isArray(pedidos.corpo) ? pedidos.corpo : pedidos.corpo.pedidos || [];
+  assert.ok(linhas.some((p) => p.id === comandaNova.id), "a comanda recebida continua no histórico");
 });
 
 test("T-02.02: acrescentar rodada pela rota de Comanda soma itens, total e estoque", async () => {
