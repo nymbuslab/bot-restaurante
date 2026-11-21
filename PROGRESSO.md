@@ -23,6 +23,12 @@ _(nada no momento)_
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
+- [ ] **(P2) Decidir o destino dos 3 gaps de "Caixa do dia" listados como P0 no `ROADMAP.md`** —
+  conferência cega opcional (esconder Esperado/Diferença até confirmar a contagem), justificativa
+  obrigatória quando há diferença no fechamento, e limite de gaveta com alerta de sangria. Estão
+  dentro da seção "P3 — Ideias futuras (sem compromisso)" do `ROADMAP.md`, levantados em 2026-06-21
+  e nunca viraram tarefa aqui. Ou entram na fila de verdade, ou o rótulo P0 sai do `ROADMAP.md` pra
+  não confundir leitura futura (achado da revisão de contexto de 2026-11-21).
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 

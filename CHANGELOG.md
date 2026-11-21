@@ -1171,3 +1171,10 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   cancelamento/estorno pelo Telegram. A aba "Relatórios Telegram" saiu do modal Gerenciar do
   painel master.
 - Nenhum restaurante real usava a função; o único tenant vinculado era de teste interno.
+
+## [1.2.17] - Identificação do cliente na via de cozinha - 2026-11-21
+
+- A via impressa que vai para a cozinha agora mostra a identificação do cliente ou da comanda,
+  quando preenchida — ajuda a casar o pedido com a mesa ou a pessoa certa. Antes só o cupom do
+  pedido mostrava esse dado.
+- Corrigido: contraste do rodapé e respiro do modal de Termos de Uso na tela de cadastro.
