@@ -36,6 +36,17 @@ test("via cozinha: tem cabeçalho, número, itens e observações — SEM preço
   assert.equal(/R\$/.test(cozinha), false, "via cozinha não deve ter preços");
 });
 
+test("via cozinha: imprime a identificação do cliente/comanda quando existe", () => {
+  const { cozinha } = montarComanda(pedidoBase, config);
+  assert.match(cozinha, /Cliente: João Silva/);
+});
+
+test("via cozinha: omite a linha de cliente quando não há identificação", () => {
+  const ped = { ...pedidoBase, cliente: "" };
+  const { cozinha } = montarComanda(ped, config);
+  assert.equal(/Cliente:/.test(cozinha), false);
+});
+
 test("via cupom: tem cliente, endereço, pagamento, taxa e total", () => {
   const { cupom } = montarComanda(pedidoBase, config);
   assert.match(cupom, /CUPOM/i);

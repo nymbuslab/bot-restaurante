@@ -78,6 +78,7 @@
     linhas.push(centro("COMANDA - COZINHA"));
     linhas.push(sep("="));
     linhas.push(linhaValor("Pedido #" + pedido.numero, dataHoraBR(pedido.criadoEm)));
+    if (pedido.cliente) linhas.push("Cliente: " + pedido.cliente);
     linhas.push("Tipo: " + (pedido.tipoEntrega || "").toUpperCase());
     linhas.push(sep("-"));
     const itensCoz = pedido.itens || [];

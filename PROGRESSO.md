@@ -23,7 +23,6 @@ _(nada no momento)_
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
-- [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
@@ -972,3 +971,9 @@ _(nada no momento)_
   console. Corrige a nota anterior que atribuía a limitação à ferramenta errada: só a extensão
   Chrome-in-Claude não alcança `localhost` neste ambiente — o Playwright MCP acessa normalmente.
   — 2026-11-21
+- [x] **Identificação da Comanda agora aparece na via de cozinha** — `montarCozinha`
+  (`public/comanda.js`) ganhou `if (pedido.cliente) linhas.push("Cliente: " + pedido.cliente)`,
+  logo após "Pedido #.../data-hora", mesma posição que o cupom já usa. Vale pra qualquer pedido com
+  `cliente` preenchido (comanda do PDV, entrega, retirada), não só Comanda — decisão revertida da de
+  12/09 ("por enquanto" fora de escopo). 2 testes novos em `test/comanda.test.js` (aparece quando tem
+  cliente, some quando não tem). `npm test` 790/790, `npm run check` ok. — 2026-11-21
