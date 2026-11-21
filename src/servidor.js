@@ -14,9 +14,7 @@ const { ipKeyGenerator } = require("express-rate-limit"); // normaliza IPv6 em /
 const QRCode  = require("qrcode");
 
 const empresas = require("./empresas");
-const equipeDb = require("./equipe-db");
 const auditoriaOperacional = require("./auditoria-operacional");
-const Permissoes = require("./permissoes");
 const telegram = require("./telegram"); // relatórios via Telegram (relatorios-telegram)
 const plataforma = require("./plataforma");
 const store = require("./store");
@@ -225,34 +223,16 @@ app.use((req, res, next) => {
 // páginas .html são tratadas acima (fora do static, sempre frescas).
 app.use(express.static(PUBLIC_DIR, { maxAge: "1h" }));
 
-// ---- Autenticação do restaurante: dono (JWT) ou funcionário (sessão opaca) ----
+// ---- Autenticação do restaurante: dono (JWT do Supabase Auth) ----
 // O principal sempre chega às rotas com tenant, tipo de ator e permissões.
-// Donos preservam o acesso legado; equipe depende de assinatura, plano e flag.
 async function exigeAuth(req, res, next) {
   const cabecalho = String(req.headers["authorization"] || "");
   const token = cabecalho.startsWith("Bearer ") ? cabecalho.slice(7).trim() : "";
   let emp = null;
   let ator = null;
   try {
-    // Tokens Supabase são JWTs de três segmentos. A sessão de funcionário é
-    // base64url opaca, então a distinção não depende de conteúdo persistido.
-    if (token && token.split(".").length !== 3) {
-      const sessao = await equipeDb.resolverSessao(token);
-      if (sessao) {
-        emp = await empresas.buscarPorSlug(sessao.slug);
-        ator = Object.assign({ tipo: "funcionario" }, sessao.funcionario);
-
-        if (!empresas.acessoLiberado(emp)) {
-          return res.status(402).json({ erro: "Assinatura inativa. Ative seu plano para continuar." });
-        }
-        if (!empresas.temEquipe(emp)) {
-          return res.status(403).json({ erro: "Gestão de equipe não disponível para esta empresa." });
-        }
-      }
-    } else {
-      emp = await empresas.resolverPorToken(token);
-      if (emp) ator = { id: emp.userId, tipo: "dono", permissoes: ["*"] };
-    }
+    emp = await empresas.resolverPorToken(token);
+    if (emp) ator = { id: emp.userId, tipo: "dono", permissoes: ["*"] };
   } catch (e) {
     // Deixa rastro: o 500 aqui costuma ser soluço de conexão ao Postgres/Supabase
     // (resolverPorToken). Sem este log a causa some (visível no diagnóstico master).
@@ -298,151 +278,6 @@ function exigePermissao(permissao) {
     next();
   };
 }
-
-function statusErroEquipe(codigo) {
-  if (codigo === "PIN_INCORRETO" || codigo === "DISPOSITIVO_NAO_AUTORIZADO") return 401;
-  if (codigo === "PIN_BLOQUEADO") return 429;
-  if (codigo === "PIN_EM_USO") return 409;
-  if (codigo === "FUNCIONARIO_INVALIDO" || codigo === "EMPRESA_NAO_ENCONTRADA") return 404;
-  if (codigo === "PERMISSAO_EXCLUSIVA" || codigo === "SEM_PERMISSAO") return 403;
-  return 400;
-}
-
-function responderErroEquipe(res, erro) {
-  const status = statusErroEquipe(erro && erro.codigo);
-  if (status === 400 && !(erro && erro.codigo)) {
-    console.error("equipe:", erro && erro.message);
-    return res.status(500).json({ erro: "Não foi possível concluir a ação de equipe." });
-  }
-  return res.status(status).json({ erro: erro.message });
-}
-
-function validarDelegacaoEquipe(ator, perfil, ajustes) {
-  if (!ator || ator.tipo === "dono") return;
-  const solicitadas = new Set(Permissoes.PADROES[perfil] || []);
-  for (const ajuste of ajustes || []) {
-    if (ajuste && ajuste.permitido === true) solicitadas.add(ajuste.permissao);
-    else if (ajuste && ajuste.permitido === false) solicitadas.delete(ajuste.permissao);
-  }
-  try {
-    Permissoes.validarDelegacao(new Set(ator.permissoes || []), solicitadas);
-  } catch (e) {
-    e.codigo = "SEM_PERMISSAO";
-    throw e;
-  }
-}
-
-app.get("/api/equipe/principal", exigeAuth, (req, res) => {
-  res.json({ empresaId: req.empresaId, slug: req.slug, ator: req.ator });
-});
-
-async function exigeEquipe(req, res, next) {
-  try {
-    const empresa = await empresas.buscarPorSlug(req.slug || (req.body || {}).slug);
-    if (!empresa || !empresa.ativo) return res.status(403).json({ erro: "Gestão de equipe não disponível." });
-    if (!empresas.acessoLiberado(empresa)) return res.status(402).json({ erro: "A assinatura precisa estar ativa para usar Equipe." });
-    if (!empresas.temEquipe(empresa)) return res.status(403).json({ erro: "Gestão de equipe não disponível para esta empresa." });
-    next();
-  } catch (e) { responderErroEquipe(res, e); }
-}
-
-app.get("/api/equipe/atividades", exigeAuth, exigeEquipe, exigePermissao("atividades.ver"), async (req, res) => {
-  try { res.json(await auditoriaOperacional.listar(req.empresaId, req.query)); }
-  catch (e) { responderErroEquipe(res, e); }
-});
-
-app.get("/api/equipe", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
-  try {
-    res.json({ funcionarios: await equipeDb.listarFuncionarios(req.slug), padroes: Permissoes.PADROES });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.post("/api/equipe", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
-  try {
-    const dados = req.body || {};
-    validarDelegacaoEquipe(req.ator, dados.perfil, dados.ajustes);
-    const funcionario = await equipeDb.criarFuncionario(req.slug, dados, req.ator);
-    res.status(201).json({ funcionario });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.put("/api/equipe/:id", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
-  try {
-    if (req.ator.tipo !== "dono" && req.ator.id === req.params.id) {
-      const erro = new Error("Você não pode alterar o próprio acesso.");
-      erro.codigo = "SEM_PERMISSAO";
-      throw erro;
-    }
-    const dados = req.body || {};
-    validarDelegacaoEquipe(req.ator, dados.perfil, dados.ajustes);
-    const funcionario = await equipeDb.atualizarFuncionario(req.slug, req.params.id, dados, req.ator);
-    res.json({ funcionario });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.post("/api/equipe/:id/desbloquear", exigeAuth, exigeEquipe, exigePermissao("equipe.gerenciar"), async (req, res) => {
-  try {
-    if (req.ator.tipo !== "dono" && req.ator.id === req.params.id) return res.status(403).json({ erro: "Você não pode alterar o próprio acesso." });
-    const desbloqueado = await equipeDb.desbloquearFuncionario(req.slug, req.params.id, req.ator);
-    if (!desbloqueado) return res.status(404).json({ erro: "Funcionário não encontrado." });
-    res.json({ ok: true });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.get("/api/equipe/dispositivos", exigeAuth, exigeEquipe, exigePermissao("dispositivos.autorizar"), async (req, res) => {
-  try {
-    res.json({ dispositivos: await equipeDb.listarDispositivos(req.slug) });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.post("/api/equipe/dispositivos/autorizar", exigeAuth, exigeEquipe, exigePermissao("dispositivos.autorizar"), async (req, res) => {
-  try {
-    const dispositivo = await equipeDb.autorizarDispositivo(req.slug, req.body || {}, req.ator);
-    res.status(201).json({ dispositivo });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.delete("/api/equipe/dispositivos/:id", exigeAuth, exigeEquipe, exigePermissao("dispositivos.autorizar"), async (req, res) => {
-  try {
-    const revogado = await equipeDb.revogarDispositivo(req.slug, req.params.id, req.ator);
-    if (!revogado) return res.status(404).json({ erro: "Dispositivo não encontrado." });
-    res.status(204).end();
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.post("/api/equipe/dispositivos/funcionarios", loginLimiter, exigeEquipe, async (req, res) => {
-  try {
-    const dados = req.body || {};
-    const funcionarios = await equipeDb.listarFuncionariosDoDispositivo(dados.slug, dados.dispositivoToken);
-    res.json({ funcionarios });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
-
-app.post("/api/equipe/sessoes/pin", loginLimiter, exigeEquipe, async (req, res) => {
-  try {
-    const dados = req.body || {};
-    const sessao = await equipeDb.iniciarSessao(dados.slug, dados);
-    res.status(201).json({ sessao });
-  } catch (e) {
-    responderErroEquipe(res, e);
-  }
-});
 
 // Gate de assinatura: exige trial/assinatura em dia (além do exigeAuth).
 // Protege a ação que de fato presta o serviço (ligar o bot). Responde 402

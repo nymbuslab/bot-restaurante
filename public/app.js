@@ -31,40 +31,6 @@ try {
 // navegador → cai direto no painel. Sem cookie válido → volta pro login.
 async function iniciarSessao() {
   try {
-    const operadorSlug = new URLSearchParams(location.search).get("operador");
-    if (operadorSlug && !sessionStorage.getItem("equipeSessao")) {
-      painelSlug = operadorSlug;
-      painelAtor = { tipo: "funcionario", permissoes: [] };
-      document.querySelectorAll(".aba").forEach((n) => n.classList.remove("ativa"));
-      aplicarPermissoesNavegacao(painelAtor);
-      await abrirOperador();
-      return false;
-    }
-    const sessaoEquipe = sessionStorage.getItem("equipeSessao");
-    if (sessaoEquipe) {
-      try {
-        const salva = JSON.parse(sessaoEquipe);
-        token = salva.token;
-        cabecalhos.Authorization = "Bearer " + token;
-        const principal = await fetch("/api/equipe/principal", { headers: cabecalhos });
-        if (principal.ok) {
-          const dados = await principal.json();
-          painelAtor = dados.ator;
-          painelSlug = dados.slug || salva.slug || "";
-          painelNome = painelAtor.nome || salva.nome || "";
-          CHAVE_PEDIDO_VISTO = "pedidoVisto:" + painelSlug;
-          pedidoVistoNumero = Number(localStorage.getItem(CHAVE_PEDIDO_VISTO) || 0);
-          const h = document.getElementById("headerNome");
-          if (h) h.textContent = painelNome || "Operador";
-          if (typeof aplicarPermissoesNavegacao === "function") aplicarPermissoesNavegacao(painelAtor);
-          iniciarBloqueioInatividade(painelAtor.inatividadeMinutos || 15);
-          return true;
-        }
-      } catch (_) { /* operador inválido nunca assume a conta do dono */ }
-      sessionStorage.removeItem("equipeSessao");
-      location.href = "admin.html?operador=" + encodeURIComponent(painelSlug || JSON.parse(sessaoEquipe).slug || "");
-      return false;
-    }
     const r = await fetch("/api/refresh", { method: "POST" });
     if (!r.ok) { location.href = "login.html"; return false; }
     const d = await r.json();
@@ -108,11 +74,6 @@ async function api(metodo, url, corpo) {
   };
   let r = await fazer();
   if (r.status === 401) {
-    if (painelAtor && painelAtor.tipo === "funcionario") {
-      sessionStorage.removeItem("equipeSessao");
-      location.href = "admin.html?operador=" + encodeURIComponent(painelSlug);
-      return;
-    }
     // Token expirado: tenta renovar uma vez e repete a requisição.
     if (await renovarSessao()) r = await fazer();
     if (r.status === 401) {
@@ -1565,8 +1526,6 @@ document.querySelectorAll("nav button[data-aba]").forEach((btn) => {
     if (btn.dataset.aba === "complementos") carregarComplementos();
     if (btn.dataset.aba === "estoque") carregarEstoque();
     if (btn.dataset.aba === "relatorios") carregarExtratoGeral(true);
-    if (btn.dataset.aba === "equipe" && typeof carregarEquipe === "function") carregarEquipe();
-    if (btn.dataset.aba === "atividades" && typeof carregarAtividades === "function") carregarAtividades();
     try { localStorage.setItem("ultimaAba", btn.dataset.aba); } catch (_) {}
   });
 });

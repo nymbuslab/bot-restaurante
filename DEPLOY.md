@@ -2,12 +2,9 @@
 
 O terminal do VS Code serve só para teste. Para uso real, use uma das opções abaixo.
 
-> Equipe e Atividades estão em homologação. Backup lógico criptografado + cópia do Storage +
-> restauração ensaiada (P0-B) resolvido em 2026-09-16 — ver `docs/gotchas.md`. Falta ainda revisar
-> retenção/expurgo e base legal dos operadores antes do piloto, antes de aplicar as migrations
-> `20260915090000_equipe_permissoes.sql` e `20260915100000_auditoria_operacional.sql` ou ligar
-> `equipe_habilitada` em produção. `npm start` usa `.env`, que pode apontar
-> para produção; somente o harness protegido de `.env.test` é descartável.
+> Backup lógico criptografado + cópia do Storage + restauração ensaiada (P0-B)
+> resolvido em 2026-09-16 — ver `docs/gotchas.md`. `npm start` usa `.env`, que pode
+> apontar para produção; somente o harness protegido de `.env.test` é descartável.
 
 **Conexão do WhatsApp:** o bot não conecta sozinho. Depois de subir, abra o painel,
 faça login, vá na aba **Conexão** e clique em **"Conectar ao WhatsApp"**. O QR só
@@ -291,6 +288,10 @@ sessão do tenant na tabela `wa_auth` (Postgres) e gera um QR novo — não há 
   estavam conectados, sem QR. Ou seja: trava de qualquer jeito → volta sozinho em ~30–60s.
   `GET /health` é só vivacidade (responde `200 {ok,uptime}`) e **não** consulta o Supabase de
   propósito — se o banco cair, reiniciar não resolveria e só geraria restart em loop.
+  **Essa auto-cura pressupõe que o host físico está vivo.** Se o próprio host do Fly cair
+  (infraestrutura do provedor, não o app), a máquina fica presa — nem o health check nem
+  `fly restart`/`stop` conseguem chegar até ela (erro 408). Nesse caso a recuperação é manual:
+  `flyctl machine destroy <id> --force` + `flyctl deploy`. Ver `docs/gotchas.md`.
 - O plano gratuito do Fly.io tem limite de horas. Para uso 24/7, ative o faturamento
   (~$5–7/mês para 1 GB RAM em São Paulo).
 - Cada tenant WhatsApp é uma conexão WebSocket (Baileys, sem Chromium) — RAM baixa.

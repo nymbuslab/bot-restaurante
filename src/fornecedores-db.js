@@ -7,9 +7,8 @@
 // COMPOSTA (empresa_id, id) — cruzar alvo/fornecedor de outra empresa é
 // rejeitado pela própria constraint, não por disciplina do código.
 //
-// Erros de validação/negócio chegam como Error com `.codigo` (mesmo padrão
-// de equipe-db.js/permissoes.js), para o servidor mapear o status HTTP sem
-// adivinhar pela mensagem.
+// Erros de validação/negócio chegam como Error com `.codigo`, para o
+// servidor mapear o status HTTP sem adivinhar pela mensagem.
 // ============================================================
 
 const path = require("path");

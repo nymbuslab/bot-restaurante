@@ -1130,16 +1130,6 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
 - O botão "Carregar mais" da lista de Pedidos agora respeita o alvo mínimo de toque de 44 px no
   celular, mantendo o mesmo comportamento no computador.
 
-## [Homologação] — Equipe, PIN e Atividades — 2026-09-15
-
-- O dono pode cadastrar funcionários, ajustar seus acessos e autorizar dispositivos.
-- Funcionários entram por PIN e ficam limitados às ações permitidas; inatividade
-  bloqueia a sessão e revogação do dispositivo interrompe o acesso.
-- Atividades permite consultar acessos e alterações por operador, evento e período,
-  com detalhes somente leitura, sem revelar PINs ou tokens.
-- Ciclos validados no computador e no celular em ambiente de teste. Ainda sem
-  liberação em produção; execução pausada após a Sprint 3.
-
 ## [1.2.12] — Backup diário automático — 2026-09-16
 
 - O banco de dados e as imagens do cardápio passam por uma cópia de segurança automática todo

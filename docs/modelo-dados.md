@@ -172,20 +172,22 @@ detalhe (jsonb), criado_em (timestamptz)`. Registra eventos sensíveis (`conta_c
 `dados_exportados`, `conta_excluida`); o `slug` é **texto sem FK** → o registro **sobrevive à
 exclusão** da conta. Sem PII no `detalhe`. Escrita best-effort em `src/auditoria.js`.
 
-**Equipe (em homologação):** `equipe_perfis`, `equipe_perfil_permissoes`,
-`equipe_funcionarios`, `equipe_funcionario_permissoes`, `equipe_dispositivos` e
-`equipe_sessoes`. Todas possuem `empresa_id`, FKs compostas para impedir relações
-cruzadas e RLS sem acesso direto de anon/authenticated. PIN bcrypt e tokens SHA-256
-nunca são expostos nas listagens. A migration aditiva é
-`20260915090000_equipe_permissoes.sql`; flags de equipe, compras, confirmação,
-ficha e baixa de insumos começam desligadas. Fluxo e rotas em [equipe.md](equipe.md).
+**Gestão de equipe (removida em 2026-11-20):** o produto teve uma feature de
+funcionários com usuário/senha e permissões por cargo, e um acesso rápido do
+dono pelo mesmo mecanismo; nenhum tenant real chegou a usar (tabelas vazias em
+produção). Removida por decisão do dono antes de qualquer rollout comercial —
+ver `PROGRESSO.md`. As tabelas `equipe_perfis`, `equipe_perfil_permissoes`,
+`equipe_funcionarios`, `equipe_funcionario_permissoes`, `equipe_sessoes` e as
+colunas de flag/acesso rápido em `empresas` saem via
+`20261120110000_remover_equipe.sql`.
 
-**Auditoria operacional (homologação):** `auditoria_operacional`, criada por
+**Auditoria operacional:** `auditoria_operacional`, criada por
 `20260915100000_auditoria_operacional.sql`, guarda tenant, tipo/ID do ator,
 evento, detalhe operacional filtrado e timestamp UTC. ID bigint com paginação
-por cursor; índices por tenant/ID, evento e ator; RLS deny-all. Eventos e mutações
-de equipe compartilham transação. Separada da auditoria LGPD de 24 meses; retenção
-mínima de cinco anos enquanto a empresa existir, sem expurgo automático ainda.
+por cursor; índices por tenant/ID, evento e ator; RLS deny-all. Usada hoje pelos
+eventos de fornecedor e financeiro (`src/auditoria-operacional.js`, função
+`registrar`). Separada da auditoria LGPD de 24 meses; retenção mínima de cinco
+anos enquanto a empresa existir, sem expurgo automático ainda.
 
 **Frete (em `config.frete` jsonb):** `modo` (`fixo|raio`), `taxaFixa` (R$), e — no modo raio —
 `raio: { coordEmpresa{lat,lon}, enderecoBase, faixas:[{ini,fim,valor}], foraDaArea }`. Compat: se

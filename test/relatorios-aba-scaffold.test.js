@@ -5,7 +5,7 @@ const { contemTrecho, trechoEntre } = require("./apoio/arquivo-estatico");
 const HTML = "public/admin.html";
 
 test("nav tem o botão data-aba='relatorios' dentro do acordeão Relatórios (navsub-relatorios)", () => {
-  const grupo = trechoEntre(HTML, '<div class="nav-sub" id="navsub-relatorios"', '<button data-aba="equipe">');
+  const grupo = trechoEntre(HTML, '<div class="nav-sub" id="navsub-relatorios"', '<button data-aba="config">');
   assert.ok(grupo, "grupo navsub-relatorios não encontrado");
   assert.match(grupo, /<button data-aba="relatorios">/);
   assert.match(grupo, /<span>Estoque<\/span>/);

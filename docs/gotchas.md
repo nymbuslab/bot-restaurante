@@ -87,3 +87,16 @@
   `/admin-master` (banco/latência, app, bots, fila) + **histórico de incidentes** (`incidentes.js`);
   só visível **com o app no ar**. Resumo: o externo avisa "app/host caiu"; o interno mostra
   "banco lento/fora" quando está tudo de pé.
+- **Host do Fly morto (💀 "machine's host is unreachable")**: de vez em quando um host físico
+  do Fly (não o app) tem problema de infraestrutura do provedor. A VM fica "zumbi": o
+  `flyctl status` mostra `started`, mas nada chega até ela — nem tráfego, nem os próprios
+  comandos `stop`/`restart`/`machine restart`, que devolvem **408** (timeout), porque o pedido
+  nunca é entregue ao host morto. A única saída é destruir o registro da máquina (aceito
+  mesmo com host inacessível, é operação administrativa na API) e recriar do zero:
+  ```
+  flyctl machine destroy <id> -a bot-restaurante --force
+  flyctl deploy -a bot-restaurante
+  ```
+  Como o app é stateless, recriar não perde dado nenhum. Pós-incidente de 2026-10-16: o
+  redeploy subiu com **2 máquinas** em vez de 1 — manter 2+ reduz o risco de ficar fora do ar
+  por completo quando só um host físico falha.

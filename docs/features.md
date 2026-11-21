@@ -18,7 +18,7 @@ são obrigatórias; Horário/Entrega são puláveis.
 - **Retrocompatível:** contas antigas (config sem `onboarding`) são tratadas como **concluídas**.
 
 No cadastro, o **aceite** dos Termos + Política de Privacidade é obrigatório — ver
-[lgpd-e-conta.md](lgpd-e-conta.md).
+[lgpd-e-conta.md](lgpd/lgpd-e-conta.md).
 
 ## Formulários — utils compartilhados (`public/`)
 

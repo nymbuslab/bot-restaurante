@@ -200,8 +200,7 @@ Sistema de PDV tradicional é caro e engessado para restaurante pequeno.
 
 A direção e as prioridades ficam no `ROADMAP.md`. O que está em curso fica no `PROGRESSO.md`.
 
-A próxima expansão estrutural é o **Programa Compras e Custos**. A entrega começa por Gestão de
-equipe, PIN, dispositivos e permissões no sistema inteiro. Depois entram fornecedores, Compras,
+A próxima expansão estrutural é o **Programa Compras e Custos**: fornecedores, Compras,
 estoque, custo médio e o financeiro de fornecedores. Insumos e ficha técnica vêm na entrega
 seguinte, reutilizando a mesma arquitetura. Compras será o caminho normal de entrada de produtos e
 insumos e a origem do custo de aquisição. A ficha técnica calculará primeiro o **custo atual dos
@@ -209,11 +208,6 @@ insumos**, sem chamar esse valor de custo total do prato enquanto mão de obra, 
 indiretas não fizerem parte do modelo. Por atender clientes reais, essa expansão seguirá mudanças
 aditivas, código inicialmente desligado, validação e ativação gradual. O programa está em
 [`docs/estoque-e-custos/`](docs/estoque-e-custos/README.md).
-
-Equipe, operadores por PIN e Atividades estão implementados em homologação,
-com autorização por ação, flag separada e auditoria somente leitura. Isso não
-representa liberação comercial em produção; backup restaurado e piloto continuam
-obrigatórios. Regras implementadas em [docs/equipe.md](docs/equipe.md).
 
 Marcos do roadmap antigo já entregues:
 

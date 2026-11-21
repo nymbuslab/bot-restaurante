@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-09-16
+atualizado: 2026-11-20
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -16,9 +16,6 @@ relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 
 _(nada no momento)_
 
-_(Sprint 03 (Equipe/Atividades) encerrada em homologação em 2026-09-15. Execução pausada a
-pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
-
 ## 📋 Próximos Passos
 
 ### Em aberto
@@ -26,23 +23,24 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
-- [ ] **(P1, antes de produção) Roteiro de rollout desligável de Equipe/Atividades** — única
-  peça que falta do item anterior (LGPD já resolvida): definir como o piloto pode ser revertido
-  por tenant se algo der errado (gate `equipe_habilitada` nasce `false` — confirmar se dá pra
-  desligar de volta depois de ativado, sem perder dados/histórico). Última pendência antes de
-  autorizar liberação comercial.
-- [ ] **(P2) Limpeza de sessões/dispositivos revogados de Equipe** — `equipe_sessoes` e
-  `equipe_dispositivos` guardam linhas revogadas indefinidamente (sem valor depois de expirar,
-  diferente da auditoria de 5 anos que é intencional). Sugestão do relatório LGPD: job simples
-  apagando revogados há mais de ~90 dias, mesmo padrão dos outros jobs em `index.js`. Não é
-  lacuna legal, é limpeza técnica.
+- [ ] **(P0) Aplicar em produção a migration `20261120110000_remover_equipe.sql`** —
+  remove as tabelas `equipe_*` e as colunas de flag/acesso rápido em `empresas` que o
+  código já não usa mais (ver ✅ Concluído, 2026-11-20). Confirmado sem dado real
+  (tabelas vazias), mas o classificador de segurança do Claude Code bloqueou a execução
+  direta do DROP nesta sessão — precisa ser rodada manualmente (`npx supabase db push`
+  ou execução direta do SQL contra o `DATABASE_URL`).
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
+- [ ] **(P1) Decidir se `min_machines_running` vira 2 em definitivo no Fly** — o incidente de
+  2026-10-16 (host físico do Fly inacessível, ver ✅ Concluído) foi resolvido recriando a
+  máquina, e o redeploy subiu com 2 máquinas em vez da 1 configurada hoje em `fly.toml`. Ter
+  2 reduz o risco de ficar fora do ar por completo quando só um host cai, mas dobra o custo
+  mensal do Fly. Decisão de infra/custo do dono, não técnica.
 - [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
-- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipos de Equipe e Compras/Financeiro aprovados; Sprints 01/02/03/04 homologadas (registro-ponte, fornecedores e financeiro-base já em produção, sem UI). Faltam Compras, estoque/custos e financeiro completo das Sprints 05 a 08; Insumos/ficha virão em entrega própria. P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
+- [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipo de Compras/Financeiro aprovados; Sprints 01/02/03/04 homologadas (registro-ponte, fornecedores e financeiro-base já em produção, sem UI). Faltam Compras, estoque/custos e financeiro completo das Sprints 05 a 08; Insumos/ficha virão em entrega própria. P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
 
@@ -831,3 +829,31 @@ pedido do usuário; não iniciar Sprint 04 sem novo pedido explícito.)_
   teto — decisão do dono, sem job de expurgo por idade, só cascade na exclusão da empresa; aviso
   de privacidade permanente na tela de troca de operador e no cadastro de funcionário
   (`public/admin.html`). CI 784/784, sintaxe OK, validado visualmente. — 2026-09-16
+
+- [x] **Incidente: plataforma fora do ar por host morto no Fly** — queda total reportada pelo
+  cliente; diagnóstico isolou a causa no host físico do Fly (não app/código/Supabase, que
+  respondiam normalmente até o edge). A máquina ficava `started` mas inacessível (💀), e até
+  os comandos de controle (`stop`/`restart`) retornavam 408. Resolvido com
+  `flyctl machine destroy --force` + `flyctl deploy`; confirmado HTTP 200 no fim. Causa e
+  comandos de correção documentados em `docs/gotchas.md` e `DEPLOY.md`. — 2026-10-16
+
+- [x] **Removida toda a feature Gestão de equipe (funcionários, cargos, permissões,
+  Atividades) e o acesso rápido do dono por usuário + senha** — decisão do dono antes de
+  qualquer liberação comercial; nenhum tenant real chegou a usar (tabelas vazias em
+  produção, confirmado por consulta read-only antes da remoção). Removido: rotas
+  `/api/equipe*` e o ramo de sessão de equipe em `exigeAuth` (`src/servidor.js`),
+  `src/equipe-db.js` e `src/permissoes.js` (apagados), aba Equipe/Atividades e modal
+  "Trocar operador" (`public/admin.html`/`style.css`/`app.js`/`equipe.js`, apagado), campos
+  de acesso rápido no cadastro (`cadastro.html`/`.js`), todos os testes exclusivos de
+  equipe/permissões, `docs/equipe.md`, os protótipos `design/canvas/equipe-*.dc.html`, e as
+  menções nos docs vivos (`CLAUDE.md`, `modelo-dados.md`, `arquitetura.md`,
+  `design-system.md`, `testar-bot.md`, `lgpd/ropa.md`, `lgpd/subprocessadores.md`,
+  `design/UI.md`, `README.md`, `DEPLOY.md`, `PRD.md`, `ROADMAP.md`) e no `CHANGELOG.md`.
+  `auditoria_operacional` e `src/auditoria-operacional.js` foram **preservados** (função
+  `registrar`, usada por fornecedores/financeiro; a função `listar`, exclusiva da aba
+  Atividades, foi removida). Migration `20261120110000_remover_equipe.sql` apaga as 6
+  tabelas `equipe_*` e as colunas de flag/acesso rápido em `empresas` — **criada mas ainda
+  não aplicada em produção** (o classificador de segurança do Claude Code bloqueou a
+  execução direta do DROP; precisa ser aplicada manualmente). `npm run check` (180
+  arquivos), `npm run test:ci` (764 testes) e `npm run test:integracao` (101 testes)
+  passam. — 2026-11-20

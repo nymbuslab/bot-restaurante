@@ -30,7 +30,9 @@ async function criarEmpresa(rotulo = "teste", opcoes = {}) {
   const email = marca + "@exemplo-teste.invalid"; // .invalid nunca resolve: e-mail não vaza
   const senha = "Teste" + sufixo() + "!1";
 
-  const { slug, nome } = await empresas.cadastrar({ nome: "Restaurante " + marca, email, senha });
+  const { slug, nome } = await empresas.cadastrar({
+    nome: "Restaurante " + marca, email, senha,
+  });
   criados.push(slug);
 
   // Empresa nova nasce SEM assinatura, e `acessoLiberado` (src/empresas.js) exige

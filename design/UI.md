@@ -23,19 +23,8 @@ Os protótipos são referência **visual**, não código. A ferramenta atual é 
 Projeto `7236747227852373120`, design system `6506830711685967852` (Nymbus Pedidos).
 Exports antigos do Claude Design em `design/canvas/` são histórico; não viram
 código do produto. O stack continua HTML/CSS/JS puro, sem framework.
-As aprovações atuais de Equipe e Compras/Financeiro estão em
+As aprovações atuais de Compras/Financeiro estão em
 `docs/estoque-e-custos/prototipos/`.
-
-### Equipe e Atividades — homologação da Sprint 03
-
-Equipe usa lista/busca/filtros, editor em gaveta, perfis/ajustes, dispositivos e
-seleção por PIN. Atividades é somente leitura: evento, operador e datas, lista
-por cursor e detalhe em `dialog` nativo. Preservar os estados carregando, vazio,
-erro com tentativa novamente e sucesso, os tokens existentes e alvos de 44 px.
-Revogação bloqueia o operador e orienta nova autorização pelo dono; nunca usa o
-refresh do dono como fallback. Detalhe permite Escape e devolve foco ao gatilho.
-Validação real em 1280/375 px; evidências e limites em [docs/equipe.md](../docs/equipe.md).
-Esta homologação não significa ativação em produção.
 
 ---
 
