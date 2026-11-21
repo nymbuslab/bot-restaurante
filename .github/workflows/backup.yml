@@ -5,8 +5,13 @@ on:
     - cron: "0 7 * * *" # 04:00 (BRT) todo dia
   workflow_dispatch: {}
 
+# `issues: write` é só para o aviso de quebra abaixo: quando o backup diário
+# falha, o job abre uma issue e a fecha sozinho quando volta a passar. Sem
+# isso a falha só aparece pra quem abrir a aba Actions do GitHub, e só seria
+# percebida no dia em que alguém precisasse restaurar de verdade.
 permissions:
   contents: read
+  issues: write
 
 jobs:
   backup:
@@ -20,7 +25,11 @@ jobs:
       - name: Instala pg_dump 17 (mesma major do Postgres do Supabase)
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
+          # --retry: a origem (postgresql.org) já travou a conexão em 0 bytes e
+          # caiu com SSL EOF em instabilidades pontuais (15 e 16/11) — tenta de
+          # novo em vez de falhar o backup do dia por uma rajada transitória.
           curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail \
+            --retry 3 --retry-all-errors --retry-delay 5 \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
           # Baixar a chave por HTTPS não basta: confere a fingerprint oficial
           # antes de deixar o apt confiar nela pra instalar pacote nenhum.
@@ -52,3 +61,37 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: node scripts/backup.js
+
+      # ---- Aviso de quebra ----
+      # Uma issue só, reaproveitada: quebra em sequência vira comentário na mesma,
+      # em vez de encher o repositório. O rótulo é o que liga uma coisa à outra.
+      - name: Abre issue quando o backup falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create backup-vermelho --color B60205 --description "O backup diario esta falhando" 2>/dev/null || true
+          CORPO=$(cat <<FIM
+          O backup diário falhou.
+
+          - Execução: $RUN_URL
+
+          Esta issue fecha sozinha quando o backup voltar a passar.
+          FIM
+          )
+          ABERTA=$(gh issue list --state open --label backup-vermelho --json number --jq '.[0].number')
+          if [ -n "$ABERTA" ]; then
+            gh issue comment "$ABERTA" --body "$CORPO"
+          else
+            gh issue create --title "Backup diário falhando" --label backup-vermelho --body "$CORPO"
+          fi
+
+      - name: Fecha a issue quando o backup volta a passar
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for N in $(gh issue list --state open --label backup-vermelho --json number --jq '.[].number'); do
+            gh issue close "$N" --comment "Backup voltou a passar em $(date -u +%Y-%m-%dT%H:%M:%SZ)."
+          done

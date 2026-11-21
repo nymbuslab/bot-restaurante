@@ -4,7 +4,7 @@ titulo: Progresso do Projeto
 proposito: Onde o trabalho parou e onde continuar (etapas operacionais).
 secoes: ["🔄 Em Andamento", "📋 Próximos Passos", "✅ Concluído"]
 manutencao: Skills iniciar-sessao / salvar-contexto / concluir-tarefa. Arquitetura fica no CLAUDE.md.
-atualizado: 2026-11-20
+atualizado: 2026-11-21
 relacionados: [CLAUDE.md, ROADMAP.md, CHANGELOG.md]
 ---
 
@@ -44,12 +44,6 @@ _(nada no momento)_
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
-- [ ] **(P1) Decidir se `min_machines_running` vira 2 em definitivo no Fly** — o incidente de
-  2026-10-16 (host físico do Fly inacessível, ver ✅ Concluído) foi resolvido recriando a
-  máquina, e o redeploy subiu com 2 máquinas em vez da 1 configurada hoje em `fly.toml`. Ter
-  2 reduz o risco de ficar fora do ar por completo quando só um host cai, mas dobra o custo
-  mensal do Fly. Decisão de infra/custo do dono, não técnica.
-- [ ] **(P1) Alertar quando o backup diário falhar** — hoje `.github/workflows/backup.yml` só aparece como vermelho pra quem abrir a aba Actions do GitHub. O workflow de testes já tem o padrão de abrir/fechar issue automaticamente quando quebra (`.github/workflows/test.yml`); o de backup não tem nada equivalente ainda. Sem isso, uma falha silenciosa só seria percebida no dia em que alguém precisar restaurar de verdade — tarde demais.
 - [ ] **(P2) Split de Produtos — 4/4: Compras, Insumos e ficha técnica** — fundações inertes das fases 0/1/2 preservadas: módulo/tabela de insumos, IDs das escolhas e itens recalculados. Nada baixa ingrediente ainda. Arquitetura SprintX e protótipo de Compras/Financeiro aprovados; Sprints 01/02/03/04 homologadas (registro-ponte, fornecedores e financeiro-base já em produção, sem UI). Faltam Compras, estoque/custos e financeiro completo das Sprints 05 a 08; Insumos/ficha virão em entrega própria. P0-B resolvido em 2026-09-16, não bloqueia mais produção. Fonte atual: `docs/estoque-e-custos/`, não os planos antigos de Insumos.
 - [ ] **(P2) Estoque por opção de complemento** — o "Bacon" que acaba e some da opção no cardápio. Ficou explicitamente fora da 3/4 e depende do **`id` estável de opção** que a 2/4 criou. Entra junto com Insumos.
 - [ ] **(P2, opcional) Auto-update assinado do agente de impressão** — a **distribuição já está resolvida**: o exe mora no **GitHub Releases** (repo público `nymbuslab/bot-restaurante`) e o painel serve por **proxy** — `GET /downloads/nymbus-impressora.exe` busca o asset `.exe` da última release e faz **stream** (o usuário nunca vê o GitHub); o botão em Configurações → Impressora mostra a versão publicada (`GET /api/agente/versao-publicada`). Atualização hoje é **manual pelo painel** (baixar + instalar). Falta — só se quiser update **silencioso**: **code signing** (certificado pago; remove o aviso "editor desconhecido" do Windows) e então fiar `electron-updater` (provider github) com `verifyUpdateCodeSignature`. Sem assinatura, o manual-no-painel é o caminho mais seguro.
@@ -938,4 +932,15 @@ _(nada no momento)_
   `empresas` não existem mais, e que `auditoria_operacional` ficou intacta (vazia,
   esperado). Precisou corrigir `supabase/config.toml` primeiro: `[inbucket]` virou
   `[local_smtp]` na CLI 3.2.0, sem isso nenhum comando do CLI carregava a config.
+  — 2026-11-21
+
+- [x] **Decidido: `min_machines_running` fica em 1 no Fly** — o dono optou por manter o
+  custo atual em vez de dobrar para 2 máquinas. Aceita o risco já registrado (ficar fora do
+  ar por completo se o host físico cair, como em 2026-10-16), sem mudança em `fly.toml`.
+  — 2026-11-21
+- [x] **Alertar quando o backup diário falhar** — `.github/workflows/backup.yml` ganhou o
+  mesmo padrão de `test.yml`: `permissions.issues: write`, abre (ou comenta numa já aberta)
+  uma issue com o rótulo `backup-vermelho` quando o job falha, e fecha sozinha quando o
+  backup volta a passar. Commit incluiu também o `--retry` no `curl` do download da chave
+  do pg_dump (pendente no working tree desde 15/11, por instabilidade pontual da origem).
   — 2026-11-21
