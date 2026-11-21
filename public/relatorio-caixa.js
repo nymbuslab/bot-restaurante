@@ -39,7 +39,7 @@
   }
 
   // Estado do caixa no fechamento (D-08): a MESMA fórmula de CONFERIDO/SOBROU/
-  // FALTOU usada pelo cupom impresso, exportada para o Telegram não divergir do
+  // FALTOU usada pelo cupom impresso, exportada para reuso sem divergir do
   // papel em nenhum caso de borda. Devolve { estado, diferenca }, onde
   // `diferenca` é operador − conferência (positiva = sobrou, negativa = faltou).
   function estadoCaixa(totalOperador, totalConferencia) {
@@ -123,9 +123,9 @@
     });
     L.push(sep("-"));
     const totalOperador = (Number(d.contadoDinheiro) || 0) + totalElet;
-    // Estado reutilizado do helper (D-08): o Telegram mostra o MESMO veredito
-    // que o cupom físico. A tolerância de arredondamento segue aqui (float
-    // 0,1+0,2 não pode virar "R$ -0,00").
+    // Estado reutilizado do helper (D-08): mesmo veredito do cupom físico. A
+    // tolerância de arredondamento segue aqui (float 0,1+0,2 não pode virar
+    // "R$ -0,00").
     const st = estadoCaixa(totalOperador, totalConferencia);
     L.push(linhaValor("Total", "R$ " + fmtBR(totalOperador)));
     L.push(centro(st.estado));

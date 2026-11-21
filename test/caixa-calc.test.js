@@ -125,7 +125,7 @@ test("esperadoPorForma: dinheiro = espécie inteira, resto = recebido líquido; 
 
 // ---------------------------------------------------------------------------
 // T-01.02 — contagemPorForma(movimentos): QUANTIDADE de transações tipo
-// recebimento por forma (D-01). O Telegram passa a mostrar volume, não só valor.
+// recebimento por forma (D-01), não só o valor.
 // ---------------------------------------------------------------------------
 
 test("T-01.02 contagemPorForma: conta só recebimentos por forma", () => {
@@ -161,7 +161,7 @@ test("T-01.02 contagemPorForma: nunca altera o array de entrada", () => {
 
 // ---------------------------------------------------------------------------
 // T-01.03 — diferencaPorForma(contadoPorForma, esperadoPorForma): sobrou/faltou
-// POR FORMA (D-04). O Telegram aponta qual forma teve problema, não só o total.
+// POR FORMA (D-04), apontando qual forma teve problema, não só o total.
 // ---------------------------------------------------------------------------
 
 test("T-01.03 diferencaPorForma: contado - esperado por forma", () => {

@@ -1164,3 +1164,10 @@ Auditoria visual completa (todas as telas) e alinhamento ao design system.
   card destacado e o detalhe aberto.
 - Entrega em validação: a bateria de integração das rotas de comanda ainda não rodou e a tela
   ainda não foi conferida em navegador real.
+
+## [1.2.16] - Relatórios via Telegram removidos - 2026-11-21
+
+- O restaurante não recebe mais o fechamento de caixa, o alerta de estoque baixo nem o aviso de
+  cancelamento/estorno pelo Telegram. A aba "Relatórios Telegram" saiu do modal Gerenciar do
+  painel master.
+- Nenhum restaurante real usava a função; o único tenant vinculado era de teste interno.

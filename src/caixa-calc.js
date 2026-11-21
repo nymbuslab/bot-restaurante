@@ -53,9 +53,9 @@ function totalContagem(contagem) {
   return centavos / 100;
 }
 
-// QUANTIDADE de transações tipo 'recebimento' por forma (D-01) — o volume que o
-// Telegram passa a mostrar junto do valor. Só recebimento entra (cancelamento/
-// estorno/suprimento/sangria não são venda). Lista vazia → {}.
+// QUANTIDADE de transações tipo 'recebimento' por forma (D-01) — o volume ao
+// lado do valor. Só recebimento entra (cancelamento/estorno/suprimento/sangria
+// não são venda). Lista vazia → {}.
 function contagemPorForma(movimentos) {
   const out = {};
   for (const m of movimentos || []) {

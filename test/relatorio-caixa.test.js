@@ -115,8 +115,8 @@ test("relatório: estorno aparece junto das deduções do fechamento", () => {
 
 // ---------------------------------------------------------------------------
 // T-01.01 — estadoCaixa extraído (D-08): mesma fórmula de CONFERIDO/SOBROU/FALTOU
-// do cupom impresso, exportada p/ reuso no Telegram. O cupom CONTINUA usando a
-// função (não recalcula inline), garantindo que Telegram e papel divergem nunca.
+// do cupom impresso, exportada p/ reuso pelo relatório de fechamento. O cupom
+// CONTINUA usando a função (não recalcula inline), garantindo que nunca divergem.
 // ---------------------------------------------------------------------------
 
 test("T-01.01 estadoCaixa: CONFERIDO com diferença zero quando total bate", () => {

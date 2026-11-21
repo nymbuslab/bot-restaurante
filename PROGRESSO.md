@@ -23,7 +23,6 @@ _(nada no momento)_
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
-- [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
 
 > **Split de Produtos (4 etapas).** "Produtos" está sendo quebrado nos cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅, **2/4 Complementos** ✅ e **3/4 Controle de estoque** ✅ estão entregues (ver ✅ Concluído). A 4/4 segue aberta e aparece como "Em breve" no menu Cadastros → Produtos.
 
@@ -977,3 +976,24 @@ _(nada no momento)_
   `cliente` preenchido (comanda do PDV, entrega, retirada), não só Comanda — decisão revertida da de
   12/09 ("por enquanto" fora de escopo). 2 testes novos em `test/comanda.test.js` (aparece quando tem
   cliente, some quando não tem). `npm test` 790/790, `npm run check` ok. — 2026-11-21
+
+- [x] **Remove toda a feature de Relatórios via Telegram** — mesmo tratamento dado à Equipe:
+  conferido em produção (só leitura) antes de mexer — **nenhum restaurante real usava**, só o
+  tenant `nymbus-teste`. Removidos `src/telegram.js`, as 4 rotas do admin-master em `src/servidor.js`,
+  o job de polling do `getUpdates` em `index.js`, os disparos fire-and-forget (fechamento/
+  cancelamento/estorno) e o helper de gate em `src/caixa.js`/`src/empresas.js`, a aba "Relatórios
+  Telegram" do modal Gerenciar (`public/app-admin.js` + CSS `am-tg-*`/`am-t-aba*`/`am-t-painel`, que
+  ficaram órfãos com só 1 aba restante — modal virou direto, sem abas), os 2 protótipos
+  `design/canvas/*telegram*.dc.html` e os 7 arquivos de teste dedicados. `ROADMAP.md` e `PROGRESSO.md`
+  perderam as entradas em aberto (a entrega e o P3 de relatórios financeiros, que dependia do canal).
+  `CHANGELOG.md` **não mexeu** nas entradas antigas de entrega (histórico de versão real, `[1.2.6]`),
+  só ganhou uma nova de remoção (`[1.2.16]`). Comentários residuais em `src/caixa-calc.js` e
+  `public/relatorio-caixa.js` que citavam Telegram como motivo de funções compartilhadas (`estadoCaixa`,
+  `contagemPorForma`) foram reescritos — essas funções continuam em uso pelo cupom 80mm e pela tela de
+  caixa, não eram exclusivas do Telegram. `npm test` 686/686 (104 testes a menos, dos arquivos
+  removidos), `npm run check` ok (179 arquivos), `npm run test:integracao` rodado por mexer em
+  cancelamento/estorno/fechamento de caixa. **Pendência aberta:** `docs/estoque-e-custos/00-DECISOES.md`
+  (D-14/D-29) e `docs/estoque-e-custos/sprint-07/tasks.md` ainda citam reaproveitar a infra do
+  Telegram para alertas futuros do programa de Compras/Estoque (ainda não iniciado) — não mexi lá
+  por serem decisões formais já tomadas pelo dono; precisa de confirmação dele antes de reabrir essa
+  parte do plano. — 2026-11-21
