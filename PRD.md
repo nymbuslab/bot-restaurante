@@ -3,23 +3,26 @@ doc: prd
 titulo: PRD — Nymbus Pedidos
 proposito: Requisitos do produto: visão, público, escopo atual e o que fica de fora.
 manutencao: Revisar quando um módulo entrar ou sair do produto. Escopo detalhado por área fica em docs/; o que está em curso fica no PROGRESSO.md.
-atualizado: 2026-08-28
+atualizado: 2026-11-11
 relacionados: [CLAUDE.md, ROADMAP.md, PROGRESSO.md, CHANGELOG.md]
 ---
 
 # PRD — Nymbus Pedidos
 
-Documento de requisitos do produto. Plataforma SaaS de pedidos no WhatsApp para restaurantes.
+Documento de requisitos do produto. Plataforma SaaS de **gestão completa para restaurante**
+(pedidos, PDV, caixa, mesas e cardápio). O WhatsApp é um canal de entrada de pedido, não a
+promessa central (reposicionamento de 2026-07-30 — ver `CLAUDE.md`, `PRODUCT.md`).
 Versão do sistema: ver `CHANGELOG.md`.
 
 ## 1. Visão
 
-O restaurante recebe pedido pelo WhatsApp sem ninguém digitar cardápio. O cliente abre um link,
-monta o pedido sozinho e o pedido cai no painel. O dono muda cardápio, preço e horário na hora,
-sem depender de programador.
+O restaurante recebe pedido pelo WhatsApp sem ninguém digitar cardápio: o bot manda o link do
+cardápio web, o cliente monta o pedido sozinho ali e o pedido cai no painel. O dono muda cardápio,
+preço e horário na hora, sem depender de programador.
 
-A cobrança é **valor fixo por mês, sem comissão por pedido**. No Plano Completo, o restaurante
-também opera o salão: PDV, mesas, caixa do dia e comanda impressa na térmica.
+A cobrança é **valor fixo por mês, sem comissão por pedido** — o mecanismo central de
+posicionamento do produto. No Plano Completo, o restaurante também opera o salão de ponta a ponta:
+PDV, mesas, caixa do dia e comanda impressa na térmica, no mesmo sistema que recebe o pedido.
 
 Qualquer restaurante se cadastra sozinho e começa no mesmo dia. Não instala nada para vender pelo
 WhatsApp. O app de impressão é opcional e só existe no Completo.

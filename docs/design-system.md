@@ -79,6 +79,12 @@ CSS e JS, não o ícone. Trocar a marca não reflete na hora nas abas já aberta
 | `--shadow-md` | sombra média (login card, toast) |
 | `--shadow-lg` | sombra forte (modal) |
 
+Fora da escala de 4 passos, dois formatos fixos e literais (não têm variável própria,
+mas são convenção real, não valor solto): **pill** (`border-radius: 999px`, dezenas de
+usos — selo, chip, badge, toggle, input arredondado) e **tag** (`4px`, mais quadrada,
+usada em etiqueta de item arquivado/destaque no Controle de estoque). Raio de elemento
+circular pequeno (dot, avatar) normalmente usa `50%`, não um valor fixo.
+
 ## Componentes
 
 | Classe | Descrição |

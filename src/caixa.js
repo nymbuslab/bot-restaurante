@@ -170,7 +170,7 @@ async function receberPedido(dir, pedidoId, opts) {
     await client.query("BEGIN");
     const caixa = await _travarCaixaAberto(client, empId);
     const ped = await client.query(
-      "SELECT id, recebido_em, total, origem FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
+      "SELECT id, recebido_em, total, origem, tipo_entrega FROM pedidos WHERE empresa_id = $1 AND id = $2 FOR UPDATE",
       [empId, pedidoId]
     );
     if (!ped.rows[0]) throw new Error("Pedido não encontrado.");
@@ -178,6 +178,11 @@ async function receberPedido(dir, pedidoId, opts) {
     // não só no front — evita desencontrar a conta da mesa por requisição forjada.
     if (ped.rows[0].origem === "mesa") throw new Error("Pedido de mesa é recebido na aba Mesas.");
     if (ped.rows[0].recebido_em) throw new Error("Pedido já recebido.");
+    // Comanda (D-09): caixa vencido bloqueia recebimento, não só acréscimo — a UI já
+    // desabilita o botão, mas a trava precisa valer também fora dela (requisição direta).
+    if (ped.rows[0].origem === "pdv" && ped.rows[0].tipo_entrega === "Comanda" && caixa.vencido) {
+      throw new Error("Feche o caixa do dia anterior para receber esta comanda.");
+    }
     const total = Math.round((Number(ped.rows[0].total) || 0) * 100) / 100;
     if (Math.abs(soma - total) > 0.01) {
       throw new Error("A soma dos pagamentos (R$ " + soma.toFixed(2) + ") difere do total (R$ " + total.toFixed(2) + ").");

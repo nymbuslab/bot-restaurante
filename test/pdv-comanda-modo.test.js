@@ -5,9 +5,10 @@ const path = require("path");
 const vm = require("vm");
 
 // T-03.02 — Modo PDV acrescentando à comanda existente (pedidoModoId).
-// Harness: extrai a seção REAL "Modo PDV acrescentando" de public/app.js (funções
-// pedidoModoAtivar/pedidoModoDesativar/pdvTituloModoPedido/pedidoLancarDoPdv) e a
-// linha de wiring de #pdvCobrar, e executa tudo numa vm com stubs (api, $, abrirPdvPagar).
+// Harness: extrai a seção REAL "Modo PDV acrescentando" de public/app.js (estado
+// pedidoModo*/funções pedidoModoAtivar/pedidoModoDesativar/pdvTituloModoPedido/
+// pedidoLancarDoPdv/abrirComandaNaTela) e a linha de wiring de #pdvCobrar, e executa
+// tudo numa vm com stubs (api, $, abrirPdvPagar).
 
 function itemCarrinho(patch) {
   return Object.assign({ id: 201, qtd: 2, nome: "Pizza", composicao: [], opcionais: [], grupos: [], variacoes: [], observacao: "" }, patch || {});
@@ -16,7 +17,7 @@ function itemCarrinho(patch) {
 function carregarHarness() {
   const app = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
 
-  const iniModo = app.indexOf("function pedidoModoAtivar(");
+  const iniModo = app.indexOf("/* ---- Modo PDV acrescentando");
   const fimModo = app.indexOf("\n// ---- Wiring do PDV", iniModo);
   assert.ok(iniModo > -1 && fimModo > iniModo, "secao 'Modo PDV acrescentando' nao encontrada em public/app.js");
 
@@ -26,6 +27,7 @@ function carregarHarness() {
   assert.ok(iniWiring > -1 && fimWiring > iniWiring, "wiring de #pdvCobrar nao encontrado em public/app.js");
 
   const apiCalls = [];
+  const navClicks = [];
   const chamadas = { mesaLancar: 0, abrirPdvPagar: 0 };
   const cobrar = {
     disabled: false, textContent: "", querySelectorAll: () => [],
@@ -42,13 +44,16 @@ function carregarHarness() {
     api: async (m, u, b) => { apiCalls.push({ m, u, b }); return { ok: true, json: async () => ({}) }; },
     toast: () => {},
     $: (id) => (id === "pdvCobrar" ? cobrar : fakeElemento),
-    document: { querySelector: () => null },
+    document: { querySelector: (sel) => ({ click: () => navClicks.push(sel) }) },
+    comandaState: {},
     mesaModoId: null,
     mesaLancarDoPdv: () => { chamadas.mesaLancar++; },
     abrirPdvPagar: () => { chamadas.abrirPdvPagar++; },
     pdvCart: [],
     renderPdvCarrinho: () => {},
     pdvLimparBusca: () => {},
+    pdvMostrarTipoVenda: () => {},
+    pdvOcultarTipoVenda: () => {},
     carregarPedidos: undefined,
     pdvEsc: (s) => String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
@@ -56,7 +61,7 @@ function carregarHarness() {
 
   vm.runInNewContext(app.slice(iniModo, fimModo), ctx);
   vm.runInNewContext(app.slice(iniWiring, fimWiring), ctx);
-  return { ctx, apiCalls, chamadas, cobrar };
+  return { ctx, apiCalls, chamadas, cobrar, navClicks };
 }
 
 test("T-03.02 com pedidoModoId setado, o clique em #pdvCobrar posta em /api/pedidos/:id/itens e não abre a tela de pagamento", async () => {
@@ -103,6 +108,50 @@ test("T-03.02 pedidoLancarDoPdv monta o corpo {itens:[...]} e posta na rota cert
   assert.equal(linha.opcionais.length, 0);
   assert.equal(linha.composicao.length, 0);
   assert.equal(h.chamadas.abrirPdvPagar, 0);
+});
+
+test("T-03.02 na via da Comanda o acréscimo posta em /api/comandas/:id/itens (pdv.operar + caixa)", async () => {
+  const h = carregarHarness();
+  h.ctx.pedidoModoId = 42;
+  h.ctx.pedidoModoNumero = "7";
+  h.ctx.pedidoModoViaComanda = true;
+  h.ctx.pdvCart = [itemCarrinho()];
+  await h.ctx.pedidoLancarDoPdv();
+
+  assert.equal(h.apiCalls.length, 1);
+  assert.equal(h.apiCalls[0].m, "POST");
+  assert.equal(h.apiCalls[0].u, "/api/comandas/42/itens", "a via da comanda não pode usar a rota de Pedidos (pedidos.editar)");
+  assert.deepEqual(Object.keys(h.apiCalls[0].b), ["itens"]);
+  assert.ok(!h.navClicks.some((s) => s.includes("data-aba='pedidos'")), "não volta para a aba Pedidos no meio do fluxo");
+});
+
+test("T-03.02 na via da Comanda, depois de acrescentar volta para Mesas com a comanda destacada", async () => {
+  const h = carregarHarness();
+  h.ctx.pedidoModoId = 42;
+  h.ctx.pedidoModoNumero = "7";
+  h.ctx.pedidoModoViaComanda = true;
+  h.ctx.pdvCart = [itemCarrinho()];
+  await h.ctx.pedidoLancarDoPdv();
+
+  assert.equal(h.ctx.comandaState.destaqueId, 42, "o card da comanda fica destacado");
+  assert.equal(h.ctx.comandaState.abrirAposCarregar, 42, "o detalhe abre quando a lista carregar");
+  assert.equal(h.ctx.comandaState.falhaAbertura, undefined, "não antecipa o aviso de falha antes de tentar abrir (carregarComandasAbertas é quem seta, só se a abertura falhar de fato)");
+  assert.ok(h.navClicks.some((s) => s.includes("data-aba='mesas'")), "navega para a aba Mesas");
+});
+
+test("T-03.02 na via da Comanda, um POST que falha não muda de aba nem destaca nada", async () => {
+  const h = carregarHarness();
+  h.ctx.api = async (m, u, b) => { h.apiCalls.push({ m, u, b }); return { ok: false, json: async () => ({ erro: "Plano não permite" }) }; };
+  h.ctx.pedidoModoId = 42;
+  h.ctx.pedidoModoNumero = "7";
+  h.ctx.pedidoModoViaComanda = true;
+  h.ctx.pdvCart = [itemCarrinho()];
+  await h.ctx.pedidoLancarDoPdv();
+
+  assert.equal(h.apiCalls[0].u, "/api/comandas/42/itens");
+  assert.equal(h.ctx.comandaState.destaqueId, undefined);
+  assert.deepEqual(h.navClicks, []);
+  assert.equal(h.ctx.pedidoModoId, 42, "o modo continua ativo para o atendente tentar de novo");
 });
 
 test("T-03.02 carrinho vazio não dispara a chamada", async () => {

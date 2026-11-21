@@ -196,7 +196,7 @@
     linhas.push(centro(nome.toUpperCase()));
     linhas.push(centro("PRÉ-CONTA (NÃO FISCAL)"));
     linhas.push(sep("="));
-    linhas.push(linhaValor("Mesa: " + ((mesa && mesa.nome) || ""), dataHoraBR(opts.quando)));
+    linhas.push(linhaValor((opts.rotulo || "Mesa") + ": " + ((mesa && mesa.nome) || ""), dataHoraBR(opts.quando)));
     linhas.push(sep("-"));
     // Agrega itens iguais (mesmo nome + preço unitário) de todas as rodadas.
     const mapa = {};

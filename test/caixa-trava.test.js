@@ -28,17 +28,17 @@ const caixa = require("../src/caixa");
 
 // Monta um dublê que responde às queries e registra tudo. `caixaSob` é o que a
 // releitura travada devolve: `null` simula o caixa fechado no meio do caminho.
-function montar({ caixaSob = { id: 9, aberto_em: new Date(), fundo_troco: 0 }, movimentos = [] } = {}) {
+function montar({ caixaSob = { id: 9, aberto_em: new Date(), fundo_troco: 0 }, movimentos = [], pedido } = {}) {
   const calls = [];
   const client = {
     async query(sql, params) {
       calls.push({ sql, params });
       if (/SELECT id FROM empresas/i.test(sql)) return { rows: [{ id: "emp-uuid" }] };
       if (/FROM caixas/i.test(sql) && /FOR UPDATE/i.test(sql)) return { rows: caixaSob ? [caixaSob] : [] };
-      if (/FROM caixas/i.test(sql)) return { rows: [{ id: 9, aberto_em: new Date(), fundo_troco: 0, status: "aberto" }] };
+      if (/FROM caixas/i.test(sql)) return { rows: [{ id: 9, aberto_em: new Date(), fundo_troco: 0, status: "aberto", vencido: !!(caixaSob && caixaSob.vencido) }] };
       if (/FROM caixa_movimentos/i.test(sql)) return { rows: movimentos };
       if (/FROM pedidos/i.test(sql)) {
-        return { rows: [{ id: 41, recebido_em: null, total: 30, origem: "web", status: "novo" }] };
+        return { rows: [pedido || { id: 41, recebido_em: null, total: 30, origem: "web", status: "novo" }] };
       }
       return { rows: [{ id: 1 }], rowCount: 1 };
     },
@@ -76,6 +76,31 @@ test("receberPedido: caixa fechado no meio do caminho aborta o recebimento", asy
     );
   });
   assert.equal(calls.filter((q) => /INSERT INTO caixa_movimentos/i.test(q.sql)).length, 0);
+});
+
+test("receberPedido: Comanda (origem pdv + tipo_entrega Comanda) com caixa vencido é bloqueada (D-09)", async () => {
+  const { calls, client } = montar({
+    caixaSob: { id: 9, aberto_em: new Date(), fundo_troco: 0, vencido: true },
+    pedido: { id: 42, recebido_em: null, total: 30, origem: "pdv", tipo_entrega: "Comanda" },
+  });
+  await comDb(client, async () => {
+    await assert.rejects(
+      () => caixa.receberPedido("/x/tenant-cx", 42, { pagamentos: [{ forma: "PIX", valor: 30 }] }),
+      /feche o caixa do dia anterior/i
+    );
+  });
+  assert.equal(calls.filter((q) => /INSERT INTO caixa_movimentos/i.test(q.sql)).length, 0, "a trava no servidor impede o recebimento mesmo sem passar pela UI");
+});
+
+test("receberPedido: venda de PDV que não é Comanda (Entrega/Retirada) continua recebível com caixa vencido", async () => {
+  const { calls, client } = montar({
+    caixaSob: { id: 9, aberto_em: new Date(), fundo_troco: 0, vencido: true },
+    pedido: { id: 43, recebido_em: null, total: 30, origem: "pdv", tipo_entrega: "Entrega" },
+  });
+  await comDb(client, () =>
+    caixa.receberPedido("/x/tenant-cx", 43, { pagamentos: [{ forma: "PIX", valor: 30 }] })
+  );
+  assert.equal(calls.filter((q) => /INSERT INTO caixa_movimentos/i.test(q.sql)).length, 1, "D-09 é específica de Comanda, não bloqueia o fluxo normal de a-receber do PDV");
 });
 
 test("registrarMovimento: sangria roda em transação e trava o caixa", async () => {

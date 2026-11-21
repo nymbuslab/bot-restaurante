@@ -17,7 +17,7 @@ Região mapeada: o repositório inteiro (`index.js`, `src/`, `public/`, `supabas
 
 | Item | Versão | Lido de |
 |---|---|---|
-| Node.js (runtime) | `>=20` (declarado); imagem travada em `node:22-slim` | `package.json:8` (engines) e `Dockerfile:1` |
+| Node.js (runtime) | `>=22` (declarado); imagem travada em `node:22-slim` | `package.json:8` (engines) e `Dockerfile:1` |
 | express | 4.22.2 (resolvida; manifesto pede `^4.19.2`) | `package-lock.json` (`node_modules/express`), faixa em `package.json:27` |
 | pg | 8.21.0 | `package-lock.json` (`node_modules/pg`), `package.json:32` |
 | @supabase/supabase-js | 2.108.1 | `package-lock.json` (`node_modules/@supabase/supabase-js`), `package.json:22` |

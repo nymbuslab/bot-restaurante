@@ -368,13 +368,16 @@ depende do **tipo de venda** (todos com `origem='pdv'` e **baixa de estoque ATÔ
   cozinha, sai só a via de cozinha. No modal de abertura há uma **identificação opcional**
   (nome/mesa/referência, `#pdvComandaId`) gravada em `pedidos.cliente` — o campo **Cliente** da aba
   Pedidos — que também volta no banner do modo acréscimo ("Acrescentando à Comanda #NN · Maria").
-  O atendente reabre o pedido pela aba **Pedidos** (modal de detalhe)
-  e usa **"Acrescentar item"** — vale para **qualquer pedido a receber**, não só Comanda (D-07) — que
-  leva o PDV ao modo "Acrescentando à Comanda #NN" e chama a rota nova `POST /api/pedidos/:id/itens`
-  (`acrescentarItens` em `src/pedidos.js`: UPDATE incremental com `FOR UPDATE`, 409 de estoque); a
-  cozinha recebe **só a via da rodada nova**. Fechamento pelo botão **"Receber pagamento"** do modal de
-  detalhe (mesmo caminho de Entrega/Retirada, zero código novo). Cancelar item já enviado à cozinha pede
-  o segundo aviso.
+  O atendente reabre o pedido pela aba **Pedidos** (modal de detalhe) ou pela seção **Comandas
+  abertas** da aba Mesas (sem filtro de data, mais antigas primeiro — ver
+  `docs/sprintx/features/comandas-abertas-mesas/`) e usa **"Acrescentar item"** — vale para
+  **qualquer pedido a receber**, não só Comanda (D-07) — que leva o PDV ao modo "Acrescentando à
+  Comanda #NN" e chama `POST /api/pedidos/:id/itens` (via Pedidos) ou `POST /api/comandas/:id/itens`
+  (via Mesas/Comandas, mesmo serviço `acrescentarItens` em `src/pedidos.js`: UPDATE incremental com
+  `FOR UPDATE`, 409 de estoque); a cozinha recebe **só a via da rodada nova**. Fechamento pelo botão
+  **"Receber pagamento"**, mesmo endpoint de Entrega/Retirada, mas com uma trava extra: caixa vencido
+  (de outro dia) bloqueia o recebimento de Comanda, o que não vale para Entrega/Retirada
+  (`receberPedido` em `src/caixa.js`). Cancelar item já enviado à cozinha pede o segundo aviso.
 
 As vias vão para `impressao_fila` (tipo `pdv`, ordem cozinha→cupom) e saem pelo **agente**. O PDV
 **nunca** abre o modal de "novo pedido" — esse alerta é escopado **no servidor** aos pedidos de

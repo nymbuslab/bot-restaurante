@@ -20,6 +20,22 @@ _(nada no momento)_
 
 ### Em aberto
 
+- [ ] **(P2) Validar visualmente as correções do admin.html** — commitadas e deployadas só com base em
+  leitura de código e detector estático; nunca vistas renderizadas (a extensão do Chrome não alcança
+  localhost neste ambiente de desenvolvimento).
+- [ ] **(P2) Validar visualmente "Comandas abertas" em Mesas e o retorno do PDV** — seção de comandas
+  abertas na aba Mesas, banner/drawer do PDV e o retorno ao card criado depois de acrescentar item: a
+  correção do code review (D-09, caixa vencido bloqueando recebimento) passou pela suíte, mas nunca foi
+  vista rodando em navegador real, desktop e mobile (sem ferramenta de validação visual neste ambiente).
+- [ ] **(P2) Decidir o gap de tipografia do `DESIGN.md`** — o frontmatter do Impeccable só representa 5
+  papéis; a escala real do projeto tem 14 valores fechados (`docs/design-system.md`). Enquanto não
+  decidir, toda auditoria futura do Impeccable mostra ~240 avisos de falso positivo em tipografia.
+  Opções: configurar `ignore-rule` project-wide, ou aceitar os avisos.
+- [ ] **(P3) Achados residuais da auditoria de design sem correção** — cards aninhados numa tabela do
+  `admin.html` (detector não deu seletor/linha exata), scripts do painel sem `defer` (risco x ganho não
+  compensou sem validação ao vivo), e a auditoria ainda não chegou nas outras telas (cardápio web,
+  cadastro).
+
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
@@ -836,6 +852,70 @@ _(nada no momento)_
   os comandos de controle (`stop`/`restart`) retornavam 408. Resolvido com
   `flyctl machine destroy --force` + `flyctl deploy`; confirmado HTTP 200 no fim. Causa e
   comandos de correção documentados em `docs/gotchas.md` e `DEPLOY.md`. — 2026-10-16
+
+- [x] **Correção de escalonamento de privilégio na delegação de perfil em Equipe** — `PUT /api/equipe/:id`
+  sem o campo `perfil` pulava a validação de delegação; um gerente podia restaurar uma permissão de
+  administrador que ele mesmo não possui. Validação movida pra dentro da transação de
+  `atualizarFuncionario`, sob o lock de linha, comparando o conjunto efetivo real de permissões
+  (perfil + regras de perfil da empresa + ajustes persistidos) do estado atual e do resultante, não só
+  o perfil isolado; `ajustes` normalizado uma única vez, usado tanto na validação quanto na gravação.
+  CI 784/784, sintaxe OK. Suíte de integração não rodou (projeto Supabase de teste excluído — não é
+  pendência). — 2026-11-11
+
+- [x] **Padronização visual: tokens, contraste e redesign da seção Vantagens da landing** — criados
+  `PRODUCT.md`/`DESIGN.md` (contexto do Impeccable); consolidados 20 valores de `border-radius` soltos
+  e 1 cor duplicada pros tokens reais no `style.css`; corrigido contraste quase invisível no hover de
+  botões/aba ativa e texto abaixo do piso de 11px no `admin.html`; removidos kickers e faixa lateral
+  decorativa (achados de "AI slop"); seção "Vantagens" da landing redesenhada — "Sem taxa por pedido"
+  virou destaque isolado ecoando a faixa de estatísticas do hero, ícones foram de empilhados pra lado
+  a lado nos demais cards. Validado ao vivo em produção via Playwright pra landing. — 2026-11-11
+  (admin.html sem validação visual ao vivo — extensão do Chrome não alcança localhost neste ambiente)
+
+- [x] **Comandas abertas em Mesas / Comandas (entrega parcial)** — as comandas criadas no PDV
+  passaram a aparecer na tela Mesas / Comandas, em seção própria acima das mesas físicas, com
+  número, duração, quantidade de itens e total, sem filtro de data e com as mais antigas primeiro.
+  O detalhe permite acrescentar produtos, imprimir a pré-conta, receber e cancelar conforme a
+  permissão de cada ação (`pdv.operar`, `caixa.movimentar`, `pedidos.cancelar`) e continua visível
+  com o caixa fechado ou vencido: nesse estado só o acréscimo e o recebimento ficam bloqueados. Ao
+  finalizar uma venda de tipo Comanda, o painel vai para a tela, destaca o card e abre o detalhe do
+  registro criado, sem repetir o POST se a navegação falhar. Suíte 806/806 e `npm run check` OK.
+  **Ressalva:** a interface não foi validada em navegador real desktop e mobile (ver Próximos
+  Passos). — 2026-11-12
+
+- [x] **Code review da entrega "Comandas abertas em Mesas / Comandas"** — revisão pós-entrega
+  (convergência com D-01 a D-15 + revisão de bugs) achou 1 lacuna de risco financeiro e 3 bugs de
+  UI, todos corrigidos: (1) D-09 — `receberPedido` (`src/caixa.js`) não checava caixa vencido, só a
+  UI desabilitava o botão "Receber"; uma chamada direta à rota recebia a Comanda normalmente com
+  caixa de outro dia aberto. Corrigido com a trava no servidor (bloqueia só Comanda, não o
+  a-receber comum de Entrega/Retirada). (2) Cancelar "Adicionar produtos" numa Comanda jogava o
+  operador pra aba Pedidos em vez de voltar pro detalhe da Comanda. (3) Erro de rede em Mesas/
+  Comandas não mostrava mais o painel de "não deu para carregar" (`mesasErroRede`), só um toast que
+  passava. (4) `abrirComandaNaTela` antecipava o aviso de "não abriu aqui" antes de tentar abrir,
+  piscando um banner de falha falsa no caminho normal. Suíte 808/808, `npm run check` OK em 205
+  arquivos. **Ressalva à época:** os 12 casos de integração de `/api/comandas/*` ainda não tinham
+  rodado por falta de `.env.test` — resolvido em 2026-11-14 (ver entrada abaixo). — 2026-11-12
+
+- [x] **Bateria de integração de "Comandas abertas" rodada contra banco real (1ª vez)** — o
+  projeto Supabase descartável de `.env.test` estava pausado (não excluído, como a memória antiga
+  registrava); o dono reativou e a bateria `npm run test:integracao` rodou pela primeira vez contra
+  as rotas `/api/comandas/*`. Achou 3 problemas reais, todos corrigidos: (1) `src/servidor.js` — 3
+  respostas 404 de comanda ("Comanda aberta nao encontrada.") sem acento, inconsistentes com toda
+  outra mensagem equivalente do arquivo; (2) `test/integracao/comandas-abertas.test.js` — o teste de
+  histórico assumia `GET /api/pedidos` devolvendo `{ pedidos: [...] }`, mas a rota sempre devolveu
+  array direto (os outros testes de integração já tratam os dois formatos; esse não tratava); (3)
+  mesmo arquivo — a fixture do item "Bebida" nunca setou `estoque` inicial, então a baixa de estoque
+  não tinha nada pra decrementar e o teste comparava contra `NaN`. Depois das 3 correções: 136/137
+  (1 skip esperado, Stripe test-mode sem chave de teste configurada). Fecha de verdade a ressalva de
+  integração deixada em aberto nas duas entradas anteriores. — 2026-11-14
+
+- [x] **Correções de documentação achadas na revisão ampla do projeto** — `package.json` tinha
+  `engines.node: >=20`, desatualizado desde que o Node 22 virou requisito real (WebSocket nativo
+  do `supabase-js`, documentado só no `README.md` desde o commit 609ba14); corrigido pra `>=22`.
+  `PRD.md` ainda abria com o posicionamento antigo ("SaaS de pedidos no WhatsApp"); reescrito pro
+  posicionamento atual (ERP de gestão, WhatsApp é canal), alinhado com `CLAUDE.md`/`PRODUCT.md`.
+  Buscando o valor antigo em todos os `.md` do projeto, achou-se mais um ponto com a mesma
+  defasagem: `docs/legado/PERFIL.md` também citava `>=20`; corrigido. `npm run check` 199 arquivos
+  sem erro, `npm test` 784/784. — 2026-11-11
 
 - [x] **Removida toda a feature Gestão de equipe (funcionários, cargos, permissões,
   Atividades) e o acesso rápido do dono por usuário + senha** — decisão do dono antes de

@@ -3,7 +3,7 @@ expx_schema: 1
 expx_tool: sprintx
 kind: estimativa_historico
 trabalho_id: null
-atualizado_em: 2026-09-16
+atualizado_em: 2026-11-12
 unidade: h
 entradas:
   - trabalho_id: extrato-geral-estoque
@@ -127,11 +127,55 @@ entradas:
     real: 2.5
     desvio: null
     registrado_em: 2026-09-16
+  - trabalho_id: comandas-abertas-mesas
+    task_id: T-01.01
+    tipo_task: teste
+    area: test/fixtures/comandas.js — fixture de comanda aberta e estados operacionais
+    sinais: []
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 0.4
+    desvio: null
+    registrado_em: 2026-11-12
+  - trabalho_id: comandas-abertas-mesas
+    task_id: T-03.01
+    tipo_task: ui
+    area: public/admin.html + public/app.js — seção Comandas abertas e contador
+    sinais: [descoberta_durante_execucao]
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 1.5
+    desvio: null
+    registrado_em: 2026-11-12
+  - trabalho_id: comandas-abertas-mesas
+    task_id: T-03.02
+    tipo_task: ui
+    area: public/app.js + public/style.css — drawer da comanda e ações
+    sinais: [descoberta_durante_execucao]
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 2.0
+    desvio: null
+    registrado_em: 2026-11-12
+  - trabalho_id: comandas-abertas-mesas
+    task_id: T-03.03
+    tipo_task: ui
+    area: public/app.js — PDV abre a comanda criada sem repetir o POST
+    sinais: [descoberta_durante_execucao]
+    estimado_min: null
+    estimado_max: null
+    estimado_media: null
+    real: 1.5
+    desvio: null
+    registrado_em: 2026-11-12
 calibracao:
   - tipo_task: ui
-    entradas: 4
+    entradas: 7
     desvio_medio: null
-    fator_ativo: true
+    fator_ativo: false
   - tipo_task: persistencia
     entradas: 3
     desvio_medio: null
@@ -141,6 +185,10 @@ calibracao:
     desvio_medio: null
     fator_ativo: false
   - tipo_task: dominio
+    entradas: 1
+    desvio_medio: null
+    fator_ativo: false
+  - tipo_task: teste
     entradas: 1
     desvio_medio: null
     fator_ativo: false
@@ -173,20 +221,29 @@ revisão, deploy nem ida e volta com o cliente.
 | estoque-e-custos | T-04.02 | api | src/fornecedores-db.js + rotas /api/fornecedores* | — | — | — | 2,5 h | — |
 | estoque-e-custos | T-04.03 | persistencia | src/financeiro-db.js — contas e razão | descoberta_durante_execucao | — | — | 2,0 h | — |
 | estoque-e-custos | T-04.04 | api | src/financeiro-db.js + rotas /api/financeiro/* | — | — | — | 2,5 h | — |
+| comandas-abertas-mesas | T-01.01 | teste | test/fixtures/comandas.js — fixture de comanda aberta e estados | — | — | — | 0,4 h | — |
+| comandas-abertas-mesas | T-03.01 | ui | public/admin.html + public/app.js — seção Comandas abertas e contador | descoberta_durante_execucao | — | — | 1,5 h | — |
+| comandas-abertas-mesas | T-03.02 | ui | public/app.js + public/style.css — drawer da comanda e ações | descoberta_durante_execucao | — | — | 2,0 h | — |
+| comandas-abertas-mesas | T-03.03 | ui | public/app.js — PDV abre a comanda criada sem repetir o POST | descoberta_durante_execucao | — | — | 1,5 h | — |
 
 Trabalho `extrato-geral-estoque` rodou sem a F3.5 (sem `00-ESTIMATIVA.md`); `estoque-e-custos`
-também não tem `00-ESTIMATIVA.md` na Sprint 04. `estimado_min`, `estimado_max`, `estimado_media`
-e `desvio` ficam `null` nas 12 entradas acima. O real ainda alimenta a comparabilidade por tipo e
+também não tem `00-ESTIMATIVA.md` na Sprint 04, e `comandas-abertas-mesas` não gerou
+`00-ESTIMATIVA.md` em nenhuma das três sprints. `estimado_min`, `estimado_max`, `estimado_media`
+e `desvio` ficam `null` nas 16 entradas acima. O real ainda alimenta a comparabilidade por tipo e
 área nas estimativas futuras.
+
+As tasks T-02.01, T-02.02 e T-02.03 de `comandas-abertas-mesas` estão `bloqueada` e por isso não
+entram: task bloqueada não tem real completo para registrar.
 
 ## Calibração por tipo de task
 
 | Tipo de task | Entradas | Desvio médio | Fator ativo? |
 |---|---|---|---|
-| ui | 4 | — (sem estimativa para comparar) | não — sem `00-ESTIMATIVA.md` nesta feature, desvio não calculável |
-| persistencia | 3 | — | não — atingiu 3 entradas, mas sem estimativa não há desvio para calcular |
-| api | 3 | — | não — atingiu 3 entradas, mas sem estimativa não há desvio para calcular |
+| ui | 7 | — (sem estimativa para comparar) | não — sem `00-ESTIMATIVA.md` nesta feature, desvio não calculável |
+| persistencia | 3 | — | não — sem `00-ESTIMATIVA.md`, desvio não calculável |
+| api | 3 | — | não — sem `00-ESTIMATIVA.md`, desvio não calculável |
 | dominio | 1 | — | não — menos de 3 entradas |
+| teste | 1 | — | não — menos de 3 entradas |
 
 **Regra do fator.** O desvio de um tipo só vira fator de correção nas estimativas seguintes a
 partir de **3 entradas encerradas** daquele tipo — abaixo disso é ruído. Quando aplicado, o
