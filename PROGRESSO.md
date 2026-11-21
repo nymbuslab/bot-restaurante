@@ -39,12 +39,6 @@ _(nada no momento)_
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
-- [ ] **(P0) Aplicar em produção a migration `20261120110000_remover_equipe.sql`** —
-  remove as tabelas `equipe_*` e as colunas de flag/acesso rápido em `empresas` que o
-  código já não usa mais (ver ✅ Concluído, 2026-11-20). Confirmado sem dado real
-  (tabelas vazias), mas o classificador de segurança do Claude Code bloqueou a execução
-  direta do DROP nesta sessão — precisa ser rodada manualmente (`npx supabase db push`
-  ou execução direta do SQL contra o `DATABASE_URL`).
 - [ ] **(P3, opcional) Identificação da Comanda na via da cozinha** — ficou fora de escopo na aprovação do campo (12/09, "por enquanto", decisão do dono): a identificação gravada em `pedidos.cliente` aparece no painel e no banner do modo acréscimo, mas não na via de cozinha impressa. Só vale a pena se a cozinha fizer falta do nome para casar a comanda com a mesa/pessoa.
 - [ ] **(P3) Relatórios financeiros no Telegram (faturamento mensal, DRE, possivelmente IA)** — o dono sinalizou esse horizonte ao pedir a personalização dos relatórios; entrou no `ROADMAP.md` (seção P3) porque é uma linha de trabalho grande, com gatilho próprio (job mensal) em vez do evento de fechar caixa — precisa de descoberta (sprintx) própria quando for a vez.
 
@@ -932,8 +926,16 @@ _(nada no momento)_
   `auditoria_operacional` e `src/auditoria-operacional.js` foram **preservados** (função
   `registrar`, usada por fornecedores/financeiro; a função `listar`, exclusiva da aba
   Atividades, foi removida). Migration `20261120110000_remover_equipe.sql` apaga as 6
-  tabelas `equipe_*` e as colunas de flag/acesso rápido em `empresas` — **criada mas ainda
-  não aplicada em produção** (o classificador de segurança do Claude Code bloqueou a
-  execução direta do DROP; precisa ser aplicada manualmente). `npm run check` (180
-  arquivos), `npm run test:ci` (764 testes) e `npm run test:integracao` (101 testes)
-  passam. — 2026-11-20
+  tabelas `equipe_*` e as colunas de flag/acesso rápido em `empresas`; commit mesclado com
+  20 commits que avançaram na `main` nesse meio-tempo (feature de comandas abertas +
+  correções de segurança na Equipe), merge resolvido mantendo a remoção. `npm run check`,
+  `npm run test:ci` (788 testes) e `npm run test:integracao` (113 testes) passam. Push e
+  deploy feitos (`de5b688`). — 2026-11-20
+
+- [x] **Migration `20261120110000_remover_equipe.sql` aplicada em produção** —
+  `npx supabase db push --remote --yes` (projeto `nymbus-pedidos`); confirmado por
+  consulta direta que as 6 tabelas `equipe_*` e as colunas de flag/acesso rápido em
+  `empresas` não existem mais, e que `auditoria_operacional` ficou intacta (vazia,
+  esperado). Precisou corrigir `supabase/config.toml` primeiro: `[inbucket]` virou
+  `[local_smtp]` na CLI 3.2.0, sem isso nenhum comando do CLI carregava a config.
+  — 2026-11-21
