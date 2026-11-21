@@ -16,11 +16,10 @@ web
 
 ## Users
 
-- **Dono ou gerente do restaurante**: não é técnico, configura cardápio, horário, equipe, PDV, mesas e caixa no painel. Quer mudar algo na hora e ver efeito no próximo pedido, sem suporte.
+- **Dono ou gerente do restaurante**: não é técnico, configura cardápio, horário, PDV, mesas e caixa no painel. Quer mudar algo na hora e ver efeito no próximo pedido, sem suporte.
 - **Cliente final**: pede pelo WhatsApp e monta o pedido sozinho no cardápio web (`/c/:slug`), sem baixar app. Quer rapidez e saber exatamente o que vem no prato.
 - **Operador de balcão e salão** (Plano Completo): vende no PDV, controla mesas e fecha o caixa do dia.
 - **Cozinha**: recebe a comanda impressa (Completo) ou consulta o pedido no painel.
-- **Equipe com PIN** (em homologação): funcionários autenticam por PIN/dispositivo com permissões por perfil, sob auditoria.
 
 ## Product Purpose
 
@@ -67,7 +66,7 @@ A operação completa do salão (PDV + Mesas + Caixa + impressão térmica autom
 
 - Planos e preço reais: Essencial R$79/mês, Completo R$99/mês, 7 dias grátis sem cartão (fonte: `PRD.md`, `docs/assinatura-stripe.md`).
 - Módulos já entregues e em produção: pedidos via cardápio web, cardápio com composição/opcionais/variações/estoque, dashboard de pedidos, PDV, Mesas, Caixa do dia, impressão térmica automática via agente desktop, super-admin, conformidade LGPD (exportar/excluir, retenção, auditoria).
-- Equipe/PIN/permissões e o Programa Compras e Custos estão implementados mas **em homologação**, não liberados comercialmente em produção (depende de backup restaurável e piloto) — não tratar como feature geral ainda.
+- O Programa Compras e Custos está em implementação parcial, não liberado comercialmente em produção (depende de backup restaurável e piloto) — não tratar como feature geral ainda. A Gestão de equipe que abria esse programa foi removida em 2026-11-20, antes de qualquer liberação comercial.
 - Nenhum case, depoimento ou benchmark de cliente real está registrado para uso em marketing; **não inventar** testemunhos, números de clientes ou comparativos de concorrente além do que está em `PRD.md`.
 
 ## Product Principles

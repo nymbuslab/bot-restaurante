@@ -21,12 +21,8 @@
 >   `INTEGRACAO_SUPABASE_SERVICE_ROLE_KEY` e os cinco `INTEGRACAO_STRIPE_*`.
 > - **Integração/fluxo do bot:** o **simulador** abaixo (`testar-bot.js` ou a aba Simulador).
 
-O teste visual grava no banco descartável; não apontar para dados reais.
-**Pendente (ver `PROGRESSO.md`):** o script ainda fala de PIN/dispositivo — precisa
-ser atualizado para o fluxo de usuário + senha antes de voltar a confiar nele.
-
-Último fechamento da Sprint 03 (2026-09-15): CI 754/754, integração 92/92,
-sintaxe 183 arquivos e fluxo visual aprovado. Não há script de build neste stack.
+O teste visual grava no banco descartável; não apontar para dados reais. Não há
+script de build neste stack.
 
 ## Simulador do bot
 
