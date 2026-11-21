@@ -362,7 +362,7 @@ h3 {
   margin-top: auto;
   padding-top: 32px;
   font-size: 12px;
-  color: var(--text-disabled);
+  color: var(--text-secondary);
   text-align: center;
 }
 
@@ -4729,7 +4729,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0;
 }
-.doc-modal-head h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.doc-modal-head h2 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .doc-modal-fechar {
   background: none; border: 0; color: var(--text-secondary); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
@@ -4737,7 +4737,7 @@ html.embed, html.embed body { background: var(--bg-primary); }
   transition: color .15s ease, background .15s ease;
 }
 .doc-modal-fechar:hover { color: var(--text-primary); background: var(--bg-elevated); }
-.doc-modal-body { flex: 1; min-height: 0; background: var(--bg-primary); }
+.doc-modal-body { flex: 1; min-height: 0; background: var(--bg-primary); padding: 16px; }
 .doc-modal-body iframe { width: 100%; height: 100%; border: 0; display: block; }
 .doc-modal-loading {
   display: flex; align-items: center; justify-content: center; height: 100%;

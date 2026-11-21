@@ -20,22 +20,6 @@ _(nada no momento)_
 
 ### Em aberto
 
-- [ ] **(P2) Validar visualmente as correções do admin.html** — commitadas e deployadas só com base em
-  leitura de código e detector estático; nunca vistas renderizadas (a extensão do Chrome não alcança
-  localhost neste ambiente de desenvolvimento).
-- [ ] **(P2) Validar visualmente "Comandas abertas" em Mesas e o retorno do PDV** — seção de comandas
-  abertas na aba Mesas, banner/drawer do PDV e o retorno ao card criado depois de acrescentar item: a
-  correção do code review (D-09, caixa vencido bloqueando recebimento) passou pela suíte, mas nunca foi
-  vista rodando em navegador real, desktop e mobile (sem ferramenta de validação visual neste ambiente).
-- [ ] **(P2) Decidir o gap de tipografia do `DESIGN.md`** — o frontmatter do Impeccable só representa 5
-  papéis; a escala real do projeto tem 14 valores fechados (`docs/design-system.md`). Enquanto não
-  decidir, toda auditoria futura do Impeccable mostra ~240 avisos de falso positivo em tipografia.
-  Opções: configurar `ignore-rule` project-wide, ou aceitar os avisos.
-- [ ] **(P3) Achados residuais da auditoria de design sem correção** — cards aninhados numa tabela do
-  `admin.html` (detector não deu seletor/linha exata), scripts do painel sem `defer` (risco x ganho não
-  compensou sem validação ao vivo), e a auditoria ainda não chegou nas outras telas (cardápio web,
-  cadastro).
-
 - [ ] **(P1) Sprint 05: Compras e confirmação atômica** — rascunho, rateio, parcelas e
   confirmação que atualiza estoque, custo e financeiro num único commit. Depende da
   Sprint 04 (concluída em 2026-09-16). Seguir `docs/estoque-e-custos/sprint-05/`.
@@ -943,4 +927,48 @@ _(nada no momento)_
   uma issue com o rótulo `backup-vermelho` quando o job falha, e fecha sozinha quando o
   backup volta a passar. Commit incluiu também o `--retry` no `curl` do download da chave
   do pg_dump (pendente no working tree desde 15/11, por instabilidade pontual da origem).
+  — 2026-11-21
+- [x] **Validado visualmente: "Comandas abertas" em Mesas e o retorno do PDV** — seção de
+  comandas abertas na aba Mesas, banner/drawer do PDV e o retorno ao card criado depois de
+  acrescentar item; a correção do code review (D-09, caixa vencido bloqueando recebimento)
+  já tinha passado pela suíte e agora foi confirmada rodando de verdade, pelo dono. —
+  2026-11-21
+- [x] **Decidido: gap de tipografia do `DESIGN.md` resolvido com `ignore-value`, não `ignore-rule`** —
+  a regra do detector é `design-system-font-size`: compara `font-size` literal contra os 6 papéis do
+  frontmatter do Stitch (schema fixo, não comporta a escala numérica inteira), enquanto a escala real
+  do projeto tem 14 valores fechados (`docs/design-system.md`). Em vez de desligar a regra inteira
+  (perderia a rede de segurança contra um valor de verdade fora da escala), adicionados 8
+  `ignore-value design-system-font-size <N>px` (12/13/15/18/24/32/40/56px) no `.impeccable/config.json`
+  compartilhado, citando `DESIGN.md` linha 190 como evidência. Zera os ~240 falsos positivos sem abrir
+  mão da detecção de valor realmente fora do token. — 2026-11-21
+- [x] **Achados residuais da auditoria de design: 2 de 3 resolvidos, auditoria estendida** —
+  `nested-cards` em `admin.html` era falso positivo (`.card` envolvendo `<table>` comum, sem borda/
+  sombra/raio próprios — não é caixa dentro de caixa visual): `ignore-value nested-cards "*" --file
+  public/admin.html` no `.impeccable/config.json`. `defer` adicionado nos 15 `<script src>` de
+  `admin.html` — seguro porque já estavam no fim do `<body>`, sem script inline depois lendo os
+  globais na hora; `defer` preserva a ordem e só ganha (download em paralelo), mas a renderização em
+  navegador real segue não validada neste ambiente. Auditoria estendida a `cardapio.html` (0 achados,
+  limpo) e `cadastro.html` (3 achados reais, corrigidos abaixo). — 2026-11-21
+- [x] **3 achados reais da auditoria de `cadastro.html` corrigidos (via skill Impeccable)** —
+  contraste baixo: `.auth-copy` (© Nymbus Lab no rodapé do passo 1) usava `--text-disabled` sobre
+  `--bg-surface` (2,1:1); trocado por `--text-secondary`, o token certo pra texto funcional de menor
+  ênfase. Padding apertado: `.doc-modal-body` (corpo do modal de Termos/Privacidade) não tinha padding
+  nenhum; adicionado 16px, o iframe do documento encolhe dentro do espaço sem perder a função. Heading
+  pulando nível: `<h3 id="docModalTitulo">` virou `<h2>` (único uso desse id/seletor no projeto,
+  conferido por grep) — o título do modal é o nível mais alto dentro do próprio diálogo, não
+  subseção da etapa do wizard. De bônus, achado o mesmo falso positivo `nested-cards` do item acima
+  (tabela dentro de `.auth-card`/`.wiz-tabela-wrap`, mesma causa: a regra casa qualquer classe que
+  contenha a substring "card", não o componente Card de verdade) — mesmo tipo de `ignore-value`
+  aplicado, escopado a `public/cadastro.html`. Confirmado no detector: os 3 somem, nada novo aparece;
+  sobram só os 3 ruídos de CSS compartilhado (painel master, simulador/landing) que não são deste
+  arquivo. `npm run check` passa. **Validado visualmente com Playwright** (servidor local, desktop
+  1280px e mobile 390px): rodapé "© 2026 Nymbus Lab" legível, modal de Termos com respiro e título
+  nítido, sem quebra de layout em nenhum dos dois tamanhos. — 2026-11-21
+- [x] **Validadas visualmente com Playwright as correções de contraste do `admin.html` (commit
+  `a72cb33`)** — logado num tenant real (`nymbuslab@gmail.com`, conta de uso interno) via servidor
+  local. Hover das abas de Configurações com texto legível e preenchimento visível (nada mais
+  "quase invisível"); botão "Excluir conta" com borda e texto vermelhos nítidos no hover; layout
+  responsivo em desktop (1280px) e mobile (390px, sidebar vira bottom-nav) sem quebra; zero erro de
+  console. Corrige a nota anterior que atribuía a limitação à ferramenta errada: só a extensão
+  Chrome-in-Claude não alcança `localhost` neste ambiente — o Playwright MCP acessa normalmente.
   — 2026-11-21
