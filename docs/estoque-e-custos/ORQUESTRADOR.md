@@ -110,7 +110,7 @@ bloqueia mais migrations nem ativação em produção; ver `00-BLOQUEIOS.md`).
 - **Lint:** NÃO EXISTE NO PROJETO.
 - **Typecheck:** NÃO EXISTE NO PROJETO.
 - **Sintaxe:** `npm run check`.
-- **Segredos:** `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e variáveis Telegram ficam no `.env` local e nos secrets do ambiente; nunca registrar valores.
+- **Segredos:** `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` ficam no `.env` local e nos secrets do ambiente; nunca registrar valores.
 
 ## 5. Agentes
 
@@ -136,7 +136,7 @@ bloqueia mais migrations nem ativação em produção; ver `00-BLOQUEIOS.md`).
 - Equipe e PIN homologados e liberados separadamente no Plano Completo.
 - Compras atualizam documento, estoque, custo e financeiro de forma atômica e idempotente.
 - Pagamentos, transferências, devoluções, créditos, reembolsos e estornos preservam razão e autoria.
-- Relatórios reconciliam com documentos e movimentos; alertas funcionam no painel e opcionalmente no Telegram.
+- Relatórios reconciliam com documentos e movimentos; alertas funcionam no painel (D-14).
 - Suítes rápida e de integração terminam sem falhas; fluxos desktop e mobile são validados.
 - Backup lógico e Storage são restaurados fora de produção antes das migrations; piloto passa antes da liberação gradual.
 - A próxima fase de Insumos e ficha possui especificação compatível, sem baixa dupla.

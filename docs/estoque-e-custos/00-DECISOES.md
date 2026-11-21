@@ -18,7 +18,7 @@ D-10 | Gestão de equipe é do Plano Completo e não limita funcionários ativos
 D-11 | Gestão de equipe é delegável sem editar dono, a si mesmo ou conceder acesso que o ator não possui | somente dono ou delegação irrestrita | evita autoelevação e permite operação delegada
 D-12 | Assinatura, exclusão da conta, credenciais principais e autorização de dispositivos são exclusivas do dono | delegar segurança da conta | reduz risco de tomada ou exclusão da conta
 D-13 | A auditoria operacional terá tela de Atividades com filtros e permissão própria | apenas contexto local ou suporte | dá transparência ao estabelecimento
-D-14 | Alertas aparecem no painel e podem usar o Telegram já vinculado | somente painel ou novo provedor de e-mail | reutiliza infraestrutura sem nova credencial
+D-14 | Alertas aparecem só no painel | Telegram (feature removida em 2026-11-21, ver `PROGRESSO.md`) ou novo provedor de e-mail | sem credencial externa nova; reabrir só se o dono pedir outro canal
 D-15 | Compras pagas exigem condição financeira completa na confirmação | gerar pendência ou financeiro opcional | impede estoque confirmado sem obrigação financeira correspondente
 D-16 | O financeiro usa contas próprias, separadas do caixa operacional do PDV | lançar pagamentos no caixa do turno | preserva o fechamento atual
 D-17 | Contas financeiras aceitam implantação, pagamentos, estornos e transferências | fluxo de caixa geral ou somente pagamentos | cobre fornecedores sem incluir receitas e despesas avulsas
@@ -33,7 +33,7 @@ D-25 | Auditoria financeira e operacional é transacional e retida por cinco ano
 D-26 | O registro-ponte representa produto, variação e futuramente insumo por alvo tipado | prefixar IDs em coluna textual | permite integridade e evolução sem colisão
 D-27 | Contas a Receber, OFX, Open Finance, receitas, despesas avulsas e recorrências ficam fora | módulo financeiro geral | limita a entrega ao ciclo de fornecedores
 D-28 | Nenhuma migration ou ativação de produção ocorre antes do P0-B (resolvido em 2026-09-16) | avançar sem recuperação ensaiada | produção possui clientes reais; backup restaurável agora comprovado (`00-BLOQUEIOS.md`)
-D-29 | A primeira versão não exige segredo, credencial ou serviço externo novo | adicionar integração externa | PIN usa primitivas locais e alertas reutilizam Telegram
+D-29 | A primeira versão não exige segredo, credencial ou serviço externo novo | adicionar integração externa | alertas ficam só no painel (D-14); a feature de Telegram que essa decisão citava foi removida em 2026-11-21
 D-30 | O plano financeiro desta descoberta substitui o adiamento de Contas a Pagar em D-P1-15 | manter financeiro para depois | o dono ampliou explicitamente o primeiro lançamento
 D-31 | A gestão multiusuário desta descoberta substitui a conta operacional única provisória de D-P1-16 | manter somente dono | o dono decidiu criar equipe antes de Compras
 ```

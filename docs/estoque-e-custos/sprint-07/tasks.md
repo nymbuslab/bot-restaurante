@@ -18,12 +18,12 @@ status: pendente
 ```yaml
 id: T-07.02
 titulo: Alertas e retenção
-objetivo: Criar central de alertas e outbox Telegram e ajustar retenção para cinco anos.
+objetivo: Criar central de alertas (só painel, D-14 — a feature de Telegram que este alerta citava foi removida em 2026-11-21) e ajustar retenção para cinco anos.
 arquivos:
   cria: [src/alertas-operacionais.js]
-  altera: [index.js, src/telegram.js, public/app.js]
-teste_integracao: Alerta persiste no commit e falha do Telegram não desfaz a operação nem duplica reenvio.
-teste_funcional: Parcela vencida aparece no painel e o envio opcional registra sucesso ou falha.
+  altera: [index.js, public/app.js]
+teste_integracao: Alerta persiste no commit e falha ao gravar não desfaz a operação nem duplica o registro.
+teste_funcional: Parcela vencida aparece no painel.
 criterio_aceite: Movimento ligado a compra não é removido pelo job de doze meses.
 depende_de: [T-07.01]
 paralelizavel: false

@@ -992,8 +992,10 @@ _(nada no momento)_
   `contagemPorForma`) foram reescritos — essas funções continuam em uso pelo cupom 80mm e pela tela de
   caixa, não eram exclusivas do Telegram. `npm test` 686/686 (104 testes a menos, dos arquivos
   removidos), `npm run check` ok (179 arquivos), `npm run test:integracao` rodado por mexer em
-  cancelamento/estorno/fechamento de caixa. **Pendência aberta:** `docs/estoque-e-custos/00-DECISOES.md`
-  (D-14/D-29) e `docs/estoque-e-custos/sprint-07/tasks.md` ainda citam reaproveitar a infra do
-  Telegram para alertas futuros do programa de Compras/Estoque (ainda não iniciado) — não mexi lá
-  por serem decisões formais já tomadas pelo dono; precisa de confirmação dele antes de reabrir essa
-  parte do plano. — 2026-11-21
+  cancelamento/estorno/fechamento de caixa. **Atualizado também** (confirmado pelo dono):
+  `docs/estoque-e-custos/00-DECISOES.md` (D-14 passou a "alertas só no painel", D-29 perdeu a
+  justificativa que citava Telegram) e `sprint-07/tasks.md` (T-07.02 não cria mais outbox Telegram,
+  só a central de alertas no painel) — decisões formais preservadas, só a parte que dependia da
+  feature removida foi ajustada. **Achado à parte, fora de escopo aqui:** D-03 a D-13 do mesmo
+  `00-DECISOES.md` descrevem a Gestão de equipe/PIN, já removida em 2026-11-20 — mesmo tipo de
+  staleness, não mexido por não ter sido pedido. — 2026-11-21
