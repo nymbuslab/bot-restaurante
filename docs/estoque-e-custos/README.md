@@ -12,7 +12,9 @@ estabilização e implementação em um sistema que já atende clientes reais.
 - A nova direção aprovada começa por Compras, que dará entrada em produtos e insumos e formará
   o custo de aquisição.
 - Gestão de equipe, PIN, dispositivos, permissões e Atividades foram implementados e
-  homologados antes de Compras. Ainda não foram liberados em produção.
+  homologados antes de Compras, mas **removidos em 2026-11-20** sem nunca chegar a ser liberados
+  em produção (nenhum tenant real chegou a usar) — ver `PROGRESSO.md`. O programa segue sem essa
+  etapa; Compras passa a ser o próximo marco, direto.
 - O P0-A, as decisões P1 e o planejamento SprintX estão concluídos: base técnica, 31 decisões
   consolidadas, 8 sprints, 28 tasks, orquestrador e auditoria com `VEREDITO: SIM`.
 - Os protótipos desktop/mobile de Gestão de equipe e Compras/Financeiro foram aprovados pelo dono.
@@ -31,10 +33,12 @@ estabilização e implementação em um sistema que já atende clientes reais.
 3. [Decisões P1 aprovadas e gate operacional ainda aberto](02-DECISOES-PENDENTES.md).
 4. [Checklist de rollout e rollback](03-CHECKLIST-ROLLOUT-E-ROLLBACK.md).
 5. [Planejamento SprintX e ordem de execução](ORQUESTRADOR.md).
-6. [Protótipos aprovados de Gestão de equipe](prototipos/gestao-equipe.md) e
-   [Compras/Financeiro](prototipos/compras-financeiro.md).
+6. [Protótipos aprovados de Compras/Financeiro](prototipos/compras-financeiro.md). (O protótipo de
+   Gestão de equipe existiu e foi aprovado, mas o arquivo saiu do repositório junto com a remoção
+   da feature em 2026-11-20.)
 7. Sprint 01: capacidade e contratos de teste.
-8. Gestão de equipe, PIN, dispositivos, permissões e Atividades.
+8. ~~Gestão de equipe, PIN, dispositivos, permissões e Atividades.~~ **Superada**: removida em
+   2026-11-20 antes de qualquer liberação comercial — ver `PROGRESSO.md`.
 9. Registro-ponte, fornecedores e contas financeiras.
 10. Compras, estoque, custo médio e financeiro de fornecedores.
 11. Validação em ambiente de teste e implantação controlada.

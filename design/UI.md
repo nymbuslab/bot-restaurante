@@ -209,7 +209,7 @@ desabilitados até existirem de verdade.
 - **No celular:** chips quebram linha, campos De/Ate empilham, lista e "Carregar mais" iguais ao
   desktop.
 
-### 13. Mesas / Comandas (comandas abertas) — IMPLEMENTADO, validacao visual pendente
+### 13. Mesas / Comandas (comandas abertas) — IMPLEMENTADO
 - **Feito:** secao **Comandas abertas** acima da grade de mesas fisicas, com contador no menu e na
   secao. Cada card mostra numero, tempo aberto, quantidade de itens e total; ordem da mais antiga
   para a mais nova, **sem filtro de data** (comanda esquecida nao some na virada do dia).
@@ -227,8 +227,8 @@ desabilitados até existirem de verdade.
   destacado e o detalhe abre quando a lista carrega. Se a abertura falhar, aparece "Tentar abrir"
   com o numero, sem repetir o POST.
 - **Dados/rotas:** `pedidos` segue como fonte unica, sem migration e sem mesa artificial. Detalhe em
-  `docs/sprintx/features/comandas-abertas-mesas/`; a bateria de integracao das rotas esta escrita e
-  ainda nao rodou (falta `.env.test` descartavel).
+  `docs/sprintx/features/comandas-abertas-mesas/`; a bateria de integracao das rotas ja rodou contra
+  banco real (`npm run test:integracao`).
 - **Limites:** sem taxa de servico, pessoas, pagamento parcial ou transferencia (isso e Mesa, nao
   Comanda); recebida ou cancelada sai da secao e o historico fica em Pedidos.
 - **No celular:** breakpoint de 560px; o card ocupa a largura e a gaveta vira sheet de tela cheia.
