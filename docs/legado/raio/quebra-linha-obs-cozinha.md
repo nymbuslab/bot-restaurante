@@ -22,7 +22,7 @@ Limiares aplicados: `docs/legado/PERFIL.md`, seção 9
 |---|---|---|---|---|
 | 1 | Chamadores diretos e indiretos | 6 (4 diretos + 2 indiretos) | `grep -rn "Comanda\." --include=*.js .` (repositório inteiro) + leitura de `src/servidor.js` (rotas) e `agente-impressora/main/{print-job.js,poller.js,ipc.js}` | coletado |
 | 2 | Telas e rotas que dependem | 5 | leitura de `public/app.js` (handlers de UI) cruzada com as rotas encontradas no Sinal 1 | coletado |
-| 3 | Jobs, crons, relatórios, integrações | 2 (dois loops de polling do agente Electron) | leitura de `agente-impressora/main/poller.js` + `docs/arquitetura.md:63` (descrição do fluxo da fila) | coletado |
+| 3 | Jobs, crons, relatórios, integrações | 2 (dois loops de polling do agente Electron) | leitura de `agente-impressora/main/poller.js` + `docs/arquitetura/arquitetura.md:63` (descrição do fluxo da fila) | coletado |
 | 4 | Cobertura de teste na área | parcial | `node --test --experimental-test-coverage test/comanda.test.js` (23 testes, 0 falhas, `comanda.js` 78,35% linhas) + leitura de `test/comanda.test.js` e `test/integracao/cozinha-observacao.test.js` | coletado |
 | 5 | Zona de risco tocada | Financeiro (caixa e PDV) | leitura de `docs/legado/PERFIL.md`, seção 7 (`public/comanda.js` listado explicitamente entre os arquivos da zona) | coletado |
 | 6 | Churn e idade | 14 alterações, última em 2026-08-24 (criado em 2026-06-20) | `git log --format=%ad --date=short -- public/comanda.js \| wc -l`, `git log -1 --format=%ad --date=short -- public/comanda.js`, `git log -1 --format=%ad --date=short --diff-filter=A -- public/comanda.js` | coletado |

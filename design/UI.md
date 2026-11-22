@@ -30,7 +30,7 @@ As aprovações atuais de Compras/Financeiro estão em
 
 ## Cores e tokens
 
-Fonte única dos tokens: [docs/design-system.md](../docs/design-system.md) / `public/style.css`.
+Fonte única dos tokens: [docs/arquitetura/design-system.md](../docs/arquitetura/design-system.md) / `public/style.css`.
 Regras que valem em TODAS as telas:
 
 - **Sem laranja.** Marca = roxo `--accent #6344BC` (preenchimento, texto branco em cima) +
@@ -158,7 +158,7 @@ desabilitados até existirem de verdade.
   Contagem **substitui** o saldo pelo contado. Os tres mostram o resultado antes de gravar
   ("Voce tem 4. Vai ficar com 14."), e o botao do lancamento aberto fica preenchido.
 - **Dados/rotas:** `GET/POST /api/estoque*` no gate `exigePdv`; saldo no jsonb do cardapio e
-  trilha em `estoque_movimentos`. Detalhe em `docs/modelo-dados.md`.
+  trilha em `estoque_movimentos`. Detalhe em `docs/arquitetura/modelo-dados.md`.
 - **Limites (nao construir aqui):** contagem em lote para inventario, compra/fornecedor (entrada e
   um numero com observacao, nao um documento), alerta ativo por e-mail/WhatsApp, e estoque por
   opcao de complemento (fica com Insumos, etapa 4/4). Quantidade **nao e dinheiro**: sem mascara
@@ -241,7 +241,7 @@ desabilitados até existirem de verdade.
 Detalhe do pedido, Cardapio, Editor de item, Configuracoes, Conexao e Simulador nasceram do ciclo
 v0.4.0/v0.7.0/v0.8.0. Depois disso o produto ganhou Dashboard, PDV, Mesas, Caixa, Assinatura,
 Master, Estoque, Relatórios → Estoque (extrato geral) e a lista de comandas abertas em Mesas; para telas novas, combine esta referência visual com
-[docs/design-system.md](../docs/design-system.md) e com o estado real em `CLAUDE.md`/`PROGRESSO.md`.
+[docs/arquitetura/design-system.md](../docs/arquitetura/design-system.md) e com o estado real em `CLAUDE.md`/`PROGRESSO.md`.
 
 Cada tela seguiu o workflow: investigar -> plano -> aprovacao -> implementar -> validacao
 visual -> commit (Conventional Commits pt-BR, sem acento no titulo).

@@ -47,7 +47,7 @@
   5. Em ambos os casos, recalcula `mesas.total_consumido` (soma de todos os pedidos da sessão) ao final.
   6. `pedidoId`/`numero` retornados são sempre os da MESMA linha reusada — é por isso que uma mesa mantém o mesmo `#numero` do início ao fim da sessão, e por isso que `Comanda.montarCozinha` (chamado pela rota, ver acima) usa `mesa.nome` em vez do pedido, já que o `numero` do pedido não muda entre rodadas mas a via de cozinha da rodada é o que importa mostrar.
 
-- **Conceito de "sessão"** documentado em `docs/modelo-dados.md:291-323` (referenciado, não citado aqui por completo) e implementado literalmente pela constante `DA_SESSAO` acima: um pedido pertence à sessão da mesa aberta enquanto `recebido_em IS NULL`, `status <> 'cancelado'`, `aberta_em IS NOT NULL` e `criado_em >= aberta_em`. **A "mesa aberta" é UMA linha em `pedidos` que recebe UPDATE a cada rodada, não uma soma de várias linhas** — a leitura completa de `lancarItens` corrige a hipótese anterior desta base.
+- **Conceito de "sessão"** documentado em `docs/arquitetura/modelo-dados.md:291-323` (referenciado, não citado aqui por completo) e implementado literalmente pela constante `DA_SESSAO` acima: um pedido pertence à sessão da mesa aberta enquanto `recebido_em IS NULL`, `status <> 'cancelado'`, `aberta_em IS NOT NULL` e `criado_em >= aberta_em`. **A "mesa aberta" é UMA linha em `pedidos` que recebe UPDATE a cada rodada, não uma soma de várias linhas** — a leitura completa de `lancarItens` corrige a hipótese anterior desta base.
 
 ## Limites e cotas
 

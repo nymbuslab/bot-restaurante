@@ -157,7 +157,7 @@ descartável.
     > **entregue** (v0.92.0). A frase acima nasceu no contexto do caixa (o caixa não controla
     > estoque) e passou a contradizer o produto: estoque por item existe desde a v0.20, e a etapa
     > **3/4 do split de Produtos** entregou a visão consolidada, o histórico de movimentação e a
-    > devolução no cancelamento. Ver [docs/modelo-dados.md](docs/modelo-dados.md) (modelo e regras)
+    > devolução no cancelamento. Ver [docs/arquitetura/modelo-dados.md](docs/arquitetura/modelo-dados.md) (modelo e regras)
     > e [docs/planos-e-frete.md](docs/planos-e-frete.md) (o que a tela faz e o gate de plano).
     > **Fiscal (NFC-e/SAT) e fiado seguem fora**, e o fiado foi inclusive removido do produto.
   - Fontes (boas práticas BR): Conta Azul, Infovarejo, Comercial Mariano (POP fechamento), Soften,
@@ -191,10 +191,8 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   vira os cadastros que um ERP de restaurante precisa. **1/4 Categorias** ✅ (v0.89.0) e
   **2/4 Complementos** ✅ (biblioteca de grupos reutilizáveis, v0.90.0/0.91.0) e
   **3/4 Controle de estoque** ✅ (v0.92.0: tela com lista e gaveta de extrato, trilha em
-  `estoque_movimentos` e cancelamento devolvendo ao estoque; desenho e plano em
-  [docs/superpowers/specs/2026-08-13-controle-estoque-design.md](docs/superpowers/specs/2026-08-13-controle-estoque-design.md)
-  e [docs/superpowers/plans/2026-08-13-controle-estoque.md](docs/superpowers/plans/2026-08-13-controle-estoque.md))
-  entregues; **4/4 Programa Compras e Custos** em preparação — 3 fundações inertes já entregues
+  `estoque_movimentos` e cancelamento devolvendo ao estoque) entregues; **4/4 Programa Compras e
+  Custos** em preparação — 3 fundações inertes já entregues
   (módulo puro e tabela `insumos`; ids das escolhas preservados no pedido; venda lendo itens
   recalculados). **Nada baixa ingrediente ainda.** O programa entrega fornecedores, Compras,
   estoque, custo médio e financeiro de fornecedores; depois, Insumos e ficha técnica sobre a
@@ -209,9 +207,7 @@ Roadmap de evolução priorizado (valor × esforço × atrito com a arquitetura)
   P0-B de backup foi resolvido em 2026-09-16 e não bloqueia mais migrations nem ativação em
   produção. Auditoria, ordem, decisões
   e registros de aprovação em
-  [docs/estoque-e-custos/](docs/estoque-e-custos/README.md). O desenho antigo em
-  [docs/superpowers/specs/2026-08-16-insumos-design.md](docs/superpowers/specs/2026-08-16-insumos-design.md)
-  permanece somente como histórico.
+  [docs/estoque-e-custos/](docs/estoque-e-custos/README.md).
 - [ ] **(decisão pendente) Status do pedido + linha do tempo** (P) — a coluna `status` já existe e nunca
   é atualizada; faltariam transições (recebido → preparo → pronto → entregue/cancelado) + botões no painel.
   **Contradiz a decisão "fora de escopo" acima**, que tirou o ciclo do pedido do produto por premissa, e a
@@ -330,7 +326,7 @@ link, docs). Migração `20260617120000_pedido_observacao` aplicada. **Requer no
 - [x] **Fase 3 — Fechar pedido:** `POST /api/c/:slug/pedido` → recalcula no servidor → `salvarPedido` →
   bot confirma via `enviarMensagem`. Bot offline → salva mesmo assim.
 - [x] **Fase 4 — Encolher o bot:** saudação → envia o link; aposenta os estados de pedido do `fluxo.js`.
-- [x] **Fase 5 — Docs + testes:** atualizar `CLAUDE.md`/`docs/modelo-dados.md`; testes de whitelist, parse
+- [x] **Fase 5 — Docs + testes:** atualizar `CLAUDE.md`/`docs/arquitetura/modelo-dados.md`; testes de whitelist, parse
   de opcionais, recálculo de total e token.
 
 ### Premissas e reuso

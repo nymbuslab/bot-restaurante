@@ -36,7 +36,7 @@ Notas por item:
 4. Rodadas próprias deste QA: `npm test` 714/714, `npm run check` OK (exit 0), `npm run test:ci` 714/714, `npm run test:integracao` 67/67.
 5. T-01.01: teste invertido exige 400 (`/a receber/i`) e falha antes do fix — atendido. T-01.02: integração verde com o teste invertido — atendido. T-01.03: varredura nos docs não encontra mais a regra antiga (grep confirmou 0 ocorrências da regra antiga em CLAUDE.md/PRD.md/docs vivos) e PROGRESSO.md registra a ocorrência concluída — atendido.
 6. Critérios de saída de fase e sprint (0 falhas nas 4 suítes + docs sem a regra antiga) — atendidos.
-7. `git status` mostra apenas `src/caixa.js`, `test/integracao/caixa.test.js`, `docs/planos-e-frete.md`, `docs/arquitetura.md`, `docs/modelo-dados.md`, `PRD.md`, `CLAUDE.md`, `PROGRESSO.md` modificados e `docs/manutencao/` como novo — exatamente o escopo declarado em `01-CAUSA-RAIZ.md`/`tasks.md`.
+7. `git status` mostra apenas `src/caixa.js`, `test/integracao/caixa.test.js`, `docs/planos-e-frete.md`, `docs/arquitetura/arquitetura.md`, `docs/arquitetura/modelo-dados.md`, `PRD.md`, `CLAUDE.md`, `PROGRESSO.md` modificados e `docs/manutencao/` como novo — exatamente o escopo declarado em `01-CAUSA-RAIZ.md`/`tasks.md`.
 8. A causa descrita na investigação (recorte `criado_em >= aberto_em` no `_contarAReceber` usado pelo gate) bate com o código em `src/caixa.js:34-42` e com o `src/caixa.js:749` na época do 01-CAUSA-RAIZ; hoje a linha virou uso de `_contarAReceberTotal`. Comportamento real da rota (400 com `/a receber/i`) confirmado pela bateria de integração.
 
 ## Conferência do diff contra o escopo

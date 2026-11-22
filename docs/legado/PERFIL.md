@@ -48,7 +48,7 @@ Versão travada por: `Dockerfile:1` (`FROM node:22-slim`). Não há `.nvmrc` nem
   - Cardápio web público (canal do pedido): `src/servidor.js:701` (`GET /api/c/:slug`), `src/servidor.js:848` (frete), `src/servidor.js:959` (`POST /api/c/:slug/pedido`)
   - Painel master (super-admin): `src/servidor.js:1165` a `:1656` (`/api/admin/...`, 17 rotas)
   - Conta do usuário / LGPD: `src/servidor.js:1813` (`GET /api/conta`), `:1852` (exportar), `:1885` (`DELETE /api/conta`)
-  - Dashboard, caixa, PDV, mesas, estoque, cardápio, config: demais rotas em `src/servidor.js` (não listadas uma a uma nesta seção — ver `docs/arquitetura.md` para módulo por módulo)
+  - Dashboard, caixa, PDV, mesas, estoque, cardápio, config: demais rotas em `src/servidor.js` (não listadas uma a uma nesta seção — ver `docs/arquitetura/arquitetura.md` para módulo por módulo)
 - Front-end estático servido pela mesma `src/servidor.js:220` (`express.static`), sem rotas por arquivo.
 
 ### Comandos de CLI

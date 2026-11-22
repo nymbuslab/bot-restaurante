@@ -162,10 +162,10 @@ termos_aceitos_em (timestamptz), termos_versao (text)
 A **senha não fica aqui** — vive no Supabase Auth (`auth.users`, bcrypt). `config` e
 `cardapio` são os antigos `config.json`/`cardapio.json`. Colunas de billing
 (`assinatura_status`, `trial_ate`, `proxima_cobranca`, `stripe_customer_id`,
-`stripe_subscription_id`) — ver [assinatura-stripe.md](assinatura-stripe.md). **`plano`**
+`stripe_subscription_id`) — ver [assinatura-stripe.md](../assinatura-stripe.md). **`plano`**
 (`essencial|completo`, default essencial) é o plano comercial — gating de features por plano
-(ver [planos-e-frete.md](planos-e-frete.md)). **`termos_aceitos_em`/`termos_versao`** registram o
-aceite de Termos/Privacidade no cadastro (prova de consentimento — ver [lgpd/](lgpd/README.md)).
+(ver [planos-e-frete.md](../planos-e-frete.md)). **`termos_aceitos_em`/`termos_versao`** registram o
+aceite de Termos/Privacidade no cadastro (prova de consentimento — ver [lgpd/](../lgpd/README.md)).
 
 **Tabela `auditoria`** (trilha LGPD Art. 37): `id (bigserial), evento (text), slug (text),
 detalhe (jsonb), criado_em (timestamptz)`. Registra eventos sensíveis (`conta_criada`,
@@ -212,7 +212,7 @@ agrupadas por grupo.
 
 > Este bloco descreve o modelo **em produção hoje**. Compras, fornecedor, custo médio e ficha
 > técnica operacional ainda não fazem parte do schema. A evolução foi separada em
-> [`estoque-e-custos/`](estoque-e-custos/README.md) e só seguirá para arquitetura depois da
+> [`estoque-e-custos/`](../estoque-e-custos/README.md) e só seguirá para arquitetura depois da
 > estabilização P0/P1.
 
 **O saldo não mudou de lugar.** Continua em `empresas.cardapio` (jsonb): `item.estoque` /

@@ -11,7 +11,7 @@ A tela renderiza uma grade de botões por mesa, resumo por status e valor aberto
 ## Limites e cotas
 
 - Tamanho do card varia de 80 a 180 px, em passos de 10 (`public/admin.html:1175-1178`).
-- A interface precisa funcionar com o drawer existente e os overlays reconhecidos por `public/a11y.js` (`docs/design-system.md:276`).
+- A interface precisa funcionar com o drawer existente e os overlays reconhecidos por `public/a11y.js` (`docs/arquitetura/design-system.md:276`).
 - O projeto exige responsividade até 360 px, foco visível, alvos de 44 por 44 px e estados de carregamento, vazio, erro e sucesso (`regras-design`, seção 8).
 
 ## Erros conhecidos e tratamento
@@ -24,4 +24,4 @@ O drawer e todas as funções usam o shape de Mesa. Uma Comanda precisa de discr
 
 ## Fonte
 
-`public/admin.html:1108-1260`, `public/app.js:7480-8158`, `public/style.css:5984-6412`, `docs/design-system.md:273-276` — acessado em 2026-11-11
+`public/admin.html:1108-1260`, `public/app.js:7480-8158`, `public/style.css:5984-6412`, `docs/arquitetura/design-system.md:273-276` — acessado em 2026-11-11

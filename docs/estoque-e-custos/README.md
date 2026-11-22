@@ -46,9 +46,9 @@ estabilização e implementação em um sistema que já atende clientes reais.
 
 ## Documentos relacionados
 
-- [Decisões históricas de Insumos](../insumos/00-DECISOES.md).
-- [Bloqueios atuais de Insumos](../insumos/00-BLOQUEIOS.md).
-- [Modelo de dados atual](../modelo-dados.md).
+- [Decisões históricas de Insumos](../sprintx/features/insumos/00-DECISOES.md).
+- [Bloqueios atuais de Insumos](../sprintx/features/insumos/00-BLOQUEIOS.md).
+- [Modelo de dados atual](../arquitetura/modelo-dados.md).
 - [Controle de estoque atual](../planos-e-frete.md#4%C2%BA-benef%C3%ADcio-do-completo--controle-de-estoque-com-hist%C3%B3rico).
 - [Roadmap geral](../../ROADMAP.md).
 - [Progresso operacional](../../PROGRESSO.md).

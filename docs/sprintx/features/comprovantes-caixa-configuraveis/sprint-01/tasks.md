@@ -31,7 +31,7 @@ status: concluida - 2026-08-29 - suite: `node --test test/comprovante-caixa.test
 id: T-01.03
 titulo: documentacao e suite
 objetivo: atualizar documentacao viva e validar a feature financeira.
-arquivos: cria: nenhum; altera: `PROGRESSO.md`, `CHANGELOG.md`, `CLAUDE.md`, `docs/planos-e-frete.md`, `docs/modelo-dados.md`.
+arquivos: cria: nenhum; altera: `PROGRESSO.md`, `CHANGELOG.md`, `CLAUDE.md`, `docs/planos-e-frete.md`, `docs/arquitetura/modelo-dados.md`.
 teste_integracao: `npm run test:integracao` passa.
 teste_funcional: `npm test` e `npm run check` passam.
 criterio_aceite: documentacao cita `config.impressao.caixa` e a ultima validacao esta registrada.

@@ -4,7 +4,7 @@ Papel de cada módulo, arquivo por arquivo. Movido do `CLAUDE.md` em 02/09/2026 
 manter o índice enxuto (regra global: alvo de ~200 linhas, o arquivo tinha passado disso
 por causa desta árvore). Conteúdo idêntico ao que estava lá, sem corte.
 
-Visão resumida de pastas fica em [CLAUDE.md](../CLAUDE.md#arquitetura); aqui é o detalhe
+Visão resumida de pastas fica em [CLAUDE.md](../../CLAUDE.md#arquitetura); aqui é o detalhe
 módulo a módulo.
 
 ```
@@ -61,5 +61,5 @@ public/
   cardapio.html/.js/.css -> cardápio web público (/c/:slug): cards premium + vitrine de Destaques em carrossel; monta o pedido (carrinho/checkout) e envia ao backend
 supabase/migrations/  -> schema versionado (npx supabase db push)
 scripts/setup-storage.js -> cria o bucket público de imagens (npm run setup-storage)
-agente-impressora/    -> app desktop Electron (Plano B): imprime automaticamente numa térmica (USB / Rede 9100 / Serial COM). Consome /api/agente/pendentes (delivery — monta a comanda) E /api/agente/fila (PDV/Mesas/Caixa/reimpressão — texto já renderizado). Reusa public/comanda.js+serial-escpos.js via vendor/ (copy-shared.js no build). Poll a cada 3s. Plano: docs/superpowers/plans/2026-06-26-agente-impressora-electron.md
+agente-impressora/    -> app desktop Electron (Plano B): imprime automaticamente numa térmica (USB / Rede 9100 / Serial COM). Consome /api/agente/pendentes (delivery — monta a comanda) E /api/agente/fila (PDV/Mesas/Caixa/reimpressão — texto já renderizado). Reusa public/comanda.js+serial-escpos.js via vendor/ (copy-shared.js no build). Poll a cada 3s.
 ```

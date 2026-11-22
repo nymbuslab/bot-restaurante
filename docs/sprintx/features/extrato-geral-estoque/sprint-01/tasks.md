@@ -51,7 +51,7 @@ estoque"). Screenshot: link enviado ao dono na mensagem de aprovação.
 **Achado durante a geração, fora do texto original desta task:** `public/admin.html` JÁ TEM
 um grupo de navegação "Relatórios" (acordeão, `navsub-relatorios`, linhas 123-146), com 3
 itens placeholder desabilitados "Em breve" (Vendas Geral, Vendas por Item, Compras) —
-`docs/design-system.md` já documenta esse padrão ("Sidebar aninhado... Padrão para agrupar
+`docs/arquitetura/design-system.md` já documenta esse padrão ("Sidebar aninhado... Padrão para agrupar
 telas de gestão (Financeiro, Relatórios)"). A F1/F2 desta feature não tinha visto esse trecho
 do nav (só olhou o conteúdo de `#aba-estoque`), e D-02/T-03.01 foram escritas como se
 "Relatórios" fosse uma aba nova de nível principal, tipo `data-aba="relatorios"` "ao lado de

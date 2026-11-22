@@ -7,7 +7,7 @@
         "rule": "overused-font",
         "value": "plus jakarta sans",
         "createdAt": "2026-08-16T03:53:52.206Z",
-        "reason": "Fonte da marca Nymbus Pedidos, estabelecida em docs/design-system.md linha 3 e usada em todo o produto (o design system ate documenta a largura dos numerais dela). Trocar a fonte e decisao de marca do dono, nao ajuste de tela."
+        "reason": "Fonte da marca Nymbus Pedidos, estabelecida em docs/arquitetura/design-system.md linha 3 e usada em todo o produto (o design system ate documenta a largura dos numerais dela). Trocar a fonte e decisao de marca do dono, nao ajuste de tela."
       },
       {
         "rule": "flat-type-hierarchy",
@@ -22,49 +22,49 @@
         "rule": "design-system-font-size",
         "value": "12px",
         "createdAt": "2026-11-21T11:03:58.139Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "13px",
         "createdAt": "2026-11-21T11:03:58.312Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "15px",
         "createdAt": "2026-11-21T11:03:58.502Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "18px",
         "createdAt": "2026-11-21T11:03:58.692Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "24px",
         "createdAt": "2026-11-21T11:03:58.879Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "32px",
         "createdAt": "2026-11-21T11:03:59.057Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "40px",
         "createdAt": "2026-11-21T11:03:59.230Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "design-system-font-size",
         "value": "56px",
         "createdAt": "2026-11-21T11:03:59.410Z",
-        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/design-system.md, este e um deles"
+        "reason": "DESIGN.md linha 190: frontmatter representa so 6 papeis do Stitch; escala real tem 14 valores fechados em docs/arquitetura/design-system.md, este e um deles"
       },
       {
         "rule": "nested-cards",

@@ -31,7 +31,7 @@
 ## Limites e cotas
 
 NÃO DOCUMENTADO (não há uma diretriz de acessibilidade formalmente adotada pelo projeto para
-tamanho mínimo de alvo de toque — `docs/design-system.md` e `DESIGN-SYSTEM.md` não mencionam
+tamanho mínimo de alvo de toque — `docs/arquitetura/design-system.md` e `DESIGN-SYSTEM.md` não mencionam
 esse critério).
 
 ## Erros conhecidos e tratamento

@@ -7,7 +7,7 @@ titulo: Caixa fecha com pedido em aberto
 tipo_ocorrencia: bug
 fechado_em: 2026-09-12
 modulo_afetado: [caixa, pedidos]
-arquivos_alterados: [src/caixa.js, test/integracao/caixa.test.js, docs/planos-e-frete.md, docs/arquitetura.md, docs/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
+arquivos_alterados: [src/caixa.js, test/integracao/caixa.test.js, docs/planos-e-frete.md, docs/arquitetura/arquitetura.md, docs/arquitetura/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
 palavras_chave: [caixa, fechamento, pedido-a-receber, comanda, turno, criado-em, bloqueio]
 regressao_de: null
 testes_adicionados: 0
@@ -31,7 +31,7 @@ O dono relatou que o caixa fechou mesmo com pedido em aberto; esperava bloqueio,
 
 - **fechamento-de-caixa.md** — o fluxo de `src/caixa.js`: `fecharCaixa` roda o gate de "vendas a receber" antes de fechar o turno; `_contarAReceber` filtra `criado_em >= aberto_em`; o resumo exibe o recorte de turno + `_resumoAReceberAntigos`; tabela `pedidos` (coluna `recebido_em`).
 - **testes-caixa.md** — cobertura da regra: o teste de integração que asseverava o comportamento antigo (`test/integracao/caixa.test.js:212`), os unitários stubados (`test/caixa-trava.test.js`, que devolve linhas vazias para qualquer query) e a vizinhança compartilhada com mesas (mesma bateria de turno).
-- **documentacao-da-regra.md** — os 5 docs vivos que descreviam a regra antiga (`docs/planos-e-frete.md`, `docs/arquitetura.md`, `docs/modelo-dados.md`, `PRD.md`, `CLAUDE.md`) e a decisão aberta no `PROGRESSO.md:679`.
+- **documentacao-da-regra.md** — os 5 docs vivos que descreviam a regra antiga (`docs/planos-e-frete.md`, `docs/arquitetura/arquitetura.md`, `docs/arquitetura/modelo-dados.md`, `PRD.md`, `CLAUDE.md`) e a decisão aberta no `PROGRESSO.md:679`.
 
 ## 4. Causa raiz ou análise de impacto
 
@@ -71,7 +71,7 @@ Sprint-01 / F-01.1, estritamente sequencial. Bloqueios em `BLOQUEIOS.md`: nenhum
 
 - `src/caixa.js` — nova `_contarAReceberTotal` (gate do fechamento) e comentários da decisão reescritos com referência à OC-2026-0001.
 - `test/integracao/caixa.test.js` — teste da trava invertido (antigo 200 → espera 400) e comentário adjacente atualizado.
-- `docs/planos-e-frete.md`, `docs/arquitetura.md`, `docs/modelo-dados.md`, `PRD.md`, `CLAUDE.md` — regra nova (bloqueia de qualquer data; antigos também bloqueiam).
+- `docs/planos-e-frete.md`, `docs/arquitetura/arquitetura.md`, `docs/arquitetura/modelo-dados.md`, `PRD.md`, `CLAUDE.md` — regra nova (bloqueia de qualquer data; antigos também bloqueiam).
 - `PROGRESSO.md` — entrada no ✅ Concluído (2026-09-12) e correlação na decisão da entrada 679.
 
 ## 9. Testes adicionados

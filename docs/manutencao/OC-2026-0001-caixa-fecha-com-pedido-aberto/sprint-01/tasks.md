@@ -55,10 +55,10 @@ tasks:
     titulo: Docs - nova regra de fechamento
     fase: F-01.1
     status: concluida
-    objetivo: Atualizar docs/planos-e-frete.md, docs/arquitetura.md, docs/modelo-dados.md, PRD.md e CLAUDE.md para a nova regra e fechar a decisao aberta no PROGRESSO.md
+    objetivo: Atualizar docs/planos-e-frete.md, docs/arquitetura/arquitetura.md, docs/arquitetura/modelo-dados.md, PRD.md e CLAUDE.md para a nova regra e fechar a decisao aberta no PROGRESSO.md
     arquivos:
       cria: []
-      altera: [docs/planos-e-frete.md, docs/arquitetura.md, docs/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
+      altera: [docs/planos-e-frete.md, docs/arquitetura/arquitetura.md, docs/arquitetura/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
     teste_integracao: rg por "pedido a receber" em docs/ nao aponta trecho com a regra antiga
     teste_funcional: leitura dos trechos reescritos confirma que antigos a receber bloqueiam o fechamento e que o resumo mantem aviso
     criterio_aceite: nenhuma mencao a regra antiga em CLAUDE.md e docs/; PROGRESSO.md registra a ocorrencia concluida
@@ -165,10 +165,10 @@ status: pendente
 ```yaml
 id: T-01.03
 titulo: Docs - nova regra de fechamento
-objetivo: Atualizar docs/planos-e-frete.md, docs/arquitetura.md, docs/modelo-dados.md, PRD.md e CLAUDE.md para a nova regra e fechar a decisao aberta no PROGRESSO.md
+objetivo: Atualizar docs/planos-e-frete.md, docs/arquitetura/arquitetura.md, docs/arquitetura/modelo-dados.md, PRD.md e CLAUDE.md para a nova regra e fechar a decisao aberta no PROGRESSO.md
 arquivos:
   cria: []
-  altera: [docs/planos-e-frete.md, docs/arquitetura.md, docs/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
+  altera: [docs/planos-e-frete.md, docs/arquitetura/arquitetura.md, docs/arquitetura/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
 teste_integracao: rg por "pedido a receber" em docs/ nao aponta trecho com a regra antiga
 teste_funcional: leitura dos trechos reescritos confirma que antigos a receber bloqueiam o fechamento e que o resumo mantem aviso
 criterio_aceite: nenhuma mencao a regra antiga em CLAUDE.md e docs/; PROGRESSO.md registra a ocorrencia concluida

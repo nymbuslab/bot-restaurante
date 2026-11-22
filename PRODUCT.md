@@ -3,7 +3,7 @@ doc: product
 titulo: Product — Nymbus Pedidos
 proposito: Verdade de produto durável para o Impeccable (skill de design). Não decide mundo visual.
 manutencao: Atualizar quando usuário, posicionamento, capacidade ou marca mudarem de fato.
-relacionados: [CLAUDE.md, PRD.md, ROADMAP.md, docs/design-system.md]
+relacionados: [CLAUDE.md, PRD.md, ROADMAP.md, docs/arquitetura/design-system.md]
 ---
 
 # Product
@@ -56,7 +56,7 @@ A operação completa do salão (PDV + Mesas + Caixa + impressão térmica autom
 ## Brand Commitments
 
 - Nome do produto: **Nymbus Pedidos**.
-- Tema escuro fixo, fonte **Plus Jakarta Sans** (Google Fonts); tokens de cor e forma documentados em `docs/design-system.md` (fonte de verdade visual existente do projeto — não reescrever do zero).
+- Tema escuro fixo, fonte **Plus Jakarta Sans** (Google Fonts); tokens de cor e forma documentados em `docs/arquitetura/design-system.md` (fonte de verdade visual existente do projeto — não reescrever do zero).
 - Roxo (`#6344BC`) como cor de marca (preenchimento), ciano como acento secundário; vermelho/amarelo/verde/azul são sempre semânticos (erro/aviso/sucesso/info), nunca usados como cor de marca.
 - Voz de texto e regras anti-"cara de IA" definidas na skill de marca do projeto (`copy-nymbus`): benefício antes de recurso, frase curta, **sem travessão como conector**, sem emoji na UI (ícones SVG de biblioteca).
 - Idioma de interface, banco e identificadores de domínio: português (Brasil).
@@ -79,4 +79,4 @@ A operação completa do salão (PDV + Mesas + Caixa + impressão térmica autom
 
 ## Accessibility & Inclusion
 
-Padrão de contraste AA (4,5:1) é requisito já aplicado nos tokens de cor do projeto — texto/ícone sobre fundo escuro usa a variante clara da cor semântica (ex.: `--accent-fg`, `--error-fg`) em vez do tom cheio, justamente para não cair abaixo de AA. Detalhe completo em `docs/design-system.md`. Nenhum requisito de acessibilidade adicional (leitor de tela, teclado) foi formalmente levantado pelo usuário até agora.
+Padrão de contraste AA (4,5:1) é requisito já aplicado nos tokens de cor do projeto — texto/ícone sobre fundo escuro usa a variante clara da cor semântica (ex.: `--accent-fg`, `--error-fg`) em vez do tom cheio, justamente para não cair abaixo de AA. Detalhe completo em `docs/arquitetura/design-system.md`. Nenhum requisito de acessibilidade adicional (leitor de tela, teclado) foi formalmente levantado pelo usuário até agora.

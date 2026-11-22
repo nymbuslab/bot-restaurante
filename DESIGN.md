@@ -187,7 +187,7 @@ Fonte única em todo o produto — sem segunda família para títulos ou número
 ### Escala fechada
 A tipografia não usa uma progressão livre: existem exatamente 14 valores permitidos — 10/11/12/13/14/15/16px para interface (rótulo, botão, linha de tabela) e 18/20/24/32/40/48/56px para destaque (métrica, total, headline). Um tamanho novo em tela sai dessa lista; se o texto "precisa" de um valor fora dela, o problema é o layout, não a escala.
 
-**Limite conhecido deste arquivo:** o frontmatter acima só representa 6 papéis (os 5 canônicos do Stitch + a exceção de impressão), não os 14 valores. A fonte de verdade da escala completa é `docs/design-system.md`; ferramentas que comparam `font-size` literal contra este frontmatter vão sinalizar os outros 8 valores (12/13/15/18/24/32/40/56px) como "fora do token" mesmo sendo válidos. Não é bug do produto.
+**Limite conhecido deste arquivo:** o frontmatter acima só representa 6 papéis (os 5 canônicos do Stitch + a exceção de impressão), não os 14 valores. A fonte de verdade da escala completa é `docs/arquitetura/design-system.md`; ferramentas que comparam `font-size` literal contra este frontmatter vão sinalizar os outros 8 valores (12/13/15/18/24/32/40/56px) como "fora do token" mesmo sendo válidos. Não é bug do produto.
 
 **Thermal Print** (`'Courier New', monospace`, 12px): exceção proposital e única — `.cupom-print`/`.cupom-preview` espelham a métrica do papel térmico 80mm (48 colunas), nunca usar `--fonte-mono` nem Plus Jakarta Sans aqui.
 

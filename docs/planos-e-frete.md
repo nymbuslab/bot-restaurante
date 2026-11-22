@@ -212,8 +212,6 @@ commit + push, e aprovação antes da fase seguinte.
 ## 2º benefício do Completo — Impressão de pedido na térmica (80mm)
 
 > ✅ **implementado** (CHANGELOG 0.29.0; serial/COM em 0.40.0; corte Daruma + cupom marketing em 0.43.0).
-> Spec/plano: `docs/superpowers/specs/2026-06-20-impressao-termica-design.md` e
-> `docs/superpowers/plans/2026-06-20-impressao-termica.md`.
 
 > ⚠️ **Impressão é 100% via AGENTE (CHANGELOG 0.59.0 + 0.62.0):** o app desktop **Nymbus Impressora**
 > imprime **todos** os fluxos automaticamente (delivery + **PDV + Mesas + Caixa**) via **fila genérica**
@@ -263,7 +261,7 @@ térmica 80mm não-fiscal (Elgin i7/i8, Epson T20x, **Daruma DR700/DR800** e sim
 
 ## 3º benefício do Completo — Caixa do dia / fechamento
 
-> ✅ **implementado** (CHANGELOG 0.30.0; evoluído na 0.33.0). Specs/planos em `docs/superpowers/`.
+> ✅ **implementado** (CHANGELOG 0.30.0; evoluído na 0.33.0).
 
 Aba **Caixa** no painel (Plano Completo) para controlar o dinheiro do dia, reconciliando os pedidos
 que vêm do WhatsApp.
@@ -418,7 +416,7 @@ devolução no cancelamento (a venda dava baixa, nenhum dos cinco caminhos de ca
   venda leva o número do pedido, que abre a aba Pedidos filtrada nele.
 - **O motivo é declarado no gesto:** botões Entrada, Perda e Contagem, em vez de editar o número e
   explicar depois. O extrato nasce legível. A regra de cada um (soma, subtrai, substitui) e a frase
-  de conferência antes de gravar estão em [modelo-dados.md](modelo-dados.md).
+  de conferência antes de gravar estão em [modelo-dados.md](arquitetura/modelo-dados.md).
 - **Cancelamento devolve ao estoque** nos cinco caminhos (pedido inteiro, item do pedido, mesa, item
   da comanda e pedido já pago), com a caixinha "devolver ao estoque" **marcada por padrão**.
   Desmarcar não devolve e não gera movimento: prato feito e descartado é perda, não devolução.

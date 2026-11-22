@@ -6,7 +6,7 @@
   helper de "estado de erro genérico" reutilizável no projeto. Vira pergunta obrigatória da F2.
 - **`06-button-mini-touch.md`** — NÃO DOCUMENTADO se o dono prefere aumentar `.mini` globalmente
   (risco de regressão visual ampla) ou criar um modificador novo só para contexto de
-  lista/mobile. Procurado em `docs/design-system.md`/`DESIGN-SYSTEM.md` e não há diretriz de
+  lista/mobile. Procurado em `docs/arquitetura/design-system.md`/`DESIGN-SYSTEM.md` e não há diretriz de
   tamanho mínimo de toque adotada pelo projeto. Vira pergunta obrigatória da F2.
 - **`08-abas-configuracoes-editor.md`** — NÃO DOCUMENTADO se o dono quer (a) só registrar que o
   achado Baixo #1 foi revisado e não precisa de mudança, ou (b) adicionar `role="tablist"`/

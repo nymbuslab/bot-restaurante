@@ -6,7 +6,7 @@ trabalho_id: OC-2026-0001
 modo: causa_raiz
 comprovada: true
 evidencia: codigo
-arquivos_impactados: [src/caixa.js, test/integracao/caixa.test.js, docs/planos-e-frete.md, docs/arquitetura.md, docs/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
+arquivos_impactados: [src/caixa.js, test/integracao/caixa.test.js, docs/planos-e-frete.md, docs/arquitetura/arquitetura.md, docs/arquitetura/modelo-dados.md, PRD.md, CLAUDE.md, PROGRESSO.md]
 palavras_chave: [caixa, fechamento, pedido-a-receber, comanda, turno, criado-em, bloqueio]
 regressao_de: null
 evidencia_regressao: null
